@@ -1,0 +1,36 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/teams/v1.27/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.27",
+  "version": "0.1.0",
+  "id": "00000000-0000-0000-0000-000000000000",
+  "packageName": "co.g3a.baseconocimiento",
+  "developer": {
+    "name": "G3A",
+    "websiteUrl": "https://example.com",
+    "privacyUrl": "https://example.com/privacidad",
+    "termsOfUseUrl": "https://example.com/terminos"
+  },
+  "icons": {
+    "outline": "outline.png",
+    "color": "color.png"
+  },
+  "name": {
+    "short": "Base de Conocimiento",
+    "full": "Base de Conocimiento interna"
+  },
+  "description": {
+    "short": "Pregunta sobre documentos, código y work items del equipo",
+    "full": "Responde preguntas sobre documentos internos, repositorios de código y work items de Azure DevOps, con citas verificables a la fuente."
+  },
+  "accentColor": "#0B4F6C",
+  "bots": [
+    {
+      "botId": "00000000-0000-0000-0000-000000000000",
+      "scopes": ["personal", "team", "groupchat"],
+      "supportsFiles": false,
+      "isNotificationOnly": false
+    }
+  ],
+  "permissions": ["identity", "messageTeamMembers"],
+  "validDomains": []
+}
