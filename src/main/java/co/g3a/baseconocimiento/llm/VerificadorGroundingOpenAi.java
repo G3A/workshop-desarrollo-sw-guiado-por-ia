@@ -1,21 +1,23 @@
 package co.g3a.baseconocimiento.llm;
 
+import java.util.Map;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.ollama.api.OllamaChatOptions;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.ai.openai.OpenAiChatOptions;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 /**
  * Clasificación binaria con salida estructurada forzada, igual que
- * {@link PlanificadorOllama} — no redacción libre, por eso es más confiable
+ * {@link PlanificadorOpenAi} — no redacción libre, por eso es más confiable
  * que pedirle al {@link Sintetizador} que se autocensure sobre la marcha.
  */
 @Component
-class VerificadorGroundingOllama implements VerificadorGrounding {
+class VerificadorGroundingOpenAi implements VerificadorGrounding {
 
-    private static final Logger log = LoggerFactory.getLogger(VerificadorGroundingOllama.class);
+    private static final Logger log = LoggerFactory.getLogger(VerificadorGroundingOpenAi.class);
 
     private static final String SISTEMA = """
             Evaluas si un CONTEXTO recuperado de una base de conocimiento alcanza para
@@ -54,17 +56,17 @@ class VerificadorGroundingOllama implements VerificadorGrounding {
 
     private final ChatClient chatClient;
 
-    VerificadorGroundingOllama(
-            ChatClient.Builder builder,
-            @Value("${kb.llm.thinking-habilitado:false}") boolean thinkingHabilitado) {
-        // temperature(0.0) sobreescribe el 0.2 global (kb.llm en application.yml): un
-        // veredicto sobre si arriesgar una alucinacion no debe variar entre corridas
-        // identicas. Se verifico en vivo que con 0.2 la MISMA pregunta contra el MISMO
-        // contexto daba true en 1 de 3 intentos y false en los otros dos -- ver ADR-0008.
-        var opciones = (thinkingHabilitado
-                ? OllamaChatOptions.builder().enableThinking()
-                : OllamaChatOptions.builder().disableThinking())
-                .temperature(0.0);
+    VerificadorGroundingOpenAi(@Qualifier("chatClientBuilderOpenAi") ChatClient.Builder builder) {
+        // temperature(0.0): un veredicto sobre si arriesgar una alucinacion no debe
+        // variar entre corridas identicas. Se verifico en vivo (con gemma3:4b, antes
+        // de ADR-0009) que con 0.2 la MISMA pregunta contra el MISMO contexto daba
+        // true en 1 de 3 intentos y false en los otros dos -- ver ADR-0008.
+        //
+        // extraBody(repeat_penalty): ver PlanificadorOpenAi -- mitiga un modo de
+        // falla de repeticion medido en la sesion 6 de la investigacion (ADR-0009).
+        var opciones = OpenAiChatOptions.builder()
+                .temperature(0.0)
+                .extraBody(Map.of("repeat_penalty", 1.1));
         this.chatClient = builder.defaultOptions(opciones).build();
     }
 
@@ -79,8 +81,8 @@ class VerificadorGroundingOllama implements VerificadorGrounding {
                     .entity(Veredicto.class, spec -> spec.useProviderStructuredOutput());
         } catch (Exception e) {
             // A diferencia del planificador (que se cae a search_unified), aca el
-            // respaldo ante una falla de Ollama es rechazar: este verificador es la
-            // ultima defensa contra una respuesta sin respaldo real, y arriesgar una
+            // respaldo ante una falla de llama-server es rechazar: este verificador es
+            // la ultima defensa contra una respuesta sin respaldo real, y arriesgar una
             // alucinacion es peor que negarse cuando no se pudo verificar.
             log.warn("Fallo al verificar grounding, se rechaza por precaucion: {}", e.toString());
             return new Veredicto(false);

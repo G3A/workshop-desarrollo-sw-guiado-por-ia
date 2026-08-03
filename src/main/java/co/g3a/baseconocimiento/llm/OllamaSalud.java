@@ -38,11 +38,15 @@ class OllamaSalud implements HealthIndicator {
 
     OllamaSalud(
             @Value("${spring.ai.ollama.base-url:http://localhost:11434}") String urlBase,
-            @Value("${kb.llm.modelo:gemma3:4b}") String modeloLlm,
+            // Ya no es el modelo principal del pipeline (ver ADR-0009): desde que
+            // Planificador/VerificadorGrounding/Sintetizador pasaron a hablarle a
+            // llama-server via OpenAI, el unico consumidor de Ollama para chat es
+            // el Destilador (Teams, F6).
+            @Value("${kb.llm.destilador-modelo:gemma3:4b}") String modeloDestilador,
             @Value("${kb.embeddings.modelo:bge-m3}") String modeloEmbeddings) {
 
         this.urlBase = urlBase;
-        this.modelosRequeridos = Set.of(modeloLlm, modeloEmbeddings);
+        this.modelosRequeridos = Set.of(modeloDestilador, modeloEmbeddings);
 
         var fabrica = new SimpleClientHttpRequestFactory();
         fabrica.setConnectTimeout(Duration.ofSeconds(3));

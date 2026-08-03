@@ -20,6 +20,13 @@ spring:
     locations: classpath:db/migration
 
   ai:
+    # Con los starters de Ollama y OpenAI a la vez, cada uno autoconfigura su
+    # propio ChatModel/EmbeddingModel por defecto -- sin esta linea, Spring
+    # veria dos EmbeddingModel candidatos (ambiguo) para el unico bean que
+    # EmbeddingsOllama necesita. El lado chat no tiene un selector unico
+    # porque de verdad usa los dos proveedores a la vez (ver ClientesDeChat).
+    model:
+      embedding: ollama
     ollama:
       base-url: ${SPRING_AI_OLLAMA_BASE_URL:http://localhost:11434}
       init:
@@ -30,11 +37,26 @@ spring:
       # SIN el nivel intermedio `options` que usaba la 1.x. `chat.options.model`
       # se ignora en silencio; la app arranca igual, pero con el modelo por
       # defecto de Ollama en vez del que pediste.
+      #
+      # Este chat.model ya NO es el modelo principal del pipeline (ver
+      # spring.ai.openai mas abajo): solo lo usa el Destilador (Teams, F6),
+      # que se quedo en Ollama -- ver ADR-0009.
       chat:
-        model: "${KB_LLM_MODELO:gemma3:4b}"
+        model: "${KB_TEAMS_LLM_MODELO:gemma3:4b}"
         temperature: 0.2
       embedding:
         model: "${KB_EMBEDDINGS_MODELO:bge-m3}"
+    openai:
+      # A diferencia de Ollama, OpenAI no aplano `chat.options` en la 2.0 --
+      # `chat.options.model` (con el nivel intermedio) es la ruta correcta aca.
+      base-url: ${SPRING_AI_OPENAI_BASE_URL:http://localhost:8081}
+      # llama-server no valida esta key -- Spring AI exige igual un valor no
+      # vacio, o falla el arranque con "OpenAI API key must be set."
+      api-key: ${SPRING_AI_OPENAI_API_KEY:sk-no-se-necesita}
+      chat:
+        options:
+          model: "${KB_LLM_MODELO:Bonsai-8B-Q1_0.gguf}"
+          temperature: 0.2
 
 management:
   endpoints:
@@ -50,12 +72,15 @@ kb:
   api-token: ${KB_API_TOKEN:}
 
   llm:
-    modelo: "${KB_LLM_MODELO:gemma3:4b}"
+    # El modelo del Destilador (Teams, F6): el unico componente de `llm/` que
+    # se quedo en Ollama (ver spring.ai.openai mas arriba para el resto).
+    destilador-modelo: "${KB_TEAMS_LLM_MODELO:gemma3:4b}"
     # gemma3 no trae modo "thinking" -- esta propiedad y disableThinking()
-    # (ver PlanificadorOllama) nacieron por un problema real de qwen3:4b, el
+    # (ver DestiladorOllama) nacieron por un problema real de qwen3:4b, el
     # modelo original: minutos de razonamiento interno antes de cada
-    # respuesta, medido en vivo. Queda como red de seguridad por si se vuelve
-    # a apuntar KB_LLM_MODELO a un modelo con thinking.
+    # respuesta, medido en vivo. Ya solo la usa el Destilador: Bonsai (el
+    # modelo del resto del pipeline desde ADR-0009) no tiene modo thinking,
+    # asi que no hace falta apagarselo.
     thinking-habilitado: ${KB_LLM_THINKING_HABILITADO:false}
 
   embeddings:

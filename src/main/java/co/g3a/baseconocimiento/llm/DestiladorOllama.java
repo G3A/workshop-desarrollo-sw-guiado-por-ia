@@ -6,14 +6,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.ollama.api.OllamaChatOptions;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
- * Destilador con salida estructurada forzada por esquema JSON, mismo patrón
- * que {@link PlanificadorOllama}: {@code disableThinking} por defecto y una
- * captura amplia de excepciones que cae a un resumen crudo en vez de tumbar la
- * ingesta del hilo completo si Ollama falla o el modelo no valida el esquema.
+ * Destilador con salida estructurada forzada por esquema JSON: {@code disableThinking}
+ * por defecto y una captura amplia de excepciones que cae a un resumen crudo en vez de
+ * tumbar la ingesta del hilo completo si Ollama falla o el modelo no valida el esquema.
+ *
+ * <p>Es el unico componente de {@code llm/} que se quedo en Ollama despues de
+ * ADR-0009 -- el resto pasa por OpenAI contra llama-server. Por eso pide el
+ * builder calificado ({@link ClientesDeChat}) en vez del default: con dos
+ * proveedores activos a la vez, ya no hay un {@link ChatClient.Builder} sin
+ * calificar que autoconfigurar.
  */
 @Component
 class DestiladorOllama implements Destilador {
@@ -35,7 +41,9 @@ class DestiladorOllama implements Destilador {
 
     private final ChatClient chatClient;
 
-    DestiladorOllama(ChatClient.Builder builder, @Value("${kb.llm.thinking-habilitado:false}") boolean thinkingHabilitado) {
+    DestiladorOllama(
+            @Qualifier("chatClientBuilderOllama") ChatClient.Builder builder,
+            @Value("${kb.llm.thinking-habilitado:false}") boolean thinkingHabilitado) {
         var opciones = thinkingHabilitado
                 ? OllamaChatOptions.builder().enableThinking()
                 : OllamaChatOptions.builder().disableThinking();
