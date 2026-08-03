@@ -3,8 +3,8 @@ package co.g3a.baseconocimiento.llm;
 import java.util.Map;
 
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import reactor.core.publisher.Flux;
@@ -24,6 +24,12 @@ import reactor.core.publisher.Flux;
  * aisladas de la sesion 5 (fragmento irrelevante citado, marcador antes de
  * la afirmacion en vez de despues) — sigue pendiente mas ajuste y
  * re-validacion, no es un problema resuelto del todo.
+ *
+ * <p>Arma su propio {@link ChatClient.Builder} a partir de {@link OpenAiChatModel}
+ * en vez de un {@code ChatClient.Builder} inyectado — ver el comentario de
+ * {@link PlanificadorOpenAi} sobre por que compartir un builder-bean entre
+ * componentes de este paquete pisaba el {@code maxTokens} de unos con el de
+ * otros.
  */
 @Component
 class SintetizadorOpenAi implements Sintetizador {
@@ -51,10 +57,16 @@ class SintetizadorOpenAi implements Sintetizador {
 
     private final ChatClient chatClient;
 
-    SintetizadorOpenAi(@Qualifier("chatClientBuilderOpenAi") ChatClient.Builder builder) {
+    SintetizadorOpenAi(OpenAiChatModel modelo) {
+        // maxTokens(512): a diferencia de Planificador/VerificadorGrounding (salida
+        // corta y acotada), una sintesis real puede necesitar varios pasos y varias
+        // citas -- 512 da margen de sobra para eso. Es una red de seguridad contra
+        // un bucle de generacion sin fin (ver ADR-0009, hallazgo de repeticion de
+        // la sesion 6), no un limite pensado para recortar respuestas normales.
         var opciones = OpenAiChatOptions.builder()
-                .extraBody(Map.of("repeat_penalty", 1.1));
-        this.chatClient = builder.defaultSystem(SISTEMA).defaultOptions(opciones).build();
+                .extraBody(Map.of("repeat_penalty", 1.1))
+                .maxTokens(512);
+        this.chatClient = ChatClient.builder(modelo).defaultSystem(SISTEMA).defaultOptions(opciones).build();
     }
 
     @Override
