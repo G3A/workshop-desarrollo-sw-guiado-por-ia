@@ -575,3 +575,144 @@ solo proveedor recién salido de stealth, el aumento de complejidad de build que
 simplicidad que este proyecto declara como parte de su propuesta de valor, y que la ganancia de
 velocidad que promete PrismML no se sostuvo en esta GPU (Turing) son las razones concretas. El ADR
 deja condiciones puntuales para reabrir la decisión más adelante.
+
+## Sesión 6: prototipo real de `llama-server` en Docker, y primera prueba con Spring AI
+
+Disparada por la pregunta "¿qué haría falta para que esto funcione con docker-compose?" sobre el
+punto 1 de la lista de arquitectura del ADR-0009. A diferencia de la sesión 5 (compilación manual,
+`llama-cli` suelto, pegando prompts a mano), acá se construyó el contenedor real y se probó contra
+la API HTTP que usaría Spring AI — en una rama aislada (`worktree-experimento+bonsai-llama-server`),
+sin tocar `main`, `compose.yml` ni el cliente de Spring AI real. Los tres archivos nuevos
+(`Dockerfile.bonsai`, `compose.bonsai.yml`, `entrypoint-bonsai.sh`) quedaron comiteados solo en esa
+rama.
+
+### Hallazgo 17: dos bugs de build nuevos, no vistos en la sesión 5 porque ahí no se armó una imagen Docker
+
+La sesión 5 compiló el fork a mano dentro de un contenedor efímero ya con la GPU montada
+(`docker run --gpus all`). Un `docker build` normal no tiene la GPU disponible en tiempo de
+construcción, y eso saco a la luz dos problemas que la compilación manual no atraviesa:
+
+- **Link final roto**: `nvidia/cuda:12.6.0-devel-ubuntu22.04` no trae el driver CUDA real
+  (`libcuda.so`, las funciones `cuMem*` de VMM) porque el build no tiene GPU — ese driver llega
+  recién en runtime vía `nvidia-container-toolkit`. Sin él, el link de `llama-server` fallaba con
+  `undefined reference to cuMemCreate` y similares. Arreglo: `-DGGML_CUDA_NO_VMM=ON` al configurar
+  cmake, que evita depender de esa vía de asignación de memoria. No afecta que el modelo entre o no
+  en VRAM — Bonsai sigue midiendo ~1.75 GB (ver hallazgo 18), sobra margen en la T600.
+- **`libgomp1` faltante en runtime**: la imagen `nvidia/cuda:12.6.0-runtime-ubuntu22.04` no trae el
+  runtime de OpenMP que usan las operaciones CPU de `ggml`. Sin el paquete, `llama-server` fallaba
+  al arrancar con `error while loading shared libraries: libgomp.so.1`.
+
+Ninguno de los dos es un problema del modelo ni de la cuantización — son gaps de la imagen base
+`nvidia/cuda` sin GPU en build-time, y quedan resueltos en `Dockerfile.bonsai`.
+
+### Hallazgo 18: VRAM y velocidad reales del contenedor, consistentes con la sesión 5
+
+Con el contenedor levantado (`docker compose -f compose.yml -f compose.gpu.yml -f compose.bonsai.yml
+up -d llama-server`) y `nvidia-smi` corriendo en paralelo:
+
+| Métrica | Sesión 5 (`llama-cli` suelto) | Sesión 6 (contenedor real) |
+|---|---|---|
+| VRAM | 1759 MiB | **1753 MiB** |
+| Velocidad de generación | 5.8-6.1 tok/s | **6.9 tok/s** |
+
+Confirma que empaquetar el fork en Docker no cambia el comportamiento medido en la sesión 5 — el
+contenedor no le agrega overhead relevante ni a VRAM ni a velocidad.
+
+### Hallazgo 19: el bug de `-j`/`--json-schema` del hallazgo 14 no se reproduce en la API runtime de `llama-server`
+
+Este es el hallazgo más importante de la sesión, porque revierte parcialmente el punto 4 de la lista
+de arquitectura del ADR-0009. El hallazgo 14 (sesión 5) documentó que el flag `-j`/`--json-schema`
+de `llama-cli`/`llama-server` fallaba con `Failed to initialize samplers: std::exception`, y que por
+eso hacía falta escribir gramáticas GBNF a mano.
+
+Probado ahora contra `POST /v1/chat/completions` con `response_format: {"type": "json_schema",
+"json_schema": {..., "strict": true}}` — el mecanismo exacto que usa
+`ChatClient.entity(..., spec -> spec.useProviderStructuredOutput())` de Spring AI contra un
+proveedor OpenAI — **no crasheó**, y acertó los dos veredictos canónicos del ADR-0008:
+
+| Caso | Esperado | Veredicto (API runtime) |
+|---|---|---|
+| "explícame cómo usar Java 25" | `false` | `{"respondeLaPregunta": false}` ✅ |
+| "como se despliega el servicio" | `true` | `{"respondeLaPregunta": true}` ✅ |
+
+Con el catálogo y el prompt de sistema reales de `PlanificadorOllama.java` (no una versión
+resumida), el plan de herramientas salió más preciso que en la sesión 5 (que había usado una
+gramática GBNF escrita a mano contra `llama-cli`):
+
+| Pregunta | Sesión 5 (GBNF a mano, `llama-cli`) | Sesión 6 (`response_format` json_schema, API runtime) |
+|---|---|---|
+| "como se despliega el servicio" | `["search_docs", "search_unified", "who_knows", "subsystem_index"]` (de más) | `["search_docs", "search_unified"]` — limpio, igual que `gemma3:4b`/`qwen2.5:3b` en la sesión 4 |
+| "como esta implementada la fusion RRF en el codigo" | `["search_code"]` | `["search_code"]` — igual |
+
+Conclusión: el bug del hallazgo 14 parece ser específico de como `llama-cli`/el flag CLI convierte el
+JSON Schema a gramática, no de la ruta que toma `llama-server` para `response_format` en una request
+HTTP normal. Esto sugiere que **el punto 4 de la lista de arquitectura del ADR-0009 (gramáticas GBNF
+escritas a mano) probablemente no hace falta** si la integración se hace vía Spring AI/API HTTP en
+vez de vía CLI — pero es una inferencia de una sola sesión de pruebas, no una garantía; conviene
+re-confirmar si se retoma la integración de verdad.
+
+### Hallazgo 20: gap de sampling nuevo — repetición completa de la respuesta sin `repeat_penalty`, y una regresión de citación al corregirlo
+
+Al probar la síntesis en streaming (`stream: true`, el mecanismo que usa
+`Sintetizador.sintetizar()` vía `ChatClient...stream().content()`) con el prompt de sistema real de
+`SintetizadorOllama.java` y los mismos 4 fragmentos que la sesión 5, con `temperature: 0` y sin
+ningún otro parámetro de sampling:
+
+**La respuesta completa salió duplicada literalmente dos veces**, un modo de falla que ninguna
+sesión anterior había visto (ni la 1-4 con los otros modelos, ni la 5 con `llama-cli`). Causa
+probable: `llama-cli` aplica un `repeat_penalty` por defecto que la API HTTP de `llama-server` no
+aplica sola si no se pide explícito.
+
+Agregando `repeat_penalty: 1.1` al request, la duplicación desapareció, pero aparecieron dos
+problemas de calidad que la sesión 5 no había medido en esta combinación exacta:
+
+- Citó el fragmento `[3]` (la carpeta `corpus/`, irrelevante para "como se despliega el servicio")
+  — el hallazgo 12 de la sesión 5 había medido justamente que Bonsai lo ignoraba correctamente.
+- Puso una cita antes de la afirmación que respalda (`"Para configurar Docker, [2] se debe
+  ejecutar..."`) — exactamente el patrón que el prompt de sistema marca como ejemplo incorrecto, y
+  que la sesión 5 solo había visto en la pregunta de control (hallazgo 13), no en la pregunta
+  relevante.
+
+Conclusión: "la mejor citación de toda la investigación" (hallazgo 12) no se reprodujo tal cual al
+pasar de `llama-cli` a la API HTTP con `repeat_penalty` agregado a mano — hace falta más ajuste de
+sampling y una re-validación real antes de confiar en esa medición para producción. Consistente con
+la advertencia que ya dejaba el hallazgo 7 (sesión 2): el comportamiento aislado no siempre predice
+el comportamiento embebido, y acá ni siquiera hizo falta cambiar de modelo para verlo — alcanzó con
+cambiar de interfaz (CLI vs API HTTP) sobre el mismo binario y el mismo GGUF.
+
+### Hallazgo 21: viabilidad concreta con Spring AI — wiring resuelto, ajuste de sampling pendiente
+
+Investigado puntualmente si `spring-ai-starter-model-openai` (en vez de
+`spring-ai-starter-model-ollama`, que es lo que usa el proyecto hoy) podría hablarle a este
+contenedor:
+
+- **Transporte**: `OpenAiChatModel` apuntando a `spring.ai.openai.base-url=http://llama-server:8080`
+  es un patrón estándar para servidores compatibles con OpenAI como `llama-server` — no hace falta
+  nada especial de este lado.
+- **Salida estructurada**: `ChatClient.entity(..., spec -> spec.useProviderStructuredOutput())`
+  contra un proveedor OpenAI arma exactamente el `response_format: json_schema` que el hallazgo 19
+  ya probó que funciona.
+- **El parámetro `repeat_penalty` del hallazgo 20** no es parte de la API oficial de OpenAI, así que
+  `OpenAiChatOptions` no tiene un campo propio para él — pero Spring AI expone
+  `OpenAiChatOptions.builder().extraBody(Map.of("repeat_penalty", 1.1))` para mandar parámetros no
+  estándar a servidores compatibles con OpenAI (vLLM, Ollama, `llama-server`), que cubre exactamente
+  este caso.
+- **Cambios de código necesarios** (punto 3 de la lista de arquitectura del ADR-0009): cambiar la
+  dependencia Maven, reemplazar `OllamaChatOptions` por `OpenAiChatOptions` en los tres componentes
+  (`PlanificadorOllama`, `VerificadorGroundingOllama`, `SintetizadorOllama`), y **eliminar** las
+  llamadas a `enableThinking()`/`disableThinking()` — Bonsai no tiene modo thinking, esa rama de
+  código no aplicaría. Alcance acotado, consistente con lo que ya estimaba el ADR.
+
+**Conclusión de la sesión 6**: el wiring con Spring AI es viable y con menos fricción de la que el
+ADR-0009 anticipaba (probablemente sin gramáticas GBNF). Pero la calidad de síntesis medida en la
+sesión 5 no se reprodujo automáticamente al pasar de `llama-cli` a la API HTTP real — apareció un
+modo de falla nuevo (repetición) y, ya corregido, una regresión de citación frente a la propia
+medición de la sesión 5. Ninguno de los dos hallazgos cambia la decisión de ADR-0009 (sigue
+pospuesta), pero sí cambian el trabajo pendiente si se retoma: el riesgo de arquitectura bajó
+(puntos 1 y probablemente 4), pero se suma una tarea de ajuste de sampling y re-validación de
+calidad que antes no estaba identificada.
+
+Estado del entorno al cierre: contenedor `kb-llama-server` (imagen `base-conocimiento-llama-server`)
+sigue arriba en la rama `worktree-experimento+bonsai-llama-server`, sirviendo el mismo GGUF de la
+sesión 5. `Dockerfile.bonsai`, `compose.bonsai.yml` y `entrypoint-bonsai.sh` quedaron comiteados
+solo en esa rama — `main`, `compose.yml` y el cliente de Spring AI real no se tocaron.
