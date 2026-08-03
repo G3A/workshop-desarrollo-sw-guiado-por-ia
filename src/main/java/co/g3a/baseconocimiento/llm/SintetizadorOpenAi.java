@@ -1,8 +1,10 @@
 package co.g3a.baseconocimiento.llm;
 
+import java.util.Map;
+
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.ollama.api.OllamaChatOptions;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.ai.openai.OpenAiChatOptions;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import reactor.core.publisher.Flux;
@@ -13,24 +15,18 @@ import reactor.core.publisher.Flux;
  * afirmación con {@code [n]}, y señalar una contradicción en vez de elegir un
  * lado en silencio cuando dos fuentes no coinciden.
  *
- * <p>{@code kb.llm.thinking-habilitado=false} por defecto, igual que en
- * {@link PlanificadorOllama}. Esta propiedad y {@code disableThinking()} nacieron
- * por {@code qwen3:4b} —el modelo original de este proyecto—: con "thinking"
- * encendido, Ollama anteponía varios minutos de razonamiento interno a cada
- * respuesta en este equipo, y aun con thinking apagado el modelo seguía
- * narrando su proceso en prosa dentro de la respuesta misma ("Okay, let's
- * tackle this query..."). Dos intentos de arreglarlo por prompt, verificados
- * en vivo, no lo resolvieron — uno de ellos (un ejemplo few-shot) lo empeoró:
- * el modelo trató el ejemplo como parte del problema y entró en un bucle de
- * auto-cuestionamiento de varios minutos sin llegar a una respuesta.
- *
- * <p>Por eso el modelo por defecto pasó a {@code gemma3:4b} (ver hallazgos de
- * F4 en el plan): mismo tamaño y presupuesto de VRAM que {@code qwen3:4b}, sin
- * modo thinking. La propiedad {@code thinking-habilitado} queda para si
- * alguien vuelve a apuntar {@code kb.llm.modelo} a un modelo que sí lo tenga.
+ * <p>{@code extraBody(repeat_penalty)}: sin este parámetro, la sesión 6 de la
+ * investigación (ADR-0009) midió que este mismo binario (Bonsai 8B via
+ * llama-server) repetía la respuesta completa dos veces con el sampling por
+ * defecto — un modo de falla que no aparecía con {@code gemma3:4b}/Ollama.
+ * No es parte de la API oficial de OpenAI, por eso va en {@code extraBody}.
+ * Ya corregido eso, la citacion todavia midio peor que en las pruebas
+ * aisladas de la sesion 5 (fragmento irrelevante citado, marcador antes de
+ * la afirmacion en vez de despues) — sigue pendiente mas ajuste y
+ * re-validacion, no es un problema resuelto del todo.
  */
 @Component
-class SintetizadorOllama implements Sintetizador {
+class SintetizadorOpenAi implements Sintetizador {
 
     private static final String SISTEMA = """
             Eres el sintetizador de una base de conocimiento interna. Respondes SOLO con lo
@@ -55,14 +51,9 @@ class SintetizadorOllama implements Sintetizador {
 
     private final ChatClient chatClient;
 
-    SintetizadorOllama(
-            ChatClient.Builder builder,
-            @Value("${kb.llm.thinking-habilitado:false}") boolean thinkingHabilitado) {
-        // ChatClient.Builder.defaultOptions(...) pide el Builder de opciones,
-        // no una instancia ya construida -- distinto de Spring AI 1.x.
-        var opciones = thinkingHabilitado
-                ? OllamaChatOptions.builder().enableThinking()
-                : OllamaChatOptions.builder().disableThinking();
+    SintetizadorOpenAi(@Qualifier("chatClientBuilderOpenAi") ChatClient.Builder builder) {
+        var opciones = OpenAiChatOptions.builder()
+                .extraBody(Map.of("repeat_penalty", 1.1));
         this.chatClient = builder.defaultSystem(SISTEMA).defaultOptions(opciones).build();
     }
 

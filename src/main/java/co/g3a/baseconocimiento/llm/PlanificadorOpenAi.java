@@ -7,42 +7,40 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.ollama.api.OllamaChatOptions;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.ai.openai.OpenAiChatOptions;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 /**
  * Planner con salida estructurada forzada por esquema JSON, vía
  * {@code ChatClient.entity(..., spec -> spec.useProviderStructuredOutput())}:
- * Ollama valida la forma de la respuesta antes de devolverla, así que no hace
- * falta parsear texto libre ni tolerar un JSON a medias.
+ * el proveedor (OpenAI, aquí contra llama-server sirviendo Bonsai 8B — ver
+ * ADR-0009) valida la forma de la respuesta antes de devolverla, así que no
+ * hace falta parsear texto libre ni tolerar un JSON a medias.
  *
- * <p>{@code kb.llm.thinking-habilitado=false} por defecto no es cosmético:
- * {@code qwen3} —el modelo original de este proyecto, ver el hallazgo de F4 en
- * el plan— trae el modo "thinking" activado por defecto en Ollama, y para una
- * decisión tan simple como "cuáles de seis herramientas uso" eso agregaba
- * minutos de razonamiento interno irrelevante antes de la respuesta —
- * verificado en vivo contra Ollama real: un prompt trivial tardó 3m28s con
- * thinking encendido, contra segundos con el flag apagado. El modelo por
- * defecto pasó a {@code gemma3:4b} (que no tiene ese modo), pero la propiedad
- * queda: sirve igual si alguien vuelve a apuntar {@code kb.llm.modelo} a un
- * modelo con thinking.
+ * <p>Sin modo "thinking" que apagar: a diferencia de {@code qwen3} —el modelo
+ * original de este proyecto— Bonsai no tiene esa capacidad nativa, así que
+ * esta clase ya no necesita la propiedad {@code kb.llm.thinking-habilitado}
+ * ni el {@code enableThinking()}/{@code disableThinking()} de
+ * {@code OllamaChatOptions} que usaba cuando se llamaba
+ * {@code PlanificadorOllama}.
+ *
+ * <p>{@code extraBody(repeat_penalty)}: sin este parámetro, la sesión 6 de la
+ * investigación (ADR-0009) midió que la síntesis con este mismo binario podía
+ * repetir la respuesta completa dos veces con el sampling por defecto de
+ * {@code llama-server} — no es parte de la API oficial de OpenAI, por eso va
+ * en {@code extraBody} y no en un campo propio de {@link OpenAiChatOptions}.
  */
 @Component
-class PlanificadorOllama implements Planificador {
+class PlanificadorOpenAi implements Planificador {
 
-    private static final Logger log = LoggerFactory.getLogger(PlanificadorOllama.class);
+    private static final Logger log = LoggerFactory.getLogger(PlanificadorOpenAi.class);
 
     private final ChatClient chatClient;
 
-    PlanificadorOllama(
-            ChatClient.Builder builder,
-            @Value("${kb.llm.thinking-habilitado:false}") boolean thinkingHabilitado) {
-        // ChatClient.Builder.defaultOptions(...) pide el Builder de opciones,
-        // no una instancia ya construida -- distinto de Spring AI 1.x.
-        var opciones = thinkingHabilitado
-                ? OllamaChatOptions.builder().enableThinking()
-                : OllamaChatOptions.builder().disableThinking();
+    PlanificadorOpenAi(@Qualifier("chatClientBuilderOpenAi") ChatClient.Builder builder) {
+        var opciones = OpenAiChatOptions.builder()
+                .extraBody(Map.of("repeat_penalty", 1.1));
         this.chatClient = builder.defaultOptions(opciones).build();
     }
 
@@ -83,7 +81,7 @@ class PlanificadorOllama implements Planificador {
                     .toList();
             return new PlanDeHerramientas(validas, plan.razon());
         } catch (Exception e) {
-            // El planner nunca debe tumbar la pregunta: si Ollama no responde o
+            // El planner nunca debe tumbar la pregunta: si llama-server no responde o
             // devuelve algo que no valida contra el esquema, se cae a la busqueda
             // unificada en vez de fallar toda la consulta.
             log.warn("Fallo al planificar, se usa search_unified como respaldo: {}", e.toString());

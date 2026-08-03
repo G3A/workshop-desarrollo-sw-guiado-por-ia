@@ -1,14 +1,18 @@
 # Prototipo experimental de ADR-0009 (docs/adrs/0009-bonsai-8b-integracion-pospuesta.md,
-# punto 1 de la lista de trabajo de arquitectura). Servicio ADICIONAL, no
+# puntos 1 y 3 de la lista de trabajo de arquitectura). Servicio ADICIONAL, no
 # reemplaza a `ollama` -- bge-m3 se queda ahi (punto 2 del ADR, sin resolver).
 #
 # Uso, junto con el perfil GPU real:
-#   docker compose -f compose.yml -f compose.gpu.yml -f compose.bonsai.yml up -d --build llama-server
+#   docker compose -f compose.yml -f compose.gpu.yml -f compose.bonsai.yml up -d --build
 #
-# Este override NO toca compose.yml, y kb-api NO le habla a este servicio
-# todavia -- eso son los puntos 3-4 del ADR (cambiar OllamaChatModel por
-# OpenAiChatModel, generar las gramaticas GBNF). Esto solo prueba que el
-# contenedor compila y que /health y /v1/chat/completions responden.
+# OJO -- a diferencia de cuando este archivo solo levantaba `llama-server`
+# solo, ahora SI hace falta para tener chat funcionando: `kb-api` (ver el
+# override de `api` mas abajo) ya usa `OpenAiChatModel` apuntando a este
+# servicio (punto 3 del ADR, sesion 6 de la investigacion) para el
+# planificador, el verificador de grounding y el sintetizador. Sin este
+# archivo, esos tres componentes no tienen a quien hablarle -- el perfil
+# base (`compose.yml` solo) ya no alcanza para una consulta completa
+# mientras este prototipo siga en esta rama.
 #
 # El GGUF (~1.16 GB) no viene en la imagen: se monta desde el host. Bajalo a
 # mano a ${KB_DATA_DIR:-./.data}/bonsai/Bonsai-8B-Q1_0.gguf, por ejemplo:
@@ -47,3 +51,14 @@ services:
               count: 1
               capabilities: [gpu]
     restart: unless-stopped
+
+  # Aparte de sumar `llama-server`, este override apunta `kb-api` a el en vez
+  # de al `gemma3:4b` de Ollama -- ver el comentario de arriba sobre por que
+  # esto ya no es opcional para tener chat funcionando en esta rama.
+  api:
+    depends_on:
+      llama-server:
+        condition: service_healthy
+    environment:
+      SPRING_AI_OPENAI_BASE_URL: http://llama-server:8080
+      KB_LLM_MODELO: ${KB_LLM_MODELO:-Bonsai-8B-Q1_0.gguf}
