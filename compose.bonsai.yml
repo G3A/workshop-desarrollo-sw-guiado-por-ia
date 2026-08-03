@@ -1,0 +1,49 @@
+# Prototipo experimental de ADR-0009 (docs/adrs/0009-bonsai-8b-integracion-pospuesta.md,
+# punto 1 de la lista de trabajo de arquitectura). Servicio ADICIONAL, no
+# reemplaza a `ollama` -- bge-m3 se queda ahi (punto 2 del ADR, sin resolver).
+#
+# Uso, junto con el perfil GPU real:
+#   docker compose -f compose.yml -f compose.gpu.yml -f compose.bonsai.yml up -d --build llama-server
+#
+# Este override NO toca compose.yml, y kb-api NO le habla a este servicio
+# todavia -- eso son los puntos 3-4 del ADR (cambiar OllamaChatModel por
+# OpenAiChatModel, generar las gramaticas GBNF). Esto solo prueba que el
+# contenedor compila y que /health y /v1/chat/completions responden.
+#
+# El GGUF (~1.16 GB) no viene en la imagen: se monta desde el host. Bajalo a
+# mano a ${KB_DATA_DIR:-./.data}/bonsai/Bonsai-8B-Q1_0.gguf, por ejemplo:
+#   mkdir -p .data/bonsai && curl -fL --progress-bar \
+#     -o .data/bonsai/Bonsai-8B-Q1_0.gguf \
+#     https://huggingface.co/prism-ml/Bonsai-8B-gguf/resolve/main/Bonsai-8B-Q1_0.gguf
+
+services:
+  llama-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.bonsai
+      args:
+        # 75 = Turing (T600). Cambiar si tu GPU es otra generacion.
+        CUDA_ARCH: ${BONSAI_CUDA_ARCH:-75}
+    container_name: kb-llama-server
+    environment:
+      BONSAI_CTX_SIZE: ${BONSAI_CTX_SIZE:-4096}
+      BONSAI_GPU_LAYERS: ${BONSAI_GPU_LAYERS:-99}
+    volumes:
+      - ${KB_DATA_DIR:-./.data}/bonsai:/models/bonsai:ro
+    ports:
+      # 8081, no 8080: ese puerto ya lo usa kb-api en el host.
+      - "${BONSAI_PORT:-8081}:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 60s
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
