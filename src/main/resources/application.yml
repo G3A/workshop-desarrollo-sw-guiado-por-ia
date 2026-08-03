@@ -1,0 +1,199 @@
+spring:
+  application:
+    name: base-conocimiento
+
+  # Hilos virtuales: cubren el fan-out paralelo de las seis herramientas del
+  # executor sin un pool que dimensionar.
+  threads:
+    virtual:
+      enabled: true
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/baseconocimiento}
+    username: ${SPRING_DATASOURCE_USERNAME:kb}
+    password: ${SPRING_DATASOURCE_PASSWORD:kb}
+    hikari:
+      maximum-pool-size: 10
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+  ai:
+    ollama:
+      base-url: ${SPRING_AI_OLLAMA_BASE_URL:http://localhost:11434}
+      init:
+        # Los modelos se bajan con `make pull-models`, no al arrancar la app:
+        # un arranque que descarga 5 GB no es un arranque.
+        pull-model-strategy: never
+      # Spring AI 2.0 aplano estas propiedades: van directo bajo chat/embedding,
+      # SIN el nivel intermedio `options` que usaba la 1.x. `chat.options.model`
+      # se ignora en silencio; la app arranca igual, pero con el modelo por
+      # defecto de Ollama en vez del que pediste.
+      chat:
+        model: "${KB_LLM_MODELO:gemma3:4b}"
+        temperature: 0.2
+      embedding:
+        model: "${KB_EMBEDDINGS_MODELO:bge-m3}"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+kb:
+  # Vacio = sin autenticacion. Con valor, se exige Authorization: Bearer <token>.
+  api-token: ${KB_API_TOKEN:}
+
+  llm:
+    modelo: "${KB_LLM_MODELO:gemma3:4b}"
+    # gemma3 no trae modo "thinking" -- esta propiedad y disableThinking()
+    # (ver PlanificadorOllama) nacieron por un problema real de qwen3:4b, el
+    # modelo original: minutos de razonamiento interno antes de cada
+    # respuesta, medido en vivo. Queda como red de seguridad por si se vuelve
+    # a apuntar KB_LLM_MODELO a un modelo con thinking.
+    thinking-habilitado: ${KB_LLM_THINKING_HABILITADO:false}
+
+  embeddings:
+    modelo: "${KB_EMBEDDINGS_MODELO:bge-m3}"
+    # Debe coincidir con vector(1024) en V1__esquema.sql.
+    # Cambiar de modelo exige una migracion nueva, no solo esta propiedad.
+    dimensiones: 1024
+
+  reranker:
+    ruta: ${KB_RERANKER_RUTA:./.data/models/reranker}
+
+  recuperacion:
+    # Pesos de RRF, no de las senales crudas: RRF combina RANGOS, no puntajes.
+    # Iguales por defecto porque el articulo no da razon para preferir una.
+    pesos:
+      fts: ${KB_RECUPERACION_PESO_FTS:1.0}
+      vector: ${KB_RECUPERACION_PESO_VECTOR:1.0}
+      idf: ${KB_RECUPERACION_PESO_IDF:1.0}
+      decaimiento: ${KB_RECUPERACION_PESO_DECAIMIENTO:1.0}
+    # k=60 es el valor del articulo (y el habitual en la literatura de RRF).
+    rrf-k: ${KB_RECUPERACION_RRF_K:60}
+    # Candidatos que sobreviven la fusion y llegan al reranker.
+    max-candidatos: ${KB_RECUPERACION_MAX_CANDIDATOS:20}
+    # Diversidad: ningun documento puede acaparar los candidatos.
+    tope-por-documento: ${KB_RECUPERACION_TOPE_POR_DOCUMENTO:3}
+    # Resultados finales tras el cross-encoder.
+    top-rerank: ${KB_RECUPERACION_TOP_RERANK:10}
+    # Cuantos candidatos por senal se piden a Postgres antes de fusionar.
+    candidatos-por-senal: ${KB_RECUPERACION_CANDIDATOS_POR_SENAL:50}
+    decaimiento:
+      # Vida media aproximada en dias del "interes" por un chunk: a los N dias
+      # su puntaje de la senal 4 cae a la mitad.
+      lambda-dias: ${KB_RECUPERACION_DECAIMIENTO_LAMBDA_DIAS:30}
+    terminos:
+      # term_stats se recalcula por lote, nunca en la consulta: recalcularlo en
+      # cada busqueda escanearia toda la tabla chunks por cada pregunta.
+      intervalo-ms: ${KB_RECUPERACION_TERMINOS_INTERVALO_MS:60000}
+      habilitado: ${KB_RECUPERACION_TERMINOS_HABILITADO:true}
+
+  orquestacion:
+    # Fragmentos que sobreviven la fusion entre herramientas (etapa 4) y llegan
+    # a la sintesis. No es el mismo tope que kb.recuperacion.top-rerank: ese es
+    # por herramienta: este es el total, ya deduplicado entre las que corrio
+    # el executor.
+    max-fragmentos-contexto: ${KB_MAX_FRAGMENTOS_CONTEXTO:10}
+    # Carpeta que search_code recorre con ripgrep. Vacia hasta que el conector
+    # de repos Git locales (F6) clone algo ahi: la herramienta no falla, solo
+    # no encuentra nada.
+    codigo-dir: ${KB_CODIGO_RUTA:./repos}
+    herramientas:
+      search-code:
+        max-resultados: ${KB_CODIGO_MAX_RESULTADOS:15}
+      recent-commits:
+        limite: ${KB_RECENT_COMMITS_LIMITE:10}
+      subsystem-index:
+        limite: ${KB_SUBSYSTEM_INDEX_LIMITE:15}
+    # ADR-0008: puerta de relevancia antes de sintetizar. El umbral de rechazo
+    # interpola linealmente entre "piso" (corpus chico) y "techo" (corpus de
+    # al menos "chunks-referencia" fragmentos) porque el cross-encoder
+    # comprime sus puntajes cerca de cero cuando el corpus tiene poco
+    # contenido. Entre ese umbral y "techo-confianza", un solo score no
+    # alcanza a decidir (contraejemplo real documentado en el ADR) y se
+    # verifica con una llamada corta al LLM antes de sintetizar. Recalibrar
+    # todo esto con corpus reales.
+    umbral-relevancia:
+      habilitado: ${KB_UMBRAL_RELEVANCIA_HABILITADO:true}
+      piso: ${KB_UMBRAL_RELEVANCIA_PISO:0.003}
+      techo: ${KB_UMBRAL_RELEVANCIA_TECHO:0.05}
+      chunks-referencia: ${KB_UMBRAL_RELEVANCIA_CHUNKS_REFERENCIA:500}
+      techo-confianza: ${KB_UMBRAL_RELEVANCIA_TECHO_CONFIANZA:8.0}
+
+  web:
+    # Resultados de la vista previa instantanea (solo FTS) mientras la
+    # respuesta completa todavia esta en camino.
+    preview-limite: ${KB_WEB_PREVIEW_LIMITE:8}
+
+  ingesta:
+    # OJO: distinta de KB_CORPUS_DIR (esa es la ruta en el HOST que el compose
+    # monta como bind mount). Esta es la ruta que la app ve DENTRO del
+    # contenedor, y compose.yml la fija a /corpus.
+    corpus-dir: ${KB_CORPUS_RUTA:./corpus}
+    # Misma variable que kb.orquestacion.codigo-dir (search_code, F3): ambos
+    # apuntan al mismo /repos montado por compose.yml, no a dos rutas distintas.
+    repos-dir: ${KB_CODIGO_RUTA:./repos}
+    worker:
+      intervalo-ms: ${KB_INGESTA_INTERVALO_MS:2000}
+      # false en pruebas de integracion que no levantan Ollama: sin esto, el
+      # worker programado intenta embeber igual y ensucia el log con errores
+      # de conexion que no tienen nada que ver con lo que la prueba verifica.
+      habilitado: ${KB_INGESTA_WORKER_HABILITADO:true}
+    relevo:
+      # F8: cada cuanto se vuelve a leer el corpus/repos/Teams/Azure DevOps sin
+      # que nadie corra `make ingest`. 15 min por defecto (uso real); el corpus
+      # de ejemplo del taller usa un valor bajo para que el efecto se vea.
+      intervalo-ms: ${KB_INGESTA_RELEVO_INTERVALO_MS:900000}
+      habilitado: ${KB_INGESTA_RELEVO_HABILITADO:true}
+    # F9: apagada por defecto. El bind mount de KB_CORPUS_DIR es de solo lectura
+    # (ver compose.yml); habilitar esto EXIGE ademas montarlo de lectura y
+    # escritura -- es una decision consciente, no un flag cosmetico.
+    carga-habilitada: ${KB_INGESTA_CARGA_HABILITADA:false}
+
+  teams:
+    habilitado: ${KB_TEAMS_HABILITADO:false}
+    emulator: ${KB_TEAMS_EMULATOR:true}
+    app-id: ${KB_TEAMS_APP_ID:}
+    app-password: ${KB_TEAMS_APP_PASSWORD:}
+    # Constantes del protocolo Bot Connector, verificadas contra el codigo fuente
+    # actual del SDK (no memoria): login.botframework.com es la metadata OpenID
+    # de "a bot desde un canal"; login.microsoftonline.com/common es la que usa
+    # el Emulator cuando se le configuran credenciales. Solo se sobreescriben en
+    # pruebas, para apuntar a un WireMock local.
+    channel-metadata-url: https://login.botframework.com/v1/.well-known/openidconfiguration
+    emulator-metadata-url: https://login.microsoftonline.com/common/v2.0/.well-known/openid-configuration
+    token-url: https://login.microsoftonline.com/botframework.com/oauth2/v2.0/token
+    oauth-scope: https://api.botframework.com/.default
+
+  # Conector de Teams por Graph (F6) -- deshabilitado por defecto: exige un
+  # registro de app con permisos de Graph aprobados por un admin del tenant.
+  graph:
+    habilitado: ${KB_GRAPH_HABILITADO:false}
+    tenant-id: ${KB_GRAPH_TENANT_ID:}
+    client-id: ${KB_GRAPH_CLIENT_ID:}
+    client-secret: ${KB_GRAPH_CLIENT_SECRET:}
+    team-id: ${KB_GRAPH_TEAM_ID:}
+    channel-id: ${KB_GRAPH_CHANNEL_ID:}
+    # Solo se sobreescriben en pruebas, para apuntar a un WireMock local.
+    graph-base-url: https://graph.microsoft.com/v1.0
+    login-base-url: https://login.microsoftonline.com
+
+  # Conector de Azure DevOps (F6) -- deshabilitado por defecto: exige un PAT.
+  azdo:
+    habilitado: ${KB_AZDO_HABILITADO:false}
+    org: ${KB_AZDO_ORG:}
+    proyecto: ${KB_AZDO_PROYECTO:}
+    pat: ${KB_AZDO_PAT:}
+    wiki: ${KB_AZDO_WIKI:}
+    base-url: https://dev.azure.com
+
+logging:
+  level:
+    co.g3a.baseconocimiento: ${KB_LOG_LEVEL:INFO}

@@ -1,0 +1,170 @@
+(function () {
+  "use strict";
+
+  const TOKEN_KEY = "kb_admin_token";
+  const ETIQUETAS_TIPO = {
+    local_docs: "Documentos locales",
+    local_git: "Repositorios Git",
+    teams_channel: "Canal de Teams",
+    azure_devops: "Azure DevOps",
+  };
+  const ORDEN_TIPOS = ["local_docs", "local_git", "teams_channel", "azure_devops"];
+
+  const campoToken = document.getElementById("campo-token");
+  const divFuentes = document.getElementById("fuentes");
+  const divCola = document.getElementById("cola");
+  const formularioCarga = document.getElementById("formulario-carga");
+  const campoArchivo = document.getElementById("campo-archivo");
+  const estadoCarga = document.getElementById("estado-carga");
+
+  campoToken.value = sessionStorage.getItem(TOKEN_KEY) || "";
+  campoToken.addEventListener("change", () => {
+    sessionStorage.setItem(TOKEN_KEY, campoToken.value.trim());
+  });
+
+  function cabeceras() {
+    const token = campoToken.value.trim();
+    return token ? { Authorization: "Bearer " + token } : {};
+  }
+
+  function escaparHtml(texto) {
+    const contenedor = document.createElement("div");
+    contenedor.textContent = texto == null ? "" : texto;
+    return contenedor.innerHTML;
+  }
+
+  async function pedir(url, opciones) {
+    const respuesta = await fetch(url, Object.assign({}, opciones, { headers: cabeceras() }));
+    if (respuesta.status === 401) {
+      throw new Error("Token de API invalido o faltante. Complétalo arriba y vuelve a intentar.");
+    }
+    if (!respuesta.ok) {
+      const texto = await respuesta.text().catch(() => "");
+      throw new Error(texto || "HTTP " + respuesta.status);
+    }
+    return respuesta;
+  }
+
+  function formatearFecha(iso) {
+    if (!iso) {
+      return "nunca";
+    }
+    return new Date(iso).toLocaleString();
+  }
+
+  function renderUltimoResultado(ultimo) {
+    if (!ultimo) {
+      return '<p class="ultimo-resultado sin-datos">Sin datos del último relevo todavía.</p>';
+    }
+    if (ultimo.ejecutado) {
+      return '<p class="ultimo-resultado ok">Último relevo OK: ' + escaparHtml(JSON.stringify(ultimo.resumen)) + "</p>";
+    }
+    return '<p class="ultimo-resultado error">Último relevo falló: ' + escaparHtml(ultimo.error) + "</p>";
+  }
+
+  function renderGrupo(tipo, fuentesDelTipo) {
+    const filas = fuentesDelTipo
+      .map(
+        (f) =>
+          "<tr><td>" + escaparHtml(f.fuente.name) + "</td><td>" + escaparHtml(f.fuente.projectId) + "</td>" +
+          "<td>" + (f.fuente.enabled ? "sí" : "no") + "</td>" +
+          "<td>" + formatearFecha(f.fuente.lastSyncedAt) + "</td>" +
+          "<td>" + f.fuente.documentos + "</td><td>" + f.fuente.chunks + "</td></tr>"
+      )
+      .join("");
+    const ultimo = fuentesDelTipo.length ? fuentesDelTipo[0].ultimoRelevo : null;
+    return (
+      '<div class="grupo-fuente">' +
+      '<div class="grupo-fuente-encabezado">' +
+      "<h3>" + (ETIQUETAS_TIPO[tipo] || tipo) + "</h3>" +
+      '<button type="button" data-tipo="' + tipo + '" class="boton-reindexar">Reindexar ahora</button>' +
+      "</div>" +
+      renderUltimoResultado(ultimo) +
+      (filas
+        ? "<table><thead><tr><th>Fuente</th><th>Proyecto</th><th>Habilitada</th>" +
+          "<th>Último relevo</th><th>Documentos</th><th>Fragmentos</th></tr></thead>" +
+          "<tbody>" + filas + "</tbody></table>"
+        : "<p>Todavía no hay ninguna fuente de este tipo indexada.</p>") +
+      "</div>"
+    );
+  }
+
+  async function cargarFuentes() {
+    try {
+      const respuesta = await pedir("/api/admin/fuentes");
+      const fuentes = await respuesta.json();
+      const porTipo = new Map();
+      for (const f of fuentes) {
+        const lista = porTipo.get(f.fuente.kind) || [];
+        lista.push(f);
+        porTipo.set(f.fuente.kind, lista);
+      }
+      const tipos = ORDEN_TIPOS.filter((t) => porTipo.has(t)).concat(
+        [...porTipo.keys()].filter((t) => !ORDEN_TIPOS.includes(t))
+      );
+      divFuentes.innerHTML = tipos.length
+        ? tipos.map((t) => renderGrupo(t, porTipo.get(t))).join("")
+        : ORDEN_TIPOS.map((t) => renderGrupo(t, [])).join("");
+      divFuentes.querySelectorAll(".boton-reindexar").forEach((boton) => {
+        boton.addEventListener("click", () => reindexar(boton.dataset.tipo, boton));
+      });
+    } catch (error) {
+      divFuentes.innerHTML = "<p>" + escaparHtml(error.message) + "</p>";
+    }
+  }
+
+  async function reindexar(tipo, boton) {
+    boton.disabled = true;
+    const textoOriginal = boton.textContent;
+    boton.textContent = "Reindexando…";
+    try {
+      await pedir("/api/admin/fuentes/" + encodeURIComponent(tipo) + "/reindexar", { method: "POST" });
+      await Promise.all([cargarFuentes(), cargarCola()]);
+    } catch (error) {
+      divFuentes.insertAdjacentHTML("afterbegin", "<p>" + escaparHtml(error.message) + "</p>");
+    } finally {
+      boton.disabled = false;
+      boton.textContent = textoOriginal;
+    }
+  }
+
+  async function cargarCola() {
+    try {
+      const respuesta = await pedir("/api/admin/cola");
+      const conteos = await respuesta.json();
+      const porEstado = Object.fromEntries(conteos.map((c) => [c.estado, c.total]));
+      const estados = ["pending", "running", "done", "failed"];
+      divCola.innerHTML = estados
+        .map(
+          (estado) =>
+            '<div><div class="numero">' + (porEstado[estado] || 0) + '</div><div class="etiqueta">' +
+            estado + "</div></div>"
+        )
+        .join("");
+    } catch (error) {
+      divCola.innerHTML = "<p>" + escaparHtml(error.message) + "</p>";
+    }
+  }
+
+  formularioCarga.addEventListener("submit", async (evento) => {
+    evento.preventDefault();
+    const archivo = campoArchivo.files[0];
+    if (!archivo) {
+      return;
+    }
+    estadoCarga.textContent = "Subiendo…";
+    const datos = new FormData();
+    datos.append("archivo", archivo);
+    try {
+      const respuesta = await pedir("/api/admin/corpus/archivos", { method: "POST", body: datos });
+      estadoCarga.textContent = await respuesta.text();
+      campoArchivo.value = "";
+      await cargarFuentes();
+    } catch (error) {
+      estadoCarga.textContent = error.message;
+    }
+  });
+
+  cargarFuentes();
+  cargarCola();
+})();

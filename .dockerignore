@@ -1,0 +1,17 @@
+# Todo lo que no debe entrar al contexto de build.
+# .data/ es lo critico: son gigabytes de modelos que arruinarian cada build.
+.data/
+corpus/
+repos/
+target/
+.git/
+.github/
+.idea/
+.vscode/
+docs/
+*.md
+!README.md
+.env
+compose*.yml
+Makefile
+wslconfig.example
