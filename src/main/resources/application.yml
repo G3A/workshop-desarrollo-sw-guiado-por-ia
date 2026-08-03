@@ -55,6 +55,22 @@ spring:
       # llama-server no valida esta key -- Spring AI exige igual un valor no
       # vacio, o falla el arranque con "OpenAI API key must be set."
       api-key: ${SPRING_AI_OPENAI_API_KEY:sk-no-se-necesita}
+      # Por defecto son 60s (com.openai:openai-java, no un RestClient/WebClient
+      # de Spring -- un bean RestClient.Builder/WebClient.Builder propio NO
+      # alcanza a este cliente, verificado leyendo el bytecode de
+      # OpenAiChatAutoConfiguration en la 2.0.0). Medido en vivo: Bonsai en esta
+      # GPU (T600, sin los tensor cores de bits bajos que aprovecha en hardware
+      # mas nuevo) supera los 60s con contextos grandes, y el cliente cancelaba
+      # la tarea en `llama-server` para reintentar -- un bucle que nunca
+      # converge y deja la consulta colgada. 180s da margen de sobra sobre el
+      # peor caso medido (~75s con un contexto chico).
+      timeout: ${KB_LLM_TIMEOUT:180s}
+      # Con maxRetries por defecto (3) cada timeout se paga hasta 4 veces antes
+      # de que el fallback de Planificador/VerificadorGrounding entre a tallar.
+      # En 0 porque el cuello de botella es velocidad de computo de un
+      # contenedor local, no una falla de red transitoria -- reintentar no
+      # ayuda, solo multiplica la espera.
+      max-retries: ${KB_LLM_MAX_REINTENTOS:0}
       chat:
         options:
           model: "${KB_LLM_MODELO:Bonsai-8B-Q1_0.gguf}"
