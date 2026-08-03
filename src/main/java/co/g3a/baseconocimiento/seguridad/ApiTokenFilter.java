@@ -1,0 +1,80 @@
+package co.g3a.baseconocimiento.seguridad;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.Set;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpFilter;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+/**
+ * Exige {@code Authorization: Bearer <KB_API_TOKEN>} en los endpoints
+ * programaticos ({@code /api/ask}, {@code /api/search}, {@code /api/ingest/*}).
+ *
+ * <p>Deja afuera, a proposito:
+ * <ul>
+ *   <li>{@code /api/messages} — el Bot Connector ya trae su propia validacion
+ *       de JWT contra Azure AD ({@code ValidadorTokenBotFramework}); exigir
+ *       ademas este token rechazaria trafico legitimo de Azure Bot Service.</li>
+ *   <li>{@code /api/chat} y {@code /api/preview} — la UI web de F4. El
+ *       {@code EventSource} nativo del navegador no puede mandar cabeceras
+ *       propias, y estas dos rutas son justamente el "keyword search on
+ *       landing" pensado para no tener friccion. El MVP no tiene login de
+ *       persona (ver Supuestos del plan): este token protege llamadas
+ *       programaticas, no la pagina que cualquiera con acceso a la red ya
+ *       puede abrir.</li>
+ *   <li>{@code /api/admin/ayuda} y {@code /api/admin/proyectos} (F9/F10) — el
+ *       botón {@code ?} y el selector de proyecto viven también en la página
+ *       de chat, con el mismo problema de {@code /api/chat}: no hay una
+ *       sesión de persona logueada que les pase un token. Ambos son de solo
+ *       lectura y no exponen contenido del corpus (rutas/config el primero,
+ *       nombres de proyecto el segundo) — el resto de {@code /api/admin/*}
+ *       (fuentes, reindexar, la cola, subir archivos) sigue exigiendo el
+ *       token.</li>
+ * </ul>
+ */
+class ApiTokenFilter extends HttpFilter {
+
+    private static final Logger log = LoggerFactory.getLogger(ApiTokenFilter.class);
+    private static final Set<String> RUTAS_SIN_TOKEN = Set.of(
+            "/api/messages", "/api/chat", "/api/preview", "/api/admin/ayuda", "/api/admin/proyectos");
+
+    private final SeguridadPropiedades propiedades;
+
+    ApiTokenFilter(SeguridadPropiedades propiedades) {
+        this.propiedades = propiedades;
+    }
+
+    @Override
+    protected void doFilter(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
+            throws IOException, ServletException {
+        if (!propiedades.habilitada() || RUTAS_SIN_TOKEN.contains(request.getRequestURI())) {
+            chain.doFilter(request, response);
+            return;
+        }
+
+        String recibido = request.getHeader(HttpHeaders.AUTHORIZATION);
+        String esperado = "Bearer " + propiedades.apiToken();
+        if (recibido == null || !coincideEnTiempoConstante(recibido, esperado)) {
+            log.warn("Peticion a {} rechazada: falta o no coincide Authorization Bearer", request.getRequestURI());
+            response.setStatus(HttpStatus.UNAUTHORIZED.value());
+            return;
+        }
+        chain.doFilter(request, response);
+    }
+
+    private static boolean coincideEnTiempoConstante(String recibido, String esperado) {
+        return MessageDigest.isEqual(
+                recibido.getBytes(StandardCharsets.UTF_8),
+                esperado.getBytes(StandardCharsets.UTF_8));
+    }
+}

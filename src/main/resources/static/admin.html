@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Base de Conocimiento — Administración</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --borde: #d0d0d8;
+    --fondo-suave: #f4f4f8;
+    --acento: #4f46e5;
+    --texto-atenuado: #666;
+    --ok: #1a7f37;
+    --error: #b42318;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    max-width: 960px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+    line-height: 1.5;
+  }
+  h1 { font-size: 1.4rem; margin-bottom: 0.25rem; }
+  p.subtitulo { color: var(--texto-atenuado); margin-top: 0; }
+
+  .encabezado { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+  .encabezado nav { display: flex; align-items: center; gap: 0.6rem; }
+  .encabezado nav a { color: var(--texto-atenuado); font-size: 0.85rem; text-decoration: none; }
+  .encabezado nav a:hover { text-decoration: underline; }
+  #boton-ayuda {
+    width: 1.8rem;
+    height: 1.8rem;
+    padding: 0;
+    border-radius: 50%;
+    background: var(--fondo-suave);
+    color: var(--acento);
+    border: 1px solid var(--borde);
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  section { margin-bottom: 1.75rem; }
+  section h2 {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--texto-atenuado);
+    margin-bottom: 0.4rem;
+  }
+
+  .fila-token { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 1.25rem; }
+  .fila-token input {
+    flex: 1 1 260px;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--borde);
+    border-radius: 6px;
+  }
+  .fila-token span { font-size: 0.85rem; color: var(--texto-atenuado); }
+
+  .grupo-fuente {
+    border: 1px solid var(--borde);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.75rem;
+  }
+  .grupo-fuente-encabezado { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+  .grupo-fuente-encabezado h3 { margin: 0; font-size: 1rem; }
+  .grupo-fuente-encabezado button {
+    padding: 0.3rem 0.8rem;
+    border: none;
+    border-radius: 6px;
+    background: var(--acento);
+    color: white;
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+  .grupo-fuente-encabezado button:disabled { opacity: 0.6; cursor: default; }
+  .ultimo-resultado { font-size: 0.85rem; margin: 0.35rem 0 0; }
+  .ultimo-resultado.ok { color: var(--ok); }
+  .ultimo-resultado.error { color: var(--error); }
+  .ultimo-resultado.sin-datos { color: var(--texto-atenuado); }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; font-size: 0.9rem; }
+  th, td { text-align: left; padding: 0.3rem 0.5rem; border-bottom: 1px solid var(--borde); }
+  th { color: var(--texto-atenuado); font-weight: 600; }
+
+  .cola { display: flex; gap: 1.5rem; }
+  .cola div { text-align: center; }
+  .cola .numero { font-size: 1.4rem; font-weight: 700; }
+  .cola .etiqueta { font-size: 0.8rem; color: var(--texto-atenuado); }
+
+  .carga { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+  #estado-carga { font-size: 0.85rem; color: var(--texto-atenuado); }
+
+  dialog {
+    max-width: 480px;
+    border: 1px solid var(--borde);
+    border-radius: 8px;
+    padding: 1.25rem 1.5rem;
+  }
+  dialog::backdrop { background: rgba(0, 0, 0, 0.35); }
+  dialog h2 { font-size: 1rem; margin-top: 0; }
+  dialog code { background: var(--fondo-suave); padding: 0.1rem 0.3rem; border-radius: 4px; }
+  dialog .cerrar { margin-top: 0.5rem; }
+
+  code { background: var(--fondo-suave); padding: 0.1rem 0.3rem; border-radius: 4px; }
+</style>
+</head>
+<body>
+  <div class="encabezado">
+    <div>
+      <h1>Administración</h1>
+      <p class="subtitulo">Estado de las fuentes, la cola de ingesta y la carga de archivos.</p>
+    </div>
+    <nav>
+      <a href="index.html">← Volver al chat</a>
+      <button type="button" id="boton-ayuda" title="¿Dónde pongo mis archivos?">?</button>
+    </nav>
+  </div>
+
+  <dialog id="modal-ayuda">
+    <div id="contenido-ayuda"></div>
+    <button type="button" class="cerrar" onclick="document.getElementById('modal-ayuda').close()">Cerrar</button>
+  </dialog>
+
+  <div class="fila-token">
+    <input id="campo-token" type="password" placeholder="Token de API (solo si KB_API_TOKEN está configurado)">
+    <span>Se guarda únicamente en este navegador (sessionStorage).</span>
+  </div>
+
+  <section>
+    <h2>Cola de ingesta</h2>
+    <div class="cola" id="cola"></div>
+  </section>
+
+  <section>
+    <h2>Fuentes</h2>
+    <div id="fuentes"></div>
+  </section>
+
+  <section>
+    <h2>Subir un documento</h2>
+    <form id="formulario-carga" class="carga">
+      <input type="file" id="campo-archivo" accept=".md,.markdown,.txt,.pdf">
+      <button type="submit">Subir</button>
+      <span id="estado-carga"></span>
+    </form>
+  </section>
+
+  <script src="ayuda.js"></script>
+  <script src="admin.js"></script>
+  <script>kbAyuda.inicializar("boton-ayuda", "modal-ayuda", "contenido-ayuda");</script>
+</body>
+</html>

@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Base de Conocimiento</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --borde: #d0d0d8;
+    --fondo-suave: #f4f4f8;
+    --acento: #4f46e5;
+    --texto-atenuado: #666;
+    --error: #b42318;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    max-width: 860px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+    line-height: 1.5;
+  }
+  h1 { font-size: 1.4rem; margin-bottom: 0.25rem; }
+  p.subtitulo { color: var(--texto-atenuado); margin-top: 0; }
+
+  form {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin: 1.5rem 0;
+  }
+  #pregunta { flex: 1 1 320px; }
+  input[type="text"] {
+    padding: 0.5rem 0.7rem;
+    border: 1px solid var(--borde);
+    border-radius: 6px;
+    font-size: 1rem;
+  }
+  #proyecto { width: 160px; }
+  select {
+    padding: 0.5rem 0.7rem;
+    border: 1px solid var(--borde);
+    border-radius: 6px;
+    font-size: 1rem;
+    background: white;
+  }
+  button {
+    padding: 0.5rem 1.1rem;
+    border: none;
+    border-radius: 6px;
+    background: var(--acento);
+    color: white;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+  button:disabled { opacity: 0.6; cursor: default; }
+
+  #historial { display: flex; flex-direction: column; gap: 1.5rem; }
+  .turno { border-top: 1px solid var(--borde); padding-top: 1.25rem; }
+  .turno:first-child { border-top: none; padding-top: 0; }
+  .turno-pregunta { font-weight: 600; margin: 0 0 0.5rem; }
+  .turno h3 {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--texto-atenuado);
+    margin: 0.75rem 0 0.3rem;
+  }
+  .turno-estado { color: var(--texto-atenuado); font-size: 0.9rem; min-height: 1.2rem; }
+  .turno-estado.error { color: var(--error, #b42318); }
+
+  .turno-detalle { margin-top: 0.75rem; }
+  .turno-detalle summary {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--texto-atenuado);
+    cursor: pointer;
+    padding: 0.3rem 0;
+  }
+  .turno-detalle[open] summary { margin-bottom: 0.3rem; }
+
+  .turno-previa, .turno-citas {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .turno-previa li, .turno-citas li {
+    border: 1px solid var(--borde);
+    border-radius: 6px;
+    padding: 0.5rem 0.7rem;
+    background: var(--fondo-suave);
+  }
+  .turno-previa a, .turno-citas a { color: var(--acento); text-decoration: none; font-weight: 600; }
+  .turno-previa a:hover, .turno-citas a:hover { text-decoration: underline; }
+  .extracto { display: block; color: var(--texto-atenuado); font-size: 0.9rem; margin-top: 0.15rem; }
+
+  .turno-respuesta {
+    border: 1px solid var(--borde);
+    border-radius: 8px;
+    padding: 1rem;
+    min-height: 3rem;
+    white-space: pre-wrap;
+  }
+
+  .encabezado { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+  .encabezado nav { display: flex; align-items: center; gap: 0.6rem; }
+  .encabezado nav a { color: var(--texto-atenuado); font-size: 0.85rem; text-decoration: none; }
+  .encabezado nav a:hover { text-decoration: underline; }
+  #boton-ayuda {
+    width: 1.8rem;
+    height: 1.8rem;
+    padding: 0;
+    border-radius: 50%;
+    background: var(--fondo-suave);
+    color: var(--acento);
+    border: 1px solid var(--borde);
+    font-weight: 700;
+  }
+  dialog {
+    max-width: 480px;
+    border: 1px solid var(--borde);
+    border-radius: 8px;
+    padding: 1.25rem 1.5rem;
+  }
+  dialog::backdrop { background: rgba(0, 0, 0, 0.35); }
+  dialog h2 { font-size: 1rem; margin-top: 0; }
+  dialog code { background: var(--fondo-suave); padding: 0.1rem 0.3rem; border-radius: 4px; }
+  dialog .cerrar { margin-top: 0.5rem; }
+</style>
+</head>
+<body>
+  <div class="encabezado">
+    <div>
+      <h1>Base de Conocimiento</h1>
+      <p class="subtitulo">Pregunta sobre documentos, código y wikis del proyecto — con citas verificables.</p>
+    </div>
+    <nav>
+      <a href="admin.html">Administración</a>
+      <button type="button" id="boton-ayuda" title="¿Dónde pongo mis archivos?">?</button>
+    </nav>
+  </div>
+
+  <dialog id="modal-ayuda">
+    <div id="contenido-ayuda"></div>
+    <button type="button" class="cerrar" onclick="document.getElementById('modal-ayuda').close()">Cerrar</button>
+  </dialog>
+
+  <form id="formulario">
+    <input id="pregunta" type="text" placeholder="¿Cómo se despliega el servicio?" autocomplete="off" required>
+    <select id="proyecto"></select>
+    <button type="submit" id="boton-preguntar">Preguntar</button>
+  </form>
+
+  <div id="historial"></div>
+
+  <script src="ayuda.js"></script>
+  <script src="app.js"></script>
+  <script>kbAyuda.inicializar("boton-ayuda", "modal-ayuda", "contenido-ayuda");</script>
+</body>
+</html>
