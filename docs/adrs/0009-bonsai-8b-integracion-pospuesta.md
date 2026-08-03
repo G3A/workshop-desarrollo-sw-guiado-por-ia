@@ -9,7 +9,7 @@ Pospuesta. No implementada. `KB_LLM_MODELO` sigue apuntando a un modelo servido 
 
 `compose.gpu.yml` asume que la T600 de referencia (4096 MiB nominales) le alcanza a `gemma3:4b`
 para el modelo de síntesis. La investigación completa está en
-[`docs/investigacion-vram-y-modelo-llm.md`](../investigacion-vram-y-modelo-llm.md) (seis
+[`docs/investigacion-vram-y-modelo-llm.md`](../investigacion-vram-y-modelo-llm.md) (siete
 sesiones); acá solo el resumen que sostiene esta decisión.
 
 **El problema de fondo (sesiones 1-4).** Con `nvidia-smi` y los logs de Ollama se midió que solo
@@ -142,6 +142,11 @@ costo y el riesgo de integrarlo hoy superan ese beneficio, en este proyecto punt
   1. El fork de PrismML (o el soporte de este esquema de cuantización) se integra a la rama
      principal de `llama.cpp`, y de ahí a Ollama — desaparece el punto 1 de la lista de trabajo de
      arquitectura de arriba, y con él la mayor parte del riesgo de mantenimiento.
+     **Parcialmente cubierta (sesión 7)**: la cuantización Q1_0, la que ya usa el
+     `Bonsai-8B-Q1_0.gguf` de este proyecto, se fusionó al `llama.cpp` mainline
+     (`ggml-org/llama.cpp#21417`) — pero solo para ese modelo puntual, no para el soporte de
+     cuantización en general: la variante ternaria Q2_0 evaluada en esa sesión sigue sin CUDA en
+     mainline (`ggml-org/llama.cpp#25707`, sin mergear). No hay soporte nativo en Ollama todavía.
   2. Se corrige el bug de `-j`/`--json-schema` (hallazgo 14) río arriba, evitando mantener
      gramáticas GBNF escritas a mano. **Parcialmente cubierta (sesión 6, hallazgo 19)**: el bug no
      se reprodujo contra la API runtime de `llama-server` (solo contra el flag del CLI), así que las
@@ -163,3 +168,42 @@ costo y el riesgo de integrarlo hoy superan ese beneficio, en este proyecto punt
   Si se retoma la integración de verdad, el siguiente paso ya no es el `Dockerfile`, sino el ajuste
   de sampling y la re-validación de calidad de síntesis que sacó a la luz el hallazgo 20 — antes de
   tocar el cliente de Spring AI en `main` (punto 3).
+
+## Actualización (sesión 7): se buscó un reemplazo superior a Bonsai-8B — no se encontró uno
+
+Disparada por la pregunta directa "¿hay un modelo mejor que el Bonsai ya integrado?". Investigación
+completa en
+[`docs/investigacion-vram-y-modelo-llm.md`, sesión 7](../investigacion-vram-y-modelo-llm.md)
+(hallazgos 22-29). Resumen:
+
+- **`Ternary-Bonsai-8B`** (mismo lab, cuantización ternaria 1.58 bit, +5 puntos de score agregado
+  contra el `Bonsai-8B` 1-bit actual) parecía el sucesor natural, pero resultó ser una cuantización de
+  **Qwen3-8B** — no un entrenamiento nativo como el 1-bit original — con modo "thinking" activo por
+  defecto (`thinking=1` en el log de `llama-server`). Probado empíricamente contra el pipeline real
+  (mismo protocolo de las sesiones 5-6): el thinking no llegó a filtrarse en la salida JSON forzada
+  (`VerificadorGrounding` acertó los dos veredictos canónicos), pero el candidato **retrocede** en dos
+  ejes ya validados del Bonsai actual — peor elección de herramientas en `Planificador`, y peor
+  citación en la síntesis de la pregunta relevante (cita hasta el fragmento irrelevante, pega texto
+  casi crudo) — y deja mucha menos VRAM libre (574 MiB contra los ~2.3 GB del actual). Sí mejora en un
+  eje que ningún candidato anterior había resuelto: es el primero de trece que no alucina en la
+  pregunta de control fuera de dominio. Balance: un trade-off distinto, no una mejora neta — **no
+  justifica reabrir la integración**.
+- **`Bonsai-27B`** (basado en Qwen3.6-27B, la variante 1-bit pesa 3.9 GB) se descartó sin probar: no
+  entra en los ~3.3-3.9 GB libres reales de la T600.
+- **Hallazgo colateral que sí es accionable, sin cambiar de modelo**: la cuantización Q1_0 (la que ya
+  usa este proyecto) se fusionó al `llama.cpp` mainline (confirmado en
+  [`ggml-org/llama.cpp#21417`](https://github.com/ggml-org/llama.cpp/discussions/21417)) — builds
+  recientes de la rama principal la corren sin el fork de PrismML. Esto satisface **parcialmente** la
+  condición de reapertura #1 de más abajo (solo para el modelo ya integrado, no para candidatos
+  nuevos: la ternaria de arriba sigue necesitando el fork, `ggml-org/llama.cpp#25707` sigue sin
+  mergear). No se reconstruyó `Dockerfile.bonsai` contra el mainline en esta sesión — queda como
+  mejora de bajo riesgo pendiente, independiente de la decisión de este ADR.
+- **No evaluados empíricamente** (solo por research): `Ministral 3B Instruct` y `Hermes 2 Pro -
+  Mistral 7B`, ambos Apache 2.0 con soporte GGUF nativo sin fork de terceros — a diferencia de
+  cualquier variante de Bonsai, eliminarían por completo el punto 1 de la lista de arquitectura de
+  este ADR. Son la vía más prometedora para una sesión futura si en algún momento se prioriza bajar el
+  riesgo de arquitectura por encima de la calidad de citación medida hoy.
+
+**Esta sesión no cambia la decisión de este ADR** (sigue pospuesta) — la refuerza con evidencia nueva:
+de los trece candidatos probados hasta ahora en total, ninguno supera al `Bonsai-8B` 1-bit ya
+integrado en el balance completo de VRAM, `Planificador` y citación.
