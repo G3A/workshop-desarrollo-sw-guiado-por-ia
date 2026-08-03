@@ -716,3 +716,180 @@ Estado del entorno al cierre: contenedor `kb-llama-server` (imagen `base-conocim
 sigue arriba en la rama `worktree-experimento+bonsai-llama-server`, sirviendo el mismo GGUF de la
 sesión 5. `Dockerfile.bonsai`, `compose.bonsai.yml` y `entrypoint-bonsai.sh` quedaron comiteados
 solo en esa rama — `main`, `compose.yml` y el cliente de Spring AI real no se tocaron.
+
+## Sesión 7: buscando un sucesor a `Bonsai-8B` — `Ternary-Bonsai-8B` no es una mejora neta
+
+Disparada por la pregunta directa "¿hay un reemplazo superior al Bonsai que ya está integrado?".
+A diferencia de las sesiones 1-6 (que solo comparaban candidatos entre sí), esta sesión arrancó con
+WebSearch para verificar si el panorama de PrismML había cambiado desde marzo/abril 2026 (cuando se
+escribió el ADR-0009), y solo después bajó a probar el candidato más prometedor contra el pipeline
+real, con el mismo protocolo de las sesiones 5-6 (`/v1/chat/completions`, `response_format`
+`json_schema`, los mismos casos canónicos del ADR-0008).
+
+**Nota de proceso**: el primer research (vía sub-agente) reportó URLs y números de PR de GitHub
+específicos — antes de confiar en esos datos se repitieron las búsquedas clave de forma independiente
+(WebSearch directo, `WebFetch` a las páginas primarias) para descartar que fueran alucinados. Todos
+los datos que siguen ya pasaron por esa segunda verificación.
+
+### Hallazgo 22: la cuantización Q1_0 (la que ya usa este proyecto) se fusionó a `llama.cpp` mainline
+
+Confirmado en la discusión oficial [`ggml-org/llama.cpp#21417`](https://github.com/ggml-org/llama.cpp/discussions/21417):
+Q1_0 (1-bit) ya está soportada en el `llama.cpp` mainline, con CUDA incluido — builds recientes de la
+rama principal la corren sin el fork de PrismML. Esto **satisface parcialmente la condición de
+reapertura #1 del ADR-0009** ("el fork se integra a la rama principal de llama.cpp"), aunque solo
+para el `Bonsai-8B-Q1_0.gguf` que ya está en producción en esta rama, no para ningún candidato nuevo.
+No se probó en esta sesión reconstruir `Dockerfile.bonsai` contra `ggml-org/llama.cpp` en vez del
+fork — queda como tarea futura de bajo riesgo, no evaluada acá.
+
+La ternaria Q2_0 (ver hallazgo 23) **no** se benefició de esta fusión: el PR de soporte CUDA
+([`ggml-org/llama.cpp#25707`](https://github.com/ggml-org/llama.cpp/pull/25707)) seguía abierto, sin
+mergear, al momento de esta sesión.
+
+### Hallazgo 23: `Ternary-Bonsai-8B` no es "Bonsai entrenado en más bits" — es una cuantización ternaria de Qwen3-8B
+
+Suposición inicial, basada en el nombre y en el anuncio de PrismML ("builds on the efficiency
+frontier we began exploring with the recently released 1-bit Bonsai models"): que `Ternary-Bonsai-8B`
+comparte la arquitectura nativa entrenada desde cero del `Bonsai-8B` original. Falsa. La model card en
+Hugging Face lo desmiente directo: **`"Base model: Qwen3-8B"`**, con arquitectura GQA/SwiGLU/RoPE/RMSNorm
+estándar — es una cuantización ternaria (1.58 bit/peso, `{-1,0,+1}`, escala FP16 cada 128 pesos) de un
+modelo Qwen3 ya entrenado, no un entrenamiento nativo en baja precisión como el 1-bit original.
+
+Esto importa porque Qwen3 es exactamente la familia que ya descartó a `qwen3:4b` en la sesión 2
+(hallazgo 5: el modo "thinking" no se puede suprimir de verdad vía API, bug
+[`ollama/ollama#12917`](https://github.com/ollama/ollama/issues/12917)) y que comparte causa raíz con
+la falla de convergencia de `nanbeige4.1:3b`/`minicpm5` (hallazgo 7). Al arrancar el contenedor de
+prueba, el log de `llama-server` lo confirmó: `init: init: chat template, thinking = 1` — el modo
+thinking está activo por defecto en esta build. Motivo suficiente para tratar este candidato con la
+misma sospecha que a cualquier modelo con thinking nativo, y probarlo a fondo antes de confiar en su
+mejor score de benchmark (75.5 contra 70.5 del `Bonsai-8B` 1-bit, promedio de MMLU Redux, MuSR, GSM8K,
+HumanEval+, IFEval, BFCLv3 — este último es function-calling, relevante para `Planificador`).
+
+### Hallazgo 24: `Bonsai-27B` (basado en Qwen3.6-27B) descartado sin prueba — no entra en esta GPU
+
+PrismML también lanzó, en julio 2026, una build de 27B parámetros (1-bit: 3.9 GB; ternaria: 5.9 GB),
+la primera de esa escala que corre en un teléfono. Se descartó sin probar: la variante 1-bit (3.9 GB)
+ya excede los ~3.3-3.9 GB libres reales medidos en la T600 (sesión 1, hallazgo 1), y la ternaria
+(5.9 GB) no entra ni de cerca. Además hereda el mismo modo thinking de Qwen3.6-27B, sin validar. No
+vale la pena el tiempo de descarga (varios GB) para un candidato que ya se sabe que no entra en VRAM.
+
+### Hallazgo 25: VRAM real de `Ternary-Bonsai-8B` — mucho más ajustada que el "1.75 GB ideal" anunciado
+
+Contenedor de prueba (`kb-llama-server-test`, mismo `Dockerfile.bonsai` ya construido, GGUF nuevo
+montado aparte, puerto 8082, `kb-llama-server` original detenido para liberar VRAM y medir limpio):
+
+| | Anunciado (PrismML) | Medido con `nvidia-smi` en la T600 |
+|---|---|---|
+| `Bonsai-8B` (Q1_0, actual) | 1.15 GB disco | 1753-1759 MiB (sesiones 5-6) |
+| `Ternary-Bonsai-8B` (Q2_0) | 1.75 GB disco (+600 MB vs Q1_0) | **2606 MiB** (759 MiB base CUDA + 2606 = 3365 MiB totales, **solo 574 MiB libres** de los 4096 MiB de la tarjeta) |
+
+La diferencia no es un error de medición: `llama-server` auto-detectó `n_parallel=4` (cuatro slots de
+generación concurrente), multiplicando la cache KV reservada respecto a la configuración de un solo
+slot que midieron las sesiones 5-6. No se probó fijar `n_parallel=1` explícito para achicar esa
+reserva — queda como ajuste pendiente si se retoma este candidato. Con el margen medido acá (574 MiB),
+cualquier pico de contexto más largo o carga concurrente real arriesga quedarse sin VRAM.
+
+### Hallazgo 26: `VerificadorGrounding` — correcto en los dos casos, sin fuga de "thinking" pese al riesgo del hallazgo 23
+
+Mismo par de casos canónicos del ADR-0008/hallazgo 14, contra `POST /v1/chat/completions` con
+`response_format: json_schema` (`strict: true`), `temperature: 0`, `max_tokens: 20` (el mismo tope
+que usa `VerificadorGroundingOpenAi.java` en producción):
+
+| Caso | Esperado | Veredicto | Tokens usados |
+|---|---|---|---|
+| "explicame como usar Java 25" | `false` | `{"respondeLaPregunta": false}` ✅ | 17 de 20 |
+| "como se despliega el servicio" | `true` | `{"respondeLaPregunta": true}` ✅ | 19 de 20 |
+
+**El riesgo del hallazgo 23 no se materializó**: pese a que el modelo reporta `thinking=1` al cargar,
+la salida JSON forzada convergió limpio dentro del presupuesto de 20 tokens, sin ningún token de
+`<think>` en la respuesta. La gramática que fuerza `response_format` parece suprimir el thinking desde
+el primer token, igual que ya había insinuado el hallazgo 19 (sesión 6) para el Bonsai 1-bit original.
+Dato nuevo y valioso más allá de este candidato puntual: la salida JSON forzada vía `llama-server`
+podría neutralizar el modo thinking incluso en modelos que sí lo tienen activo por defecto — algo que
+ninguna sesión anterior había probado directamente sobre un modelo con thinking real detrás de
+`response_format` (las sesiones 2 y 7-hallazgo-7 solo habían visto el thinking escapar cuando no había
+gramática forzándolo, o fallar del todo).
+
+### Hallazgo 27: `Planificador` — un caso correcto, uno peor que el `Bonsai-8B` actual
+
+Mismo catálogo y prompt real de `PlanificadorOpenAi.java`, `max_tokens: 80`:
+
+| Pregunta | Esperado | `Ternary-Bonsai-8B` | `Bonsai-8B` actual (sesión 6, hallazgo 19) |
+|---|---|---|---|
+| "como esta implementada la fusion RRF en el codigo" | con `search_code` | `["search_code"]` ✅ | `["search_code"]` ✅ |
+| "como se despliega el servicio" | sin `search_code`; `search_docs`/`search_unified` | `["search_docs", "recent_commits"]` — evitó la trampa de `search_code`, pero **`recent_commits` no encaja** con una pregunta de "cómo se hace X" (esa herramienta es para "qué cambió últimamente", no para instrucciones) | `["search_docs", "search_unified"]` — limpio |
+
+No es una falla de convergencia (hallazgo 7) ni una violación del formato (el `razon` respetó el
+límite de palabras en los dos casos) — es una imprecisión de elección, la misma categoría de defecto
+menor que el hallazgo 15 (sesión 5) ya había medido en el `Bonsai-8B` 1-bit para este mismo caso, pero
+acá con una herramienta objetivamente peor elegida.
+
+### Hallazgo 28: síntesis — pierde la mejor citación de la investigación, pero es el primer candidato que no alucina en la pregunta de control
+
+Mismos cuatro fragmentos y mismo prompt de sistema real de `SintetizadorOpenAi.java`,
+`repeat_penalty: 1.1`, `max_tokens: 512`.
+
+**Pregunta relevante** ("como se despliega el servicio"): citó **los cuatro fragmentos, incluido el
+`[3]` irrelevante** (la carpeta `corpus/`), pegando el contenido casi textual uno detrás de otro con
+una cita al final de cada uno. Es el mismo defecto de "pegado de texto crudo" que ya había descartado
+a `granite4.1:3b`, `phi4-mini:3.8b` y `qwen2.5:3b` (hallazgos 3, 8 y 9) — y pierde justo el punto
+fuerte que hacía especial al `Bonsai-8B` 1-bit original: ignorar el fragmento irrelevante y citar solo
+lo que respalda cada afirmación puntual (hallazgo 12).
+
+**Pregunta de control** ("explicame como usar Java 25"): respondió *"Para usar Java 25, no hay
+información específica en el contexto proporcionado sobre cómo hacerlo. [n]"* — **es el primer
+candidato de los trece probados en esta investigación (los doce de las sesiones 1-5 más este) que no
+reprodujo la alucinación del ADR-0008** (pegar las instrucciones de despliegue como si respondieran la
+pregunta de Java). Con un defecto menor de formato: dejó el marcador `[n]` literal sin resolver a
+un número real, en vez de omitir la cita por completo como pide el prompt para este caso.
+
+Balance: mejora en el eje que llevaba trece candidatos sin resolverse (la alucinación de control), a
+costa de retroceder justo en el eje donde el `Bonsai-8B` actual tenía la mejor medición de toda la
+investigación (la citación en la pregunta relevante). No es una mejora neta, es un trade-off distinto.
+
+### Hallazgo 29: procesamiento de prompt notablemente más lento que la generación
+
+En las cuatro pruebas de esta sesión, el procesamiento del prompt corrió a **~9.6-10.6 tok/s** —
+comparable o más lento que la generación (~5.0-5.2 tok/s), cuando en GPU el procesamiento de prompt
+normalmente es varios órdenes de magnitud más rápido que la generación token a token. Ejemplo
+concreto: 468 tokens de prompt tardaron 47 segundos solo en la etapa de prefill, antes de generar una
+sola palabra de respuesta. Consistente con la advertencia ya anotada en el ADR-0009 sobre `Bonsai-8B`
+1-bit (hallazgo 11): los benchmarks de velocidad de PrismML se miden en Ada Lovelace (RTX 4090), con
+soporte de tensor cores para operaciones de bits bajos que Turing (T600) no tiene. No se investigó a
+fondo la causa exacta (sesión de validación de candidato, no de perfilado) — pero el impacto es real:
+en consultas del pipeline con contexto largo (varios fragmentos + prompt de sistema), este candidato
+paga un costo de latencia adicional que el `Bonsai-8B` actual no tiene medido en la misma magnitud.
+
+### Conclusión de la sesión 7
+
+**`Ternary-Bonsai-8B` no es un reemplazo superior al `Bonsai-8B` que ya está integrado — es un
+trade-off distinto, con una mejora real en un eje y retrocesos en otros dos.** No cambia la decisión
+del ADR-0009 (la integración de un candidato *nuevo* seguiría exigiendo el mismo trabajo de
+arquitectura que ya se hizo para el actual, sin ganancia neta que lo justifique). Resumen:
+
+- **A favor**: es el único candidato de trece que no alucina en la pregunta de control fuera de
+  dominio — el modo de falla que el ADR-0008 documentó primero y que ningún otro candidato había
+  resuelto. También confirma (hallazgo 26) que la salida JSON forzada puede neutralizar el modo
+  thinking incluso en un modelo que sí lo tiene activo, un dato reutilizable más allá de este
+  candidato puntual.
+- **En contra**: peor citación en la pregunta relevante (pierde el punto más fuerte medido del Bonsai
+  actual), una elección de herramientas menos precisa en `Planificador`, VRAM bastante más ajustada
+  (574 MiB libres contra los ~2.3 GB que deja el Bonsai actual) y un procesamiento de prompt
+  notablemente más lento.
+- **Hallazgo colateral que sí es accionable ya, sin cambiar de modelo**: la cuantización Q1_0 del
+  `Bonsai-8B` actual se fusionó a `llama.cpp` mainline (hallazgo 22) — sería posible reconstruir
+  `Dockerfile.bonsai` contra `ggml-org/llama.cpp` en vez del fork de PrismML, satisfaciendo parte de
+  la condición de reapertura #1 del ADR-0009 sin tocar el modelo ni el resto del pipeline. No
+  evaluado en esta sesión (build y pruebas de regresión pendientes).
+- **No evaluado en esta sesión, candidatos fuera de la familia Bonsai** (investigados solo por
+  research, sin prueba empírica): `Ministral 3B Instruct` (Apache 2.0, sin thinking forzado por
+  defecto, soporte GGUF nativo sin fork) y `Hermes 2 Pro - Mistral 7B` (Apache 2.0, especializado en
+  function-calling/JSON). Ambos eliminarían la dependencia del fork por completo, a diferencia de
+  cualquier variante de Bonsai — quedan como la vía más prometedora para una sesión futura si se
+  prioriza reducir el riesgo de arquitectura del ADR-0009 por encima de la calidad medida hoy.
+
+Estado del entorno al cierre: el contenedor de prueba (`kb-llama-server-test`) se eliminó al terminar;
+el `kb-llama-server` original se reinició y quedó sirviendo otra vez `Bonsai-8B-Q1_0.gguf`, sin
+cambios respecto a como estaba antes de esta sesión. El GGUF de `Ternary-Bonsai-8B`
+(`Ternary-Bonsai-8B-Q2_0.gguf`, 2.03 GiB) se descargó a `.data/bonsai/` para las pruebas y se borró al
+cerrar. No se tocó `compose.yml`, `Dockerfile.bonsai`, `compose.bonsai.yml`, `entrypoint-bonsai.sh` ni
+el cliente de Spring AI real en ningún momento de esta sesión.
