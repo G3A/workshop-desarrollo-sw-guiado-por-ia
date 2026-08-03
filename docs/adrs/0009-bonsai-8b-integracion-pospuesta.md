@@ -9,7 +9,7 @@ Pospuesta. No implementada. `KB_LLM_MODELO` sigue apuntando a un modelo servido 
 
 `compose.gpu.yml` asume que la T600 de referencia (4096 MiB nominales) le alcanza a `gemma3:4b`
 para el modelo de síntesis. La investigación completa está en
-[`docs/investigacion-vram-y-modelo-llm.md`](../investigacion-vram-y-modelo-llm.md) (cinco
+[`docs/investigacion-vram-y-modelo-llm.md`](../investigacion-vram-y-modelo-llm.md) (seis
 sesiones); acá solo el resumen que sostiene esta decisión.
 
 **El problema de fondo (sesiones 1-4).** Con `nvidia-smi` y los logs de Ollama se midió que solo
@@ -53,16 +53,45 @@ Para correrlo de verdad en este proyecto haría falta:
    PrismML compilado con CUDA (`llama-server`, que expone una API compatible con OpenAI) —
    `Dockerfile` nuevo con una etapa de build sobre una imagen `nvidia/cuda:*-devel` (~7 GB, contra
    los `mvnw`/imagen oficial de Maven que usa el build actual).
+   **Actualización (sesión 6, ver hallazgos 17-18 de la investigación): este punto ya se prototipó y
+   funciona.** `Dockerfile.bonsai` + `compose.bonsai.yml`, comiteados en la rama aislada
+   `worktree-experimento+bonsai-llama-server` (no en `main`), levantan el contenedor real contra la
+   GPU real: 1753 MiB de VRAM y 6.9 tok/s, consistente con lo medido en la sesión 5. Dos bugs de
+   build nuevos que la compilación manual de la sesión 5 no atravesaba (la imagen `*-devel` no trae
+   el driver CUDA real en build-time, y la imagen `*-runtime` no trae `libgomp1`) quedaron resueltos
+   ahí. Sigue siendo la pieza de mayor incertidumbre técnica original, pero ya no es incertidumbre:
+   es trabajo hecho y validado, a falta de decidir si se integra contra `main`.
 2. Decidir qué pasa con los embeddings (`bge-m3`): hoy corren en el mismo Ollama, fijados a CPU
    (`bge-m3-cpu`). O se quedan en un Ollama que convive con el nuevo `llama-server` (dos servidores
-   de inferencia en vez de uno), o se buscan otra vía.
+   de inferencia en vez de uno), o se buscan otra vía. **Sin resolver todavía** — el prototipo de la
+   sesión 6 no tocó esto.
 3. Cambiar el cliente de Spring AI en `llm/` de `OllamaChatModel` a `OpenAiChatModel` apuntando al
    `llama-server` local, en los tres componentes (`SintetizadorOllama`, `VerificadorGroundingOllama`,
    `PlanificadorOllama` — probablemente renombrados, dejarían de ser "Ollama").
+   **Actualización (sesión 6, hallazgo 21): investigado pero no implementado.** El wiring es viable
+   y acotado — cambiar la dependencia Maven, `OllamaChatOptions` por `OpenAiChatOptions`, y eliminar
+   `enableThinking()`/`disableThinking()` (Bonsai no tiene modo thinking). El único parámetro que
+   necesita `extraBody(Map.of(...))` en vez de un campo nativo de `OpenAiChatOptions` es
+   `repeat_penalty` (ver punto 4 y hallazgo 20) — no es parte de la API oficial de OpenAI.
 4. Generar a mano una gramática GBNF por cada tipo de salida estructurada (`PlanDeHerramientas`,
    `Veredicto`) para reemplazar `spec.useProviderStructuredOutput()`, porque el flag
    `-j`/`--json-schema` de este fork falla con `Failed to initialize samplers: std::exception`
    (hallazgo 14) — un bug de esta build específica, no del modelo.
+   **Actualización (sesión 6, hallazgo 19): probablemente no hace falta.** Probado contra
+   `POST /v1/chat/completions` con `response_format: json_schema` (el mecanismo real de
+   `useProviderStructuredOutput()` contra un proveedor OpenAI) en vez del flag `-j`/`--json-schema`
+   del CLI: no crasheó, acertó los dos veredictos canónicos del ADR-0008, y el plan de herramientas
+   salió más preciso que con la gramática GBNF de la sesión 5. El bug del hallazgo 14 parece ser
+   del CLI, no de la API runtime — pero es una inferencia de una sola sesión, conviene re-confirmar
+   si se retoma.
+   **Hallazgo nuevo de la sesión 6 (20), no anticipado por ningún punto de esta lista**: sin
+   `repeat_penalty` explícito, la síntesis por streaming repitió la respuesta completa dos veces —
+   un modo de falla que ni la sesión 5 (`llama-cli`) ni ninguna sesión anterior había visto. Se
+   corrige agregando `repeat_penalty: 1.1` a la request, pero al hacerlo la citación salió peor que
+   la medida en el hallazgo 12 (citó un fragmento irrelevante, puso una cita antes de la afirmación
+   en vez de después) — la mejor citación de la investigación no se reprodujo automáticamente al
+   pasar de `llama-cli` a la API HTTP real. Queda como tarea de ajuste de sampling y re-validación,
+   no identificada hasta esta sesión.
 
 ## Decisión
 
@@ -114,7 +143,11 @@ costo y el riesgo de integrarlo hoy superan ese beneficio, en este proyecto punt
      principal de `llama.cpp`, y de ahí a Ollama — desaparece el punto 1 de la lista de trabajo de
      arquitectura de arriba, y con él la mayor parte del riesgo de mantenimiento.
   2. Se corrige el bug de `-j`/`--json-schema` (hallazgo 14) río arriba, evitando mantener
-     gramáticas GBNF escritas a mano.
+     gramáticas GBNF escritas a mano. **Parcialmente cubierta (sesión 6, hallazgo 19)**: el bug no
+     se reprodujo contra la API runtime de `llama-server` (solo contra el flag del CLI), así que las
+     gramáticas GBNF probablemente no hacen falta ya — pero eso no cierra la condición del todo,
+     porque la sesión 6 sumó un problema nuevo en la misma zona (hallazgo 20: sampling/citación) que
+     todavía necesita ajuste y re-validación antes de confiar en la calidad medida en el hallazgo 12.
   3. La VRAM de la T600 se vuelve un problema real y no solo un margen ajustado — por ejemplo, si
      se necesita correr `bge-m3` en GPU a la vez que el LLM, o un contexto mayor a 4096.
   4. Aparece una necesidad real de arreglar el defecto de sobre-citación de `gemma3:4b`
@@ -125,3 +158,8 @@ costo y el riesgo de integrarlo hoy superan ese beneficio, en este proyecto punt
   `compose.yml` de `llama-server`) en una rama o *worktree* aislado, no contra `main` directo — es
   la pieza de mayor incertidumbre técnica (multi-stage build con CUDA, tamaño de imagen final) y
   conviene validarla antes de tocar el cliente de Spring AI o los prompts.
+  **Ya hecho (sesión 6)**: el prototipo vive en `worktree-experimento+bonsai-llama-server`
+  (`Dockerfile.bonsai`, `compose.bonsai.yml`, `entrypoint-bonsai.sh`), validado contra la GPU real.
+  Si se retoma la integración de verdad, el siguiente paso ya no es el `Dockerfile`, sino el ajuste
+  de sampling y la re-validación de calidad de síntesis que sacó a la luz el hallazgo 20 — antes de
+  tocar el cliente de Spring AI en `main` (punto 3).
