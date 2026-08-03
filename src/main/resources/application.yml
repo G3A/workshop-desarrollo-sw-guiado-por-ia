@@ -24,7 +24,9 @@ spring:
     # propio ChatModel/EmbeddingModel por defecto -- sin esta linea, Spring
     # veria dos EmbeddingModel candidatos (ambiguo) para el unico bean que
     # EmbeddingsOllama necesita. El lado chat no tiene un selector unico
-    # porque de verdad usa los dos proveedores a la vez (ver ClientesDeChat).
+    # porque de verdad usa los dos proveedores a la vez (cada componente de
+    # llm/ arma su propio ChatClient.Builder a partir del ChatModel concreto
+    # que necesita, ver PlanificadorOpenAi/DestiladorOllama).
     model:
       embedding: ollama
     ollama:

@@ -5,8 +5,8 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.ollama.OllamaChatModel;
 import org.springframework.ai.ollama.api.OllamaChatOptions;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -16,10 +16,14 @@ import org.springframework.stereotype.Component;
  * tumbar la ingesta del hilo completo si Ollama falla o el modelo no valida el esquema.
  *
  * <p>Es el unico componente de {@code llm/} que se quedo en Ollama despues de
- * ADR-0009 -- el resto pasa por OpenAI contra llama-server. Por eso pide el
- * builder calificado ({@link ClientesDeChat}) en vez del default: con dos
- * proveedores activos a la vez, ya no hay un {@link ChatClient.Builder} sin
- * calificar que autoconfigurar.
+ * ADR-0009 -- el resto pasa por OpenAI contra llama-server. Por eso arma su
+ * propio {@link ChatClient.Builder} a partir de {@link OllamaChatModel} en vez
+ * de pedir un {@code ChatClient.Builder} inyectado: con dos proveedores de
+ * chat activos a la vez, ya no hay uno solo que autoconfigurar sin ambiguedad,
+ * y compartir un builder como bean (singleton, mutable) entre componentes de
+ * distinto proveedor pisa las opciones de unos con las de otros -- se midio
+ * en vivo con Planificador/VerificadorGrounding/Sintetizador (ver sus
+ * comentarios de constructor) antes de corregirlo con este patron.
  */
 @Component
 class DestiladorOllama implements Destilador {
@@ -42,12 +46,12 @@ class DestiladorOllama implements Destilador {
     private final ChatClient chatClient;
 
     DestiladorOllama(
-            @Qualifier("chatClientBuilderOllama") ChatClient.Builder builder,
+            OllamaChatModel modelo,
             @Value("${kb.llm.thinking-habilitado:false}") boolean thinkingHabilitado) {
         var opciones = thinkingHabilitado
                 ? OllamaChatOptions.builder().enableThinking()
                 : OllamaChatOptions.builder().disableThinking();
-        this.chatClient = builder.defaultOptions(opciones).build();
+        this.chatClient = ChatClient.builder(modelo).defaultOptions(opciones).build();
     }
 
     @Override

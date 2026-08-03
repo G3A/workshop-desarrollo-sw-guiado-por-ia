@@ -121,7 +121,7 @@
     <!-- Spring AI: no se usa VectorStore ni sus abstracciones RAG, solo los ChatModel/EmbeddingModel.
          Ollama sigue sirviendo bge-m3 (embeddings); OpenAI le habla a llama-server (Bonsai 8B,
          ADR-0009, prototipo de la rama worktree-experimento+bonsai-llama-server) para el resto del
-         pipeline. El Destilador (Teams, F6) se queda en Ollama, ver ClientesDeChat. -->
+         pipeline. El Destilador (Teams, F6) se queda en Ollama, ver DestiladorOllama. -->
     <dependency>
       <groupId>org.springframework.ai</groupId>
       <artifactId>spring-ai-starter-model-ollama</artifactId>

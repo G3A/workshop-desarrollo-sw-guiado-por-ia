@@ -5,14 +5,20 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 /**
  * Clasificación binaria con salida estructurada forzada, igual que
  * {@link PlanificadorOpenAi} — no redacción libre, por eso es más confiable
  * que pedirle al {@link Sintetizador} que se autocensure sobre la marcha.
+ *
+ * <p>Arma su propio {@link ChatClient.Builder} a partir de {@link OpenAiChatModel}
+ * en vez de un {@code ChatClient.Builder} inyectado — ver el comentario de
+ * {@link PlanificadorOpenAi} sobre por que compartir un builder-bean entre
+ * componentes de este paquete pisaba el {@code maxTokens} de unos con el de
+ * otros.
  */
 @Component
 class VerificadorGroundingOpenAi implements VerificadorGrounding {
@@ -56,7 +62,7 @@ class VerificadorGroundingOpenAi implements VerificadorGrounding {
 
     private final ChatClient chatClient;
 
-    VerificadorGroundingOpenAi(@Qualifier("chatClientBuilderOpenAi") ChatClient.Builder builder) {
+    VerificadorGroundingOpenAi(OpenAiChatModel modelo) {
         // temperature(0.0): un veredicto sobre si arriesgar una alucinacion no debe
         // variar entre corridas identicas. Se verifico en vivo (con gemma3:4b, antes
         // de ADR-0009) que con 0.2 la MISMA pregunta contra el MISMO contexto daba
@@ -64,10 +70,16 @@ class VerificadorGroundingOpenAi implements VerificadorGrounding {
         //
         // extraBody(repeat_penalty): ver PlanificadorOpenAi -- mitiga un modo de
         // falla de repeticion medido en la sesion 6 de la investigacion (ADR-0009).
+        //
+        // maxTokens(20): la salida es un solo booleano en JSON
+        // ({"respondeLaPregunta": true}), un tope bajo alcanza de sobra y evita
+        // gastar tiempo de generacion (~5-6 tok/s en esta GPU) si el modelo
+        // alguna vez se pone a divagar en vez de responder directo.
         var opciones = OpenAiChatOptions.builder()
                 .temperature(0.0)
-                .extraBody(Map.of("repeat_penalty", 1.1));
-        this.chatClient = builder.defaultOptions(opciones).build();
+                .extraBody(Map.of("repeat_penalty", 1.1))
+                .maxTokens(20);
+        this.chatClient = ChatClient.builder(modelo).defaultOptions(opciones).build();
     }
 
     @Override

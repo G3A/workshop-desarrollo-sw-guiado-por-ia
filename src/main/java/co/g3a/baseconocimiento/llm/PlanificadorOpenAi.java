@@ -7,8 +7,8 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 /**
@@ -30,6 +30,20 @@ import org.springframework.stereotype.Component;
  * repetir la respuesta completa dos veces con el sampling por defecto de
  * {@code llama-server} — no es parte de la API oficial de OpenAI, por eso va
  * en {@code extraBody} y no en un campo propio de {@link OpenAiChatOptions}.
+ *
+ * <p>{@code maxTokens(80)}: sin este tope, se midió en vivo que el campo
+ * {@code razon} del plan podía salir como una oración completa (~90 de 110
+ * tokens generados) en vez de la frase breve que pide el prompt — a
+ * ~5-6 tok/s de Bonsai en esta GPU (ver ADR-0009), eso solo son ~20 segundos
+ * gastados en texto que nadie necesita.
+ *
+ * <p>Arma su propio {@link ChatClient.Builder} a partir de {@link OpenAiChatModel}
+ * en vez de pedir un {@code ChatClient.Builder} inyectado: compartir un
+ * builder como bean (singleton, mutable) entre este componente,
+ * {@link VerificadorGroundingOpenAi} y {@link SintetizadorOpenAi} hacia que
+ * el {@code maxTokens} de uno pisara el de los otros dos, medido en vivo
+ * (los tres terminaban con el mismo tope, el del ultimo bean que Spring
+ * inicializaba) antes de corregirlo con este patron.
  */
 @Component
 class PlanificadorOpenAi implements Planificador {
@@ -38,10 +52,11 @@ class PlanificadorOpenAi implements Planificador {
 
     private final ChatClient chatClient;
 
-    PlanificadorOpenAi(@Qualifier("chatClientBuilderOpenAi") ChatClient.Builder builder) {
+    PlanificadorOpenAi(OpenAiChatModel modelo) {
         var opciones = OpenAiChatOptions.builder()
-                .extraBody(Map.of("repeat_penalty", 1.1));
-        this.chatClient = builder.defaultOptions(opciones).build();
+                .extraBody(Map.of("repeat_penalty", 1.1))
+                .maxTokens(80);
+        this.chatClient = ChatClient.builder(modelo).defaultOptions(opciones).build();
     }
 
     @Override
@@ -67,6 +82,10 @@ class PlanificadorOpenAi implements Planificador {
                 fuente -- usa search_docs/search_unified para esas, no search_code. search_code
                 es solo para "como esta implementado X" (una funcion, una constante, un mensaje
                 de error puntual), no para "que necesito para correr X".
+
+                El campo "razon" es SOLO para trazabilidad interna, nadie la lee como respuesta:
+                maximo 6-8 palabras, nunca una oracion completa. Ejemplo correcto: "pregunta de
+                despliegue, no de codigo". Ejemplo incorrecto: una explicacion de un parrafo.
                 """.formatted(catalogo);
 
         try {
