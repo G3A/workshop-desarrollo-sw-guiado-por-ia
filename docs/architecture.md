@@ -11,6 +11,7 @@ decisión puntual, ver [`docs/adrs/`](adrs).
 |---|---|---|
 | `db` | `pgvector/pgvector:pg18-trixie` | PostgreSQL 18 + pgvector: tabla única de embeddings, FTS, cola de ingesta, auditoría |
 | `ollama` | `ollama/ollama` | `gemma3:4b` (planner, destilación, síntesis) y `bge-m3` (embeddings) |
+| `docling-serve` | `quay.io/docling-project/docling-serve-cpu` | Extrae PDF/DOCX/PPTX a Markdown para la ingesta de documentos locales — [ADR-0010](adrs/0010-docling-reemplaza-pdfbox.md) |
 | `api` | build propio (Java) | Ingesta, retrieval, orquestación, UI estática, reranker y endpoint de Teams |
 
 `compose.yml` es el perfil base en CPU. `compose.gpu.yml` es un override que reserva la GPU para
@@ -21,6 +22,11 @@ automaticamente -- el perfil CPU solo se usa cuando de verdad no hay tarjeta NVI
 una alternativa que sí entra 100% pero se pospuso integrarla -- ver
 [`docs/investigacion-vram-y-modelo-llm.md`](investigacion-vram-y-modelo-llm.md) y
 [ADR-0009](adrs/0009-bonsai-8b-integracion-pospuesta.md).
+
+`compose.docling-gpu.yml` es otro override opcional, independiente de los de arriba: cambia
+`docling-serve` a la imagen CUDA (`docling-serve-cu130`) para correr layout y tablas en GPU en vez
+de CPU. Comparte la misma VRAM que Bonsai/Ollama si corren a la vez -- ver el comentario del propio
+archivo, incluido un bug conocido de fuga de VRAM en docling-serve sin resolver a la fecha.
 
 ## Módulos (Spring Modulith)
 

@@ -1,0 +1,42 @@
+# Override opcional: docling-serve corre los modelos de layout y estructura de
+# tablas en GPU en vez de CPU.
+#
+#   docker compose -f compose.yml -f compose.docling-gpu.yml up -d
+#
+#   # combinado con Bonsai en GPU (compose.bonsai.yml) en la misma tarjeta:
+#   docker compose -f compose.yml -f compose.bonsai.yml -f compose.docling-gpu.yml up -d --build
+#
+# Por qué es un override aparte, no el default -- dos razones, no una sola:
+#
+# 1. VRAM compartida. La T600 de esta máquina tiene 4 GB (ver ADR-0009 y el
+#    comentario de compose.gpu.yml sobre el mismo límite para Ollama). Los
+#    modelos de layout/tablas de Docling son livianos comparados con un LLM
+#    (sin cifra oficial de VRAM en la documentación de Docling a la fecha),
+#    pero igual compiten por el mismo presupuesto que Bonsai
+#    (compose.bonsai.yml) si los dos corren a la vez.
+# 2. Bug conocido y sin resolver: la VRAM de docling-serve NO se libera entre
+#    conversiones (docling-project/docling-serve#233, reportado contra la
+#    imagen cu124 -- el mismo problema aplica al sucesor cu130 que usa este
+#    archivo, sin fix documentado a la fecha). En una GPU de 4 GB compartida,
+#    tras suficientes ingestas esto puede terminar en OOM. Si pasa,
+#    `docker compose restart docling-serve` libera la VRAM (reinicia el
+#    proceso desde cero) -- no hay forma de liberarla en caliente todavía.
+#
+# doOcr sigue en false (ExtractorDocling, ADR-0010): OCR es la única etapa
+# cuyo soporte de GPU depende del motor de terceros que se use, y este
+# proyecto no lo activa. Layout y tablas SÍ usan la GPU automáticamente con
+# esta imagen -- Docling detecta CUDA solo (AcceleratorDevice.AUTO), no hace
+# falta ninguna variable de entorno nueva.
+#
+# Requiere nvidia-container-toolkit. Sin GPU, simplemente no uses este archivo.
+
+services:
+  docling-serve:
+    image: quay.io/docling-project/docling-serve-cu130:v1.29.0
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
