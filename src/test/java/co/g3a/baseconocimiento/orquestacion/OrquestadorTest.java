@@ -68,7 +68,7 @@ class OrquestadorTest {
 
         var orquestador = new Orquestador(
                 planificador, catalogo, executor, contextoRepo, herramientasRepo, sintetizador,
-                verificadorGrounding, queryLog, 10, UMBRAL_POR_DEFECTO);
+                verificadorGrounding, queryLog, 10, true, UMBRAL_POR_DEFECTO);
 
         Orquestador.EjecucionPipeline resultado =
                 orquestador.ejecutar(new Pregunta("¿Que es esto?"), PROYECTO, Filtros.NINGUNO);
@@ -117,7 +117,7 @@ class OrquestadorTest {
 
         var orquestador = new Orquestador(
                 planificador, catalogo, executor, contextoRepo, herramientasRepo, sintetizador,
-                verificadorGrounding, queryLog, 10, UMBRAL_POR_DEFECTO);
+                verificadorGrounding, queryLog, 10, true, UMBRAL_POR_DEFECTO);
 
         Orquestador.EjecucionPipeline resultado =
                 orquestador.ejecutar(new Pregunta("explicame como usar Java 25"), PROYECTO, Filtros.NINGUNO);
@@ -158,7 +158,7 @@ class OrquestadorTest {
 
         var orquestador = new Orquestador(
                 planificador, catalogo, executor, contextoRepo, herramientasRepo, sintetizador,
-                verificadorGrounding, queryLog, 10, UMBRAL_POR_DEFECTO);
+                verificadorGrounding, queryLog, 10, true, UMBRAL_POR_DEFECTO);
 
         Orquestador.EjecucionPipeline resultado =
                 orquestador.ejecutar(new Pregunta("como usar java 25"), PROYECTO, Filtros.NINGUNO);
@@ -196,7 +196,7 @@ class OrquestadorTest {
 
         var orquestador = new Orquestador(
                 planificador, catalogo, executor, contextoRepo, herramientasRepo, sintetizador,
-                verificadorGrounding, queryLog, 10, UMBRAL_POR_DEFECTO);
+                verificadorGrounding, queryLog, 10, true, UMBRAL_POR_DEFECTO);
 
         Orquestador.EjecucionPipeline resultado =
                 orquestador.ejecutar(new Pregunta("como se despliega el servicio"), PROYECTO, Filtros.NINGUNO);
@@ -232,7 +232,7 @@ class OrquestadorTest {
 
         var orquestador = new Orquestador(
                 planificador, catalogo, executor, contextoRepo, herramientasRepo, sintetizador,
-                verificadorGrounding, queryLog, 10, UMBRAL_POR_DEFECTO);
+                verificadorGrounding, queryLog, 10, true, UMBRAL_POR_DEFECTO);
 
         Orquestador.EjecucionPipeline resultado =
                 orquestador.ejecutar(new Pregunta("¿quien sabe de auth?"), PROYECTO, Filtros.NINGUNO);

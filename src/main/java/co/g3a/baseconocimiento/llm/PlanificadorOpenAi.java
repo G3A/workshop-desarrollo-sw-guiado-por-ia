@@ -81,7 +81,13 @@ class PlanificadorOpenAi implements Planificador {
                 configuracion casi siempre se responden con la documentacion, no con el codigo
                 fuente -- usa search_docs/search_unified para esas, no search_code. search_code
                 es solo para "como esta implementado X" (una funcion, una constante, un mensaje
-                de error puntual), no para "que necesito para correr X".
+                de error puntual) EN ESTE repositorio -- no para "que necesito para correr X",
+                ni para preguntas de CONCEPTOS del lenguaje (tipos de dato, palabras reservadas,
+                sintaxis, reglas del lenguaje). "Cuales son los tipos primitivos en Java" es
+                conceptual, no de implementacion: usa search_docs/search_unified, nunca
+                search_code. search_code exige que exista un repo real ya indexado -- si dudas
+                de si la pregunta apunta al codigo DE ESTE proyecto o a un concepto general del
+                lenguaje/framework, es conceptual: usa search_docs/search_unified.
 
                 El campo "razon" es SOLO para trazabilidad interna, nadie la lee como respuesta:
                 maximo 6-8 palabras, nunca una oracion completa. Ejemplo correcto: "pregunta de
@@ -98,6 +104,15 @@ class PlanificadorOpenAi implements Planificador {
             List<String> validas = plan.herramientas().stream()
                     .filter(herramientasDisponibles::containsKey)
                     .toList();
+            if (validas.isEmpty()) {
+                // El prompt le pide explicitamente "si dudas, incluye search_unified", pero un
+                // modelo debil (Bonsai-8B cuantizado) a veces devuelve una lista vacia igual --
+                // medido en vivo. Sin este respaldo, una lista vacia deja al Executor sin nada
+                // que correr y la pregunta cae directo al mensaje de "sin informacion", aunque
+                // el contenido si este ingerido.
+                log.warn("El planner eligio una lista de herramientas vacia, se usa search_unified como respaldo");
+                return new PlanDeHerramientas(List.of("search_unified"), "respaldo: lista vacia del planner");
+            }
             return new PlanDeHerramientas(validas, plan.razon());
         } catch (Exception e) {
             // El planner nunca debe tumbar la pregunta: si llama-server no responde o

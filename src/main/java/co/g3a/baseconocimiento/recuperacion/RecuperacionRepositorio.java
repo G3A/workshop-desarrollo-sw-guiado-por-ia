@@ -74,6 +74,18 @@ class RecuperacionRepositorio {
      * el mecanismo propio de Postgres para incrustar un valor en SQL dinámico
      * sin riesgo de inyección — no concatenación de cadenas en Java.
      *
+     * <p>El cruce final usa {@code plainto_tsquery('simple', ti.term)}, NO
+     * {@code to_tsquery('simple', ti.term)}: el parser por defecto de Postgres
+     * tokeniza patrones tipo "palabra.palabra:numero" (rutas de archivo,
+     * referencias de linea de codigo — reales en un corpus con fragmentos de
+     * codigo, p. ej. la especificacion de Java) como un solo lexema literal que
+     * conserva el ":". {@code to_tsquery} interpreta ese ":" como el operador
+     * de peso de su propia sintaxis y lanza {@code syntax error in tsquery} en
+     * cuanto {@code term_stats} contiene un lexema asi — tumbando esta señal (y
+     * con ella {@code search_unified} entero) para CUALQUIER consulta, no solo
+     * las que mencionan ese termino. {@code plainto_tsquery} trata la entrada
+     * como texto plano, no como sintaxis de operadores, y no falla.
+     *
      * <p>Puntaje = suma de IDF de los léxemos de la consulta que el chunk
      * contiene: castiga el relleno (términos comunes, IDF bajo) y premia los
      * términos informativos.
@@ -94,7 +106,7 @@ class RecuperacionRepositorio {
                                SUM(ti.idf) AS puntaje
                         FROM chunks c
                         JOIN documents d ON d.id = c.document_id
-                        JOIN terminos_idf ti ON c.fts @@ to_tsquery('simple', ti.term)
+                        JOIN terminos_idf ti ON c.fts @@ plainto_tsquery('simple', ti.term)
                         WHERE c.project_id = :projectId %s
                         GROUP BY c.id, c.document_id, d.uri, d.title, c.text, c.kind, c.ord, c.source_updated_at
                         ORDER BY puntaje DESC
