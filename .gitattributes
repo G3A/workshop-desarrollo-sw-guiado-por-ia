@@ -18,4 +18,6 @@ mvnw.cmd    text eol=crlf
 *.jar       binary
 *.png       binary
 *.pdf       binary
+*.docx      binary
+*.pptx      binary
 *.onnx      binary

@@ -57,6 +57,37 @@ services:
       start_period: 30s
     restart: unless-stopped
 
+  # ADR-0010: Docling es Python, no hay variante embebida en el proceso Java --
+  # docling-serve corre como cuarto servicio, hablado por HTTP desde `api`
+  # (arconia-docling-spring-boot-starter). Imagen CPU: perfil base de este
+  # compose sigue siendo reproducible sin GPU.
+  docling-serve:
+    image: quay.io/docling-project/docling-serve-cpu:latest
+    container_name: kb-docling-serve
+    environment:
+      DOCLING_SERVE_ENABLE_UI: "0"
+      # DOCLING_SERVE_MAX_SYNC_WAIT (default de docling-serve: 120s) NO se
+      # fija aca a proposito: solo acota POST /v1/convert/source (el endpoint
+      # SINCRONICO). ExtractorDocling usa la API async (POST
+      # /v1/convert/source/batch + polling), justamente para que un documento
+      # de cientos de paginas (medido en vivo: un PDF de 892 paginas y
+      # jls25.pdf, la especificacion de Java SE 25, ~900 paginas, ninguno
+      # terminaba nunca con la version sincrona) no dependa de ningun timeout
+      # fijo -- ver ADR-0010.
+    volumes:
+      # Cache de los modelos de layout/OCR que docling-serve descarga la
+      # primera vez: sin este volumen, cada `docker compose up` los repite.
+      - ${KB_DATA_DIR:-./.data}/docling:/root/.cache
+    ports:
+      - "${DOCLING_SERVE_PORT:-5001}:5001"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:5001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+    restart: unless-stopped
+
   api:
     build:
       context: .
@@ -67,11 +98,19 @@ services:
         condition: service_healthy
       ollama:
         condition: service_healthy
+      docling-serve:
+        condition: service_healthy
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-baseconocimiento}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-kb}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-kb}
       SPRING_AI_OLLAMA_BASE_URL: http://ollama:11434
+      ARCONIA_DOCLING_BASE_URL: http://docling-serve:5001
+      # Acota cada llamada HTTP individual de ExtractorDocling (submit de la
+      # tarea, cada poll de estado, fetch del resultado) -- NO la conversion
+      # completa, que ya no depende de este valor gracias a la API async (ver
+      # ADR-0010). 60s da margen de sobra sobre los ~10s que tarda cada poll.
+      DOCLING_SERVE_TIMEOUT: ${DOCLING_SERVE_TIMEOUT:-60s}
       KB_LLM_MODELO: ${KB_LLM_MODELO:-gemma3:4b}
       KB_EMBEDDINGS_MODELO: ${KB_EMBEDDINGS_MODELO:-bge-m3}
       KB_API_TOKEN: ${KB_API_TOKEN:-}
@@ -97,19 +136,16 @@ services:
       KB_AZDO_PAT: ${KB_AZDO_PAT:-}
       KB_AZDO_WIKI: ${KB_AZDO_WIKI:-}
       KB_RERANKER_RUTA: /models/reranker
-      # Distinta de KB_CORPUS_DIR (esa es la ruta del HOST que se monta abajo).
-      # Dentro del contenedor el corpus siempre queda en /corpus.
-      KB_CORPUS_RUTA: /corpus
-      # Mismo patron que KB_CORPUS_RUTA: sin esta linea, kb.orquestacion.codigo-dir
-      # y kb.ingesta.repos-dir caen a su default relativo "./repos", que dentro
-      # del contenedor resuelve a /app/repos (WORKDIR) y NO al /repos montado
-      # abajo -- search_code y el conector de repos locales buscarian en una
-      # carpeta vacia, en silencio.
-      KB_CODIGO_RUTA: /repos
+      # Distinta de KB_VAULT_DIR (esa es la ruta del HOST que se monta abajo).
+      # Dentro del contenedor el vault siempre queda en /vault, con las
+      # subcarpetas documentos/ y repos/ (ver kb.ingesta.vault-dir). Sin esta
+      # linea el default relativo "../vault" resolveria dentro del contenedor
+      # contra WORKDIR y NO contra el /vault montado abajo -- la ingesta y
+      # search_code buscarian en una carpeta vacia, en silencio.
+      KB_VAULT_RUTA: /vault
       JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--XX:MaxRAMPercentage=60}
     volumes:
-      - ${KB_CORPUS_DIR:-./corpus}:/corpus:ro
-      - ${KB_REPOS_DIR:-./repos}:/repos:ro
+      - ${KB_VAULT_DIR:-../vault}:/vault:ro
       - ${KB_DATA_DIR:-./.data}/models:/models
     ports:
       - "${KB_PORT:-8080}:8080"

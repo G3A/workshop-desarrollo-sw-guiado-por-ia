@@ -30,7 +30,7 @@
     <onnxruntime.version>1.28.0</onnxruntime.version>
     <djl-tokenizers.version>0.36.0</djl-tokenizers.version>
     <pgvector.version>0.1.6</pgvector.version>
-    <pdfbox.version>3.0.8</pdfbox.version>
+    <arconia.version>0.29.0</arconia.version>
     <jgit.version>7.7.1.202607240634-r</jgit.version>
     <archunit.version>1.4.2</archunit.version>
     <jqwik.version>1.10.1</jqwik.version>
@@ -59,6 +59,13 @@
         <groupId>org.testcontainers</groupId>
         <artifactId>testcontainers-bom</artifactId>
         <version>${testcontainers.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>io.arconia</groupId>
+        <artifactId>arconia-bom</artifactId>
+        <version>${arconia.version}</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -143,11 +150,11 @@
       <version>${djl-tokenizers.version}</version>
     </dependency>
 
-    <!-- Ingesta: PDF en Java puro (sin dependencias del sistema operativo) y recorrido de repos -->
+    <!-- Ingesta: Docling (docling-serve, cuarto contenedor, ADR-0010) para PDF/DOCX/PPTX,
+         y recorrido de repos -->
     <dependency>
-      <groupId>org.apache.pdfbox</groupId>
-      <artifactId>pdfbox</artifactId>
-      <version>${pdfbox.version}</version>
+      <groupId>io.arconia</groupId>
+      <artifactId>arconia-docling-spring-boot-starter</artifactId>
     </dependency>
     <dependency>
       <groupId>org.eclipse.jgit</groupId>
