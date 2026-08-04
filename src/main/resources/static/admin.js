@@ -10,9 +10,12 @@
   };
   const ORDEN_TIPOS = ["local_docs", "local_git", "teams_channel", "azure_devops"];
 
+  const PRIORIDAD_ESTADO = { error: 0, extrayendo: 1, procesando: 1, detectado: 2, listo: 3 };
+
   const campoToken = document.getElementById("campo-token");
   const divFuentes = document.getElementById("fuentes");
   const divCola = document.getElementById("cola");
+  const cuerpoArchivosVault = document.getElementById("archivos-vault");
   const formularioCarga = document.getElementById("formulario-carga");
   const campoArchivo = document.getElementById("campo-archivo");
   const estadoCarga = document.getElementById("estado-carga");
@@ -146,6 +149,69 @@
     }
   }
 
+  function claseBadge(estado) {
+    if (estado === "error") return "estado-error";
+    if (estado.startsWith("embebiendo")) return "estado-embebiendo";
+    if (estado === "listo") return "estado-listo";
+    return "estado-" + estado;
+  }
+
+  function prioridadDe(estado) {
+    if (estado.startsWith("embebiendo")) return 1;
+    return PRIORIDAD_ESTADO[estado] ?? 2;
+  }
+
+  function filaArchivoVault(a) {
+    const enError = a.estado === "error";
+    const boton = enError
+      ? '<button type="button" class="boton-reintentar-archivo" data-tipo="' + escaparHtml(a.kind) + '">Reintentar</button>'
+      : "";
+    const detalleError = enError && a.lastError
+      ? '<div style="font-size:0.78rem;">' + escaparHtml(a.lastError) + "</div>"
+      : "";
+    return (
+      '<tr class="' + (enError ? "fila-archivo-error" : "") + '">' +
+      '<td class="col-archivo">' + escaparHtml(a.externalId) + "</td>" +
+      "<td>" + escaparHtml(ETIQUETAS_TIPO[a.kind] || a.kind) + " / " + escaparHtml(a.fuenteNombre) + "</td>" +
+      '<td><span class="estado-badge ' + claseBadge(a.estado) + '">' + escaparHtml(a.estado) + "</span>" + detalleError + "</td>" +
+      "<td>" + formatearFecha(a.actualizadoEn) + "</td>" +
+      "<td>" + boton + "</td>" +
+      "</tr>"
+    );
+  }
+
+  function renderArchivosVault(archivos) {
+    const ordenados = archivos.slice().sort((a, b) => {
+      const diferencia = prioridadDe(a.estado) - prioridadDe(b.estado);
+      return diferencia !== 0 ? diferencia : new Date(b.actualizadoEn) - new Date(a.actualizadoEn);
+    });
+    cuerpoArchivosVault.innerHTML = ordenados.length
+      ? ordenados.map(filaArchivoVault).join("")
+      : '<tr><td colspan="5">Todavía no se detectó ningún archivo.</td></tr>';
+    cuerpoArchivosVault.querySelectorAll(".boton-reintentar-archivo").forEach((boton) => {
+      boton.addEventListener("click", () => reintentarArchivo(boton.dataset.tipo, boton));
+    });
+  }
+
+  async function cargarArchivosVault() {
+    try {
+      const respuesta = await pedir("/api/admin/vault/archivos");
+      renderArchivosVault(await respuesta.json());
+    } catch (error) {
+      cuerpoArchivosVault.innerHTML = '<tr><td colspan="5">' + escaparHtml(error.message) + "</td></tr>";
+    }
+  }
+
+  async function reintentarArchivo(tipo, boton) {
+    boton.disabled = true;
+    try {
+      await pedir("/api/admin/fuentes/" + encodeURIComponent(tipo) + "/reindexar", { method: "POST" });
+      await Promise.all([cargarArchivosVault(), cargarFuentes(), cargarCola()]);
+    } catch (error) {
+      boton.disabled = false;
+    }
+  }
+
   formularioCarga.addEventListener("submit", async (evento) => {
     evento.preventDefault();
     const archivo = campoArchivo.files[0];
@@ -156,10 +222,10 @@
     const datos = new FormData();
     datos.append("archivo", archivo);
     try {
-      const respuesta = await pedir("/api/admin/corpus/archivos", { method: "POST", body: datos });
+      const respuesta = await pedir("/api/admin/vault/documentos", { method: "POST", body: datos });
       estadoCarga.textContent = await respuesta.text();
       campoArchivo.value = "";
-      await cargarFuentes();
+      await Promise.all([cargarFuentes(), cargarArchivosVault()]);
     } catch (error) {
       estadoCarga.textContent = error.message;
     }
@@ -167,4 +233,11 @@
 
   cargarFuentes();
   cargarCola();
+  cargarArchivosVault();
+  // Estilo Job Runner: la tabla se refresca sola mientras la ingesta avanza,
+  // sin que el usuario tenga que recargar la página a mano.
+  setInterval(() => {
+    cargarCola();
+    cargarArchivosVault();
+  }, 3000);
 })();

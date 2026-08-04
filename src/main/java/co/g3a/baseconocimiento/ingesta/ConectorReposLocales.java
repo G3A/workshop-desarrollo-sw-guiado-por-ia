@@ -24,9 +24,9 @@ import org.springframework.stereotype.Component;
 import co.g3a.baseconocimiento.compartido.Dominio.ProyectoId;
 
 /**
- * Ingiere repos Git locales bajo {@code kb.ingesta.repos-dir}: cada
- * subcarpeta con un {@code .git} es una fuente propia ({@code local_git}),
- * con su propio último SHA guardado en {@code sources.sync_state}.
+ * Ingiere repos Git locales bajo {@code <vault>/repos}: cada subcarpeta con
+ * un {@code .git} es una fuente propia ({@code local_git}), con su propio
+ * último SHA guardado en {@code sources.sync_state}.
  *
  * <p>Incremental a nivel de repo: si el HEAD no cambió desde la última
  * corrida, el repo entero se salta sin tocar disco. Si cambió, la
@@ -48,9 +48,9 @@ class ConectorReposLocales {
     private final IngestaRepositorio repo;
     private final Path raiz;
 
-    ConectorReposLocales(IngestaRepositorio repo, @Value("${kb.ingesta.repos-dir}") String reposDir) {
+    ConectorReposLocales(IngestaRepositorio repo, @Value("${kb.ingesta.vault-dir}") String vaultDir) {
         this.repo = repo;
-        this.raiz = Path.of(reposDir);
+        this.raiz = Path.of(vaultDir).resolve("repos");
     }
 
     record Resumen(int reposVistos, int reposActualizados, int reposSinCambios, int chunksCreados) {
@@ -109,30 +109,42 @@ class ConectorReposLocales {
 
             byte[] bytes = leer(archivo);
             String hash = sha256Hex(bytes);
+            repo.marcarArchivoDetectado(sourceId, externalId, bytes.length);
 
             Optional<IngestaRepositorio.DocumentoExistente> existente = repo.buscarDocumento(sourceId, externalId);
             if (existente.isPresent() && existente.get().contentHash().equals(hash)) {
                 continue;
             }
 
-            String texto = new String(bytes, StandardCharsets.UTF_8);
-            long documentoId = repo.upsertDocumento(sourceId, externalId,
-                    "file:///repos/" + nombreRepo + "/" + externalId, externalId, texto, hash,
-                    ProyectoId.POR_DEFECTO.valor());
+            try {
+                String texto = new String(bytes, StandardCharsets.UTF_8);
+                long documentoId = repo.upsertDocumento(sourceId, externalId,
+                        "file:///vault/repos/" + nombreRepo + "/" + externalId, externalId, texto, hash,
+                        ProyectoId.POR_DEFECTO.valor());
+                repo.marcarArchivoProcesado(sourceId, externalId, documentoId);
 
-            int ord = 0;
-            for (ChunkerCodigo.Bloque bloque : ChunkerCodigo.trocear(texto)) {
-                String distilled = Json.escribir(Map.of("summary", resumenDe(bloque)));
-                long chunkId = repo.insertarChunk(documentoId, sourceId, ProyectoId.POR_DEFECTO.valor(), ord++,
-                        "code_block", bloque.cuerpo(), distilled);
-                repo.encolarEmbeberChunk(chunkId);
-                chunksCreados++;
+                int ord = 0;
+                for (ChunkerCodigo.Bloque bloque : ChunkerCodigo.trocear(texto)) {
+                    String distilled = Json.escribir(Map.of("summary", resumenDe(bloque)));
+                    long chunkId = repo.insertarChunk(documentoId, sourceId, ProyectoId.POR_DEFECTO.valor(), ord++,
+                            "code_block", bloque.cuerpo(), distilled);
+                    repo.encolarEmbeberChunk(chunkId);
+                    chunksCreados++;
+                }
+            } catch (RuntimeException e) {
+                // Mismo aislamiento de fallos que ConectorDocumentosLocales: un
+                // archivo problematico no debe tumbar el resto del repo, sigue
+                // "visto" (no se borra como huerfano) y se reintenta en el
+                // proximo relevo sin hash actualizado.
+                repo.marcarArchivoError(sourceId, externalId, e.getMessage());
+                log.warn("No se pudo ingerir {} de {}: {}", externalId, nombreRepo, e.getMessage());
             }
         }
 
         for (long huerfano : repo.documentosHuerfanos(sourceId, vistos)) {
             repo.eliminarDocumento(huerfano);
         }
+        repo.eliminarArchivosVaultHuerfanos(sourceId, vistos);
         return chunksCreados;
     }
 

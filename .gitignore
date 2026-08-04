@@ -5,8 +5,6 @@ target/
 
 .env
 .data/
-corpus/
-repos/
 
 .idea/
 *.iml

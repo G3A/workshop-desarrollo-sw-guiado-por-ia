@@ -85,7 +85,7 @@ class AdminControllerTest {
     void ayudaExponeValoresReales() throws Exception {
         mockMvc.perform(get("/api/admin/ayuda"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("corpus")))
+                .andExpect(content().string(containsString("\"documentosDir\"")))
                 .andExpect(content().string(containsString("\"relevoIntervaloMs\":900000")))
                 .andExpect(content().string(containsString("\"cargaHabilitada\":false")));
     }
@@ -101,11 +101,32 @@ class AdminControllerTest {
     }
 
     @Test
-    @DisplayName("POST /api/admin/corpus/archivos rechaza con 403 cuando la carga esta deshabilitada")
+    @DisplayName("POST /api/admin/vault/documentos rechaza con 403 cuando la carga esta deshabilitada")
     void subirArchivoRechazaSiCargaDeshabilitada() throws Exception {
         var archivo = new MockMultipartFile("archivo", "nuevo.md", "text/markdown", "contenido".getBytes());
 
-        mockMvc.perform(multipart("/api/admin/corpus/archivos").file(archivo))
+        mockMvc.perform(multipart("/api/admin/vault/documentos").file(archivo))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("GET /api/admin/vault/archivos deriva el estado efectivo a partir de los conteos de chunks")
+    void archivosVaultDerivaElEstadoEfectivo() throws Exception {
+        var enError = new IngestaRepositorio.ArchivoVaultAdmin(
+                1L, 10L, "local_docs", "documentos", "roto.pdf", "error", "docling-serve no responde",
+                123L, Instant.EPOCH, Instant.EPOCH, 0, 0);
+        var embebiendo = new IngestaRepositorio.ArchivoVaultAdmin(
+                2L, 10L, "local_docs", "documentos", "guia.md", "procesando", null,
+                456L, Instant.EPOCH, Instant.EPOCH, 4, 2);
+        var listo = new IngestaRepositorio.ArchivoVaultAdmin(
+                3L, 10L, "local_docs", "documentos", "notas.md", "procesando", null,
+                789L, Instant.EPOCH, Instant.EPOCH, 3, 3);
+        when(repo.listarArchivosVault()).thenReturn(List.of(enError, embebiendo, listo));
+
+        mockMvc.perform(get("/api/admin/vault/archivos"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("\"estado\":\"error\"")))
+                .andExpect(content().string(containsString("\"estado\":\"embebiendo (2/4)\"")))
+                .andExpect(content().string(containsString("\"estado\":\"listo\"")));
     }
 }

@@ -57,6 +57,11 @@ Todo lo pesado y persistente cae bajo `KB_DATA_DIR` (por defecto `./.data`, junt
 modelos de Ollama, datos de PostgreSQL y el ONNX del reranker. Esto mantiene libre la unidad del
 sistema sin depender de configuración del host.
 
+El contenido a ingerir vive en `KB_VAULT_DIR` (por defecto `../vault`, **fuera** del repo), con dos
+subcarpetas fijas: `vault/documentos` (Markdown, texto, PDF, DOCX, PPTX) y `vault/repos` (repos Git
+locales a indexar). El panel de administración (`/admin.html`) muestra el estado de cada archivo en
+tiempo real — ver [ADR-0011](docs/adrs/0011-vault-unificado.md).
+
 Si tu unidad `C:` va justa, además conviene mover el *data-root* de Docker Desktop a otra unidad
 desde **Settings → Resources → Advanced → Disk image location**. Es configuración del host, fuera
 de este repo, y por eso queda como recomendación y no como requisito.
@@ -81,6 +86,7 @@ wsl --shutdown
 | Generación | Ollama con `gemma3:4b` — planner, destilación y síntesis |
 | Embeddings | `bge-m3` por Ollama, 1024 dimensiones, multilingüe |
 | Reranking | `bge-reranker-v2-m3` sobre ONNX Runtime, en proceso |
+| Extracción de documentos | Docling (`docling-serve`) — PDF, DOCX y PPTX a Markdown, ver [ADR-0010](docs/adrs/0010-docling-reemplaza-pdfbox.md) |
 | Adaptadores | HTML/JS sin build · protocolo Bot Connector implementado directo |
 
 Spring AI se usa **solo como cliente de Ollama**. Sus abstracciones de RAG y su `VectorStore`

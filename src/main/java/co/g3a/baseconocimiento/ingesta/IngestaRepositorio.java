@@ -218,6 +218,41 @@ class IngestaRepositorio {
         jdbc.sql("DELETE FROM documents WHERE id = :id").param("id", documentId).update();
     }
 
+    /**
+     * Tarea async de docling-serve en curso para un archivo (ADR-0010): si
+     * {@code kb-api} se reinicia mientras la conversión sigue en vuelo, el
+     * próximo intento la retoma en vez de mandar una tarea duplicada. Vive
+     * por {@code (source_id, external_id)} porque el documento todavía no
+     * existe en {@code documents} mientras la conversión está en curso.
+     */
+    Optional<String> buscarTareaDoclingEnCurso(long sourceId, String externalId) {
+        return jdbc.sql("""
+                        SELECT task_id FROM docling_tareas_en_curso
+                        WHERE source_id = :sourceId AND external_id = :externalId
+                        """)
+                .param("sourceId", sourceId).param("externalId", externalId)
+                .query(String.class).optional();
+    }
+
+    void registrarTareaDoclingEnCurso(long sourceId, String externalId, String taskId) {
+        jdbc.sql("""
+                        INSERT INTO docling_tareas_en_curso (source_id, external_id, task_id)
+                        VALUES (:sourceId, :externalId, :taskId)
+                        ON CONFLICT (source_id, external_id) DO UPDATE SET
+                            task_id = EXCLUDED.task_id, iniciado_en = now()
+                        """)
+                .param("sourceId", sourceId).param("externalId", externalId).param("taskId", taskId)
+                .update();
+    }
+
+    void borrarTareaDoclingEnCurso(long sourceId, String externalId) {
+        jdbc.sql("""
+                        DELETE FROM docling_tareas_en_curso
+                        WHERE source_id = :sourceId AND external_id = :externalId
+                        """)
+                .param("sourceId", sourceId).param("externalId", externalId).update();
+    }
+
     /** Una fila de {@code sources} con sus conteos, para la consola de administración de F9. */
     record FuenteAdmin(
             long id, String kind, String name, String projectId, boolean enabled,
@@ -254,6 +289,100 @@ class IngestaRepositorio {
     List<ConteoEstado> contarTrabajosPorEstado() {
         return jdbc.sql("SELECT status, COUNT(*) AS total FROM ingest_jobs GROUP BY status")
                 .query((rs, n) -> new ConteoEstado(rs.getString("status"), rs.getLong("total")))
+                .list();
+    }
+
+    /**
+     * Registra que un archivo del vault sigue estando ahí: crea la fila si es
+     * la primera vez que se ve, o solo refresca {@code tamano_bytes}/
+     * {@code detectado_en} si ya existía — a propósito NO toca {@code estado}
+     * ni {@code actualizado_en} aquí, para que esa columna siga reflejando el
+     * último cambio de estado real (y no cada corrida del relevo) al ordenar
+     * el panel de administración.
+     */
+    void marcarArchivoDetectado(long sourceId, String externalId, long tamanoBytes) {
+        jdbc.sql("""
+                        INSERT INTO vault_archivos (source_id, external_id, tamano_bytes)
+                        VALUES (:sourceId, :externalId, :tamanoBytes)
+                        ON CONFLICT (source_id, external_id) DO UPDATE SET
+                            tamano_bytes = EXCLUDED.tamano_bytes, detectado_en = now()
+                        """)
+                .param("sourceId", sourceId).param("externalId", externalId).param("tamanoBytes", tamanoBytes)
+                .update();
+    }
+
+    void marcarArchivoExtrayendo(long sourceId, String externalId) {
+        jdbc.sql("""
+                        UPDATE vault_archivos SET estado = 'extrayendo', actualizado_en = now()
+                        WHERE source_id = :sourceId AND external_id = :externalId
+                        """)
+                .param("sourceId", sourceId).param("externalId", externalId).update();
+    }
+
+    void marcarArchivoProcesado(long sourceId, String externalId, long documentId) {
+        jdbc.sql("""
+                        UPDATE vault_archivos SET
+                            estado = 'procesando', document_id = :documentId,
+                            last_error = NULL, actualizado_en = now()
+                        WHERE source_id = :sourceId AND external_id = :externalId
+                        """)
+                .param("sourceId", sourceId).param("externalId", externalId).param("documentId", documentId)
+                .update();
+    }
+
+    void marcarArchivoError(long sourceId, String externalId, String mensaje) {
+        jdbc.sql("""
+                        UPDATE vault_archivos SET estado = 'error', last_error = :mensaje, actualizado_en = now()
+                        WHERE source_id = :sourceId AND external_id = :externalId
+                        """)
+                .param("sourceId", sourceId).param("externalId", externalId).param("mensaje", mensaje).update();
+    }
+
+    /** Igual que {@link #documentosHuerfanos}, pero para las filas de {@code vault_archivos}. */
+    void eliminarArchivosVaultHuerfanos(long sourceId, List<String> externalIdsVistos) {
+        if (externalIdsVistos.isEmpty()) {
+            jdbc.sql("DELETE FROM vault_archivos WHERE source_id = :sourceId")
+                    .param("sourceId", sourceId).update();
+            return;
+        }
+        jdbc.sql("""
+                        DELETE FROM vault_archivos
+                        WHERE source_id = :sourceId AND external_id NOT IN (:vistos)
+                        """)
+                .param("sourceId", sourceId).param("vistos", externalIdsVistos).update();
+    }
+
+    /**
+     * Una fila por archivo del vault, con los conteos de chunks necesarios
+     * para que el llamador derive el estado efectivo (p. ej. "embebiendo 3/12"):
+     * ver {@code vault_archivos.estado} en la migración V3 sobre por qué esto
+     * no se guarda como columna.
+     */
+    record ArchivoVaultAdmin(
+            long id, long sourceId, String kind, String fuenteNombre, String externalId,
+            String estado, String lastError, long tamanoBytes,
+            java.time.Instant detectadoEn, java.time.Instant actualizadoEn,
+            long chunksTotales, long chunksEmbebidos) {
+    }
+
+    List<ArchivoVaultAdmin> listarArchivosVault() {
+        return jdbc.sql("""
+                        SELECT va.id, va.source_id, s.kind, s.name AS fuente_nombre, va.external_id,
+                               va.estado, va.last_error, va.tamano_bytes, va.detectado_en, va.actualizado_en,
+                               COUNT(c.id) AS chunks_totales,
+                               COUNT(c.id) FILTER (WHERE c.embedding IS NOT NULL) AS chunks_embebidos
+                        FROM vault_archivos va
+                        JOIN sources s ON s.id = va.source_id
+                        LEFT JOIN chunks c ON c.document_id = va.document_id
+                        GROUP BY va.id, s.kind, s.name
+                        ORDER BY va.actualizado_en DESC
+                        """)
+                .query((rs, n) -> new ArchivoVaultAdmin(
+                        rs.getLong("id"), rs.getLong("source_id"), rs.getString("kind"), rs.getString("fuente_nombre"),
+                        rs.getString("external_id"), rs.getString("estado"), rs.getString("last_error"),
+                        rs.getLong("tamano_bytes"), rs.getTimestamp("detectado_en").toInstant(),
+                        rs.getTimestamp("actualizado_en").toInstant(),
+                        rs.getLong("chunks_totales"), rs.getLong("chunks_embebidos")))
                 .list();
     }
 }

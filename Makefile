@@ -48,7 +48,7 @@ help:  ## Muestra esta ayuda
 
 ## ---------------------------------------------------------------- infraestructura
 
-up:  ## Levanta los 3 servicios; usa la GPU NVIDIA automaticamente si el host tiene una
+up:  ## Levanta los 4 servicios; usa la GPU NVIDIA automaticamente si el host tiene una
 	$(COMPOSE_ACTIVO) up -d --build
 	@echo "Perfil activo: $(if $(HAY_GPU),GPU (compose.gpu.yml) -- Ollama con VRAM reservada,CPU (compose.yml) -- no se detecto GPU NVIDIA)"
 
@@ -105,11 +105,11 @@ pin-embeddings-cpu:  ## Crea bge-m3-cpu, fijado a CPU, para dejarle toda la VRAM
 
 seed: ingest  ## Alias de ingest: nombre usado en la seccion Verificacion del plan (corpus de ejemplo)
 
-ingest:  ## Ingiere ./corpus: documentos nuevos o cambiados quedan troceados y encolados para embeber
+ingest:  ## Ingiere vault/documentos: documentos nuevos o cambiados quedan troceados y encolados para embeber
 	@curl -fsS -X POST http://localhost:$(KB_PORT)/api/ingest/local-docs | python -m json.tool 2>/dev/null \
 	  || curl -fsS -X POST http://localhost:$(KB_PORT)/api/ingest/local-docs
 
-ingest-repos:  ## Ingiere ./repos (F6): repos Git locales nuevos o cambiados
+ingest-repos:  ## Ingiere vault/repos (F6): repos Git locales nuevos o cambiados
 	@curl -fsS -X POST http://localhost:$(KB_PORT)/api/ingest/repos-locales | python -m json.tool 2>/dev/null \
 	  || curl -fsS -X POST http://localhost:$(KB_PORT)/api/ingest/repos-locales
 
