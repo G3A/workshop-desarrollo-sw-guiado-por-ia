@@ -1,5 +1,14 @@
 package co.g3a.baseconocimiento.ingesta;
 
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.stream.IntStream;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -18,6 +27,7 @@ import org.springframework.stereotype.Component;
 @ConditionalOnProperty(prefix = "kb.ingesta.worker", name = "habilitado", matchIfMissing = true)
 class TrabajadorEmbebidoProgramador {
 
+    private static final Logger log = LoggerFactory.getLogger(TrabajadorEmbebidoProgramador.class);
     private static final int TAMANO_LOTE = 25;
 
     private final TrabajadorEmbebido trabajador;
@@ -26,11 +36,28 @@ class TrabajadorEmbebidoProgramador {
         this.trabajador = trabajador;
     }
 
+    /**
+     * Lanza el lote entero en paralelo sobre hilos virtuales: cada
+     * {@code procesarUno()} toma su propio trabajo con {@code SKIP LOCKED}, así
+     * que no compiten entre sí por fila. Ya no corta al primer "no hay más
+     * trabajo" (antes era secuencial y eso servía de atajo) — con 25 hilos
+     * virtuales de por medio, casi todos devuelven falso de inmediato si la
+     * cola ya está vacía, así que el costo de no cortar antes es despreciable.
+     */
     @Scheduled(fixedDelayString = "${kb.ingesta.worker.intervalo-ms:2000}")
     void ejecutarLote() {
-        for (int i = 0; i < TAMANO_LOTE; i++) {
-            if (!trabajador.procesarUno()) {
-                return;
+        List<Future<Boolean>> futuros;
+        try (ExecutorService hilos = Executors.newVirtualThreadPerTaskExecutor()) {
+            futuros = IntStream.range(0, TAMANO_LOTE)
+                    .<Callable<Boolean>>mapToObj(i -> trabajador::procesarUno)
+                    .map(hilos::submit)
+                    .toList();
+        }
+        for (Future<Boolean> futuro : futuros) {
+            try {
+                futuro.get();
+            } catch (Exception e) {
+                log.warn("Fallo inesperado procesando un item del lote de embeddings: {}", e.toString());
             }
         }
     }

@@ -91,6 +91,34 @@
   .cola .numero { font-size: 1.4rem; font-weight: 700; }
   .cola .etiqueta { font-size: 0.8rem; color: var(--texto-atenuado); }
 
+  .archivos-vault-contenedor { max-height: 26rem; overflow-y: auto; }
+  td.col-archivo { max-width: 22rem; overflow-wrap: anywhere; }
+  .estado-badge {
+    display: inline-block;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .estado-badge.estado-detectado    { background: var(--fondo-suave); color: var(--texto-atenuado); }
+  .estado-badge.estado-extrayendo,
+  .estado-badge.estado-procesando   { background: #dbeafe; color: #1e40af; }
+  .estado-badge.estado-embebiendo   { background: #fef3c7; color: #92400e; }
+  .estado-badge.estado-listo        { background: #dcfce7; color: var(--ok); }
+  .estado-badge.estado-error        { background: #fee2e2; color: var(--error); }
+  .fila-archivo-error td { color: var(--error); }
+  .boton-reintentar-archivo {
+    padding: 0.2rem 0.6rem;
+    border: 1px solid var(--error);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--error);
+    cursor: pointer;
+    font-size: 0.78rem;
+  }
+  .boton-reintentar-archivo:disabled { opacity: 0.6; cursor: default; }
+
   .carga { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
   #estado-carga { font-size: 0.85rem; color: var(--texto-atenuado); }
 
@@ -141,9 +169,25 @@
   </section>
 
   <section>
+    <h2>Archivos del vault</h2>
+    <p class="subtitulo" style="margin: 0 0 0.4rem;">
+      Estado de cada archivo detectado: pendiente → extrayendo (PDF/DOCX/PPTX) → procesando →
+      embebiendo → listo, o error.
+    </p>
+    <div class="archivos-vault-contenedor">
+      <table>
+        <thead>
+          <tr><th>Archivo</th><th>Fuente</th><th>Estado</th><th>Actualizado</th><th></th></tr>
+        </thead>
+        <tbody id="archivos-vault"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
     <h2>Subir un documento</h2>
     <form id="formulario-carga" class="carga">
-      <input type="file" id="campo-archivo" accept=".md,.markdown,.txt,.pdf">
+      <input type="file" id="campo-archivo" accept=".md,.markdown,.txt,.pdf,.docx,.pptx">
       <button type="submit">Subir</button>
       <span id="estado-carga"></span>
     </form>

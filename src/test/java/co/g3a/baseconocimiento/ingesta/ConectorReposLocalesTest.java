@@ -41,11 +41,11 @@ class ConectorReposLocalesTest {
                     .asCompatibleSubstituteFor("postgres"));
 
     @TempDir
-    static Path reposDir;
+    static Path vaultRoot;
 
     @DynamicPropertySource
     static void propiedades(DynamicPropertyRegistry registry) {
-        registry.add("kb.ingesta.repos-dir", () -> reposDir.toString());
+        registry.add("kb.ingesta.vault-dir", () -> vaultRoot.toString());
     }
 
     @Autowired
@@ -89,7 +89,7 @@ class ConectorReposLocalesTest {
     }
 
     private void crearRepoConUnArchivo(String nombreRepo, String archivo, String contenido) throws Exception {
-        Path repoPath = reposDir.resolve(nombreRepo);
+        Path repoPath = vaultRoot.resolve("repos").resolve(nombreRepo);
         Files.createDirectories(repoPath);
         try (Git git = Git.init().setDirectory(repoPath.toFile()).call()) {
             Files.writeString(repoPath.resolve(archivo), contenido);

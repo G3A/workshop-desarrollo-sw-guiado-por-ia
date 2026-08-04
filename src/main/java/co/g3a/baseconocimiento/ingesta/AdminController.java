@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -39,7 +40,7 @@ class AdminController {
 
     private final IngestaRepositorio repo;
     private final RelevadorDeFuentes relevador;
-    private final Path corpusDir;
+    private final Path documentosDir;
     private final Path reposDir;
     private final long relevoIntervaloMs;
     private final boolean relevoHabilitado;
@@ -47,15 +48,15 @@ class AdminController {
 
     AdminController(
             IngestaRepositorio repo, RelevadorDeFuentes relevador,
-            @Value("${kb.ingesta.corpus-dir}") String corpusDir,
-            @Value("${kb.ingesta.repos-dir}") String reposDir,
+            @Value("${kb.ingesta.vault-dir}") String vaultDir,
             @Value("${kb.ingesta.relevo.intervalo-ms:900000}") long relevoIntervaloMs,
             @Value("${kb.ingesta.relevo.habilitado:true}") boolean relevoHabilitado,
             @Value("${kb.ingesta.carga-habilitada:false}") boolean cargaHabilitada) {
         this.repo = repo;
         this.relevador = relevador;
-        this.corpusDir = Path.of(corpusDir);
-        this.reposDir = Path.of(reposDir);
+        Path raiz = Path.of(vaultDir);
+        this.documentosDir = raiz.resolve("documentos");
+        this.reposDir = raiz.resolve("repos");
         this.relevoIntervaloMs = relevoIntervaloMs;
         this.relevoHabilitado = relevoHabilitado;
         this.cargaHabilitada = cargaHabilitada;
@@ -82,6 +83,38 @@ class AdminController {
     }
 
     /**
+     * El estado efectivo se calcula acá, no en SQL: el worker de embeddings
+     * ({@code TrabajadorEmbebido}) no sabe nada de archivos, solo de chunks —
+     * ver el comentario de {@code vault_archivos.estado} en la migración V3.
+     */
+    record ArchivoEstado(
+            long id, String kind, String fuenteNombre, String externalId, String estado,
+            String lastError, long tamanoBytes, Instant actualizadoEn, long chunksTotales, long chunksEmbebidos) {
+    }
+
+    @GetMapping("/api/admin/vault/archivos")
+    List<ArchivoEstado> archivosVault() {
+        return repo.listarArchivosVault().stream()
+                .map(a -> new ArchivoEstado(
+                        a.id(), a.kind(), a.fuenteNombre(), a.externalId(), estadoEfectivo(a),
+                        a.lastError(), a.tamanoBytes(), a.actualizadoEn(), a.chunksTotales(), a.chunksEmbebidos()))
+                .toList();
+    }
+
+    private static String estadoEfectivo(IngestaRepositorio.ArchivoVaultAdmin a) {
+        if (!"procesando".equals(a.estado())) {
+            // detectado | extrayendo | error: el estado guardado ya es el efectivo.
+            return a.estado();
+        }
+        if (a.chunksTotales() == 0) {
+            return "procesando";
+        }
+        return a.chunksEmbebidos() < a.chunksTotales()
+                ? "embebiendo (" + a.chunksEmbebidos() + "/" + a.chunksTotales() + ")"
+                : "listo";
+    }
+
+    /**
      * Para el selector de proyecto de F10 (chat) y de la propia consola.
      * Excluido de {@code ApiTokenFilter} igual que {@code /api/admin/ayuda}:
      * la página de chat lo necesita sin sesión ni token.
@@ -92,20 +125,20 @@ class AdminController {
     }
 
     record Ayuda(
-            String corpusDir, String reposDir, List<String> extensionesAceptadas,
+            String documentosDir, String reposDir, List<String> extensionesAceptadas,
             long relevoIntervaloMs, boolean relevoHabilitado, boolean cargaHabilitada) {
     }
 
     /**
      * Lo que el botón {@code ?} de la UI muestra: rutas y valores reales que
      * el servidor está usando, no una convención escrita a mano en el HTML —
-     * ver la discusión de {@code KB_CORPUS_DIR} vs {@code KB_CORPUS_RUTA} en
+     * ver la discusión de {@code KB_VAULT_DIR} vs {@code KB_VAULT_RUTA} en
      * {@code docs/plans/plan-base-conocimiento.md}.
      */
     @GetMapping("/api/admin/ayuda")
     Ayuda ayuda() {
         return new Ayuda(
-                corpusDir.toString(), reposDir.toString(),
+                documentosDir.toString(), reposDir.toString(),
                 ConectorDocumentosLocales.extensionesAceptadas().stream().sorted().toList(),
                 relevoIntervaloMs, relevoHabilitado, cargaHabilitada);
     }
@@ -113,11 +146,11 @@ class AdminController {
     /**
      * Carga desde el navegador, apagada por defecto. Habilitarla
      * ({@code KB_INGESTA_CARGA_HABILITADA=true}) exige además quitar el
-     * {@code :ro} del bind mount del corpus en {@code compose.yml}: sin eso,
+     * {@code :ro} del bind mount del vault en {@code compose.yml}: sin eso,
      * el contenedor no puede escribir ahí y esta llamada falla con un error
      * de E/S explícito, no en silencio.
      */
-    @PostMapping("/api/admin/corpus/archivos")
+    @PostMapping("/api/admin/vault/documentos")
     ResponseEntity<String> subirArchivo(@RequestParam("archivo") MultipartFile archivo) {
         if (!cargaHabilitada) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
@@ -127,12 +160,12 @@ class AdminController {
         if (nombreValido.isEmpty()) {
             return ResponseEntity.badRequest().body("Nombre de archivo invalido o extension no aceptada");
         }
-        Path destino = corpusDir.resolve(nombreValido.get()).normalize();
-        if (!destino.startsWith(corpusDir.normalize())) {
+        Path destino = documentosDir.resolve(nombreValido.get()).normalize();
+        if (!destino.startsWith(documentosDir.normalize())) {
             return ResponseEntity.badRequest().body("Ruta de archivo invalida");
         }
         try {
-            Files.createDirectories(corpusDir);
+            Files.createDirectories(documentosDir);
             archivo.transferTo(destino);
         } catch (IOException e) {
             throw new UncheckedIOException("No se pudo escribir " + destino, e);

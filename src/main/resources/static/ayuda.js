@@ -29,10 +29,12 @@
       : "La carga desde el navegador está deshabilitada (kb.ingesta.carga-habilitada=false).";
     return (
       "<h2>Dónde poner tus archivos</h2>" +
-      "<p><strong>Documentos</strong> (" + escaparHtml(extensiones) + "): cópialos a la carpeta que tu " +
-      "<code>.env</code> tiene configurada como <code>KB_CORPUS_DIR</code>. El servidor está leyendo " +
-      "ahora mismo: <code>" + escaparHtml(ayuda.corpusDir) + "</code>.</p>" +
-      "<p><strong>Código</strong>: clona el repositorio dentro de la carpeta de <code>KB_REPOS_DIR</code>. " +
+      "<p>Todo vive en una sola carpeta fuera del repositorio, el <strong>vault</strong> " +
+      "(<code>KB_VAULT_DIR</code> en tu <code>.env</code>), con dos subcarpetas fijas.</p>" +
+      "<p><strong>Documentos</strong> (" + escaparHtml(extensiones) + "): cópialos a " +
+      "<code>vault/documentos</code>. El servidor está leyendo ahora mismo: <code>" +
+      escaparHtml(ayuda.documentosDir) + "</code>.</p>" +
+      "<p><strong>Código</strong>: clona el repositorio dentro de <code>vault/repos</code>. " +
       "El servidor está leyendo ahora mismo: <code>" + escaparHtml(ayuda.reposDir) + "</code>.</p>" +
       "<p>No hace falta correr ningún comando: el sistema revisa esas carpetas " + relevoTexto + ". " +
       "Si borras un archivo, deja de aparecer en las respuestas en la siguiente revisión.</p>" +

@@ -135,8 +135,9 @@ destilados: `searchable_question`, `summary`, `resolution`, `systems_mentioned`,
 El modelo mental que se le promete al usuario es de una sola frase: **pon los archivos en una
 carpeta y olvídate**. Todo lo demás pasa solo.
 
-1. Copias un archivo a `./corpus` (documentos: `.md`, `.txt`, `.pdf`) o clonas un repo dentro de
-   `./repos` (código). No hay que registrar nada ni correr ningún comando.
+1. Copias un archivo a `vault/documentos` (documentos: `.md`, `.txt`, `.pdf`) o clonas un repo
+   dentro de `vault/repos` (código) — el vault vive fuera del repositorio, ver
+   [ADR-0011](../adrs/0011-vault-unificado.md). No hay que registrar nada ni correr ningún comando.
 2. Cada cierto tiempo el sistema vuelve a leer esa carpeta y compara contra lo que ya tiene
    indexado, archivo por archivo, usando un hash del contenido:
 
@@ -220,8 +221,14 @@ Respuesta consultar(Pregunta pregunta, ProyectoId proyecto, Filtros filtros)
 - `ingesta`: cola en Postgres, `content_hash` para re-embeber solo lo cambiado, conector de
   documentos locales con chunking por headings y PDF con **Apache PDFBox** (Java puro, sin
   dependencias del sistema operativo).
-- **Criterio de salida**: apuntas a `./corpus`, corres `make ingest` y `chunks` queda poblada con
-  `embedding` y `fts` no nulos.
+- **Criterio de salida**: apuntas a `vault/documentos`, corres `make ingest` y `chunks` queda
+  poblada con `embedding` y `fts` no nulos.
+
+**Actualización posterior — Docling reemplaza PDFBox ([ADR-0010](../adrs/0010-docling-reemplaza-pdfbox.md)):**
+PDF (y ahora también DOCX y PPTX) ya no se extrae con PDFBox por ventanas de párrafos, sino con
+Docling vía `docling-serve` (cuarto contenedor). El Markdown que devuelve conserva encabezados
+reales, así que estos formatos pasan por el mismo `ChunkerEncabezados` que `.md`/`.txt` — dejó de
+hacer falta un chunker aparte para ellos.
 
 ### F2 — Retrieval híbrido de 4 señales ✅ completado
 
@@ -367,7 +374,7 @@ encolar lo nuevo. Solo faltaba el disparador periódico.
 - Apagable con `kb.ingesta.relevo.habilitado=false`, mismo patrón que
   `kb.ingesta.worker.habilitado` de F1.
 - **Criterio de salida, verificado en vivo contra el stack real**: con `KB_INGESTA_RELEVO_INTERVALO_MS=15000`,
-  se copió un `.md` nuevo a `./corpus`, se esperó el intervalo **sin correr ningún comando**, y
+  se copió un `.md` nuevo a `vault/documentos`, se esperó el intervalo **sin correr ningún comando**, y
   `documents`/`chunks` lo reflejaron solos (log: *"Ingesta de documentos locales: 3 vistos, 2
   actualizados, 1 sin cambios, 0 eliminados, 4 chunks nuevos"*). Se borró el archivo, se esperó
   otro intervalo, y desapareció de la base (*"1 eliminados"*). `.env` se restauró al default
@@ -386,24 +393,25 @@ se puede usar **completo desde el navegador** (`admin.html`).
 - **Botón de ayuda (`?`) que explica dónde poner los archivos.** Presente tanto en la consola como
   en la página de chat — es ahí donde alguien se pregunta "¿por qué no encuentra mi documento?".
   Al abrirlo explica, en lenguaje de usuario:
-  - **En qué carpeta van**: documentos en `./corpus`, repositorios de código en `./repos`, ambas
-    junto al repositorio clonado.
+  - **En qué carpeta van**: documentos en `vault/documentos`, repositorios de código en
+    `vault/repos` — un único `vault` fuera del repositorio clonado (ver
+    [ADR-0011](../adrs/0011-vault-unificado.md)).
   - **Por qué hay dos rutas y no una**, que es la confusión garantizada de este proyecto:
-    `KB_CORPUS_DIR` es la carpeta **en tu máquina** (lo que `compose.yml` monta) y `KB_CORPUS_RUTA`
-    es la ruta **dentro del contenedor** (`/corpus`, fija). Son los dos lados del mismo bind mount
+    `KB_VAULT_DIR` es la carpeta **en tu máquina** (lo que `compose.yml` monta) y `KB_VAULT_RUTA`
+    es la ruta **dentro del contenedor** (`/vault`, fija). Son los dos lados del mismo bind mount
     y sus nombres se parecen demasiado. La ayuda muestra el valor real que el servidor está
-    leyendo, no una ruta escrita a mano en el HTML: si alguien cambió `KB_CORPUS_DIR`, la ayuda
+    leyendo, no una ruta escrita a mano en el HTML: si alguien cambió `KB_VAULT_DIR`, la ayuda
     tiene que decir la verdad y no la convención.
   - **Qué formatos acepta** (`.md`, `.txt`, `.pdf`) y qué pasa con lo demás.
   - **Cuándo estará disponible**: cada cuánto se releva esa fuente (el `refresh_seconds` real, no
     un número inventado) y que no hace falta correr ningún comando.
   - **Qué pasa si borras un archivo**: deja de aparecer en las respuestas en el siguiente relevo.
 - **Carga de archivos desde el navegador**: subes un `.md`/`.txt`/`.pdf` (`<input type="file">`,
-  sin drag-and-drop) y queda escrito en el directorio del corpus, del lado del servidor
-  (`POST /api/admin/corpus/archivos`, multipart). **Apagada por defecto**
+  sin drag-and-drop) y queda escrito en `vault/documentos`, del lado del servidor
+  (`POST /api/admin/vault/documentos`, multipart). **Apagada por defecto**
   (`kb.ingesta.carga-habilitada=false`): se decidió la segunda de las dos salidas que este plan
   dejó pendientes, la misma que ya usan los conectores opcionales — encenderla es un acto explícito,
-  no un default. **Habilitarla exige además** quitar el `:ro` del mount de `KB_CORPUS_DIR` en
+  no un default. **Habilitarla exige además** quitar el `:ro` del mount de `KB_VAULT_DIR` en
   `compose.yml`: el bind mount sigue siendo de solo lectura por defecto, y sin ese cambio manual la
   llamada falla con un error de E/S explícito, no en silencio.
 - **Decisión de dónde vive**: los endpoints de administración van en el módulo `ingesta`, **no** en
@@ -418,7 +426,7 @@ se puede usar **completo desde el navegador** (`admin.html`).
 - El HTML/JS de la consola (`admin.html`/`admin.js`) sigue el mismo criterio que la UI de F4:
   vanilla, sin build. Un campo de token (`sessionStorage`, no persistido) permite operar la consola
   cuando `KB_API_TOKEN` está configurado.
-- Interacción con el token de API de F7: `/api/admin/fuentes`, `/reindexar` y `/corpus/archivos` sí
+- Interacción con el token de API de F7: `/api/admin/fuentes`, `/reindexar` y `/vault/documentos` sí
   quedan detrás de `KB_API_TOKEN`. `/api/admin/ayuda` y `/api/admin/proyectos` (F10) quedan
   **excluidos** a propósito — ambos son de solo lectura, sin datos del corpus, y los usa también la
   página de chat, que no tiene ninguna sesión de persona logueada que les pase un token (mismo
@@ -426,12 +434,20 @@ se puede usar **completo desde el navegador** (`admin.html`).
 - **Criterio de salida, verificado en vivo contra el stack real y en un navegador real** (Chromium
   headless vía Playwright, sin `claude-in-chrome` disponible esta sesión — ver hallazgos de F10):
   se probó con `kb.ingesta.carga-habilitada=true` y el `:ro` quitado a mano en `compose.yml`
-  (revertido después de la prueba): `POST /api/admin/corpus/archivos` con un `.md` real escribió el
-  archivo en `./corpus` del host, y un `.exe` rechazado con 400 sin tocar disco. Con la carga en su
+  (revertido después de la prueba): `POST /api/admin/vault/documentos` con un `.md` real escribió el
+  archivo en `vault/documentos` del host, y un `.exe` rechazado con 400 sin tocar disco. Con la carga en su
   default (`false`), la misma llamada responde 403. En el navegador: la consola carga las fuentes
   agrupadas por tipo con sus conteos reales, la cola de ingesta, el botón "Reindexar ahora" corre el
   relevo y refresca el "último resultado" en pantalla al instante, y el modal de ayuda (componente
   compartido con el chat) muestra las rutas y el intervalo reales.
+
+**Actualización posterior — vault unificado y panel por archivo ([ADR-0011](../adrs/0011-vault-unificado.md)):**
+`./corpus` y `./repos` (dos carpetas separadas, dentro del árbol del repo) se fusionaron en un solo
+`vault` con dos subcarpetas fijas (`vault/documentos`, `vault/repos`), ubicado **fuera** del
+repositorio por defecto (`KB_VAULT_DIR=../vault`). La consola de administración ganó una tabla
+estilo *Job Runner* (`GET /api/admin/vault/archivos`) con el estado de **cada archivo** —
+detectado/extrayendo/procesando/embebiendo/listo/error, con reintento — en vez de solo el resumen
+agregado por fuente que ya daba la sección "Fuentes".
 
 ### F10 — La UI de chat, usable de verdad ✅ completado (progreso, con alcance recortado — ver hallazgos)
 
@@ -471,21 +487,22 @@ F4 dejó la UI funcionando de punta a punta, pero mínima.
 1. Arranca Docker Desktop (el engine está detenido) y copia `wslconfig.example`.
 2. `cp .env.example .env && docker compose up -d` — los 3 servicios quedan sanos.
 3. `make pull-models` baja `gemma3:4b` y `bge-m3` al volumen en D:, y el ONNX del reranker.
-4. `make seed` ingiere el corpus de ejemplo; verifica en `db` que `chunks` tenga `embedding` y
-   `fts` poblados.
+4. `make seed` ingiere el corpus de ejemplo (copiado a `vault/documentos`); verifica en `db` que
+   `chunks` tenga `embedding` y `fts` poblados.
 5. `curl -X POST localhost:8080/api/ask -d '{"q":"¿cómo se despliega el servicio?"}'` devuelve
    respuesta con citas.
 6. Abre `localhost:8080`: resultados por palabra clave inmediatos y síntesis en streaming.
 7. Bot Framework Emulator contra `localhost:8080/api/messages`: misma respuesta, en tarjeta.
 8. Con GPU: `docker compose -f compose.yml -f compose.gpu.yml up -d` y confirma con `nvidia-smi`
    que solo `gemma3:4b` ocupa VRAM.
-9. **F8**: copia un `.md` nuevo a `./corpus` y **no corras ningún comando**. Pasado el intervalo de
-   la fuente, pregunta por su contenido: debe responderse citándolo. Borra el archivo, espera otro
-   intervalo, y confirma que deja de citarse.
+9. **F8**: copia un `.md` nuevo a `vault/documentos` y **no corras ningún comando**. Pasado el
+   intervalo de la fuente, pregunta por su contenido: debe responderse citándolo. Borra el archivo,
+   espera otro intervalo, y confirma que deja de citarse.
 10. **F9**: sin usar la terminal, sube un documento desde la consola de administración, confirma
-    que la fuente refleja el relevo, y pregúntale por ese contenido desde la misma UI. Abre el
-    botón `?` y confirma que la ruta que muestra es la que el servidor está leyendo de verdad:
-    cambia `KB_CORPUS_DIR` en `.env`, reinicia, y la ayuda debe reflejar el cambio.
+    que la fuente refleja el relevo y que la fila del archivo en "Archivos del vault" avanza hasta
+    "listo", y pregúntale por ese contenido desde la misma UI. Abre el botón `?` y confirma que la
+    ruta que muestra es la que el servidor está leyendo de verdad: cambia `KB_VAULT_DIR` en `.env`,
+    reinicia, y la ayuda debe reflejar el cambio.
 11. **F10**: pregunta dos veces seguidas desde `localhost:8080` y confirma que la primera respuesta
     sigue visible cuando llega la segunda. Cambia el selector de proyecto y confirma que solo
     aparecen los `project_id` que existen de verdad. Detén Ollama y confirma que la UI dice que
