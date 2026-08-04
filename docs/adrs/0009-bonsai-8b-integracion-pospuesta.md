@@ -2,8 +2,26 @@
 
 ## Estado
 
-Pospuesta. No implementada. `KB_LLM_MODELO` sigue apuntando a un modelo servido por Ollama
-(`gemma3:4b` en producción/demo; ver ADR-0008).
+**Implementada** (actualizado en la sesión 8, desactualizado desde la sesión 6 sin corregir hasta
+ahora). El título y buena parte del cuerpo de este ADR describen la decisión original de posponer;
+esa decisión se revirtió en la práctica entre las sesiones 6 y 8 sin que este encabezado se
+actualizara. Estado real de `main`/este worktree:
+
+- `spring.ai.openai.chat.options.model` (default `Bonsai-8B-Q1_0.gguf`) es el modelo de
+  `PlanificadorOpenAi`, `VerificadorGroundingOpenAi` y `SintetizadorOpenAi` — los tres roles
+  principales del pipeline — sirviéndose desde `llama-server` (`Dockerfile.bonsai`,
+  `compose.bonsai.yml`).
+- `KB_LLM_MODELO` ya no es el selector vigente de ese modelo (ese nombre quedó del esquema
+  anterior, ver `application.yml`); el default es Bonsai, no `gemma3:4b`.
+- Ollama sigue activo solo para `bge-m3` (embeddings) y para el Destilador de Teams (F6,
+  `DestiladorOllama`), que nunca se evaluó con Bonsai y se dejó fuera de este ADR a propósito.
+- Quedan ajustes sin resolver documentados en la actualización de la sesión 8 más abajo (contexto
+  acotado a `KB_MAX_FRAGMENTOS_CONTEXTO=2` en el perfil Bonsai, calidad de citación con
+  `repeat_penalty` todavía por debajo de lo medido en el hallazgo 12).
+
+El resto de este documento (Contexto, Decisión, Consecuencias) queda como registro histórico de
+por qué se pospuso originalmente y qué cambió sesión a sesión hasta revertir esa decisión — no se
+reescribe para no perder ese razonamiento.
 
 ## Contexto
 
@@ -207,3 +225,50 @@ completa en
 **Esta sesión no cambia la decisión de este ADR** (sigue pospuesta) — la refuerza con evidencia nueva:
 de los trece candidatos probados hasta ahora en total, ninguno supera al `Bonsai-8B` 1-bit ya
 integrado en el balance completo de VRAM, `Planificador` y citación.
+
+## Actualización (sesión 8): tres ajustes en vivo para que el pipeline complete sin caerse
+
+Disparada por una pregunta real del usuario ("¿cuáles son los tipos primitivos en Java?")
+respondiendo siempre con el mensaje genérico de "sin información relevante". Depurado en vivo
+contra el stack real (`kb-api` + `llama-server` + `Bonsai-8B` en una T600). El encabezado
+**Estado** de este ADR sigue diciendo "Pospuesta. No implementada" pese a que el pipeline ya corre
+contra Bonsai (`compose.bonsai.yml`, `PlanificadorOpenAi`/`SintetizadorOpenAi`/
+`VerificadorGroundingOpenAi`) — desactualizado desde la integración real, no corregido en esta
+sesión por no ser el foco del hallazgo.
+
+Tres problemas distintos, en cadena, no uno solo:
+
+1. **Límite de contexto de `llama-server` (`BONSAI_CTX_SIZE=4096`) superado.** El default de
+   `kb.orquestacion.max-fragmentos-contexto` (10) arma un prompt de ~5070 tokens con secciones
+   largas de `jls25.pdf` — 400 `exceeds the available context size`. Bajar de 10 a 6 fragmentos
+   apenas movió el total (5070 → 5068): `Orquestador.construirContexto()` expande cada fragmento
+   con sus 2 chunks vecinos (`ContextoRepositorio.vecinos`), y el tamaño lo domina esa expansión,
+   no la cantidad de fragmentos. Con 4 fragmentos: 4339 tokens, todavía sobre el límite (dejando
+   margen para los 512 tokens de salida del sintetizador). Con 2: entra. Subir `BONSAI_CTX_SIZE`
+   en vez de bajar fragmentos no es gratis: solo ~1.6 GB libres de los 4 GB de VRAM de la T600 en
+   el momento de la prueba. `KB_MAX_FRAGMENTOS_CONTEXTO=2` queda como default del perfil Bonsai
+   (`compose.bonsai.yml`), a costa de menos citas por respuesta.
+2. **El planificador enrutaba mal preguntas conceptuales del lenguaje.** Para "cuáles son los
+   tipos primitivos en Java", Bonsai eligió `search_code` (razón: *"pregunta sobre implementación
+   específica"*) — busca con `ripgrep` sobre `vault/repos`, vacío en este entorno, cero resultados.
+   El contenido sí estaba ingerido (confirmado con `/api/search` directo). El prompt de
+   `PlanificadorOpenAi` ya distinguía "requisitos de hardware/despliegue" de "código", pero no
+   "conceptos del lenguaje" (tipos, sintaxis, palabras reservadas) de "cómo está implementado X
+   en este repo". Se agregó un ejemplo explícito con esa distinción — corrigió el ruteo en la
+   siguiente corrida (`search_docs`+`search_unified`, razón: *"pregunta conceptual, no de
+   implementación"*).
+3. **`KB_LLM_TIMEOUT` (180s) insuficiente para una corrida completa.** Con el planificador ya
+   enrutando bien, el pipeline ejecuta varias llamadas secuenciales a Bonsai (planificador +
+   herramientas + posible verificador de grounding + síntesis) que a ~1-3.5 tok/s en esta GPU
+   pueden superar los 180s en total — medido en vivo (`java.io.InterruptedIOException: timeout`
+   del cliente OpenAI). Subido a `KB_LLM_TIMEOUT=300s` en el perfil Bonsai.
+
+Con los tres ajustes juntos, la pregunta original respondió correctamente en 34 s: *"Los tipos
+primitivos en Java son: byte, short, int, long, char, float y double [1]"*, citando `jls25.pdf`.
+
+**Hallazgo aparte, no resuelto**: en una corrida anterior (pregunta de despliegue, antes del ajuste
+de contexto) la síntesis filtró la palabra "PEGADO" —tomada literalmente de su propio prompt de
+sistema— a la respuesta final, y citó un fragmento irrelevante de `jls25.pdf`. Coincide con el
+hallazgo ya documentado en `SintetizadorOpenAi.java` ("la citación todavía midió peor... sigue
+pendiente más ajuste y re-validación") y con el hallazgo 12/de citación de sesiones anteriores de
+este ADR — no es nuevo, sigue sin resolverse.

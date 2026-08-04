@@ -56,6 +56,7 @@ class Orquestador {
     private final VerificadorGrounding verificadorGrounding;
     private final QueryLogRepositorio queryLog;
     private final int maxFragmentosContexto;
+    private final boolean expandirVecinos;
     private final UmbralRelevanciaPropiedades umbralRelevancia;
 
     Orquestador(
@@ -63,6 +64,7 @@ class Orquestador {
             ContextoRepositorio contextoRepo, HerramientasRepositorio herramientasRepo,
             Sintetizador sintetizador, VerificadorGrounding verificadorGrounding, QueryLogRepositorio queryLog,
             @Value("${kb.orquestacion.max-fragmentos-contexto:10}") int maxFragmentosContexto,
+            @Value("${kb.orquestacion.expandir-vecinos:true}") boolean expandirVecinos,
             UmbralRelevanciaPropiedades umbralRelevancia) {
         this.planificador = planificador;
         this.catalogo = catalogo;
@@ -73,6 +75,7 @@ class Orquestador {
         this.verificadorGrounding = verificadorGrounding;
         this.queryLog = queryLog;
         this.maxFragmentosContexto = maxFragmentosContexto;
+        this.expandirVecinos = expandirVecinos;
         this.umbralRelevancia = umbralRelevancia;
     }
 
@@ -200,16 +203,29 @@ class Orquestador {
         return new PreSintesis(plan, ejecuciones, fragmentos, citas, contexto, null, inicio);
     }
 
+    /**
+     * {@code kb.orquestacion.expandir-vecinos=false} (perfil Bonsai) apaga la
+     * expansión: cada fragmento cuesta hasta 3x menos tokens sin sus vecinos,
+     * lo que permite subir {@code max-fragmentos-contexto} y que sobrevivan
+     * más candidatos distintos dentro del mismo presupuesto de contexto —
+     * medido en vivo: con contexto de 4096 tokens, 2 fragmentos CON vecinos
+     * ocupaban el mismo espacio que varios más SIN vecinos, y el candidato
+     * relevante quedaba afuera cuando no rankeaba entre los 2 primeros.
+     */
     private String construirContexto(List<Fragmento> fragmentos) {
         StringBuilder contexto = new StringBuilder();
         for (int i = 0; i < fragmentos.size(); i++) {
             Fragmento f = fragmentos.get(i);
             contexto.append("[%d] %s (%s)\n".formatted(i + 1, Citas.tituloDe(f), f.uri()));
 
-            List<ContextoRepositorio.Vecino> vecinos = contextoRepo.vecinos(f.documentoId(), f.ord());
-            vecinos.stream().filter(v -> v.ord() < f.ord()).forEach(v -> contexto.append(v.texto()).append('\n'));
-            contexto.append(f.texto()).append('\n');
-            vecinos.stream().filter(v -> v.ord() > f.ord()).forEach(v -> contexto.append(v.texto()).append('\n'));
+            if (expandirVecinos) {
+                List<ContextoRepositorio.Vecino> vecinos = contextoRepo.vecinos(f.documentoId(), f.ord());
+                vecinos.stream().filter(v -> v.ord() < f.ord()).forEach(v -> contexto.append(v.texto()).append('\n'));
+                contexto.append(f.texto()).append('\n');
+                vecinos.stream().filter(v -> v.ord() > f.ord()).forEach(v -> contexto.append(v.texto()).append('\n'));
+            } else {
+                contexto.append(f.texto()).append('\n');
+            }
 
             contexto.append('\n');
         }
