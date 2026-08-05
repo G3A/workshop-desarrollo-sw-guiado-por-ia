@@ -1358,3 +1358,134 @@ directas contra `kb-api` (puerto 8080) y `kb-llama-server` (puerto 8081) reales 
 crear, detener ni modificar ningún contenedor. No se tocó `compose.bonsai.yml`, `.env`,
 `SintetizadorOpenAi.java` ni ningún archivo de configuración real. El trabajo en curso de la
 sesión 9 (`eval-100-preguntas/`) se dejó exactamente como estaba.
+
+## Sesión 13: diagnóstico y ajuste de sampling para la filtración del prompt (hallazgo 39) — resuelve el defecto grave, deja uno menor sin resolver
+
+Intento de arreglar, sin cambiar de modelo, el defecto que encontró la sesión 12: Bonsai filtraba
+fragmentos completos de su propio prompt de sistema en la respuesta real. Metodología: iterar contra
+`llama-server` directo (puerto 8081, sin pasar por Spring/rebuild en cada intento) con un contexto de
+6 fragmentos reconstruido a mano (idéntico en formato a `Orquestador.construirContexto()`, con los
+mismos textos que devolvió la recuperación real en las sesiones 10-12) hasta encontrar una
+combinación que se sostuviera, y recién ahí aplicarla a `SintetizadorOpenAi.java`, reconstruir la
+imagen y re-validar contra `POST /api/ask` real.
+
+### Hallazgo 41: la causa más probable es la ventana de `repeat_penalty` (`repeat_last_n`), no el modelo en sí
+
+Hipótesis de partida: `repeat_penalty` de `llama-server` solo penaliza repetir tokens que aparecieron
+en los últimos `repeat_last_n` tokens del contexto (default de `llama.cpp`: 64). El prompt de sistema
+real mide varios cientos de tokens, y el contexto completo de una consulta real (6 fragmentos,
+`jls25.pdf` incluido) llega a **1386 tokens de prompt** en la reconstrucción de esta sesión. Con la
+ventana por defecto, el modelo puede "copiar" texto del prompt de sistema sin que `repeat_penalty` lo
+penalice, porque para cuando genera esa parte de la respuesta esos tokens ya quedaron fuera de la
+ventana de 64.
+
+Confirmado en la práctica: con un contexto corto (3 fragmentos, sin el ruido de `jls25.pdf`) el
+defecto **no se reprodujo** con la configuración actual (`repeat_penalty: 1.1` solo). Con el contexto
+completo de 6 fragmentos (1386 tokens) sí se reprodujo, aunque con una variante distinta a la del
+hallazgo 39: esta vez copió el encabezado de cita del fragmento `[1]` (`"[1] despliegue.md
+(file:///...)"`) en vez de un fragmento del prompt de sistema — mismo patrón de fondo (copiar texto
+lejano del contexto en vez de generar), disparado por el mismo mecanismo.
+
+### Hallazgo 42: `repeat_last_n: -1` (penalizar contra el contexto completo) reduce la fuga pero no la elimina sola
+
+Agregando `repeat_last_n: -1` al `extraBody` (semántica de `llama.cpp`: `-1` = penalizar contra todo
+el contexto, no solo los últimos N tokens) contra el contexto completo de 6 fragmentos: la respuesta
+pasó a cubrir los cuatro pasos de despliegue completos, con una sola cita `[1]` bien puesta — pero
+todavía terminaba con la palabra suelta "pegado" (ya no "PEGADO": ver hallazgo 43) al final. Mejora
+real, no total.
+
+### Hallazgo 43: la palabra en mayúsculas del prompt ("PEGADO") es un gatillo aparte del problema de ventana — bajarla a minúscula lo saca de la respuesta
+
+Con `repeat_last_n: -1` fijo, subir `repeat_penalty` a 1.3 no eliminó la fuga: la empujó a un modo de
+falla peor (alucinó pasos de despliegue incorrectos y generó una lista degenerada de "[n] N / PEGADOS"
+para los seis fragmentos) — la penalización excesiva empuja al modelo lejos de tokens válidos, un
+efecto conocido de sobre-ajustar `repeat_penalty`. Se probó en cambio bajar la palabra "PEGADO" (la
+única palabra en mayúsculas de énfasis del prompt de sistema, en la instrucción de citación) a
+minúscula ("pegado"), manteniendo `repeat_penalty: 1.1` + `repeat_last_n: -1`: **la fuga desapareció
+por completo**, en dos repeticiones consecutivas contra el contexto completo. La hipótesis: el
+mayúsculas actuaba como un token inusualmente "pegajoso" para este modelo cuantizado a 1-bit — no se
+investigó la causa exacta a nivel de tokenización (fuera del alcance de una sesión de ajuste, no de
+perfilado interno del modelo).
+
+### Hallazgo 44: `presencePenalty` fue necesario para sostener el arreglo con el prompt de sistema completo — pero mueve la citación, no solo la fuga
+
+Con la palabra en minúscula y `repeat_last_n: -1` solos, la fuga volvió a aparecer de forma
+intermitente al variar el contexto reconstruido. Agregando `presencePenalty` (parte del contrato
+estándar de OpenAI, no necesita `extraBody`) sí la sostuvo, pero el valor importa mucho:
+
+| `presencePenalty` | Fuga | Citación |
+|---|---|---|
+| 0.3 | Ninguna en 2 pruebas | **Desapareció por completo** — cero marcadores `[n]` en la respuesta |
+| 0.2 | Ninguna | Presente, pero el modelo empezó a comentar los fragmentos irrelevantes de `jls25.pdf` uno por uno en vez de ignorarlos |
+| 0.1 | Ninguna en 4 pruebas | Presente, pero inconsistente: a veces una cita `[1]` bien puesta, a veces varias por paso, una vez un marcador `[n]` sin resolver a número real |
+
+Se eligió **0.1**, el valor más bajo que ya sostenía la ausencia de fuga: por encima de eso, el
+costo (perder las citas del todo a 0.3, o divagar sobre contenido irrelevante a 0.2) superaba el
+beneficio.
+
+### Hallazgo 45: aplicado a `SintetizadorOpenAi.java` real y verificado contra `POST /api/ask` — la fuga no volvió a aparecer, la citación sigue con el mismo problema que ya tenía documentado el propio código
+
+Cambios aplicados: "PEGADO" → "pegado" en el prompt de sistema, `repeat_last_n: -1` agregado al
+`extraBody` existente (junto a `repeat_penalty: 1.1`), y `.presencePenalty(0.1)` en las opciones del
+`ChatClient`. Imagen reconstruida y `kb-api` real reiniciado con el cambio.
+
+| Caso | Resultado | Latencia |
+|---|---|---|
+| "como se despliega el servicio" (1a vez) | Cobertura completa de los 4 pasos, una cita `[1]` al final, sin fuga | 72s |
+| "como se despliega el servicio" (2a vez) | Cobertura parcial (solo pasos 2-3), marcador `[n]` sin resolver a número, sin fuga | 45s |
+| "explícame cómo usar Java 25" | `MENSAJE_SIN_INFORMACION` (correcto) | 36s |
+| "como esta implementada la fusion RRF en el codigo" | `MENSAJE_SIN_INFORMACION` (correcto, repo vacío) | 23s |
+
+**La fuga del hallazgo 39 no volvió a aparecer en ninguna de las cuatro llamadas reales** (dos de
+ellas la misma pregunta relevante, para cubrir la variabilidad de `temperature: 0.2`). Planificador y
+`VerificadorGrounding` siguen perfectos, sin cambios — el ajuste solo tocó `SintetizadorOpenAi`.
+
+**Lo que no se arregló**: la calidad de citación sigue siendo inconsistente entre corridas (a veces
+completa y bien puesta, a veces parcial con un marcador sin resolver). Esto **no es un defecto nuevo
+de esta sesión** — es el mismo problema que el propio comentario de `SintetizadorOpenAi.java` ya
+dejaba anotado antes de esta sesión: *"la citacion todavia midio peor que en las pruebas aisladas de
+la sesion 5 ... sigue pendiente mas ajuste y re-validacion, no es un problema resuelto del todo"*. El
+ajuste de esta sesión resolvió el defecto **nuevo y más grave** que encontró la sesión 12 (filtración
+completa de texto ajeno a la respuesta), no el defecto **preexistente y menor** de citación.
+
+**Latencia**: mejora notable y consistente frente a la sesión 12 (340s/276s/21s sin el ajuste,
+72-45s/36s/23s con él) — la ausencia de fuga también significa menos tokens generados por respuesta
+(el texto filtrado sumaba varios cientos de tokens), no solo mejor calidad.
+
+### Conclusión de la sesión 13
+
+**El ajuste de sampling sí mejoró a Bonsai de forma real y medible: elimina el defecto grave de la
+sesión 12 (filtración del prompt de sistema) y reduce la latencia de una consulta real entre 3 y 5
+veces, sin costo de VRAM (el cambio es puramente de sampling, no de modelo).** No lo deja perfecto:
+el defecto de citación inconsistente que ya traía documentado el código sigue presente,
+aproximadamente al mismo nivel que antes de esta sesión — no empeoró, pero tampoco se resolvió.
+
+Con este resultado, la comparación contra `Ministral 3 3B` (sesión 10) cambia otra vez:
+
+| | Bonsai (sesión 12, sin ajustar) | Bonsai (esta sesión, ajustado) | Ministral 3 3B (sesión 10) |
+|---|---|---|---|
+| Filtración de prompt | Sí, reproducible | No, en 4/4 pruebas | No |
+| Citación | Filtrada junto con el resto | Inconsistente (completa a veces, parcial otras) | Completa, pero a veces incompleta en cobertura |
+| Latencia (pregunta relevante) | 340s | 45-72s | 177s |
+| VRAM libre | ~2.2 GB | ~2.2 GB (sin cambio) | ~1.3 GB |
+
+Bonsai ajustado ya no pierde contra Ministral en latencia (queda más rápido) ni en VRAM (sigue
+ganando), y el defecto grave que motivó la sesión 12 quedó resuelto. La citación de ninguno de los
+dos es perfecta — es un defecto compartido en distinta forma, no un punto a favor claro de ninguno.
+
+**Recomendación**: el ajuste "funcionó" para el objetivo puntual de esta sesión (arreglar la
+filtración), así que **no hace falta migrar a Ministral por ese motivo** — la razón que motivaba el
+cambio ya no aplica. Queda como decisión abierta, no técnica sino de producto: ¿la citación
+inconsistente que persiste en Bonsai (documentada desde antes de esta investigación, nunca resuelta
+en ninguna sesión) es tolerable, o amerita seguir buscando una solución de fondo (salida estructurada
+para la síntesis, la vía que ya sugería la sesión 3, en vez de más ajuste de sampling en texto
+libre)? No se decidió en esta sesión.
+
+Estado del entorno al cierre: **a diferencia de todas las sesiones 5-12, esta sí modificó el pipeline
+real** — `SintetizadorOpenAi.java` quedó con el prompt corregido y las tres opciones nuevas
+(`repeat_last_n`, `presencePenalty`), la imagen `base-conocimiento-api` se reconstruyó dos veces
+(una con `presencePenalty(0.3)`, descartada; la final con `0.1`), y `kb-api` real quedó corriendo la
+versión con el ajuste. Ningún archivo de compose ni `.env` cambió. El cambio está sin commitear,
+igual que el resto del trabajo en curso de la sesión 9 (`eval-100-preguntas/`,
+`PlanificadorOpenAi.java`, `VerificadorGroundingOpenAi.java`, `compose.bonsai.yml`), que se dejó
+exactamente como estaba.

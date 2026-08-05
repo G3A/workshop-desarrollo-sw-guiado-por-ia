@@ -43,7 +43,7 @@ class SintetizadorOpenAi implements Sintetizador {
             latinoamericano neutro.
 
             Cada afirmacion debe llevar el marcador [n] de la fuente numerada en el contexto de
-            la que sale, PEGADO al final de esa afirmacion puntual -- nunca antes de ella, y
+            la que sale, pegado al final de esa afirmacion puntual -- nunca antes de ella, y
             nunca varios marcadores sueltos agrupados al final del texto sin decir que frase
             respalda cada uno. Ejemplo correcto: "Se necesita Docker Desktop iniciado [2]."
             Ejemplo incorrecto: "Para configurar Docker, [2] se necesita..." (la cita antes de
@@ -63,8 +63,27 @@ class SintetizadorOpenAi implements Sintetizador {
         // citas -- 512 da margen de sobra para eso. Es una red de seguridad contra
         // un bucle de generacion sin fin (ver ADR-0009, hallazgo de repeticion de
         // la sesion 6), no un limite pensado para recortar respuestas normales.
+        //
+        // repeat_last_n(-1): medido en vivo (sesion 12/13 de la investigacion,
+        // ADR-0009) que el default de llama-server (64 tokens) deja el prompt de
+        // sistema completo fuera de la ventana de repeat_penalty en cuanto el
+        // contexto supera unos pocos fragmentos -- Bonsai terminaba copiando texto
+        // literal del propio prompt de sistema (incluida la palabra en mayusculas
+        // que marcaba un ejemplo de citacion) como si fuera parte de la respuesta.
+        // -1 le pide a llama-server que penalice repeticion contra el CONTEXTO
+        // COMPLETO, no solo los ultimos 64 tokens. No es parte de la API oficial de
+        // OpenAI, por eso va en extraBody como repeat_penalty.
+        //
+        // presencePenalty(0.1): repeat_last_n(-1) solo bajo la fuga, no la
+        // eliminaba del todo. Combinado con esta penalidad estandar de OpenAI (es
+        // parte del contrato, no necesita extraBody) si desaparecio en las
+        // pruebas -- medido en vivo que 0.3 ya quitaba las citas [n] casi por
+        // completo, y 0.6+ empujaba al modelo a divagar sobre los fragmentos
+        // irrelevantes del contexto en vez de ignorarlos. 0.1 fue el valor mas
+        // bajo que ya alcanzaba a suprimir la fuga sin perder las citas.
         var opciones = OpenAiChatOptions.builder()
-                .extraBody(Map.of("repeat_penalty", 1.1))
+                .extraBody(Map.of("repeat_penalty", 1.1, "repeat_last_n", -1))
+                .presencePenalty(0.1)
                 .maxTokens(512);
         this.chatClient = ChatClient.builder(modelo).defaultSystem(SISTEMA).defaultOptions(opciones).build();
     }
