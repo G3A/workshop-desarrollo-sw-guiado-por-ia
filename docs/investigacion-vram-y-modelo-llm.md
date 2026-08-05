@@ -1131,3 +1131,109 @@ No se tocó `compose.bonsai.yml`, `.env` ni el cliente de Spring AI real en ning
 sesión — el trabajo en curso de la sesión 9 (piloto de 100 preguntas, `eval-100-preguntas/`, cambios
 sin commitear en `PlanificadorOpenAi.java`/`VerificadorGroundingOpenAi.java`/`compose.bonsai.yml`)
 se dejó exactamente como estaba, sin retomar ni revertir.
+
+## Sesión 11: `Ternary-Bonsai-8B-Q2_0_g64` (mainline, sin fork) — mismo trade-off que el `_g128` del fork, con un prefill mucho más caro
+
+Segunda pista que había dejado pendiente el research previo a la sesión 10: la sesión 7 (hallazgo 25)
+midió `Ternary-Bonsai-8B` con el `_g128` del fork de PrismML en 574 MiB libres, con la sospecha de
+que el problema fuera la agrupación de 128 pesos, no el modelo en sí. Para cuando se escribió esa
+sesión, el soporte CUDA de la variante `_g64` (adoptada como estándar en mainline por costar "menos
+de 6% de memoria adicional" según el propio mantenedor de `llama.cpp`) todavía no estaba mergeado.
+Esta sesión repite la medición con `_g64` ya disponible en la imagen oficial
+`ghcr.io/ggml-org/llama.cpp:server-cuda`, sin el fork, mismo protocolo que la sesión 10 (contenedor
+temporal, `--parallel 1 --no-mmproj`, `kb-api-test` real contra `POST /api/ask` con la puerta de
+relevancia activada).
+
+Archivo confirmado contra la fuente primaria (listado de archivos del repo en Hugging Face):
+`prism-ml/Ternary-Bonsai-8B-gguf/Ternary-Bonsai-8B-Q2_0_g64.gguf`, 2.31 GB (el `_g128`/sin sufijo de
+la sesión 7 pesaba 2.03-2.18 GB — confirma en la práctica el "6% mas" que anticipaba el mantenedor).
+
+### Hallazgo 35: VRAM — mejor que el `_g128` con 4 slots, pero peor que Ministral
+
+Con 1 slot y sin mmproj (no aplica multimodal a este modelo, pero se dejó el flag por paridad con la
+sesión 10): **2769-2781 MiB usados, 1158-1170 MiB libres** de los 4096 MiB de la T600. Mejor que la
+medición de la sesión 7 (574 MiB libres), pero esa comparación no es limpia: la sesión 7 medía con
+4 slots automáticos (multiplicando la cache KV), no 1. Con la misma configuración de 1 slot, queda
+peor que `Ministral 3 3B` (1336-1344 MiB libres, hallazgo 32) y sigue siendo el segundo candidato más
+ajustado de VRAM de toda la investigación, detrás de `openbmb/minicpm5` (100% GPU pero descartado por
+otras razones) y por delante del `_g128` con 4 slots.
+
+| Modelo | VRAM real (1 slot) | Libres de 4096 MiB |
+|---|---|---|
+| `Bonsai-8B` (1-bit) | 1753 MiB | ~2.3 GB |
+| `Ministral 3 3B Instruct-2512` (Q4_K_M) | 2603 MiB | ~1.3 GB |
+| `Ternary-Bonsai-8B-Q2_0_g64` (mainline) | 2769-2781 MiB | ~1.15 GB |
+
+### Hallazgo 36: generación comparable al `_g128`, pero el prefill en frío es dramáticamente más lento — y se corrige solo con el kernel ya "caliente"
+
+Primera llamada tras cargar el modelo: **1.14 tok/s de prefill** (21 tokens, 18.4 segundos) contra
+**5.48 tok/s de generación** — una brecha nunca vista en esta investigación, ni siquiera en el
+hallazgo 29 (sesión 7, `_g128` del fork: prefill 9.6-10.6 tok/s, del mismo orden que la generación).
+Repetir la llamada inmediatamente después (mismo contenedor, sin reiniciar) subió el prefill a
+**6.67 tok/s** — del mismo orden que la generación (5.85 tok/s esa segunda vez), consistente con que
+la primera llamada paga una compilación/selección de kernel CUDA en frío que las siguientes ya no
+pagan. **No confirmado si esto es específico de Turing** (la duda que dejaba abierta el research
+previo a esta sesión sobre soporte de sm_75 para los kernels ternarios de mainline): no se probó en
+otra arquitectura, pero el patrón (JIT de kernel en la primera invocación) es consistente con un
+camino de kernel genérico sin especializar para GPUs antiguas, a diferencia de Ministral (`Q4_K_M`,
+formato mucho más maduro en llama.cpp) que no mostró esta brecha en su primera llamada (hallazgo 33).
+
+Dato práctico para el pipeline real: la primera consulta después de levantar el contenedor paga este
+costo de calentamiento en la primera de sus 2-3 llamadas secuenciales (Planificador, luego
+VerificadorGrounding/Sintetizador) — no se aisló cuánto costó exactamente dentro de la latencia total
+medida en el hallazgo 37, pero es coherente con que la primera pregunta de esta sesión (309s) haya
+sido más lenta que las siguientes dos (285s, 19s) pese a tener menos contenido que sintetizar que la
+segunda.
+
+### Hallazgo 37: los tres roles reales — Planificador y VerificadorGrounding perfectos, síntesis correcta pero incompleta, y una latencia total muy por encima de Ministral y Bonsai
+
+Mismos tres casos canónicos que la sesión 10, mismo protocolo (`POST /api/ask` real, puerta de
+relevancia activada):
+
+| Caso | Plan del Planificador | VerificadorGrounding (resultado observable) | Síntesis | Latencia |
+|---|---|---|---|---|
+| "como se despliega el servicio" | `["search_docs", "search_unified"]`, razón "pregunta de despliegue, no de codigo" | Dejó pasar | *"Para desplegar el servicio se necesita Docker Desktop con el motor iniciado. En Windows, además hay que copiar wslconfig.example a .wslconfig para darle memoria a WSL2 [1]."* — correcto y bien citado, pero **incompleto**: no menciona `.env.example`/`.env` ni `docker compose up -d`, pese a que ambos vienen del mismo fragmento `[1]` | 310s |
+| "explícame cómo usar Java 25" | `["search_docs", "search_unified"]`, razón "pregunta conceptual, no de implementación" | Rechazó | `MENSAJE_SIN_INFORMACION` | 286s |
+| "como esta implementada la fusion RRF en el codigo" | `["search_code", "search_unified"]`, razón "pregunta sobre implementación específica" | Rechazó (repo vacío en este entorno) | `MENSAJE_SIN_INFORMACION` | 20s |
+
+Los tres planes salieron limpios, igual que `Ministral 3 3B` y `llama3.2:3b` — tercer candidato
+NO-Bonsai con Planificador perfecto en los casos probados. `VerificadorGrounding` también acertó los
+tres, con la puerta real activada, igual que Ministral. La diferencia frente a Ministral está en dos
+ejes: la síntesis cubre menos del fragmento citado (Ministral, en cambio, citó bien lo que cubrió y
+además descartó explícitamente el fragmento irrelevante — hallazgo 34), y sobre todo la **latencia**:
+310s y 286s contra los 177s y 141s de Ministral para los mismos dos casos — un candidato bastante más
+lento pese a tener una VRAM libre menor.
+
+### Conclusión de la sesión 11
+
+**`Ternary-Bonsai-8B-Q2_0_g64` en mainline resuelve el problema de dependencia del fork que tenía la
+variante de la sesión 7, pero no mejora sobre `Ministral 3 3B` en ningún eje medido — VRAM más
+ajustada, síntesis menos completa, y latencia notablemente mayor.** Sí sigue superando a Bonsai en un
+punto que ya había medido la sesión 7 y esta confirma: el Planificador y el `VerificadorGrounding`
+funcionan limpio con la puerta real, sin la fragilidad de convergencia que mostraban otros candidatos
+con "thinking" nativo (hallazgo 7).
+
+- **A favor**: elimina la dependencia del fork de PrismML sin perder los aciertos de Planificador
+  y `VerificadorGrounding` que ya tenía el `_g128` (hallazgo 26-27 de la sesión 7). VRAM razonable
+  (~1.15 GB libres), mejor que el peor caso medido con el fork.
+- **En contra**: el prefill en frío es el más caro medido en toda la investigación (aunque se
+  normaliza tras la primera llamada). La latencia total de una consulta real (286-310s) es la más
+  alta de los tres candidatos con evidencia de pipeline completo (Bonsai, Ministral, este). La
+  síntesis, aunque bien citada, cubre menos contenido del fragmento relevante que Ministral.
+
+**Recomendación**: con las dos pistas del research ya evaluadas (Ministral en la sesión 10, esta
+variante en la sesión 11), la conclusión de la sesión 7 sigue de pie sin ambigüedad: **ningún
+candidato de los dieciséis probados en once sesiones desplaza a Bonsai como recomendación de
+producción**. Si en algún momento se prioriza eliminar la dependencia del fork sobre todo lo demás,
+`Ministral 3 3B` (sesión 10) es la opción estrictamente mejor entre los dos candidatos sin fork
+evaluados — gana en VRAM, en cobertura de la síntesis y en latencia frente a esta variante de
+`Ternary-Bonsai-8B`. No quedan pistas concretas sin evaluar de la lista que dejó el research previo a
+la sesión 10.
+
+Estado del entorno al cierre: los contenedores temporales (`kb-ternary-test`, `kb-api-test`) se
+eliminaron al terminar. `kb-llama-server` (Bonsai) se había detenido para medir VRAM limpia y se
+restauró al cerrar (`docker compose -f compose.yml -f compose.gpu.yml -f compose.bonsai.yml up -d`),
+verificado de vuelta en 1753 MiB. Mismo efecto colateral que la sesión 10 con `kb-ollama` perdiendo
+la reserva de GPU al levantar `kb-api-test` con solo `compose.yml` — corregido igual al restaurar el
+stack completo. No se tocó `compose.bonsai.yml`, `.env` ni el trabajo en curso de la sesión 9
+(`eval-100-preguntas/`) en ningún momento de esta sesión.
