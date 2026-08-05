@@ -893,3 +893,241 @@ cambios respecto a como estaba antes de esta sesión. El GGUF de `Ternary-Bonsai
 (`Ternary-Bonsai-8B-Q2_0.gguf`, 2.03 GiB) se descargó a `.data/bonsai/` para las pruebas y se borró al
 cerrar. No se tocó `compose.yml`, `Dockerfile.bonsai`, `compose.bonsai.yml`, `entrypoint-bonsai.sh` ni
 el cliente de Spring AI real en ningún momento de esta sesión.
+
+## Sesión 8: `llama3.2:3b` y `gemma2:2b` contra los tres roles reales del pipeline — la sesión 4 solo había medido VRAM
+
+Pregunta disparadora: la sesión 4 (hallazgo 9) descartó `llama3.2:3b` (3.1 GB, 75% GPU / 25% CPU) y
+`gemma2:2b` (2.2 GB, 90% GPU / 10% CPU) **solo por no entrar 100% en GPU** — nunca se probó su
+calidad real de síntesis, a diferencia de `qwen2.5:3b` (el único que sí llegó a esa prueba en esa
+sesión). Esta sesión cierra ese hueco: los dos candidatos, contra el `Planificador`,
+`VerificadorGrounding` y `Sintetizador` reales.
+
+**Nota de metodología, distinta de las sesiones 1-4**: desde la sesión 6 (`aea5085`), el pipeline ya
+no usa `OllamaChatModel` para estos tres roles — `PlanificadorOllama`/`SintetizadorOllama`/
+`VerificadorGroundingOllama` no existen más en el código, reemplazados por
+`PlanificadorOpenAi`/`SintetizadorOpenAi`/`VerificadorGroundingOpenAi` contra `OpenAiChatModel`
+(hoy apuntando a `llama-server`/Bonsai, ver ADR-0009). Probar estos dos candidatos "como modelo de
+Ollama para el pipeline" ya no es posible tal cual lo hacían las sesiones 1-4. En su lugar, se llamó
+directo a la API nativa de Ollama (`POST /api/chat`, `format` con JSON Schema para salida
+estructurada — el equivalente nativo de `useProviderStructuredOutput()`), reusando **verbatim** los
+tres prompts de sistema reales (`PlanificadorOpenAi`/`VerificadorGroundingOpenAi`/`SintetizadorOpenAi`,
+tal como están hoy en el código) y el mismo par de preguntas canónicas de siempre ("como se despliega
+el servicio" / "explícame cómo usar Java 25") contra el mismo contexto de 4 fragmentos que usaron
+`gemma3:4b`/`qwen2.5:3b`/Bonsai en las sesiones 2-9. El fragmento `[3]` (irrelevante a propósito) es
+un sustituto equivalente-pero-no-idéntico al de esas sesiones: el README ya no trae la descripción
+literal de "la carpeta `corpus/`" que citaban, porque [ADR-0011](adrs/0011-vault-unificado.md) unificó
+el vault y esa sección cambió — no afecta el juicio (sigue siendo un fragmento genuinamente ajeno a
+la pregunta de despliegue), pero se documenta la sustitución por transparencia.
+
+Reiniciando `kb-ollama` en frío antes de cada modelo, igual que la sesión 4.
+
+### Hallazgo 30: `llama3.2:3b` — Planificador y VerificadorGrounding perfectos, y la mejor citación medida en un modelo que no es Bonsai — pero inventa contenido nuevo en la pregunta de control, no solo pega texto
+
+VRAM reproducida igual que la sesión 4: **3.1 GB, 75% GPU / 25% CPU**. Primera llamada (carga en
+frío) tardó ~293 s; el resto, entre 4 y 25 s.
+
+| Rol | Caso | Resultado | Veredicto |
+|---|---|---|---|
+| Planificador | "como se despliega el servicio" | `["search_docs", "search_unified"]` | ✅ limpio, sin caer en `search_code` |
+| Planificador | "como esta implementada la fusion RRF en el codigo" | `["search_code"]` | ✅ |
+| VerificadorGrounding | "explicame como usar Java 25" | `false` | ✅ |
+| VerificadorGrounding | "como se despliega el servicio" | `true` | ✅ |
+| Sintetizador | "como se despliega el servicio" | *"Se despliega el servicio copiando `.env.example` a `.env` y corriendo `docker compose up -d` [2]."* | ✅ cita única, bien pegada al final — pero solo cubre el fragmento `[2]`, sin mencionar Docker Desktop/WSL2 (`[1]`) ni el auto-detect de GPU (`[4]`): correcto pero incompleto |
+| Sintetizador | "explicame como usar Java 25" | *"Para usar Java 25, se necesita tener instalado el entorno de desarrollo Java 25 y compilarlo... Se recomienda consultar la documentación oficial de Oracle o utilizar Maven o Gradle..."* | ❌ alucina, y de una forma nueva: no *pega* el texto del contexto (el defecto ya catalogado de `granite4.1:3b`/`phi4-mini`/`qwen2.5:3b`) sino que **inventa contenido genérico que no está en ningún fragmento**, pese a reconocer primero que "no hay información específica en este contexto" |
+
+Es, de los candidatos NO-Bonsai probados en toda la investigación, el primero con Planificador y
+VerificadorGrounding perfectos en los cuatro casos canónicos a la vez, y una citación de la pregunta
+relevante tan limpia como la mejor medida hasta ahora (hallazgo 12, Bonsai). Pero la pregunta de
+control expone un modo de falla nuevo: alucinación por invención de conocimiento propio en vez de
+pegado de contexto — la misma categoría de violación del prompt de `SintetizadorOpenAi` ("Respondes
+SOLO con lo que aparece en el contexto... si no alcanza, dilo en vez de inventar"), pero con un
+mecanismo distinto al ya catalogado.
+
+### Hallazgo 31: `gemma2:2b` — misma alucinación universal de control, y un falso negativo nuevo de `VerificadorGrounding` sobre la pregunta relevante
+
+VRAM reproducida igual que la sesión 4: **2.2 GB, 90% GPU / 10% CPU**. Primera llamada ~191 s; el
+resto, entre 11 y 19 s — el candidato más liviano y rápido de los dos.
+
+| Rol | Caso | Resultado | Veredicto |
+|---|---|---|---|
+| Planificador | "como se despliega el servicio" | `["search_docs", "search_unified"]` | ✅ |
+| Planificador | "como esta implementada la fusion RRF en el codigo" | `["search_code"]` | ✅ |
+| VerificadorGrounding | "explicame como usar Java 25" | `false` | ✅ |
+| VerificadorGrounding | "como se despliega el servicio" | **`false`** | ❌ falso negativo: la pregunta relevante se rechaza igual que la de control |
+| Sintetizador | "como se despliega el servicio" | *"Para desplegar el servicio se necesita Docker Desktop con el motor iniciado [1]."* | ✅ correcto y bien citado, pero aún más incompleto que `llama3.2:3b` (ni `[2]` ni `[4]`) |
+| Sintetizador | "explicame como usar Java 25" | *"Para desplegar el servicio se necesita Docker Desktop con el motor iniciado. En Windows, además hay que copiar `wslconfig.example`... [1]"* | ❌ reproduce la alucinación universal del ADR-0008 (pega las instrucciones de despliegue como respuesta a Java 25) |
+
+El hallazgo del `VerificadorGrounding` es el más importante de los dos: en el pipeline real
+(`UmbralRelevancia` habilitado), un veredicto `false` sobre "como se despliega el servicio" —
+justo la pregunta que ADR-0008 usa como caso de control positivo — significaría rechazarla con el
+mensaje fijo de "sin información" pese a que el contexto correcto sí estaba disponible. Es el mismo
+tipo de fragilidad que el ADR-0008 ya documentó como no-determinismo de `VerificadorGrounding` con
+`gemma3:4b` (resuelto ahí bajando `temperature` a 0) — aquí la llamada ya se hizo con
+`temperature: 0`, así que no es un problema de muestreo: es un juicio equivocado y reproducible de
+este modelo puntual sobre este caso.
+
+### Conclusión de la sesión 8
+
+Ninguno de los dos resuelve el problema central de la investigación (la alucinación de control del
+ADR-0008): **ambos la reproducen**, cada uno con una variante distinta (invención de contenido nuevo
+en `llama3.2:3b`; pegado del contexto real pero fuera de tema en `gemma2:2b`, el patrón ya conocido).
+Ninguno mejora sobre Bonsai en ese eje (hallazgo 28: Bonsai sigue siendo, de trece candidatos
+probados en total, el único que no alucina en la pregunta de control).
+
+Sí aportan dato nuevo sobre los otros dos roles:
+
+- **`llama3.2:3b`** tiene el mejor Planificador + VerificadorGrounding medido de cualquier candidato
+  NO-Bonsai — cero fallos en los cuatro casos canónicos. Si el objetivo fuera separar roles (un
+  modelo liviano para planificar/verificar, Bonsai u otro solo para sintetizar), es el candidato más
+  prometedor de los dos para esos dos roles puntuales.
+- **`gemma2:2b`** es más liviano y más rápido, pero su falso negativo de `VerificadorGrounding` sobre
+  una pregunta genuinamente relevante es una falla más grave en la práctica que "alucina en la
+  pregunta de control" — ese segundo problema ya lo comparten doce candidatos de trece; el primero
+  bloquearía respuestas correctas en producción.
+
+**Limitación de esta sesión, a diferencia de las 1-7**: no se cableó ningún candidato en el `kb-api`
+real. La prueba fue directa contra la API nativa de Ollama (`/api/chat` + `format`), no contra el
+`response_format: json_schema` de la API compatible con OpenAI que de verdad usa
+`OpenAiChatModel`/`useProviderStructuredOutput()` en el código hoy. Ollama expone un endpoint
+compatible con OpenAI (`/v1/chat/completions`) que en teoría permitiría apuntar
+`SPRING_AI_OPENAI_BASE_URL` ahí sin tocar `PlanificadorOpenAi`/`VerificadorGroundingOpenAi`/
+`SintetizadorOpenAi`, pero su soporte real de `response_format: json_schema` con `strict: true` no
+se verificó en esta sesión — queda como paso pendiente antes de considerar cablear cualquiera de
+los dos en el pipeline real.
+
+Estado del entorno al cierre: `kb-ollama` quedó con `gemma2:2b` cargado (90%/10%, `keep_alive` 1h
+por defecto). No se tocó `.env`, `compose.bonsai.yml` ni ningún archivo de configuración real —
+las pruebas fueron llamadas HTTP puntuales contra el puerto ya expuesto de Ollama
+(`localhost:11434`), sin crear ni modificar ningún contenedor.
+
+## Sesión 10: `Ministral 3 3B Instruct-2512` contra el pipeline real end-to-end — el mejor resultado combinado de toda la investigación, con un costo de VRAM más alto que Bonsai
+
+Disparada por un research previo (no una sesión de prueba, solo WebSearch/WebFetch) que identificó a
+`Ministral 3 3B Instruct-2512` (Mistral AI) como el único candidato pendiente que cumplía en teoría
+los tres filtros que ningún reemplazo de Bonsai había logrado combinar: licencia Apache 2.0
+confirmada en su model card de Hugging Face, sin modo "thinking" por defecto (existe una variante
+`-Reasoning` aparte), y GGUF oficial (`mistralai/Ministral-3-3B-Instruct-2512-GGUF`, `Q4_K_M`,
+2.15 GB) que corre en `llama.cpp` mainline sin necesitar el fork de PrismML que usa Bonsai.
+
+**Nota de proceso, distinta de las sesiones 5-9**: esta vez no hubo que compilar nada. La imagen
+oficial `ghcr.io/ggml-org/llama.cpp:server-cuda` ya trae soporte para este modelo — se usó tal cual,
+con el modelo descargado en caliente vía el flag `-hf` de `llama-server` (que resuelve el repo de
+Hugging Face solo). El contenedor de prueba corrió en el puerto 8082, sin tocar
+`compose.bonsai.yml`. Al llegar a la prueba de los tres roles, en vez de pegar los prompts de
+sistema a mano (como sesiones 5 y 8), se levantó un `kb-api-test` real (`docker compose run`, solo
+`compose.yml`, sin `compose.gpu.yml` ni `compose.bonsai.yml`) con `SPRING_AI_OPENAI_BASE_URL`
+apuntando al contenedor de Ministral vía `host.docker.internal` — así el pipeline real
+(`Orquestador` con sus 7 etapas, retrieval real contra el corpus real ya ingerido con `jls25.pdf`,
+`VerificadorGrounding` con la puerta de relevancia en su valor de producción) corrió sin ningún
+atajo, la primera vez que un candidato nuevo (no-Bonsai) se prueba así en esta investigación.
+
+### Hallazgo 32: VRAM en idle — más del doble que Bonsai, y muy sensible a dos flags que no son obvios por defecto
+
+Primera medición, con los defaults de `llama-server`: **3463 MiB usados, solo 476 MiB libres** de
+los 4096 MiB de la T600 — peor incluso que `Ternary-Bonsai-8B` (574 MiB libres, hallazgo 25). Causa,
+igual que en ese hallazgo: `llama-server` auto-detectó `n_slots = 4` (cuatro slots de generación
+concurrente, cada uno con su propia cache KV) y además cargó de forma automática el componente de
+visión (`mmproj`, el modelo es multimodal — 3.4B de lenguaje + 0.4B de encoder de imagen) que este
+pipeline no usa.
+
+Con `--parallel 1 --no-mmproj` (el caso real de uso: una sola consulta a la vez, texto puro):
+**2603 MiB usados, 1336-1344 MiB libres**, estable antes y después de correr los tres roles del
+pipeline real (hallazgo 34). Sigue siendo **más del doble que Bonsai** (1753 MiB), pero deja margen
+cómodo — muy por encima del límite ajustado que dejaba `Ternary-Bonsai-8B`.
+
+| Modelo | VRAM real | Libres de 4096 MiB |
+|---|---|---|
+| `Bonsai-8B` (1-bit) | 1753 MiB | ~2.3 GB |
+| `Ministral 3 3B Instruct-2512` (Q4_K_M, 1 slot, sin mmproj) | 2603 MiB | ~1.3 GB |
+| `Ternary-Bonsai-8B` (Q2_0, 4 slots default) | 3365 MiB | 574 MiB |
+
+### Hallazgo 33: velocidad de generación — la más rápida de cualquier candidato de baja huella probado hasta ahora
+
+Con un prompt de 543 tokens (plantilla de chat + una pregunta trivial), a 98% de utilización de GPU:
+**9.2 tok/s de generación**. Más rápido que `Bonsai-8B` (5.8-6.9 tok/s, sesiones 5-6) y que
+`Ternary-Bonsai-8B` (~5.0-5.2 tok/s, sesión 7) — consistente con que `Q4_K_M` es un formato de
+cuantización mucho mejor soportado en Turing (T600) que los kernels de 1-bit/ternarios, que dependen
+de tensor cores que esta GPU no tiene (ver hallazgo 11 y 29).
+
+El procesamiento de prompt, en cambio, salió **igual de lento que la generación** (9.8 tok/s,
+543 tokens en 55s) — el mismo patrón anómalo que la sesión 7 ya había medido en
+`Ternary-Bonsai-8B` (hallazgo 29), y que ninguna sesión con `Bonsai-8B` había cuantificado
+directamente. No se investigó la causa exacta (fuera del alcance de una sesión de validación de
+candidato) — pero el efecto práctico es real: con los prompts largos que arma
+`Orquestador.construirContexto()` (varios fragmentos numerados + el prompt de sistema), el prefill
+pesa tanto como la generación en el total de la latencia.
+
+### Hallazgo 34: los tres roles reales, con la puerta de relevancia en su valor de producción — el mejor resultado combinado de los quince candidatos probados
+
+A diferencia de toda sesión anterior (que probaba los prompts de sistema reales pero pegados a mano,
+o con la puerta de relevancia apagada a propósito para aislar la síntesis), esta prueba corrió
+`POST /api/ask` contra el pipeline completo, sin ningún atajo, con
+`KB_UMBRAL_RELEVANCIA_HABILITADO=true` (el default de producción, no overrideado). El corpus real ya
+incluye `jls25.pdf` (desde la sesión 9/ADR-0011), así que "explícame cómo usar Java 25" ya no es un
+caso 100% fuera de dominio como en las sesiones 1-8 — hay contenido genuinamente relacionado
+ingerido. Se mantuvo la pregunta de todas formas por continuidad con el resto de la investigación, y
+se agregó el caso de `search_code` de las sesiones 5-9 para cubrir los tres roles con los tres tipos
+de pregunta.
+
+| Caso | Plan del Planificador | VerificadorGrounding (resultado observable) | Síntesis |
+|---|---|---|---|
+| "como se despliega el servicio" | `["search_unified"]`, razón "pregunta sobre despliegue (requisitos, configuración, entorno)" — limpio, sin `search_code` | Dejó pasar (hubo respuesta con citas) | Citó `despliegue.md` con los pasos correctos, **y explícitamente descartó el fragmento irrelevante de `jls25.pdf`** ("No hay información relevante en los documentos sobre *jls25.pdf* para responder sobre cómo se despliega el servicio") en vez de citarlo por citar — comportamiento nuevo, ningún candidato anterior lo había hecho. Incompleto: no mencionó Docker Desktop/WSL2, que estaba en el mismo fragmento citado |
+| "explícame cómo usar Java 25" | `["search_docs", "search_unified"]`, razón "pregunta conceptual sobre lenguaje/framework (Java 25)" | Rechazó | `MENSAJE_SIN_INFORMACION`, 0 citas — igual que el resultado protegido que el hallazgo 16 midió con `gemma3:4b` |
+| "como esta implementada la fusion RRF en el codigo" | `["search_code", "search_unified"]`, razón "petición concreta sobre implementación de algoritmo (RRF) en código fuente del proyecto" — exacto | Rechazó (repo vacío en este entorno, sin candidatos que pasar) | `MENSAJE_SIN_INFORMACION`, esperado dado que no hay repo indexado en este entorno |
+
+Los tres casos del Planificador salieron limpios — ninguna herramienta de más, ninguna trampa
+código-vs-documentación, razones bien formadas dentro del límite de palabras. Es, junto con
+`llama3.2:3b` (sesión 8), uno de los dos candidatos NO-Bonsai con Planificador perfecto en todos los
+casos probados, pero el único que además tiene los tres veredictos de `VerificadorGrounding`
+correctos **verificados con la puerta real de producción activada**, no con los dos casos aislados
+que usaban las sesiones 5-9. No se pudo reproducir el defecto de "alucinación de control" del
+ADR-0008 en esta sesión porque la puerta lo interceptó antes de llegar a síntesis — igual que ya
+había pasado con `gemma3:4b` (hallazgo 16) y, por inferencia, con Bonsai (hallazgo 14).
+
+Latencia: 177s (pregunta con síntesis completa), 141s (control, rechazado tras planificador +
+verificador), 17s (código, rechazo rápido por falta de contenido) — más lento que Bonsai en total
+pese a la generación más rápida (hallazgo 33), consistente con el prefill lento del hallazgo 33
+pesando sobre el total en preguntas con contexto largo.
+
+### Conclusión de la sesión 10
+
+**`Ministral 3 3B Instruct-2512` es el primer candidato de quince que combina Planificador correcto,
+`VerificadorGrounding` correcto con la puerta real activada, y síntesis bien citada — sin depender
+del fork de PrismML.** No es un reemplazo automático de Bonsai: es un trade-off distinto, más claro
+que el de `Ternary-Bonsai-8B` (sesión 7).
+
+- **A favor**: los tres roles pasaron limpio contra el pipeline real, no contra una réplica aislada
+  de los prompts. Generación más rápida que cualquier variante de Bonsai (hallazgo 33). Sin
+  dependencia del fork — corre en la imagen oficial de `llama.cpp`, más simple de mantener que
+  `Dockerfile.bonsai`. Primer candidato en descartar explícitamente un fragmento irrelevante en la
+  síntesis en vez de citarlo por citar (hallazgo 34).
+- **En contra**: usa más del doble de VRAM que Bonsai (2603 MiB contra 1753 MiB, hallazgo 32) — sigue
+  entrando cómodo en la T600, pero con menos margen. Prefill tan lento como la generación
+  (hallazgo 33), un costo que Bonsai no tiene medido en la misma magnitud. Síntesis incompleta en el
+  caso relevante (omitió parte del fragmento citado). Y el caso de control ("Java 25") ya no es una
+  prueba limpia de alucinación fuera de dominio en este corpus — solo confirma que la puerta de
+  relevancia sigue funcionando, no que el modelo resista la tentación de alucinar como sí lo probó
+  el hallazgo 13 con Bonsai (puerta apagada).
+
+**Recomendación**: amerita quedar como el candidato de referencia si en algún momento se prioriza
+eliminar la dependencia del fork de PrismML sobre el margen de VRAM — es la primera vez en diez
+sesiones que un candidato sin fork pasa los tres roles reales sin fallar ninguno. No desplaza a
+Bonsai como recomendación de producción por sí solo: la ganancia (sin fork, más rápido generando) se
+paga con VRAM y con una pregunta de control que ya no mide lo mismo que antes en este corpus. Antes
+de una decisión real, faltaría repetir el caso de control con una pregunta genuinamente fuera de
+dominio para este corpus (algo que ni "despliegue" ni "Java" cubran, dado que `jls25.pdf` ahora
+domina el vault), y medir la latencia con contexto largo real (no solo los tres casos puntuales de
+esta sesión) antes de comparar el costo total por consulta contra Bonsai.
+
+Estado del entorno al cierre: los contenedores temporales (`kb-ministral-test`, `kb-api-test`) se
+eliminaron al terminar. `kb-llama-server` (Bonsai) se había detenido para medir VRAM limpia
+(protocolo de la sesión 7, hallazgo 25) y se restauró al cerrar
+(`docker compose -f compose.yml -f compose.gpu.yml -f compose.bonsai.yml up -d`), verificado de
+vuelta en 1753 MiB. Nota operativa repetida de la sesión 4: levantar el `kb-api-test` con
+`docker compose run` usando solo `compose.yml` (sin `compose.gpu.yml`) volvió a recrear `kb-ollama`
+sin la reserva de GPU — no afectó esta sesión porque los embeddings ya corren en CPU
+(`bge-m3-cpu`), pero se corrigió igual al restaurar el stack completo con los tres archivos compose.
+No se tocó `compose.bonsai.yml`, `.env` ni el cliente de Spring AI real en ningún momento de esta
+sesión — el trabajo en curso de la sesión 9 (piloto de 100 preguntas, `eval-100-preguntas/`, cambios
+sin commitear en `PlanificadorOpenAi.java`/`VerificadorGroundingOpenAi.java`/`compose.bonsai.yml`)
+se dejó exactamente como estaba, sin retomar ni revertir.
