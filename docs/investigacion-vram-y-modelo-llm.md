@@ -1237,3 +1237,124 @@ verificado de vuelta en 1753 MiB. Mismo efecto colateral que la sesión 10 con `
 la reserva de GPU al levantar `kb-api-test` con solo `compose.yml` — corregido igual al restaurar el
 stack completo. No se tocó `compose.bonsai.yml`, `.env` ni el trabajo en curso de la sesión 9
 (`eval-100-preguntas/`) en ningún momento de esta sesión.
+
+## Sesión 12: Bonsai real de producción, por primera vez bajo el mismo protocolo riguroso que Ministral y Ternary-Bonsai — filtra su propio prompt de sistema en la respuesta
+
+Pregunta disparadora, del usuario: si Ministral generó más rápido que Bonsai (hallazgo 33) y pasó los
+tres roles limpio (hallazgo 34), ¿por qué la sesión 10 seguía recomendando a Bonsai? La respuesta
+honesta: nunca se había sometido a Bonsai al mismo protocolo riguroso (`POST /api/ask` real, puerta
+de relevancia activada, contra el corpus real) que sí se usó con Ministral (sesión 10) y
+`Ternary-Bonsai-8B` (sesión 11). La evidencia a favor de Bonsai databa de las sesiones 5-6: prompts
+pegados a mano contra `llama-cli`, con la puerta de relevancia **apagada** a propósito para aislar la
+síntesis — una comparación despareja. Esta sesión corrige eso: los mismos tres casos canónicos,
+contra el `kb-api` real de producción (puerto 8080, sin contenedores temporales — Bonsai ya es el
+modelo real corriendo), sin overridear nada.
+
+### Hallazgo 38: velocidad real — Bonsai es el más lento de los tres, no el más rápido
+
+Medido en caliente contra el puerto real de `llama-server` (8081): **6.65 tok/s de generación, 8.95
+tok/s de prefill**. Confirma el hallazgo 33 de la sesión 10: **Ministral genera más rápido que
+Bonsai** (9.2 tok/s contra 6.65 tok/s) — la sesión 10 ya lo había medido así, pero la conclusión final
+no lo puso en primer plano. VRAM real: 1753-1765 MiB usados, 2174-2186 MiB libres — sigue siendo la
+huella más chica de los tres candidatos con evidencia de pipeline completo.
+
+| Modelo | Generación | Prefill | VRAM libre |
+|---|---|---|---|
+| `Ministral 3 3B` | 9.2 tok/s | ~10 tok/s (calentado) | ~1.3 GB |
+| `Bonsai-8B` (1-bit) | 6.65 tok/s | 8.95 tok/s | ~2.2 GB |
+| `Ternary-Bonsai-8B` `_g64` | 5.48 tok/s | ~6.7 tok/s (calentado) | ~1.15 GB |
+
+### Hallazgo 39: la síntesis real filtra fragmentos completos del propio prompt de sistema en la respuesta — reproducible, no un evento aislado
+
+En la pregunta relevante ("como se despliega el servicio"), la respuesta real del `kb-api` de
+producción:
+
+> Para desplegar el servicio se necesita Docker Desktop con el motor iniciado. En Windows, además
+> hay que copiar wslconfig.example a .wslconfig para darle memoria a WSL2 [1]. PEGADO
+>
+> Cada afirmacion debe llevar el marcador [n] de la fuente numerada en el contexto de la que sale,
+> PEGADO al final de esa afirmacion puntual -- nunca antes de ella, y nunca varios marcadores sueltos
+> agrupados al final del texto sin decir que frase respalda cada uno. Ejemplo correcto: "Se necesita
+> Docker Desktop iniciado [2]." Ejemplo incorrecto: "Para configurar Docker, [2] se necesita..." (la
+> cita antes de la afirmacion) o dejar "[1], [3]" sueltos al cierre de la respuesta.
+>
+> Ve directo a la respuesta. NO narres tu razonamiento ("primero voy a...", "el usuario esta
+> preguntando...", "veamos el contexto..."): eso no es la respuesta, es ruido que el usuario tiene
+> que leer igual. La primera palabra que escribas debe ser parte de la respuesta misma.
+
+La palabra "PEGADO" no la inventó el modelo: es literal del prompt de sistema real de
+`SintetizadorOpenAi.java` (línea 46, "...PEGADO al final de esa afirmacion puntual..."). Bonsai copió
+verbatim sus propias instrucciones de sistema — los dos ejemplos de citación completos, la
+instrucción anti-narración — como si fueran parte de la respuesta al usuario, **después** de haber
+dado la respuesta correcta y bien citada en la primera oración.
+
+Se repitió la misma pregunta una segunda vez para descartar que fuera ruido de muestreo
+(`temperature: 0.2`, no determinística): **se repitió el mismo patrón**, con una variante al cierre
+("No hay contradicciones entre las fuentes en este contexto." — otra instrucción literal del prompt,
+la de contradicciones, que tampoco aplica citarla como si fuera parte de la respuesta). Es un defecto
+reproducible de esta combinación puntual (Bonsai 1-bit + el prompt de sistema real, tal como quedó
+después de los ajustes no documentados que ya trae `SintetizadorOpenAi.java` hoy), no un evento
+aislado.
+
+Es un modo de falla nuevo, no catalogado en ninguna de las once sesiones anteriores: ninguna de ellas
+había probado la síntesis real de Bonsai con este prompt de sistema exacto contra el pipeline real
+(las sesiones 5-6 usaban una versión más corta del prompt, pegada a mano, sin la puerta de
+relevancia). El propio comentario de `SintetizadorOpenAi.java` (líneas 23-26) ya dejaba una
+advertencia sin resolver: *"la citacion todavia midio peor que en las pruebas aisladas de la sesion
+5 ... sigue pendiente mas ajuste y re-validacion, no es un problema resuelto del todo"* — esta sesión
+confirma esa sospecha con un caso concreto y más grave de lo que ese comentario anticipaba (no solo
+peor citación, sino filtración completa del prompt).
+
+`Ministral 3 3B` (sesión 10) y `Ternary-Bonsai-8B _g64` (sesión 11), probados contra el mismo prompt
+de sistema real bajo el mismo protocolo, **no mostraron este defecto** en ninguna de sus pruebas.
+
+### Hallazgo 40: Planificador y VerificadorGrounding, igual de limpios que los otros dos candidatos
+
+| Caso | Plan del Planificador | VerificadorGrounding | Latencia |
+|---|---|---|---|
+| "como se despliega el servicio" | `["search_docs", "search_unified"]` | Dejó pasar | 340s (1a vez) / 83s (2a vez, cache tibia) |
+| "explícame cómo usar Java 25" | `["search_unified"]` | Rechazó | 276s |
+| "como esta implementada la fusion RRF en el codigo" | `["search_code", "search_unified"]` | Rechazó (repo vacío) | 21s |
+
+Sin sorpresas acá: Bonsai empata con Ministral y `Ternary-Bonsai-8B` en estos dos roles, los tres
+candidatos con Planificador y VerificadorGrounding perfectos contra los tres casos canónicos. La
+latencia de la pregunta relevante (340s la primera vez) es la más alta de los tres candidatos con
+evidencia de pipeline completo — **peor que Ministral (177s) y que `Ternary-Bonsai-8B` (310s)**, pese
+a tener la VRAM más liviana de los tres. Coherente con el hallazgo 38: menos tok/s de generación, y
+acá además una respuesta más larga de lo necesario (el prompt filtrado completo se suma a los tokens
+generados).
+
+### Conclusión de la sesión 12 — cambia la recomendación de las sesiones 7-11
+
+**Bajo el mismo protocolo riguroso, `Ministral 3 3B` supera a Bonsai en los tres ejes medibles:
+velocidad (9.2 contra 6.65 tok/s), latencia total de una consulta real (177s contra 340s) y calidad
+de síntesis (Ministral no muestra ningún defecto; Bonsai filtra su propio prompt de sistema de forma
+reproducible).** La única ventaja que le queda a Bonsai es VRAM (1753 MiB contra 2603 MiB) — real,
+pero ya no suficiente por sí sola para sostener la recomendación de las sesiones 7-11, que se apoyaba
+en evidencia de síntesis de las sesiones 5-6 obtenida con un prompt de sistema distinto (más corto,
+sin la puerta de relevancia) al que corre hoy en producción.
+
+Esto **no** es una prueba de que Bonsai sea inherentemente peor modelo que Ministral — es evidencia
+de que la combinación actual (Bonsai 1-bit + el prompt de sistema real de hoy + `repeat_penalty: 1.1`
++ el resto de la configuración de `compose.bonsai.yml`) tiene un defecto concreto y reproducible que
+ninguna sesión anterior había medido, porque ninguna había probado exactamente esta combinación. Es
+posible que un ajuste de sampling (el mismo tipo de ajuste que ya resolvió la repetición completa de
+respuesta en la sesión 6) o una poda del prompt de sistema reduzcan o eliminen la filtración — no se
+probó en esta sesión, que fue de medición, no de corrección.
+
+**Recomendación**: la elección entre Bonsai y Ministral ya no es obvia a favor de Bonsai. Antes de
+decidir un cambio de producción, faltaría: (a) intentar el mismo tipo de ajuste de sampling/prompt
+que corrigió la repetición de la sesión 6 para ver si la filtración de Bonsai es corregible sin
+cambiar de modelo, y (b) correr varias repeticiones más de cada candidato (esta sesión corrió cada
+caso una sola vez, salvo la relevante con Bonsai) para descartar que cualquiera de las dos
+observaciones sea ruido de muestreo. Hasta entonces, la comparación más honesta es: **Ministral 3 3B
+es hoy el candidato con mejor evidencia medida bajo el protocolo más riguroso de toda la
+investigación — más rápido, sin fork, y sin el defecto que sí se encontró en Bonsai** — pero
+reemplazar el modelo de producción por eso significaría perder margen de VRAM y aceptar una
+integración sin las ~12 sesiones de rodaje que ya tiene Bonsai.
+
+Estado del entorno al cierre: esta sesión no usó ningún contenedor temporal — las pruebas fueron
+directas contra `kb-api` (puerto 8080) y `kb-llama-server` (puerto 8081) reales de producción, sin
+crear, detener ni modificar ningún contenedor. No se tocó `compose.bonsai.yml`, `.env`,
+`SintetizadorOpenAi.java` ni ningún archivo de configuración real. El trabajo en curso de la
+sesión 9 (`eval-100-preguntas/`) se dejó exactamente como estaba.
