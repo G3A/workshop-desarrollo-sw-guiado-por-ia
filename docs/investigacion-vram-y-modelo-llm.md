@@ -1489,3 +1489,141 @@ versión con el ajuste. Ningún archivo de compose ni `.env` cambió. El cambio 
 igual que el resto del trabajo en curso de la sesión 9 (`eval-100-preguntas/`,
 `PlanificadorOpenAi.java`, `VerificadorGroundingOpenAi.java`, `compose.bonsai.yml`), que se dejó
 exactamente como estaba.
+
+## Sesión 14: el piloto de 100 preguntas retomado — un bug de portabilidad en el ajuste de la sesión 13, y la primera comparación de precisión con datos reales (no solo latencia)
+
+Continuación directa del piloto de evaluación que había quedado en 18/100 (sesión 9, sin cerrar
+formalmente en este documento — sus cambios seguían sin commitear en `compose.bonsai.yml`,
+`PlanificadorOpenAi.java` y `VerificadorGroundingOpenAi.java`). El pedido de esta sesión fue puntual:
+terminar ese piloto. En el camino aparecieron dos problemas de infraestructura del harness mismo, no
+del pipeline, más la primera comparación de precisión (no solo velocidad) entre Bonsai y Ministral
+con una muestra real.
+
+### Hallazgo 46: `repeat_last_n: -1` (el arreglo de la sesión 13) rompe contra el build oficial de `llama.cpp` que sirve a cualquier candidato sin el fork de PrismML
+
+Al correr el mismo piloto contra `Ministral 3 3B` (para comparar de igual a igual con Bonsai bajo la
+misma carga de preguntas), casi todas las respuestas volvían vacías sin marcarse como error. La causa:
+`repeat_last_n: -1` (agregado en la sesión 13 para arreglar la filtración de prompt de Bonsai) es un
+valor que el fork de PrismML acepta con la semántica de `llama.cpp` ("-1 = todo el contexto"), pero
+el build oficial `ghcr.io/ggml-org/llama.cpp:server-cuda` (el que sirve a Ministral y a cualquier
+candidato sin fork) lo **rechaza con 400**: `Field 'repeat_last_n': Value must be between 0 <= value
+<= 2147483647, but got -1`. Spring AI absorbía ese 400 como una excepción no capturada en el flujo de
+streaming, y el turno quedaba vacío en la UI sin pasar por la rama de error que sí detecta
+`ejecutar.js` (`turno-estado.error`).
+
+Arreglo: cambiar `repeat_last_n` de `-1` a `4096` (un valor positivo que empata con `BONSAI_CTX_SIZE`
+y logra el mismo efecto práctico — penalizar contra todo el contexto real de esta configuración — sin
+depender de la semántica especial de `-1` que solo el fork acepta). Verificado con una llamada directa
+contra `llama-server` de Ministral (`repeat_last_n: 4096` sí funciona) y luego contra `kb-api` real de
+Bonsai (sigue sin la filtración del hallazgo 39, la latencia de la pregunta canónica no cambió). Este
+hallazgo es importante más allá de esta sesión: cualquier ajuste de sampling que se agregue a
+`SintetizadorOpenAi.java` pensando solo en Bonsai puede no ser portable al día que se integre un
+candidato sin fork (Ministral u otro) — vale la pena probar contra los dos backends antes de dar un
+ajuste por cerrado.
+
+### Hallazgo 47: el harness de Playwright (`ejecutar.js`) tenía dos bugs de resiliencia que no se habían visto en corridas cortas
+
+Con una corrida larga (~100 preguntas seguidas, sesiones de horas) aparecieron dos modos de falla que
+las corridas cortas de prueba nunca habían expuesto:
+
+- **Loop de crasheos sin relanzar.** `chrome-headless-shell.exe` puede colapsar (`Target crashed`) a
+  mitad de una corrida. El chequeo `browser.isConnected()` al inicio de cada iteración no detecta
+  este caso -- el proceso principal de Chromium sigue "conectado" pero corrupto, y
+  `browser.newPage()` falla siempre igual. En una corrida real esto encadenó **62 preguntas seguidas
+  falladas** (ids 39-100 de una corrida) sin que nada relanzara el navegador. Arreglo: detectar el
+  patrón del mensaje de error (`crashed|Target closed|Protocol error`) dentro del `catch` y forzar un
+  `browser.close()` + relanzamiento ahí mismo, no depender del chequeo de la siguiente iteración.
+- **El relanzamiento mismo puede fallar, y sin protección tumba todo el proceso.** Con el primer
+  arreglo aplicado, un `chromium.launch()` que también fallara (medido en vivo: una interrupción de
+  la sesión de terminal a mitad de una corrida mató procesos huérfanos de Chromium; otra vez, presión
+  real de memoria del sistema con `vmmemWSL` + Docker + el resto de aplicaciones dejando menos de
+  4 GB libres de 33 GB totales hizo que `chrome-headless-shell.exe` muriera con `exitCode=3221225794`
+  -- 0xC0000005, violación de acceso -- incluso en el reintento) escapaba sin capturar y mataba
+  `main()` completo, dejando docenas de preguntas pendientes sin correr. Pasó dos veces en esta sesión
+  (una con 47 preguntas pendientes, otra con 25). Arreglo final: varios intentos de relanzamiento con
+  espera creciente (5 s, 15 s, 30 s) en vez de uno solo, dándole tiempo a que la presión de memoria
+  del sistema baje antes de rendirse.
+
+Ninguno de los dos bugs es del pipeline ni de ningún modelo -- son del script de evaluación
+(`eval-100-preguntas/ejecutar.js`), que ya venía con soporte de reanudación (salta las preguntas que
+ya tienen resultado), lo que permitió retomar cada corte sin perder el trabajo previo.
+
+### Hallazgo 48: comparación de precisión con datos reales -- empate exacto en las mismas preguntas, Ministral sistemáticamente más rápido
+
+Bonsai nunca llegó a correr las 100 preguntas completas en esta ni en ninguna sesión anterior (se
+quedó en 9, a un ritmo de ~250 s/pregunta que hubiera tomado 6-7 horas para el lote completo -- una
+decisión consciente de esta sesión, confirmada con el usuario, de no gastar ese tiempo si ya se sabía
+que era lento). En cambio, `Ministral 3 3B` sí completó el piloto entero: **100/100 corridas, 97
+calificadas** (3 con el error de desborde de contexto del hallazgo 49) -- primera vez en toda la
+investigación que un candidato corre el piloto completo de principio a fin.
+
+Comparando las mismas 9 preguntas exactas que Bonsai alcanzó a correr (8 comparables, excluyendo el
+id=2 que dio error de infraestructura en ambos por igual):
+
+| id | Esperado | Bonsai (comportamiento/latencia) | Ministral (comportamiento/latencia) |
+|---|---|---|---|
+| 1 | responde | responde ✅ / 346.2s | responde ✅ / 23.7s |
+| 3 | responde | responde ✅ / 297.1s | responde ✅ / 175.1s |
+| 4 | responde | rechaza ❌ / 33.8s | rechaza ❌ / 21.4s |
+| 5 | responde | responde ✅ / 310.6s | responde ✅ / 176.4s |
+| 6 | responde | responde ✅ / 277.4s | responde ✅ / 140.0s |
+| 7 | responde | rechaza ❌ / 29.7s | rechaza ❌ / 25.7s |
+| 8 | responde | responde ✅ / 408.3s | responde ✅ / 227.2s |
+| 9 | responde | responde ✅ / 502.2s | responde ✅ / 262.1s |
+
+**Empate exacto en precisión (6/8 cada uno) y en el patrón de fallas** -- las mismas dos preguntas
+(4 y 7) fallan igual en ambos modelos, con el mismo tipo de error (rechazo de más). Esto es un dato
+valioso por sí solo: sugiere que esas dos fallas no son un problema de calidad de síntesis de ningún
+modelo puntual, sino de la etapa de recuperación/umbral compartida por ambos (mismo `kb-api`, mismo
+corpus, misma configuración de `KB_UMBRAL_RELEVANCIA_TECHO_CONFIANZA`) -- consistente con el
+`hallazgo` (sesión 9, sin numerar formalmente en este doc) de que `jls25.pdf` domina el corpus y
+puede dejar contenido relevante sin competir por espacio en el contexto final.
+
+En las 8 preguntas comparables, **Ministral fue más rápido en las 8 sin excepción**, entre 1.4x
+(pregunta 4: 33.8s vs 21.4s) y 14.6x (pregunta 1: 346.2s vs 23.7s) más rápido según el caso. Tiempo
+promedio de las 9: Bonsai 247.6s, Ministral 190.4s en esas mismas 9 (incluyendo el error de la
+pregunta 2 en ambos casos).
+
+### Hallazgo 49: precisión de Ministral en la muestra completa -- 76.3%, con fallas concentradas en un patrón de rechazo, no de alucinación
+
+Reporte completo (`npm run reporte`, cruzando con `query_log`): **74/97 correctas (76.3%)**, 3
+preguntas excluidas por el mismo error de desborde de contexto que ya documentó el hallazgo 39 de
+sesiones anteriores (`request (N tokens) exceeds the available context size (4096 tokens)`) -- un
+límite compartido de la infraestructura (`BONSAI_CTX_SIZE`/`ctx-size` de Ministral, ambos en 4096),
+no un defecto de ningún modelo puntual. Consistente con lo medido en el subconjunto de 8 preguntas
+del hallazgo 48: casi todas las fallas observadas durante la corrida fueron **rechazos de preguntas
+que sí debían responderse** (el patrón "AMBIGUO cae por debajo del umbral pese a tener contenido
+relevante", ya documentado en sesiones anteriores), no alucinaciones de contenido inventado. No se
+hizo en esta sesión un análisis pregunta por pregunta de las ~23 fallas restantes (fuera del piloto
+de terminar la corrida) -- el `reporte.html` generado (`eval-100-preguntas/reporte.ministral-3-3b-100preguntas.html`, filtrable
+por categoría y por "solo incorrectas") queda disponible para ese análisis en una sesión futura.
+
+### Conclusión de la sesión 14
+
+**No hay evidencia, con esta muestra, de que Bonsai sintetice con más precisión que Ministral --
+empatan exacto en las preguntas comparables, y Ministral es sistemáticamente más rápido.** Esto no
+reabre ni cierra la recomendación de producción por sí solo (la sesión 13 ya había señalado que la
+ventaja de Bonsai se redujo a VRAM tras el arreglo del prompt), pero sí es la primera vez que existe
+un dato de precisión sobre una muestra real de 97 preguntas técnicas (no solo los 2-3 casos canónicos
+del ADR-0008 que usaban las sesiones 5-13) para respaldar la comparación.
+
+Limitación explícita de esta comparación: la muestra pareja entre los dos modelos es de solo 8
+preguntas (Bonsai nunca corrió más) -- suficiente para ver que empatan y que Ministral es más rápido,
+insuficiente para una afirmación fuerte de "misma precisión" a la escala de 100 preguntas. El dato de
+97 preguntas de Ministral es sólido por sí mismo, pero no tiene una contraparte de Bonsai a esa
+escala por el costo de tiempo que implicaría (6-7 horas estimadas).
+
+Estado del entorno al cierre: los contenedores temporales (`kb-api-test`, `kb-ministral-test`) se
+eliminaron al terminar; `kb-llama-server` (Bonsai) se restauró y quedó de vuelta como el `kb-api` real
+de producción, verificado sano. `eval-100-preguntas/ejecutar.js` quedó con los dos arreglos de
+resiliencia del hallazgo 47 (sin commitear, igual que el resto del trabajo de la sesión 9).
+`src/main/java/co/g3a/baseconocimiento/llm/SintetizadorOpenAi.java` quedó con `repeat_last_n: 4096`
+en vez de `-1` (hallazgo 46) -- este cambio sí se aplicó sobre el archivo que la sesión 13 ya había
+dejado sin commitear, reconstruido y verificado contra el `kb-api` real. Los archivos de resultados
+crudos de cada corte de esta sesión (`resultados-brutos.bonsai-parcial-9preguntas.json`,
+`resultados-brutos.ministral-parcial-9preguntas.json`,
+`resultados-brutos.previo-config-vieja.18preguntas.json`) quedaron en `eval-100-preguntas/` junto al
+resultado final, ya renombrado para distinguirlo con claridad de cualquier otro modelo que se pruebe
+después (`resultados-brutos.ministral-3-3b-100preguntas.json`,
+`resultados-completos.ministral-3-3b-100preguntas.json`,
+`reporte.ministral-3-3b-100preguntas.html`), todos sin commitear.
