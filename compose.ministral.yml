@@ -32,19 +32,20 @@ services:
       - "0.0.0.0"
       - "--port"
       - "8080"
-      # Se queda en 4096 a proposito, sin subirlo como se hizo con BONSAI_CTX_SIZE
-      # en compose.bonsai.yml (sesion 15). Medido en vivo con nvidia-smi (mismo
-      # protocolo: produccion detenida un momento para una linea base limpia):
-      # Ministral en 4096 usa 2595 MiB; duplicar a 8192 sube a 3015 MiB (+420 MiB) y
-      # deja solo 924 MiB libres de los ~3.9 GB reales de esta T600 -- un margen
-      # mucho mas ajustado que el de Bonsai (1.6 GB libres al mismo ctx-size, por
-      # partir de un modelo que pesa una fraccion de esto). Tecnicamente entra sin
-      # OOM, pero sin margen para otro consumidor de GPU concurrente (el propio
-      # escritorio de Windows, hallazgo 1). Subir esto a 8192 es una decision de
-      # producto, no un ajuste barato como en Bonsai -- dejar en 4096 hasta que haga
-      # falta de verdad, o probar un punto intermedio (6144) antes de comprometerse.
+      # Subido a 8192 (sesion 15, igual que BONSAI_CTX_SIZE en compose.bonsai.yml)
+      # para cubrir el mismo desborde de contexto medido en el piloto de Ministral
+      # (hallazgo 51). A diferencia de Bonsai, esto NO es gratis aca: medido en vivo
+      # con nvidia-smi (produccion detenida un momento para una linea base limpia),
+      # Ministral en 4096 usa 2595 MiB; en 8192 sube a 3015 MiB (+420 MiB), dejando
+      # solo 924 MiB libres de los ~3.9 GB reales de esta T600 -- sin margen para
+      # otro consumidor de GPU concurrente (el propio escritorio de Windows,
+      # hallazgo 1). Decision explicita del usuario de aceptar ese margen mas
+      # ajustado a cambio de cubrir el desborde, no un ajuste barato como en Bonsai
+      # (que parte de un modelo que pesa una fraccion de esto y deja 1.6 GB libres
+      # al mismo ctx-size). Si esta GPU empieza a dar OOM con este perfil activo,
+      # bajar a un punto intermedio (6144, sin medir todavia) antes que volver a 4096.
       - "--ctx-size"
-      - "${MINISTRAL_CTX_SIZE:-4096}"
+      - "${MINISTRAL_CTX_SIZE:-8192}"
       # --parallel 1 --no-mmproj: sin esto, llama-server autodetecta 4 slots de
       # generacion concurrente (cada uno con su propia cache KV) y carga el
       # componente de vision del modelo (mmproj, no lo usa este pipeline de solo
