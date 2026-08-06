@@ -30,7 +30,18 @@ services:
         CUDA_ARCH: ${BONSAI_CUDA_ARCH:-75}
     container_name: kb-llama-server
     environment:
-      BONSAI_CTX_SIZE: ${BONSAI_CTX_SIZE:-4096}
+      # 4096 se quedaba corto: la sesion 15 (docs/investigacion-vram-y-modelo-llm.md,
+      # hallazgo 51) midio que 6 de 17 preguntas del piloto de Ministral desbordaban
+      # ese limite en la llamada a VerificadorGrounding, y la sesion 14 ya habia visto
+      # el mismo desborde romper la sintesis en 3 preguntas mas -- mismo limite fisico,
+      # afecta a cualquier modelo que sirva este llama-server. Medido en vivo con
+      # nvidia-smi (contenedor de prueba aislado, produccion detenida un momento para
+      # una linea base limpia): duplicar a 8192 solo cuesta ~568 MiB extra (1765->2333
+      # MiB), dejando 1.6 GB libres de sobra en la T600 de 4 GB -- cubre con margen el
+      # peor caso medido (~5000 tokens). Barato y seguro para Bonsai especificamente
+      # (pesa poco, sobra VRAM); no asumir que el mismo margen aplica a otro modelo sin
+      # medirlo aparte (Ministral, por ejemplo, parte de mucha menos VRAM libre).
+      BONSAI_CTX_SIZE: ${BONSAI_CTX_SIZE:-8192}
       BONSAI_GPU_LAYERS: ${BONSAI_GPU_LAYERS:-99}
     volumes:
       - ${KB_DATA_DIR:-./.data}/bonsai:/models/bonsai:ro
@@ -62,15 +73,17 @@ services:
     environment:
       SPRING_AI_OPENAI_BASE_URL: http://llama-server:8080
       KB_LLM_MODELO: ${KB_LLM_MODELO:-Bonsai-8B-Q1_0.gguf}
-      # BONSAI_CTX_SIZE de arriba es 4096. El default de kb.orquestacion.max-
+      # BONSAI_CTX_SIZE de arriba ERA 4096 (sesion 8). El default de kb.orquestacion.max-
       # fragmentos-contexto/kb.recuperacion.top-rerank (10 cada uno) arma un
       # prompt de sintesis de ~5070 tokens con los fragmentos de jls25.pdf del
       # corpus de ejemplo -- supera el contexto y la sintesis falla con 400
-      # "exceeds the available context size" (medido en vivo). Subir
-      # BONSAI_CTX_SIZE en vez de esto no es gratis aca: con solo ~1.6 GB
-      # libres de los 4 GB de VRAM de una T600, duplicar el contexto arriesga
-      # un OOM del contenedor. Bajar la cantidad de fragmentos es el ajuste
-      # sin ese riesgo, a cambio de menos citas por respuesta.
+      # "exceeds the available context size" (medido en vivo). En esa sesion se
+      # asumio que subir BONSAI_CTX_SIZE arriesgaba un OOM con solo ~1.6 GB libres --
+      # la sesion 15 midio lo contrario en vivo (nvidia-smi, produccion detenida un
+      # momento para una linea base limpia): duplicar a 8192 solo cuesta ~568 MiB,
+      # sin riesgo real de OOM en esta GPU. BONSAI_CTX_SIZE ya subio a 8192 arriba
+      # como consecuencia -- bajar la cantidad de fragmentos (lo de abajo) sigue
+      # siendo valido igual, pero ya no es la UNICA opcion sin riesgo que parecia.
       #
       # OJO: bajar solo top-rerank (10 -> 6) casi no movio el total medido
       # (5070 -> 5068 tokens): Orquestador.construirContexto() expande CADA

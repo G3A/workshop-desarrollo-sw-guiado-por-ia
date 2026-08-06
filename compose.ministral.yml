@@ -32,6 +32,17 @@ services:
       - "0.0.0.0"
       - "--port"
       - "8080"
+      # Se queda en 4096 a proposito, sin subirlo como se hizo con BONSAI_CTX_SIZE
+      # en compose.bonsai.yml (sesion 15). Medido en vivo con nvidia-smi (mismo
+      # protocolo: produccion detenida un momento para una linea base limpia):
+      # Ministral en 4096 usa 2595 MiB; duplicar a 8192 sube a 3015 MiB (+420 MiB) y
+      # deja solo 924 MiB libres de los ~3.9 GB reales de esta T600 -- un margen
+      # mucho mas ajustado que el de Bonsai (1.6 GB libres al mismo ctx-size, por
+      # partir de un modelo que pesa una fraccion de esto). Tecnicamente entra sin
+      # OOM, pero sin margen para otro consumidor de GPU concurrente (el propio
+      # escritorio de Windows, hallazgo 1). Subir esto a 8192 es una decision de
+      # producto, no un ajuste barato como en Bonsai -- dejar en 4096 hasta que haga
+      # falta de verdad, o probar un punto intermedio (6144) antes de comprometerse.
       - "--ctx-size"
       - "${MINISTRAL_CTX_SIZE:-4096}"
       # --parallel 1 --no-mmproj: sin esto, llama-server autodetecta 4 slots de
