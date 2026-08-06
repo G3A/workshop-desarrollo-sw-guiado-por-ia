@@ -1781,12 +1781,40 @@ evidencia todavía de que sea ni lo uno ni lo otro** — haría falta mirar si e
 (mismo patrón que la sesión 9 ya había encontrado para la síntesis, con el corpus dominado por un
 solo documento).
 
-**Vía de mayor impacto pendiente, no explorada en esta sesión**: el desborde de contexto (hallazgo
-51) es la causa individual más grande y comparte causa raíz con los 3 errores de infraestructura del
-hallazgo 49 (sesión 14) — subir `BONSAI_CTX_SIZE`/`ctx-size` de 4096, achicar el presupuesto de
-`VerificadorGrounding` en particular (no necesita ver los 6 fragmentos completos para decidir si
-"alguno" responde, un resumen más corto podría alcanzar), o detectar el desborde explícitamente en
-vez de que el catch genérico lo confunda con un rechazo legítimo.
+**Vía de mayor impacto pendiente**: el desborde de contexto (hallazgo 51) es la causa individual más
+grande y comparte causa raíz con los 3 errores de infraestructura del hallazgo 49 (sesión 14). De las
+tres formas de atacarlo, esta sesión resolvió la más barata:
+
+### Hallazgo 55: `VerificadorGroundingOpenAi` ahora distingue el desborde de contexto de un rechazo real
+
+Se agregó `esDesbordeDeContexto(Throwable)`: recorre la cadena de causas de la excepción buscando el
+mensaje de `llama-server` ("exceeds the available context size" / `exceed_context_size_error`) en vez
+de asumir un solo tipo de excepción — necesario porque, según la carga del servidor, el mismo error
+real de `llama-server` llegó envuelto de dos formas distintas en las pruebas de esta sesión: como
+`com.openai.errors.BadRequestException` (400 limpio, el caso normal) o como
+`com.openai.errors.OpenAIIoException` genérico cuando hubo contención de red al medir en paralelo dos
+modelos a la vez. El veredicto sigue siendo `false` — sigue siendo la opción segura, esto no cambia el
+comportamiento — pero el log ahora dice la causa real en vez de "se rechaza por precaución" a secas.
+
+Validado en vivo, no solo en la teoría: se reconstruyó la imagen de `kb-api` con el cambio y se le
+mandó una de las seis preguntas del hallazgo 51 contra el `kb-llama-server` (Bonsai) real, en un
+contenedor de prueba aparte (`kb-api-test-verificacion`, eliminado al terminar, sin tocar el `kb-api`
+de producción). El log mostró exactamente el mensaje nuevo:
+
+```
+VerificadorGrounding no pudo evaluar: el contexto (sistema+pregunta+fragmentos) desborda
+el ctx-size del modelo. Se rechaza por precaucion, pero esto NO es un juicio del modelo
+sobre el contenido: com.openai.errors.BadRequestException: 400: request (4719 tokens)
+exceeds the available context size (4096 tokens), try increasing it
+```
+
+**Quedan pendientes las otras dos vías, de mayor esfuerzo**: subir `BONSAI_CTX_SIZE`/`ctx-size` de
+4096 (cuesta VRAM, no medido si hay margen real en la T600 con el resto del pipeline cargado), o
+achicar el presupuesto de contexto específico de `VerificadorGrounding` (no necesita ver los 6
+fragmentos completos para decidir si "alguno" responde — un resumen más corto por fragmento podría
+alcanzar, pero exige tocar `Orquestador.construirContexto()` para que arme un contexto distinto según
+el rol, hoy comparte el mismo texto entre verificación y síntesis). Ninguna de las dos se implementó
+en esta sesión.
 
 ### Perfil por modelo: `compose.ministral.yml`
 
@@ -1805,9 +1833,13 @@ para el detalle punto por punto, incluida la corrección del hallazgo 52 sobre `
 
 Estado del entorno al cierre: los contenedores temporales de esta sesión (`kb-ministral-experimento`,
 `kb-api-test-ministral`, un intento fallido `kb-llama-server-ministral` por contención de GPU al
-correr dos contenedores de Ministral a la vez) se eliminaron al terminar; `kb-ollama` se recreó una
-vez sin querer (efecto de `docker compose run` sobre el proyecto real) pero quedó sano, verificado.
-`kb-api`/`kb-llama-server` (Bonsai, producción) no se tocaron en ningún momento, verificados sanos al
-cierre. `VerificadorGroundingOpenAi.java` quedó con el ajuste del hallazgo 54 (`maxTokens` 20→40),
-sobre el archivo que la sesión 9 ya había dejado modificado y sin commitear — este cambio nuevo
-tampoco se commiteó. `compose.ministral.yml` es archivo nuevo, también sin commitear.
+correr dos contenedores de Ministral a la vez, y `kb-api-test-verificacion` para validar el hallazgo
+55) se eliminaron al terminar; `kb-ollama` se recreó una vez sin querer (efecto de
+`docker compose run` sobre el proyecto real) pero quedó sano, verificado. `kb-api`/`kb-llama-server`
+(Bonsai, producción) no se tocaron en ningún momento, verificados sanos al cierre — incluida la
+reconstrucción de imagen que usó `kb-api-test-verificacion`, que solo actualizó la imagen en disco
+(`base-conocimiento-api`), no el contenedor real en ejecución. El trabajo hasta el hallazgo 54
+(`compose.bonsai.yml`/`PlanificadorOpenAi.java` de la sesión 9, `compose.ministral.yml`, y el ajuste
+de `maxTokens`) quedó commiteado (`3c11bd3`). El ajuste del hallazgo 55
+(`esDesbordeDeContexto` en `VerificadorGroundingOpenAi.java`) es posterior a ese commit y sigue sin
+commitear al cierre de esta sesión.
