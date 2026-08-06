@@ -1627,3 +1627,187 @@ resultado final, ya renombrado para distinguirlo con claridad de cualquier otro 
 después (`resultados-brutos.ministral-3-3b-100preguntas.json`,
 `resultados-completos.ministral-3-3b-100preguntas.json`,
 `reporte.ministral-3-3b-100preguntas.html`), todos sin commitear.
+
+## Sesión 15: por qué Ministral rechazó de más — desborde de contexto silencioso, no solo juicio del modelo, y un perfil de compose por modelo
+
+Disparada por una pregunta directa del usuario sobre el resultado de la sesión 14: de las 26
+preguntas que el piloto de 100 preguntas de Ministral falló, ¿hay forma de que el modelo responda
+correctamente, o es su límite? Se investigaron tres caminos a la vez — subir `techo-confianza` para
+que menos preguntas dependan de `VerificadorGrounding`, afinar su prompt para Ministral en concreto,
+y probar a Bonsai en ese único rol mientras Ministral sigue de planificador/sintetizador — y se dejó
+un perfil de compose independiente por modelo para no repetir el problema de fondo que esta misma
+sesión encontró (ver hallazgo 52).
+
+### Hallazgo 50: desglose real de las 26 fallas — casi todas son rechazos, no alucinaciones
+
+Cruzando `resultados-completos.ministral-3-3b-100preguntas.json` directamente (no solo el resumen
+del hallazgo 49):
+
+| Categoría | Cantidad |
+|---|---|
+| `INSUFICIENTE` (el reranker nunca encontró contenido por encima del umbral) | 6 |
+| `AMBIGUO`, rechazo indebido (`VerificadorGrounding` dijo `false` debiendo decir `true`) | 16 |
+| Error de infraestructura (desconexión, ver hallazgo 47) | 3 |
+| `AMBIGUO`, aceptación indebida (`VerificadorGrounding` dijo `true` debiendo decir `false`) | 1 |
+
+Los 6 `INSUFICIENTE` nunca llegan a `VerificadorGrounding` — el reranker no encontró nada por encima
+del piso, es un problema de recuperación, no de síntesis ni de juicio del modelo. El resto de esta
+sesión se concentra en los 17 casos `AMBIGUO` (16 rechazos indebidos + 1 aceptación indebida): son
+los únicos donde el rol de `VerificadorGrounding` — y por lo tanto la elección de modelo — importa de
+verdad.
+
+### Hallazgo 51: 6 de las 17 preguntas `AMBIGUO` (35%) ni siquiera llegan a un veredicto — desbordan el contexto y el error queda atrapado en silencio
+
+Se reconstruyó el contexto exacto que vio `VerificadorGrounding` para las 17 preguntas (mismo
+formato que `Orquestador.construirContexto()`, `KB_EXPANDIR_VECINOS=false`: `query_log.candidates` +
+`chunks.text` de Postgres, sin inventar nada) y se corrió, aislado, contra ambos backends
+(`llama-server` de Ministral y de Bonsai, mismo prompt de sistema y mismas opciones de sampling que
+`VerificadorGroundingOpenAi.java`). Seis de las diecisiete —
+`¿Qué es un tipo genérico parametrizado...?`, `¿Qué significa que una variable esté sombreada...?`,
+`¿Un record puede implementar interfaces?`, `¿Qué es un patrón de registro...?`,
+`¿Se pueden usar patrones no nombrados...?`, `¿Qué es un parámetro de tipo acotado...?` — superan los
+4096 tokens de `ctx-size` solo con el prompt de sistema más el contexto, **antes de generar una sola
+palabra**: `llama-server` responde `400 exceeds the available context size` para ambos modelos por
+igual (confirmado con `/tokenize`, sin gastar una llamada de generación, y reproducido en vivo contra
+el pipeline real con `kb-api-test` apuntando a Ministral).
+
+Ese 400 no se ve en ningún reporte porque `VerificadorGroundingOpenAi.verificar()` atrapa *cualquier*
+excepción y responde `Veredicto(false)` por precaución (ver el comentario del propio archivo: "este
+verificador es la última defensa... arriesgar una alucinación es peor que negarse cuando no se pudo
+verificar") — **una decisión de diseño razonable para una falla real de red, pero que aquí esconde
+un desborde de contexto estructural detrás de un mensaje idéntico al de un rechazo legítimo**. Se
+confirmó en vivo contra el pipeline real (`kb-api-test` con `SPRING_AI_OPENAI_BASE_URL` apuntando a
+un contenedor de Ministral, mismos valores de `compose.bonsai.yml`): el log de la aplicación muestra
+exactamente `Fallo al verificar grounding, se rechaza por precaucion: com.openai.errors.OpenAIIoException:
+Request failed` para una de estas seis preguntas, sin ningún otro síntoma visible para quien mira el
+reporte de aciertos/fallas.
+
+**Es, con diferencia, la causa individual más grande de las 16 preguntas rechazadas de más** — más
+grande que cualquier diferencia de juicio entre modelos (hallazgo 53). No es un límite de Ministral
+ni de Bonsai: ambos comparten el mismo `ctx-size=4096` (perfil Bonsai) y el mismo corpus dominado por
+`jls25.pdf` (sesión 9). Es un límite de presupuesto de contexto que ninguna sesión anterior había
+medido específicamente para la llamada de `VerificadorGrounding` (las sesiones 8-9 sólo lo midieron
+para la síntesis).
+
+### Hallazgo 52: subir `techo-confianza` (Camino 1) recupera con seguridad solo 1 de las 17, no 3 como sugería el score crudo
+
+Ordenando las 16 preguntas rechazadas de más por su `mejorRerank`, tres saltan a la vista como
+candidatas a saltarse `VerificadorGrounding` con un `techo-confianza` más bajo que el 6.0 heredado de
+Bonsai: `5.05`, `4.35` y `4.34`. Cruzado contra las preguntas de control que sí deben rechazarse (la
+más alta mide `2.63`, "¿Qué es WSL2?"), un techo de ~3.0 separaría los dos grupos con margen — **pero
+dos de esas tres preguntas de score alto (`4.35` y `4.34`) son exactamente dos de las seis que
+desbordan el contexto (hallazgo 51)**. Saltarse `VerificadorGrounding` no las arregla: solo mueve el
+punto de falla a la síntesis, que **no atrapa ese mismo error** (a diferencia del verificador) — el
+hallazgo 49 ya había documentado ese patrón exacto (3 preguntas del piloto cayendo con
+"se perdió la conexión con el servidor"). El resultado neto de bajar el techo sería cambiar un
+rechazo prolijo por un error duro para esas dos preguntas — peor experiencia, no mejor.
+
+Recuperable de verdad, con evidencia razonable (no probado directo en la etapa de síntesis): **una
+sola pregunta** de las 17 (`¿Cómo se declara un método genérico independiente de si la clase que lo
+contiene es genérica?`, `mejorRerank=5.05`, contexto de 3200-3235 tokens, dentro del presupuesto).
+
+### Hallazgo 53: Bonsai como `VerificadorGrounding` (Camino 3) da un resultado mixto — gana 1, pierde 1, empata en 7 de 9 casos comparables
+
+De las 11 preguntas `AMBIGUO` que sí caben en el contexto (hallazgo 51), se le pidió veredicto a
+Ministral y a Bonsai por separado, mismo prompt de sistema, mismo contexto real:
+
+| Pregunta (resumen) | Esperado | Ministral | Bonsai | Resultado |
+|---|---|---|---|---|
+| overload vs override | responde | false | **true** | Bonsai acierta, Ministral no |
+| static en un miembro de clase | responde | false | false | ninguno acierta |
+| record vs clase tradicional | responde | true | true | ambos aciertan |
+| record puede extender otra clase | responde | true¹ | false | Ministral acertaría si no fuera por el hallazgo 54 |
+| arrays covariantes | responde | false | false | ninguno acierta |
+| causa encadenada de una excepción | responde | false | false | ninguno acierta |
+| wildcard `? extends` | responde | **true** | false | Ministral acierta, Bonsai no |
+| método genérico independiente de la clase | responde | false | false | ninguno acierta |
+| archivos de código fuente compactos (Java 25) | responde | false | false | ninguno acierta |
+| cuerpos de constructor flexibles | responde | false¹ | false | ninguno acierta |
+| Java vs Python (pregunta de control, debía rechazar) | **rechaza** | true (mal) | **false (bien)** | Bonsai acierta, Ministral no |
+
+¹ Veredicto real tras el ajuste del hallazgo 54 (con `maxTokens=20`, la respuesta de Ministral
+truncaba a un JSON incompleto y el catch la convertía en rechazo igual).
+
+Sobre las 9 preguntas donde de verdad se compara juicio contra juicio (excluyendo la del hallazgo 54,
+que es un bug de presupuesto de tokens, no de criterio): **Bonsai acierta una que Ministral no
+(overload/override), Ministral acierta una que Bonsai no (wildcard), y ambos coinciden — para bien o
+para mal — en las 7 restantes.** Contando también el caso de control (donde Bonsai sí acierta y
+Ministral no), el saldo neto de cambiar solo el modelo de `VerificadorGrounding` a Bonsai es **+1
+sobre 11 casos comparables** — una mejora real pero marginal, y con un costo de latencia que no es
+gratis: en los casos medidos, la llamada de Bonsai tardó entre 1x y más de 20x lo que tardó Ministral
+para la misma pregunta y el mismo contexto (ej. la pregunta de wildcard: 144s Ministral vs 300s
+Bonsai). **No hay evidencia, con esta muestra, de que cambiar de modelo en este rol puntual sea una
+mejora que justifique la complejidad de correr dos modelos a la vez** — el hallazgo 51 (desborde de
+contexto) sigue siendo la palanca más grande, y no depende de qué modelo verifique.
+
+No se completó el Camino 2 (afinar el prompt de `VerificadorGrounding` específicamente para
+Ministral) más allá de esta comparación: con solo 2 de 9 casos movidos por la elección de modelo, y
+sin un patrón claro que un ajuste de prompt puntual pudiera explotar (las 7 preguntas donde ambos
+modelos coinciden no comparten un rasgo obvio más allá de ser conceptos densos del JLS), no hay
+evidencia de que valga la pena un tercer intento de prompt-tuning — consistente con la lección ya
+anotada en la sesión 3 sobre rendimientos decrecientes de parchar prompts caso por caso.
+
+### Hallazgo 54: `maxTokens=20` de `VerificadorGroundingOpenAi` truncaba la salida de Ministral en 3 de 17 llamadas — corregido a 40
+
+El formato de salida JSON de Ministral agrega espacios y saltos de línea que Bonsai no usa
+(`{\n  "respondeLaPregunta": true\n}` contra `{"respondeLaPregunta": true}`) — con el tope de 20
+tokens que ya traía el código (pensado para el formato compacto de Bonsai), 3 de las 17 llamadas a
+Ministral truncaron a mitad de un JSON válido (`{ "respondeLaPregunta": true` sin cerrar). El mismo
+catch del hallazgo 51 interpreta ese fallo de parseo como una excepción más y rechaza por precaución
+— indistinguible, otra vez, de un rechazo real. Reintentado con más margen (`maxTokens=40`, solo para
+diagnóstico), dos de las tres mantienen el mismo veredicto que ya tenían truncado (`false`, un
+rechazo genuino del modelo) y una lo cambia (`true` — la pregunta sobre si un record puede extender
+otra clase, que Ministral sí sabía responder). Se subió `maxTokens` de 20 a 40 en
+`VerificadorGroundingOpenAi.java`: es una llamada de clasificación, el costo de 20 tokens más es
+insignificante, y da margen para el formato de cualquier modelo sin apostar por el más compacto.
+
+### Conclusión de la sesión 15
+
+Ninguno de los tres caminos es "el arreglo" — cada uno mueve un número chico y distinto de las 16
+preguntas rechazadas de más, y juntos no cubren ni la mitad:
+
+| Causa de las 16 fallas `AMBIGUO`→rechazo | Cantidad | ¿Arreglable, y cómo? |
+|---|---|---|
+| Desborda el contexto (hallazgo 51) | 6 | Sí, en principio — pero ninguna vía barata probada todavía (ver abajo) |
+| `maxTokens` insuficiente para el formato de Ministral (hallazgo 54) | 1 | Sí, ya corregido en esta sesión |
+| Bonsai como verificador acierta donde Ministral no (hallazgo 53) | 1 | Sí, a costa de latencia — mejora marginal |
+| Ninguno de los dos modelos coincide con "debía responder" | 7 | No identificado — puede ser un problema de recuperación (¿el fragmento que sí respondería quedó afuera del top-6?) o de qué tan estricto es el criterio de "responde", no de qué modelo juzga |
+
+**La pregunta original del usuario — ¿es el límite del modelo? — tiene una respuesta más precisa que
+un sí o un no: para 8 de las 16 preguntas (desborde + bug de tokens), la causa es infraestructura, no
+el modelo; para 1, cambiar de modelo ayuda pero con un costo real; para las 7 restantes, no hay
+evidencia todavía de que sea ni lo uno ni lo otro** — haría falta mirar si el fragmento correcto de
+`jls25.pdf` de verdad compite por un lugar en el top-6 antes de culpar al juicio del verificador
+(mismo patrón que la sesión 9 ya había encontrado para la síntesis, con el corpus dominado por un
+solo documento).
+
+**Vía de mayor impacto pendiente, no explorada en esta sesión**: el desborde de contexto (hallazgo
+51) es la causa individual más grande y comparte causa raíz con los 3 errores de infraestructura del
+hallazgo 49 (sesión 14) — subir `BONSAI_CTX_SIZE`/`ctx-size` de 4096, achicar el presupuesto de
+`VerificadorGrounding` en particular (no necesita ver los 6 fragmentos completos para decidir si
+"alguno" responde, un resumen más corto podría alcanzar), o detectar el desborde explícitamente en
+vez de que el catch genérico lo confunda con un rechazo legítimo.
+
+### Perfil por modelo: `compose.ministral.yml`
+
+Se agregó `compose.ministral.yml`, hermano de `compose.bonsai.yml` — mismo patrón (agrega un
+`llama-server` y apunta `api` a él), pero con **sus propios valores**, no los de Bonsai con el
+`base-url` cambiado. Esto no es cosmético: fue exactamente el problema que esta sesión destapó al
+revisar la sesión 14 — el piloto de 100 preguntas de Ministral corrió con
+`KB_UMBRAL_RELEVANCIA_TECHO_CONFIANZA=6.0`, un valor que la sesión 9 había tuneado a mano *para
+Bonsai*, sin ninguna evidencia propia con Ministral, simplemente porque se reusó `compose.bonsai.yml`
+cambiando solo el `SPRING_AI_OPENAI_BASE_URL`. Con `compose.ministral.yml`, la próxima vez que se
+compare un modelo nuevo no hace falta pisar ni adivinar el ajuste de uno ya calibrado: cada modelo
+tiene su propio archivo, su propio puerto (`8083`, dejando `8081` para Bonsai), y sus propios
+comentarios explicando qué valor es una calibración de *ese* modelo puntual y cuál es una restricción
+física que comparten todos (ctx-size, tamaño del corpus) — ver los comentarios del propio archivo
+para el detalle punto por punto, incluida la corrección del hallazgo 52 sobre `techo-confianza`.
+
+Estado del entorno al cierre: los contenedores temporales de esta sesión (`kb-ministral-experimento`,
+`kb-api-test-ministral`, un intento fallido `kb-llama-server-ministral` por contención de GPU al
+correr dos contenedores de Ministral a la vez) se eliminaron al terminar; `kb-ollama` se recreó una
+vez sin querer (efecto de `docker compose run` sobre el proyecto real) pero quedó sano, verificado.
+`kb-api`/`kb-llama-server` (Bonsai, producción) no se tocaron en ningún momento, verificados sanos al
+cierre. `VerificadorGroundingOpenAi.java` quedó con el ajuste del hallazgo 54 (`maxTokens` 20→40),
+sobre el archivo que la sesión 9 ya había dejado modificado y sin commitear — este cambio nuevo
+tampoco se commiteó. `compose.ministral.yml` es archivo nuevo, también sin commitear.
