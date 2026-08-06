@@ -1833,10 +1833,11 @@ sin medir, que duplicar arriesgaba un OOM).
 **Para Ministral, la misma duplicación deja solo 924 MiB libres** — no hay señal de OOM en esta
 prueba aislada, pero es un margen mucho más ajustado que el de Bonsai, sin nada de colchón para otro
 consumidor de GPU concurrente (el propio escritorio de Windows ya se lleva parte de la VRAM "nominal"
-de esta T600, hallazgo 1). `compose.ministral.yml` se dejó en 4096 a propósito — subir esto para
-Ministral es una decisión de trade-off real (VRAM contra menos preguntas rechazadas por desborde), no
-un ajuste gratis como en Bonsai. Queda como decisión abierta, con los números de esta tabla para
-apoyarla, en vez de un valor elegido a ciegas.
+de esta T600, hallazgo 1). Con estos números sobre la mesa, el usuario decidió igual subir
+`compose.ministral.yml` a `ctx-size=8192` — aceptando el margen más ajustado a cambio de cubrir el
+mismo desborde que Bonsai. Si esta GPU llega a dar OOM con el perfil de Ministral activo, el punto
+intermedio (`ctx-size=6144`) queda como el siguiente valor a probar antes de volver a 4096 — no
+medido todavía.
 
 Estado del entorno tras esta medición: los dos contenedores de prueba
 (`kb-bonsai-ctxtest`, `kb-ministral-ctxtest`) se eliminaron al terminar cada uno; `kb-llama-server`
