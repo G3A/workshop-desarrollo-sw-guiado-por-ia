@@ -64,15 +64,25 @@ class SintetizadorOpenAi implements Sintetizador {
         // un bucle de generacion sin fin (ver ADR-0009, hallazgo de repeticion de
         // la sesion 6), no un limite pensado para recortar respuestas normales.
         //
-        // repeat_last_n(-1): medido en vivo (sesion 12/13 de la investigacion,
+        // repeat_last_n(4096): medido en vivo (sesion 12/13 de la investigacion,
         // ADR-0009) que el default de llama-server (64 tokens) deja el prompt de
         // sistema completo fuera de la ventana de repeat_penalty en cuanto el
         // contexto supera unos pocos fragmentos -- Bonsai terminaba copiando texto
         // literal del propio prompt de sistema (incluida la palabra en mayusculas
         // que marcaba un ejemplo de citacion) como si fuera parte de la respuesta.
-        // -1 le pide a llama-server que penalice repeticion contra el CONTEXTO
-        // COMPLETO, no solo los ultimos 64 tokens. No es parte de la API oficial de
-        // OpenAI, por eso va en extraBody como repeat_penalty.
+        // Un valor grande le pide a llama-server que penalice repeticion contra
+        // el CONTEXTO COMPLETO, no solo los ultimos 64 tokens -- 4096 empata con
+        // BONSAI_CTX_SIZE (compose.bonsai.yml). El semantico de llama.cpp para
+        // esto es -1 ("todo el contexto"), pero se descarto: medido en vivo
+        // (sesion 14, comparando contra Ministral) que el build oficial de
+        // llama.cpp (ghcr.io/ggml-org/llama.cpp, el que sirve a cualquier
+        // candidato sin el fork de PrismML) rechaza valores negativos con 400
+        // ("Value must be between 0 <= value <= 2147483647") -- el fork de
+        // PrismML que sirve a Bonsai hoy es mas permisivo y sí acepta -1, pero
+        // depender de esa laxitud ataba el prompt a un solo backend. Un numero
+        // positivo que ya cubre el contexto completo evita el problema en los
+        // dos backends sin cambiar el efecto practico. No es parte de la API
+        // oficial de OpenAI, por eso va en extraBody como repeat_penalty.
         //
         // presencePenalty(0.1): repeat_last_n(-1) solo bajo la fuga, no la
         // eliminaba del todo. Combinado con esta penalidad estandar de OpenAI (es
@@ -82,7 +92,7 @@ class SintetizadorOpenAi implements Sintetizador {
         // irrelevantes del contexto en vez de ignorarlos. 0.1 fue el valor mas
         // bajo que ya alcanzaba a suprimir la fuga sin perder las citas.
         var opciones = OpenAiChatOptions.builder()
-                .extraBody(Map.of("repeat_penalty", 1.1, "repeat_last_n", -1))
+                .extraBody(Map.of("repeat_penalty", 1.1, "repeat_last_n", 4096))
                 .presencePenalty(0.1)
                 .maxTokens(512);
         this.chatClient = ChatClient.builder(modelo).defaultSystem(SISTEMA).defaultOptions(opciones).build();

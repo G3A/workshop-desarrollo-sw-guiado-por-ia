@@ -1,0 +1,110 @@
+[
+  {
+    "id": 1,
+    "categoria": "tipos",
+    "pregunta": "¿Cuáles son los ocho tipos primitivos definidos en el lenguaje Java?",
+    "esperado": "responde",
+    "respuesta": "Los **eight** tipos primitivos definidos en Java según el contexto son:\n\nbyte, short, int, long, float, double, char y boolean **[1]**.",
+    "estadoFinal": "",
+    "error": null,
+    "inicio": "2026-08-05T21:08:18.481Z",
+    "fin": "2026-08-05T21:08:42.158Z",
+    "elapsedMs": 23677
+  },
+  {
+    "id": 2,
+    "categoria": "tipos",
+    "pregunta": "¿Qué diferencia hay entre un tipo primitivo y un tipo de referencia en Java?",
+    "esperado": "responde",
+    "respuesta": "",
+    "estadoFinal": "Se perdió la conexión con el servidor (¿Ollama no responde?).",
+    "error": "Se perdió la conexión con el servidor (¿Ollama no responde?).",
+    "inicio": "2026-08-05T21:08:42.160Z",
+    "fin": "2026-08-05T21:09:01.618Z",
+    "elapsedMs": 19458
+  },
+  {
+    "id": 3,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es una conversión de ensanchamiento (widening) entre tipos primitivos?",
+    "esperado": "responde",
+    "respuesta": "Una **conversión de ensanchamiento** (*widening*) entre tipos primitivos es un proceso donde un valor de un tipo numérico más pequeño se convierte en otro tipo numérico más grande **sin pérdida total de información**, según las reglas específicas definidas en el JLS 25.\n\nPor ejemplo:\n- **byte → short/int/long/float/double**\n- **short → int/long/float/double**\n- **char → int/long/float/double**\n- **int → long/float/double**\n\n**Características clave**:\n- Preserva exactamente los valores en estos casos:\n  - De tipo integral a otro integral ([1]).\n  - De `byte`, `short` o `char` a tipo flotante ([1]).\n  - De `int` a `double` ([1]).\n\nSin embargo, puede haber **pérdida de precisión** cuando se pasa de `int` a `float` o `long` a `float`/`double` ([1]), usando el método de redondeo de IEEE 754 ([1]). En esos casos, el resultado será el valor más cercano posible al original ([1]).\n\n---\n*Nota sobre ejemplos contradictorios*: El ejemplo proporcionado en [1] muestra que convertir `int` a `float` sí pierde información (ejemplo: `big - (int)approx` da `-46`), pero el texto dice explícitamente que *\"no pierde información\"* en ciertos casos ([1]). Esto parece una contradicción entre [1] y el código de ejemplo.",
+    "estadoFinal": "",
+    "error": null,
+    "inicio": "2026-08-05T21:09:01.620Z",
+    "fin": "2026-08-05T21:11:56.765Z",
+    "elapsedMs": 175145
+  },
+  {
+    "id": 4,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es el autoboxing y cuándo ocurre de forma automática?",
+    "esperado": "responde",
+    "respuesta": "No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.",
+    "estadoFinal": "",
+    "error": null,
+    "inicio": "2026-08-05T21:11:56.768Z",
+    "fin": "2026-08-05T21:12:18.203Z",
+    "elapsedMs": 21435
+  },
+  {
+    "id": 5,
+    "categoria": "tipos",
+    "pregunta": "¿Qué representa el tipo null y a qué tipos de referencia se puede asignar?",
+    "esperado": "responde",
+    "respuesta": "El **tipo `null`** representa una referencia nula, que indica que no apunta a ningún objeto específico **[1]**—solo existe como valor literal (`null`).\n\nSolo puede asignarse a **tipos de referencia** (clases, interfaces u objetos), pero **no a primitivos ni a tipos genéricos no parametrizados** (ej.: `Object`, `ArrayList<?>` sin restricciones estrictas) **[1, 5]**.\n\n---\n**Contradicción parcial**:\n- El contexto [2] menciona conversiones complejas (como *widening reference*), pero **no especifica explícitamente** si el `null` puede asignarse a tipos genéricos *parametrizados* (ej.: `List<T>`).\n- El [5] advierte sobre **heap pollution**, pero no define límites claros para casos como `List<T>` vs `List<S>` donde `S` no sea subtipo de `T`.\n\nSi el tipo es **genérico sin restricciones** (ej.: `List<?>`), sí se permite asignar `null`. En otros casos, depende de las reglas de compatibilidad de tipos.",
+    "estadoFinal": "",
+    "error": null,
+    "inicio": "2026-08-05T21:12:18.206Z",
+    "fin": "2026-08-05T21:15:14.609Z",
+    "elapsedMs": 176403
+  },
+  {
+    "id": 6,
+    "categoria": "tipos",
+    "pregunta": "¿Qué significa que un método tenga tipo de retorno void?",
+    "esperado": "responde",
+    "respuesta": "Que indica que un método tenga **tipo de retorno `void`** [3]:\n\nIndica que el método **no devuelve ningún valor** al llamado que realiza quien lo invoca. En su lugar, solo ejecuta acciones como modificar estado interno o realizar operaciones sin necesidad de retornar datos.",
+    "estadoFinal": "",
+    "error": null,
+    "inicio": "2026-08-05T21:15:14.611Z",
+    "fin": "2026-08-05T21:17:34.605Z",
+    "elapsedMs": 139994
+  },
+  {
+    "id": 7,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es un tipo genérico parametrizado, por ejemplo List<String>?",
+    "esperado": "responde",
+    "respuesta": "No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.",
+    "estadoFinal": "",
+    "error": null,
+    "inicio": "2026-08-05T21:17:34.607Z",
+    "fin": "2026-08-05T21:18:00.260Z",
+    "elapsedMs": 25653
+  },
+  {
+    "id": 8,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es un literal de tipo long y cómo se distingue de un literal int en el código fuente?",
+    "esperado": "responde",
+    "respuesta": "Un **literal de tipo `long`** se identifica por terminar con la letra **`L` o `l`** ([1][2]).\n\n---\nDistinción frente a un literal `int`:\n\n- Un literal **`int`** no lleva ese sufijo y su rango máximo es **2³¹−1 (2147483647)** ([3][2]).\n- Los literales `long` pueden superar este límite, como **`9223372036854775808L`**, y su rango va hasta **2⁶³−1** ([3]).\n\n---\n*Nota*: En binario/hexadecimal/octal, los `_` solo aparecen dentro de los números, pero **no después del prefijo (`0x`, `0b`) ni antes del primer dígito** ([1]).",
+    "estadoFinal": "",
+    "error": null,
+    "inicio": "2026-08-05T21:18:00.263Z",
+    "fin": "2026-08-05T21:21:47.475Z",
+    "elapsedMs": 227212
+  },
+  {
+    "id": 9,
+    "categoria": "variables",
+    "pregunta": "¿Qué diferencia hay entre una variable local declarada con var y una declarada con un tipo explícito?",
+    "esperado": "responde",
+    "respuesta": "La diferencia principal entre **`var`** y una declaración de variable con **tipo explícito** radica en cómo se infiere o especifica el tipo:\n\n- Con **`var`**, el tipo se deduce automáticamente desde el valor inicial asignado ([1][2][3]):\n  - Se usa cuando solo tienes un inicializador válido y no necesitas definir explícitamente el tipo ([1][2][3]).\n  - El tipo corresponde al de la expresión inicializada, aplicando *upward projection* si contiene sintéticos como capturas ([1]).\n\n- Con **tipo explícito**, el compilador lo define manualmente según la sintaxis de `UnannType` o tipos genéricos ([1][3]):\n  - Permite usar modificadores como `@`, `final`, o tipos complejos (ej. `List<Integer>`) ([1][2][3]).\n  - No puede usarse en casos donde el tipo no sea deducible (ej. lambdas, `null`) ([1][2][3]).\n\n---\n**Contradicciones**:\n- En [1], se menciona que el tipo de `var` depende del inicializador, pero también que algunos casos **no pueden expresarse con `var`** por restricciones de inferencia ([2][3]). Por ejemplo, `var` falla si el inicializador es una referencia a sí mismo (`var e = (e = 7)`) ([3]), mientras que un tipo explícito sí permite declaraciones múltiples en una línea (`int a, b[];`).\n\n---\n**Ejemplo práctico**:\n```java\n// var (inferido):\nvar num = 5;          // Tipo: int\nvar lista = List.of(1, 2);  // Tipo: List<Integer>\n\n// Explicito:\nint numExplicito = 5;     // Tipo: int (igual al anterior)\nList<Integer> listaExplicita = List.of(1, 2",
+    "estadoFinal": "",
+    "error": null,
+    "inicio": "2026-08-05T21:21:47.477Z",
+    "fin": "2026-08-05T21:26:09.577Z",
+    "elapsedMs": 262100
+  }
+]

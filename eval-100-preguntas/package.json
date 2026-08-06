@@ -1,0 +1,12 @@
+{
+  "name": "eval-100-preguntas",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "eval": "node ejecutar.js",
+    "reporte": "node reporte.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.48.0"
+  }
+}
