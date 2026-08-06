@@ -1809,12 +1809,40 @@ exceeds the available context size (4096 tokens), try increasing it
 ```
 
 **Quedan pendientes las otras dos vías, de mayor esfuerzo**: subir `BONSAI_CTX_SIZE`/`ctx-size` de
-4096 (cuesta VRAM, no medido si hay margen real en la T600 con el resto del pipeline cargado), o
-achicar el presupuesto de contexto específico de `VerificadorGrounding` (no necesita ver los 6
+4096, o achicar el presupuesto de contexto específico de `VerificadorGrounding` (no necesita ver los 6
 fragmentos completos para decidir si "alguno" responde — un resumen más corto por fragmento podría
 alcanzar, pero exige tocar `Orquestador.construirContexto()` para que arme un contexto distinto según
-el rol, hoy comparte el mismo texto entre verificación y síntesis). Ninguna de las dos se implementó
-en esta sesión.
+el rol, hoy comparte el mismo texto entre verificación y síntesis, sin implementar todavía).
+
+### Hallazgo 56: subir `ctx-size` es barato para Bonsai, ajustado para Ministral — medido en vivo con `nvidia-smi`, no asumido
+
+Con `kb-llama-server` (producción) detenido un momento para una línea base limpia (protocolo de las
+sesiones 6-7), se midió el costo real de VRAM de duplicar `ctx-size` de 4096 a 8192 para los dos
+modelos, en un contenedor de prueba aparte cada vez:
+
+| Modelo | VRAM a `ctx-size=4096` | VRAM a `ctx-size=8192` | Costo de duplicar | Libre al final (T600, ~3.9 GB reales) |
+|---|---|---|---|---|
+| Bonsai-8B | 1765 MiB | 2333 MiB | +568 MiB | 1.6 GB |
+| Ministral 3 3B | 2595 MiB | 3015 MiB | +420 MiB | 924 MiB |
+
+**Para Bonsai, subir el contexto es barato y seguro**: pesa poco de por sí (1.15 GB en disco), así que
+incluso duplicando la cache KV sobra más de 1.5 GB libres. Se aplicó como nuevo default
+(`BONSAI_CTX_SIZE=8192` en `compose.bonsai.yml`), revirtiendo la cautela de la sesión 8 (que asumía,
+sin medir, que duplicar arriesgaba un OOM).
+
+**Para Ministral, la misma duplicación deja solo 924 MiB libres** — no hay señal de OOM en esta
+prueba aislada, pero es un margen mucho más ajustado que el de Bonsai, sin nada de colchón para otro
+consumidor de GPU concurrente (el propio escritorio de Windows ya se lleva parte de la VRAM "nominal"
+de esta T600, hallazgo 1). `compose.ministral.yml` se dejó en 4096 a propósito — subir esto para
+Ministral es una decisión de trade-off real (VRAM contra menos preguntas rechazadas por desborde), no
+un ajuste gratis como en Bonsai. Queda como decisión abierta, con los números de esta tabla para
+apoyarla, en vez de un valor elegido a ciegas.
+
+Estado del entorno tras esta medición: los dos contenedores de prueba
+(`kb-bonsai-ctxtest`, `kb-ministral-ctxtest`) se eliminaron al terminar cada uno; `kb-llama-server`
+se detuvo y reinició dos veces (una por cada modelo medido), verificado sano y de vuelta a 1753 MiB
+en cada reinicio. Autorizado explícitamente por el usuario antes de detener el contenedor de
+producción, siguiendo el mismo protocolo que las sesiones 6-7 ya habían usado para medir VRAM limpia.
 
 ### Perfil por modelo: `compose.ministral.yml`
 
