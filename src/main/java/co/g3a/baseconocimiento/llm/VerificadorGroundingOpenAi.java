@@ -58,6 +58,15 @@ class VerificadorGroundingOpenAi implements VerificadorGrounding {
             Responde true solo si el contexto de verdad contiene la informacion que la
             pregunta pide, tal como fue formulada -- ni mas especifica ni mas general de
             lo que se pregunto.
+
+            El CONTEXTO casi siempre trae VARIOS fragmentos numerados ([1], [2], ...), de
+            una busqueda automatica que no es perfecta: es normal que algunos compartan
+            vocabulario con la pregunta sin responderla de verdad (ruido). Evalua cada
+            fragmento por separado antes de decidir. Responde true si AL MENOS UNO de los
+            fragmentos, por si solo, contiene la respuesta real -- aunque este mezclado con
+            otros que sean irrelevantes o tangenciales, y aunque no sea el fragmento [1]. NO
+            respondas false solo porque el fragmento con mas vocabulario compartido (o el
+            primero) no responde la pregunta si otro fragmento distinto si lo hace.
             """;
 
     private final ChatClient chatClient;
@@ -71,14 +80,22 @@ class VerificadorGroundingOpenAi implements VerificadorGrounding {
         // extraBody(repeat_penalty): ver PlanificadorOpenAi -- mitiga un modo de
         // falla de repeticion medido en la sesion 6 de la investigacion (ADR-0009).
         //
-        // maxTokens(20): la salida es un solo booleano en JSON
+        // maxTokens(40): la salida es un solo booleano en JSON
         // ({"respondeLaPregunta": true}), un tope bajo alcanza de sobra y evita
         // gastar tiempo de generacion (~5-6 tok/s en esta GPU) si el modelo
-        // alguna vez se pone a divagar en vez de responder directo.
+        // alguna vez se pone a divagar en vez de responder directo. Era 20 --
+        // subido en la sesion 15 (docs/investigacion-vram-y-modelo-llm.md):
+        // probado aislado contra Ministral con los contextos reales del piloto
+        // de la sesion 14, 3 de 17 llamadas truncaron a mitad de un JSON valido
+        // ("{ \"respondeLaPregunta\": true" sin cerrar) porque el formato de
+        // salida de Ministral agrega espacios/saltos de linea que Bonsai no usa
+        // -- el catch de mas abajo interpreta ese JSON incompleto como fallo y
+        // rechaza por precaucion, indistinguible de un rechazo real. 40 da
+        // margen sin costo real (sigue siendo una llamada de clasificacion).
         var opciones = OpenAiChatOptions.builder()
                 .temperature(0.0)
                 .extraBody(Map.of("repeat_penalty", 1.1))
-                .maxTokens(20);
+                .maxTokens(40);
         this.chatClient = ChatClient.builder(modelo).defaultOptions(opciones).build();
     }
 

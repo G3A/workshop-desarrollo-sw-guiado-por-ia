@@ -1,5 +1,6 @@
 package co.g3a.baseconocimiento.llm;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -89,6 +90,17 @@ class PlanificadorOpenAi implements Planificador {
                 de si la pregunta apunta al codigo DE ESTE proyecto o a un concepto general del
                 lenguaje/framework, es conceptual: usa search_docs/search_unified.
 
+                Otra trampa frecuente: una pregunta puede CITAR un fragmento de codigo Java
+                (una clase, una interfaz, un ejemplo con "class Foo {...}") solo como ilustracion
+                de una regla del lenguaje -- eso sigue siendo conceptual, no una pregunta sobre
+                ESTE repositorio. Ejemplo: "En el ejemplo con Point[] pa = cpa, ¿por que asignar
+                pa[0] = new Point() lanza una excepcion?" no pregunta por el codigo de este
+                proyecto, pregunta por una regla del lenguaje (ArrayStoreException) usando un
+                ejemplo del propio texto de referencia -- usa search_docs/search_unified. La
+                presencia de sintaxis Java en la pregunta NO es señal de search_code: la señal es
+                si la pregunta menciona explicitamente "este proyecto/repositorio/servicio" o un
+                archivo/simbolo real de este codigo.
+
                 El campo "razon" es SOLO para trazabilidad interna, nadie la lee como respuesta:
                 maximo 6-8 palabras, nunca una oracion completa. Ejemplo correcto: "pregunta de
                 despliegue, no de codigo". Ejemplo incorrecto: una explicacion de un parrafo.
@@ -101,9 +113,18 @@ class PlanificadorOpenAi implements Planificador {
                     .call()
                     .entity(PlanDeHerramientas.class, spec -> spec.useProviderStructuredOutput());
 
-            List<String> validas = plan.herramientas().stream()
+            List<String> validas = new ArrayList<>(plan.herramientas().stream()
                     .filter(herramientasDisponibles::containsKey)
-                    .toList();
+                    .toList());
+            if (validas.contains("search_code") && !validas.contains("search_unified")) {
+                // Medido en vivo (piloto de evaluacion, sesion 9): pese al prompt de arriba,
+                // Bonsai-8B a veces sigue eligiendo SOLO search_code para preguntas
+                // conceptuales que citan un ejemplo de codigo del propio JLS -- busca en
+                // vault/repos (vacio en este entorno) y no encuentra nada. Confiar solo en el
+                // prompt ya fallo dos veces contra el mismo patron; esto le da una segunda
+                // oportunidad real sin depender de que el modelo razone mejor la proxima vez.
+                validas.add("search_unified");
+            }
             if (validas.isEmpty()) {
                 // El prompt le pide explicitamente "si dudas, incluye search_unified", pero un
                 // modelo debil (Bonsai-8B cuantizado) a veces devuelve una lista vacia igual --

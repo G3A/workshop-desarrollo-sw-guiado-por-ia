@@ -92,6 +92,37 @@ services:
       # dispara planificador + 2 herramientas + verificador de grounding +
       # sintesis son varias llamadas secuenciales a Bonsai, que a ~1-3.5
       # tok/s en esta GPU puede superar los 180s en total -- medido en vivo
-      # (java.io.InterruptedIOException: timeout, cliente OpenAI). 300s da
-      # margen sin ser un timeout "infinito" que cuelgue la UI para siempre.
-      KB_LLM_TIMEOUT: ${KB_LLM_TIMEOUT:-300s}
+      # (java.io.InterruptedIOException: timeout, cliente OpenAI). 300s no
+      # alcanzo tampoco: el piloto de evaluacion de la sesion 9 (100 preguntas
+      # sobre jls25.pdf, ver docs/investigacion-vram-y-modelo-llm.md) midio en
+      # vivo que VerificadorGrounding, al ser la ULTIMA llamada secuencial de
+      # una consulta ya larga, se quedaba sin margen y se caia por timeout --
+      # rechazando por precaucion contenido que SI era relevante (un caso
+      # midio rerank=7.9, casi el maximo, y aun asi se rechazo). 450s da mas
+      # colchon para ese ultimo tramo.
+      KB_LLM_TIMEOUT: ${KB_LLM_TIMEOUT:-450s}
+      # ADR-0008 fijo 8.0 contra gemma3:4b con un corpus de referencia chico.
+      # El piloto de la sesion 9 midio que, con el corpus real (jls25.pdf,
+      # 1060 chunks) y Bonsai como verificador, un match casi perfecto
+      # (rerank=7.9) igual caia en la zona AMBIGUO (por debajo de 8.0) y
+      # depender de VerificadorGrounding ahi es fragil -- ver el ajuste de
+      # timeout arriba. Bajarlo a 6.0 deja que los matches mas fuertes salten
+      # directo a SUFICIENTE sin pasar por esa verificacion menos confiable.
+      KB_UMBRAL_RELEVANCIA_TECHO_CONFIANZA: ${KB_UMBRAL_RELEVANCIA_TECHO_CONFIANZA:-6.0}
+      # No es un ajuste de Bonsai -- es un bug de composicion del corpus que el
+      # piloto de la sesion 9 destapo por primera vez porque es el primer corpus
+      # de este proyecto dominado casi por completo por UN solo documento
+      # (jls25.pdf, 1060 de 1065 chunks). kb.recuperacion.tope-por-documento
+      # (default 3) esta pensado para dar diversidad entre VARIOS documentos --
+      # aca, con 3 chunks de jls25.pdf sobreviviendo la fusion RRF antes de
+      # llegar al reranker, la enorme mayoria del propio JLS queda descartada
+      # de entrada sin que el cross-encoder llegue a verla. Medido en vivo: la
+      # definicion real de "record" (JLS SS8.10, chunk 481) nunca aparecio entre
+      # los candidatos finales para "que es un record en Java" -- no por mal
+      # juicio de VerificadorGrounding, sino porque nunca llego a competir.
+      # Subir el tope a 15 (y max-candidatos a 30 para darle mas margen al
+      # reranker) no toca KB_RECUPERACION_TOP_RERANK/max-fragmentos-contexto
+      # (siguen en 6): el presupuesto de contexto de Bonsai no cambia, solo
+      # compiten mas candidatos reales antes de esa etapa final.
+      KB_RECUPERACION_TOPE_POR_DOCUMENTO: ${KB_RECUPERACION_TOPE_POR_DOCUMENTO:-15}
+      KB_RECUPERACION_MAX_CANDIDATOS: ${KB_RECUPERACION_MAX_CANDIDATOS:-30}
