@@ -113,8 +113,47 @@ class VerificadorGroundingOpenAi implements VerificadorGrounding {
             // respaldo ante una falla de llama-server es rechazar: este verificador es
             // la ultima defensa contra una respuesta sin respaldo real, y arriesgar una
             // alucinacion es peor que negarse cuando no se pudo verificar.
-            log.warn("Fallo al verificar grounding, se rechaza por precaucion: {}", e.toString());
+            if (esDesbordeDeContexto(e)) {
+                // Sesion 15 (docs/investigacion-vram-y-modelo-llm.md, hallazgo 51): medido
+                // en vivo que 6 de 17 preguntas AMBIGUO del piloto de Ministral desbordaban
+                // los 4096 tokens de ctx-size en ESTA llamada (sistema + contexto, sin haber
+                // generado nada) -- llama-server responde 400 "exceeds the available context
+                // size", y sin este chequeo caia en el catch generico de abajo, quedando
+                // indistinguible de un rechazo real por juicio del modelo. El veredicto sigue
+                // siendo false (no cambia el comportamiento, sigue siendo la opcion segura),
+                // pero el log ahora dice la causa real -- necesario para no seguir
+                // atribuyendole a "el modelo rechazo de mas" lo que en realidad es un limite
+                // de presupuesto de contexto.
+                log.warn("VerificadorGrounding no pudo evaluar: el contexto (sistema+pregunta+"
+                        + "fragmentos) desborda el ctx-size del modelo. Se rechaza por "
+                        + "precaucion, pero esto NO es un juicio del modelo sobre el contenido: {}",
+                        e.toString());
+            } else {
+                log.warn("Fallo al verificar grounding, se rechaza por precaucion: {}", e.toString());
+            }
             return new Veredicto(false);
         }
+    }
+
+    /**
+     * Busca en la cadena de causas (la excepcion real de llama-server suele llegar
+     * envuelta -- en esta version del cliente, a veces como
+     * {@code com.openai.errors.BadRequestException} con el 400 ya parseado, otras
+     * como {@code com.openai.errors.OpenAIIoException} generico si el cuerpo del
+     * error no calza con el esquema estricto que espera el cliente -- medido en
+     * vivo con ambos casos contra el mismo error real de llama-server) un mensaje
+     * que coincida con el desborde de contexto, en vez de asumir un solo tipo de
+     * excepcion o una sola forma del mensaje.
+     */
+    private static boolean esDesbordeDeContexto(Throwable e) {
+        for (Throwable actual = e; actual != null; actual = actual.getCause()) {
+            String mensaje = actual.getMessage();
+            if (mensaje != null
+                    && (mensaje.toLowerCase().contains("context size")
+                            || mensaje.toLowerCase().contains("exceed_context_size_error"))) {
+                return true;
+            }
+        }
+        return false;
     }
 }
