@@ -1974,6 +1974,60 @@ huérfanos bajaron la RAM libre del sistema en 1.4 GB en un solo ciclo). No resu
 tarea en background puede seguir muriendo sin avisar de verdad), pero reduce cuánto de la recuperación
 depende de que alguien esté mirando en el momento exacto en que Chromium crashea.
 
+### Hallazgo 61: de los 22 rechazos `AMBIGUO`, el 68% son problema de recuperación — no de juicio del verificador
+
+A pedido directo del usuario, se reconstruyó el contexto real (top-6 candidatos de
+`query_log.candidates` + texto de `chunks`, mismo criterio que `Orquestador.construirContexto()`) para
+las 22 preguntas `AMBIGUO` del hallazgo 58 y se clasificó cada una leyendo si el fragmento correcto de
+`jls25.pdf` estaba entre los seis que vio `VerificadorGrounding`:
+
+| Causa | Cantidad | % |
+|---|---|---|
+| RECUPERACIÓN — el reranker no trajo el fragmento correcto | 15 | 68% |
+| JUICIO — el fragmento correcto estaba, el modelo igual rechazó mal | 4 | 18% |
+| CORPUS_DÉBIL — el tema está tocado, pero de forma incompleta o indirecta | 3 | 14% |
+
+Invierte la sospecha que la sesión 15 había dejado abierta sin inclinarse por ninguna de las dos: la
+mayoría de los rechazos indebidos no son culpa de Ministral como verificador — son culpa de qué
+fragmentos le llegan para juzgar. Patrones concretos observados en los 15 casos de RECUPERACIÓN:
+
+- **Colisión de palabra clave**: "¿Qué es un método `default` en una interfaz?" (id 24) trajo el
+  fragmento sobre valores *default* de inicialización de campos — mismo término, concepto distinto.
+- **Fragmentos "vecinos" del tema correcto, pero no el correcto**: la pregunta 55 (longitud de un
+  array) trajo el fragmento de `ArrayStoreException`/covarianza — que es exactamente el fragmento
+  correcto para la pregunta 52 (arrays covariantes), de la misma tanda.
+- **Java moderno perdiendo contra JLS profundo**: preguntas sobre records, patrones y módulos (Java
+  16-25) recuperan reglas de inferencia de tipos o gramática BNF en vez de la prosa introductoria que
+  sí explica el concepto — el corpus tiene la respuesta, pero el reranker prefiere el fragmento
+  técnicamente más denso.
+
+De los 4 casos de JUICIO real (preguntas sobre overload/override, qué es un record, los accesores
+automáticos de un record, y los patrones no nombrados): en los cuatro el fragmento definía el concepto
+de forma explícita y directa (ej. *"an implicitly declared accessor method for every component"*,
+respuesta literal a "¿cómo se llaman los métodos de acceso de un record?") y Ministral rechazó de
+todos modos — estos sí son candidatos limpios para la tarea pendiente de comparar con Bonsai como
+verificador, pero son una minoría, no la mayoría.
+
+**Reordena la prioridad que había quedado abierta al cierre de esta sesión**: ampliar la recuperación
+(subir `KB_RECUPERACION_TOP_RERANK`/`KB_MAX_FRAGMENTOS_CONTEXTO`, hoy 6/6, o activar
+`KB_EXPANDIR_VECINOS`, hoy `false`) tiene mucho más peso esperado que seguir comparando modelos como
+verificador — ese segundo camino solo puede mover, como mucho, el 18% de los casos.
+
+### Hallazgo 62: la misma pregunta, el mismo corpus, el rerank cambió ~28x entre la sesión 15 y la 16 — posible no-determinismo en la recuperación, no solo en el juicio
+
+Efecto colateral notado durante el diagnóstico del hallazgo 61, fuera de su alcance: la pregunta
+`¿Cómo se declara un método genérico independiente de si la clase que lo contiene es genérica?` es
+textualmente idéntica a la que el hallazgo 52 de la sesión 15 había medido con `mejorRerank=5.05` (la
+candidata más prometedora en ese momento para bajar `techo-confianza`). En esta corrida, la misma
+pregunta contra el mismo corpus dio `mejorRerank=0.182` — casi 28 veces menos. Ninguna de las dos
+sesiones cambió el corpus ni el modelo de embeddings entre medio, así que no puede explicarse por una
+diferencia de contenido: sugiere que el paso de recuperación por similitud vectorial (candidatos ANN
+de `pgvector`, antes del rerank) no es perfectamente determinista para la misma consulta, algo que
+ninguna sesión anterior había medido ni puesto en duda. **No investigado más allá de esta observación
+puntual** — queda como pregunta abierta para cuando se retome el trabajo de recuperación, porque si la
+recuperación en sí es inestable, subir `top-rerank`/`max-fragmentos` podría enmascarar el síntoma sin
+explicar la causa.
+
 ### Conclusión de la sesión 16
 
 El objetivo puntual de la sesión — verificar si el ajuste de `ctx-size` de la sesión 15 eliminaba el
@@ -1981,11 +2035,16 @@ desborde de contexto en la práctica — se cumplió con evidencia limpia (halla
 en 100/100 preguntas sin errores de infraestructura, algo que ninguna corrida anterior había logrado).
 Que la precisión global haya bajado igual no contradice ese resultado: es un efecto secundario de
 corregir, en la misma sesión, un segundo valor (`techo-confianza`) que estaba mal calibrado desde la
-sesión 14 sin que nadie lo supiera todavía. La `vía de mayor impacto pendiente` que cerraba la sesión
-15 sigue siendo la misma — por qué el juicio de `VerificadorGrounding` (con Ministral, con el techo
-que de verdad le corresponde) rechaza más de lo esperado en la zona `AMBIGUO` — solo que ahora con una
-muestra de 100 preguntas limpia para investigarla, en vez de 97 con ruido de infraestructura mezclado
-adentro.
+sesión 14 sin que nadie lo supiera todavía.
+
+La `vía de mayor impacto pendiente` que cerraba la sesión 15 — por qué el juicio de
+`VerificadorGrounding` rechaza más de lo esperado en la zona `AMBIGUO` — ya no queda abierta de la
+misma forma: el hallazgo 61 la resolvió parcialmente con una muestra limpia de 100 preguntas. La
+respuesta no es "el modelo juzga mal" sino, en dos de cada tres casos, "el modelo nunca vio el
+fragmento correcto". La siguiente palanca de mayor impacto es ampliar la recuperación
+(`KB_RECUPERACION_TOP_RERANK`/`KB_MAX_FRAGMENTOS_CONTEXTO`/`KB_EXPANDIR_VECINOS`), no seguir afinando o
+comparando el verificador — con la salvedad del hallazgo 62, que sugiere revisar primero si la propia
+recuperación es determinista antes de tunear sus parámetros a ciegas.
 
 Estado del entorno al cierre: `kb-llama-server-ministral` reemplazó a `kb-llama-server` (Bonsai) como
 backend del `kb-api` de producción durante toda la sesión (perfil `compose.ministral.yml`, GPU
