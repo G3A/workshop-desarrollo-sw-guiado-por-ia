@@ -2028,6 +2028,63 @@ puntual** — queda como pregunta abierta para cuando se retome el trabajo de re
 recuperación en sí es inestable, subir `top-rerank`/`max-fragmentos` podría enmascarar el síntoma sin
 explicar la causa.
 
+### Hallazgo 63: el hallazgo 62 no es no-determinismo del motor de búsqueda — y de paso aparece `tope-por-documento=3`, un candidato más fuerte para explicar la `RECUPERACIÓN` del hallazgo 61
+
+Investigando el hallazgo 62 se probaron tres hipótesis contra el código y el pipeline real, en orden:
+
+1. **¿El Planificador reformula la pregunta antes de buscar?** No — descartado leyendo el código:
+   `Orquestador.prepararHastaContexto()` pasa `pregunta.texto()` sin modificar a
+   `Executor.ejecutar(plan.herramientas(), pregunta.texto(), proyecto)`, y de ahí a
+   `Herramienta.ejecutar(consulta, ...)` de cada herramienta elegida. `PlanificadorOpenAi` (el único
+   paso con LLM antes de la búsqueda) solo decide QUÉ herramientas correr — nunca ve ni reescribe el
+   texto de búsqueda. No existe ningún paso de reescritura de consulta en el pipeline actual.
+
+2. **¿`Buscador` es no-determinista para un estado fijo del sistema?** No — se llamó dos veces
+   seguidas a `POST /api/search` (`RecuperacionController`, el mismo camino que usan
+   `search_unified`/`search_docs`, sin pasar por ningún LLM) con el texto literal de la pregunta 69:
+   resultado idéntico bit a bit en las dos, mismos 6 chunks, mismo `rerank` hasta el último decimal
+   (`0.18214967423919637`).
+
+3. **¿Cambió el corpus entre la sesión 14 (cuando corrió la pregunta original, `queryLogId=253`,
+   `2026-08-06 14:19:23 UTC`) y ahora?** No — `chunks` no tiene ninguna fila con `created_at`
+   posterior al `2026-08-04 20:16`, antes de las tres sesiones del piloto.
+
+Cruzando `candidates` de `queryLogId=253` contra la búsqueda en vivo aparece el dato clave: los tres
+chunks que sí coinciden entre ambas corridas (`1047`, `416`, `437`) tienen el mismo `rerank` al
+decimal exacto — pero la corrida original trae además otros tres chunks que la búsqueda en vivo, ahora
+mismo, ni siquiera trae como candidatos: `426` (`rerank=5.05`, el más alto de los seis), `367`
+(`1.19`) y `557` (`0.50`). No es que el mismo chunk puntúe distinto — es que el conjunto de
+candidatos que llega a rerankear es distinto.
+
+Revisando `Recuperador.java`/`RecuperacionPropiedades.java` para entender qué podría filtrar esos tres
+chunks antes de la etapa de rerank, aparece un límite que ninguna sesión anterior había puesto en
+duda para este corpus: `kb.recuperacion.tope-por-documento`
+(`KB_RECUPERACION_TOPE_POR_DOCUMENTO`, **default 3, sin overridear en `compose.bonsai.yml` ni
+`compose.ministral.yml`**) — ningún documento puede aportar más de 3 candidatos a la fusión RRF antes
+del cross-encoder, pensado como tope de diversidad para no dejar que un documento grande acapare todo
+(`RrfFusion.fusionar(...)`, comentario: *"Diversidad: ningún documento puede acaparar los
+candidatos"*). Con un corpus donde `jls25.pdf` **es** casi todo el corpus (session 9), ese tope de
+diversidad no protege contra que un documento grande ahogue a los demás — le pone techo a la propia
+`jls25.pdf` compitiendo contra sí misma: si una pregunta tiene 4 o más chunks genuinamente relevantes
+dentro de `jls25.pdf`, el cuarto pierde su lugar en la fusión así sea mejor candidato que otro
+sobreviviente, sin llegar siquiera a que el cross-encoder lo vea.
+
+El commit `3c11bd3` (14:01 UTC) que fijó los valores actuales de `compose.bonsai.yml` (heredados sin
+commitear desde la sesión 9) se hizo 18 minutos antes de que corriera `queryLogId=253` (14:19) — no
+hay forma de reconstruir con certeza si el contenedor que sirvió esa pregunta puntual ya corría con
+`tope-por-documento=3` o con un valor distinto de la sesión 9 sin registrar en git. **Esta hipótesis
+de deriva de configuración no se pudo confirmar ni descartar con la evidencia disponible** — a
+diferencia de las otras dos, que sí quedan descartadas con evidencia directa.
+
+**Corrección explícita sobre el hallazgo 62**: la sospecha de no-determinismo en la recuperación
+vectorial queda descartada — la búsqueda es determinista para un estado fijo del sistema, medido en
+vivo, y tampoco hay reescritura de consulta por un LLM que pudiera explicar la varianza. Sigue sin
+resolverse por qué el estado del sistema fue distinto entre las dos mediciones, pero la investigación
+deja un candidato concreto y accionable que las tareas pendientes no habían contemplado:
+`tope-por-documento` puede estar recortando de más, específicamente para este corpus. Se prioriza
+probarlo en la tarea pendiente de ampliar recuperación, antes que `top-rerank`/`max-fragmentos` (que
+solo actúan sobre lo que ya sobrevivió a este tope).
+
 ### Conclusión de la sesión 16
 
 El objetivo puntual de la sesión — verificar si el ajuste de `ctx-size` de la sesión 15 eliminaba el
@@ -2041,10 +2098,12 @@ La `vía de mayor impacto pendiente` que cerraba la sesión 15 — por qué el j
 `VerificadorGrounding` rechaza más de lo esperado en la zona `AMBIGUO` — ya no queda abierta de la
 misma forma: el hallazgo 61 la resolvió parcialmente con una muestra limpia de 100 preguntas. La
 respuesta no es "el modelo juzga mal" sino, en dos de cada tres casos, "el modelo nunca vio el
-fragmento correcto". La siguiente palanca de mayor impacto es ampliar la recuperación
-(`KB_RECUPERACION_TOP_RERANK`/`KB_MAX_FRAGMENTOS_CONTEXTO`/`KB_EXPANDIR_VECINOS`), no seguir afinando o
-comparando el verificador — con la salvedad del hallazgo 62, que sugiere revisar primero si la propia
-recuperación es determinista antes de tunear sus parámetros a ciegas.
+fragmento correcto". La siguiente palanca de mayor impacto es ampliar la recuperación, no seguir
+afinando o comparando el verificador — el hallazgo 63 corrige la sospecha de no-determinismo del
+hallazgo 62 (la búsqueda sí es determinista) y en el camino encuentra un candidato más concreto que
+`top-rerank`/`max-fragmentos-contexto`: `KB_RECUPERACION_TOPE_POR_DOCUMENTO` (default 3, nunca
+overrideado), que en un corpus dominado por un solo documento puede estar descartando candidatos
+genuinamente relevantes antes de que lleguen al cross-encoder.
 
 Estado del entorno al cierre: `kb-llama-server-ministral` reemplazó a `kb-llama-server` (Bonsai) como
 backend del `kb-api` de producción durante toda la sesión (perfil `compose.ministral.yml`, GPU
