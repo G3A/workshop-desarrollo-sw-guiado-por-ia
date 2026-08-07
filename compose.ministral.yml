@@ -134,3 +134,8 @@ services:
       KB_EXPANDIR_VECINOS: ${KB_EXPANDIR_VECINOS:-false}
       KB_MAX_FRAGMENTOS_CONTEXTO: ${KB_MAX_FRAGMENTOS_CONTEXTO:-6}
       KB_RECUPERACION_TOP_RERANK: ${KB_RECUPERACION_TOP_RERANK:-6}
+      # EXPERIMENTAL (sesion 16, tarea pendiente #2, hallazgo 63): sin overridear
+      # todavia en produccion -- default de application.yml (3) a menos que se
+      # pase por el shell. Existe aca solo para poder medir en vivo el efecto de
+      # subirlo, antes de comprometerse a un valor nuevo.
+      KB_RECUPERACION_TOPE_POR_DOCUMENTO: ${KB_RECUPERACION_TOPE_POR_DOCUMENTO:-3}

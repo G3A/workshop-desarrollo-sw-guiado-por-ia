@@ -2085,6 +2085,60 @@ deja un candidato concreto y accionable que las tareas pendientes no habían con
 probarlo en la tarea pendiente de ampliar recuperación, antes que `top-rerank`/`max-fragmentos` (que
 solo actúan sobre lo que ya sobrevivió a este tope).
 
+### Hallazgo 64: subir `tope-por-documento` a 20 mejora 28 de las 32 preguntas fallidas, ninguna empeora — medido contra `/api/search`, todavía sin confirmar en el pipeline completo
+
+Prueba directa de la hipótesis del hallazgo 63: se agregó `KB_RECUPERACION_TOPE_POR_DOCUMENTO` al
+bloque `environment` de `compose.ministral.yml` (sin cambiar el default de `3`, solo para poder
+overridearlo desde el shell) y se recreó `kb-api` con el valor en `20` — el mismo que
+`KB_RECUPERACION_MAX_CANDIDATOS`, equivalente a desactivar el tope de diversidad para este corpus.
+Contra las 32 preguntas rechazadas de más de esta sesión (22 `AMBIGUO` + 10 `INSUFICIENTE`), llamando
+`POST /api/search` directo (sin LLM, en segundos en vez de horas):
+
+| Métrica | Valor |
+|---|---|
+| Subieron su `mejorRerank` | 28/32 |
+| Bajaron | 0/32 |
+| Quedaron exactamente igual | 4/32 (ids 30, 43, 48, 49) |
+| Cruzaron `techo-confianza=8.0` (pasarían a `SUFICIENTE` sin depender del verificador) | 5/32 (ids 1, 12, 23, 31, 64) |
+| Cambió el chunk top-1 (candidato nuevo, no solo mejor puntaje) | 28/32 |
+
+Los saltos no son marginales: id 23 sube ×468 (`0.019→8.92`), id 6 ×596 (`0.011→6.74`), id 31 ×86
+(`0.098→8.43` — exactamente el caso que el hallazgo 61 había señalado como "el chunk correcto existe
+en el corpus pero no se recuperó para esta pregunta"). Las 4 preguntas sin cambio coinciden con lo que
+el hallazgo 61 ya había clasificado aparte: la id 30 es el único caso limpio de `JUICIO` (el chunk
+correcto ya se encontraba con `tope-por-documento=3`, subir el tope no le aporta nada, es esperable
+que no cambie); las ids 43, 48, 49 siguen sin encontrar el chunk correcto ni con el tope relajado —
+para esas tres el problema no es la diversidad por documento, es algo más profundo en el ranking o el
+embedding de la consulta, sin investigar todavía.
+
+**Esto es solo evidencia de recuperación, no de precisión real**: un `mejorRerank` más alto aumenta la
+probabilidad de que `VerificadorGrounding` vea el fragmento correcto, pero no garantiza que el modelo
+lo use bien — falta correr el pipeline completo (no solo `/api/search`) para confirmar que la mejora
+se traduce en respuestas correctas, y falta descartar regresión sobre las 68 preguntas que ya
+respondían bien (esta prueba solo tocó las 32 que fallaban).
+
+### Próximos pasos (pendiente para la próxima sesión)
+
+En orden, sin saltarse pasos — el patrón de esta sesión (mezclar `ctx-size` y `techo-confianza` en la
+misma corrida, hallazgo 58) ya costó una comparación confundida una vez:
+
+1. **Chequeo de regresión**: correr el mismo proxy `/api/search` con `tope-por-documento=20` contra
+   una muestra de las 68 preguntas que ya respondían bien, para descartar que más candidatos de
+   `jls25.pdf` compitiendo diluyan el top-1 de preguntas que ya iban bien. Barato, minutos.
+2. **Confirmar en el pipeline real**: si no hay regresión, correr la UI completa (no el proxy) para
+   las preguntas con el salto más grande (23, 6, 31, 64, 1, 12) y confirmar que de verdad pasan a
+   "responde correcto", no solo que sube el `mejorRerank`.
+3. **Elegir un valor y comprometerlo**: si el punto 2 confirma la mejora, decidir el valor de
+   `KB_RECUPERACION_TOPE_POR_DOCUMENTO` como default de `compose.ministral.yml` (y evaluar si
+   `compose.bonsai.yml` debería recibir el mismo ajuste — el default de `3` nunca fue overrideado ahí
+   tampoco). `20` fue el extremo elegido para medir el máximo posible, no necesariamente el valor
+   final — probar si `10` alcanza casi lo mismo con menos riesgo antes de comprometerse al extremo.
+   Después, re-correr el piloto completo de 100 preguntas para tener el número real (no el proxy).
+4. **Tarea de comparar Bonsai como verificador, pausada, no cancelada**: con solo 1 de 32 casos como
+   candidato limpio de `JUICIO` (id 30) tras el hallazgo 64, pierde casi toda su justificación frente
+   al plan original. Solo retomarla si, después del punto 3, sigue quedando un residuo real de casos
+   de juicio que la recuperación no explica.
+
 ### Conclusión de la sesión 16
 
 El objetivo puntual de la sesión — verificar si el ajuste de `ctx-size` de la sesión 15 eliminaba el
@@ -2112,3 +2166,11 @@ ver hallazgo 56). No se volvió a Bonsai al cierre; queda como decisión pendien
 perfil dejar como default de facto. Los resultados de esta sesión quedan en
 `eval-100-preguntas/*-ministral-3-3b-sesion16-verificacion.*`, sin pisar los de la sesión 14
 (`*-100preguntas.*`).
+
+`kb-api` corrió el experimento del hallazgo 64 con `KB_RECUPERACION_TOPE_POR_DOCUMENTO=20` pasado por
+el shell — **se revirtió a `3` (el default) antes de cerrar la sesión**, recreando el contenedor sin
+esa variable: el valor de `20` todavía no pasó el chequeo de regresión del paso 1 de "Próximos pasos",
+dejarlo activo sin esa validación habría expuesto uso real de la base de conocimiento a un cambio sin
+confirmar. `compose.ministral.yml` sí queda con la línea `KB_RECUPERACION_TOPE_POR_DOCUMENTO:
+${KB_RECUPERACION_TOPE_POR_DOCUMENTO:-3}` agregada (default `3`, sin efecto salvo que se pase la
+variable) — el andamiaje para retomar el experimento sin tener que editar el archivo de nuevo.
