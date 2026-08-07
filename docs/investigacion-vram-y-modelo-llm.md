@@ -1872,3 +1872,125 @@ reconstrucción de imagen que usó `kb-api-test-verificacion`, que solo actualiz
 de `maxTokens`) quedó commiteado (`3c11bd3`). El ajuste del hallazgo 55
 (`esDesbordeDeContexto` en `VerificadorGroundingOpenAi.java`) es posterior a ese commit y sigue sin
 commitear al cierre de esta sesión.
+
+## Sesión 16: re-correr el piloto de 100 preguntas de Ministral bajo `compose.ministral.yml` — el desborde de contexto queda resuelto, pero un factor de confusión (el `techo-confianza` corregido) tapa la mejora en el número global
+
+Pedido directo del usuario: verificar en vivo los ajustes de la sesión 15
+(`BONSAI_CTX_SIZE`/`MINISTRAL_CTX_SIZE=8192`, `esDesbordeDeContexto` en `VerificadorGroundingOpenAi`,
+`maxTokens=40`) volviendo a correr el piloto completo de 100 preguntas contra Ministral, ahora bajo su
+propio `compose.ministral.yml` en vez del `compose.bonsai.yml` reusado por error que había producido
+el piloto de la sesión 14. Es la primera corrida de las 100 preguntas con el perfil dedicado.
+
+### Hallazgo 57: el desborde de contexto (hallazgo 51) queda completamente resuelto — cero ocurrencias en 100 preguntas, contra 6 de 17 antes
+
+Se revisaron los logs completos de `kb-api` durante toda la corrida (`docker logs kb-api`, sin filtro
+de fecha, contenedor recreado al arrancar el perfil Ministral) buscando cualquier rastro de
+"desbordo"/"desborde"/"VerificadorGrounding"/excepción/warning: **cero coincidencias**. El contenedor
+completo, de arranque a las 100 preguntas, solo tiene 105 líneas de log — las de arranque de Spring
+Boot y cuatro `WARNING` genéricos de JVM sobre acceso restringido (`System.loadLibrary`), nada del
+pipeline. Con `ctx-size=8192` ninguna de las 100 preguntas llegó a desbordar el presupuesto de
+contexto de `VerificadorGrounding`, así que el mensaje nuevo del hallazgo 55
+(`VerificadorGrounding no pudo evaluar: el contexto ... desborda el ctx-size`) no tuvo ocasión de
+aparecer — no porque el código no funcione, sino porque la causa que debía distinguir ya no ocurre.
+**Confirma en vivo, con datos reales y no solo en la teoría, que subir `ctx-size` (hallazgo 56) fue
+suficiente para eliminar esta causa de raíz.**
+
+### Hallazgo 58: la precisión global bajó de 76.3% a 68.0% de todos modos — no por el desborde de contexto, sino por un factor de confusión: el `techo-confianza` corregido de 6.0 a 8.0
+
+| | Sesión 14 (`ctx-size=4096`, `techo-confianza=6.0` heredado de Bonsai por error) | Sesión 16 (`ctx-size=8192`, `techo-confianza=8.0`, perfil propio) |
+|---|---|---|
+| Calificadas | 97/100 (3 con error de infraestructura) | **100/100 (0 con error)** |
+| Correctas | 74/97 = **76.3%** | 68/100 = **68.0%** |
+| Rechazos indebidos (debía responder, rechazó) | 22/82 (16 `AMBIGUO` + 6 `INSUFICIENTE`) | 32/82 (22 `AMBIGUO` + 10 `INSUFICIENTE`) |
+| Respuestas indebidas (debía rechazar, respondió) | 1/18 | 0/18 |
+
+El número global empeoró, pero comparar estas dos corridas de punta a punta compara dos cambios a la
+vez, no uno: además de `ctx-size`, esta sesión también corrigió `KB_UMBRAL_RELEVANCIA_TECHO_CONFIANZA`
+de 6.0 (el valor de Bonsai, copiado por error en la sesión 14) a 8.0 (el default real de ADR-0008,
+fijado en `compose.ministral.yml` desde la sesión 15). Un techo más alto exige un `mejorRerank` más
+alto para auto-aceptar sin pasar por `VerificadorGrounding`, así que más preguntas caen en zona
+`AMBIGUO` donde el veredicto depende del juicio del modelo — y ese juicio, con el techo que de verdad
+le corresponde a Ministral (no el prestado de Bonsai), resultó más estricto de lo que el piloto de la
+sesión 14 dejaba ver: los rechazos `AMBIGUO` subieron de 16 a 22, los `INSUFICIENTE` (que ni siquiera
+llegan al verificador, es la puerta del reranker) de 6 a 10.
+
+**No hay evidencia de que el desborde de contexto explique este empeoramiento** — al contrario, esta
+sesión demuestra que esa causa específica quedó en cero (hallazgo 57). Lo que queda expuesto, con una
+muestra limpia de 100/100 sin ruido de errores de infraestructura, es exactamente lo que la sesión 15
+ya había marcado como la incógnita más grande sin resolver: *"para las 7 restantes, no hay evidencia
+todavía de que sea ni lo uno ni lo otro"* (juicio del modelo vs. problema de recuperación). Esta
+sesión no investiga esa pregunta — solo la deja con más peso y mejores datos para la próxima vez que
+se retome.
+
+### Hallazgo 59: bug de portabilidad en `ejecutar.js` — un mensaje de Playwright no reconocido convertía un crash de Chromium en una cascada silenciosa de 50 rechazos falsos
+
+Durante la corrida, un crash de `chrome-headless-shell.exe` (mismo síntoma que la sesión 14, presión
+de memoria del sistema, `exitCode=3221225794`/`0xC0000005`) hizo que `chromium.launch()` fallara con
+el mensaje `Target page, context or browser has been closed` — un mensaje real y común de Playwright
+que **no coincidía con ninguna de las tres alternativas** del regex de recuperación en
+`ejecutar.js` (`/crashed|Target closed|Protocol error/i`, agregado en la sesión 14 para el caso
+`browser.newPage()` que ese mismo hallazgo documentó). Al no matchear, el bloque de
+cierre-y-relanzamiento-con-backoff nunca se ejecutaba: la pregunta quedaba marcada como error sin
+espera, y como la variable `browser` quedaba apuntando a la referencia vieja ya muerta, **cada
+pregunta siguiente repetía el mismo fallo instantáneo**, sin reintentar ni esperar. En la práctica: las
+preguntas 51 a 100 de un intento de corrida completaron en ~14 minutos en vez de las ~3 horas reales,
+las 50 marcadas como error sin haberse respondido de verdad.
+
+Corregido ampliando el regex a `/crashed|closed|disconnected|Protocol error/i` (línea ~125): "closed"
+sin más cubre tanto `Target closed` como `Target page, context or browser has been closed` y
+`browser has disconnected`, las tres formas observadas hasta ahora en que Playwright reporta un
+navegador muerto. Las 50 preguntas afectadas se identificaron por su mensaje de error idéntico, se
+descartaron del `resultados-brutos.json` (quedan solo las entradas sin `.error`) y se re-corrieron de
+verdad con el fix aplicado.
+
+### Hallazgo 60: las notificaciones "killed" de tareas en background no son confiables en este entorno Windows — el proceso real puede seguir vivo y huérfano
+
+Repetido al menos 9 veces durante esta sesión: una tarea en background (`bash loop-eval.sh` →
+`npm run eval` → `node ejecutar.js` → `chrome-headless-shell.exe`) reportada como `status: killed` por
+el harness **no había terminado de verdad** — `Get-CimInstance Win32_Process -Filter
+"Name='node.exe' OR Name='bash.exe'" | Select ProcessId,ParentProcessId,CommandLine` seguía mostrando
+la cadena completa viva y corriendo. En un caso concreto esto hizo que dos corridas de
+`npm run eval` compitieran en paralelo, sin saberlo, por la misma GPU y el mismo
+`resultados-brutos.json` (escribiendo entradas duplicadas para el mismo id) — probablemente
+contribuyendo a más crashes de Chromium por la contención de recursos, no solo por la presión de
+memoria de fondo ya documentada en la sesión 14.
+
+Protocolo adoptado el resto de la sesión, antes de cualquier relanzamiento: verificar el árbol de
+procesos real con PowerShell (`Get-CimInstance Win32_Process`, filtrando por `CommandLine` que
+contenga `loop-eval`, `run eval` o `ejecutar.js`), matar cada PID encontrado explícitamente con
+`taskkill /PID <pid> /F` (el flag `/T`, pensado para matar también los hijos, no alcanzó a los
+procesos de `bash.exe` en al menos un caso probado) y `taskkill /IM chrome-headless-shell.exe /F` para
+cualquier huérfano, y solo entonces revisar `resultados-brutos.json` por duplicados antes de relanzar.
+No se investigó la causa raíz de por qué el kill del harness no se propaga siempre al árbol completo
+en Windows — queda como una limitación operativa a tener en cuenta en cualquier corrida larga futura
+que dependa de tareas en background en este entorno, no solo para este piloto.
+
+### Herramienta nueva: `eval-100-preguntas/loop-eval.sh`
+
+Envuelve `npm run eval` en un loop que relanza automáticamente mientras queden preguntas pendientes en
+`resultados-brutos.json`, matando primero cualquier `chrome-headless-shell.exe` huérfano del ciclo
+anterior (un kill externo no le da tiempo a Playwright a cerrar sus hijos — medido en vivo, 8 procesos
+huérfanos bajaron la RAM libre del sistema en 1.4 GB en un solo ciclo). No resuelve el hallazgo 60 (la
+tarea en background puede seguir muriendo sin avisar de verdad), pero reduce cuánto de la recuperación
+depende de que alguien esté mirando en el momento exacto en que Chromium crashea.
+
+### Conclusión de la sesión 16
+
+El objetivo puntual de la sesión — verificar si el ajuste de `ctx-size` de la sesión 15 eliminaba el
+desborde de contexto en la práctica — se cumplió con evidencia limpia (hallazgo 57, cero ocurrencias
+en 100/100 preguntas sin errores de infraestructura, algo que ninguna corrida anterior había logrado).
+Que la precisión global haya bajado igual no contradice ese resultado: es un efecto secundario de
+corregir, en la misma sesión, un segundo valor (`techo-confianza`) que estaba mal calibrado desde la
+sesión 14 sin que nadie lo supiera todavía. La `vía de mayor impacto pendiente` que cerraba la sesión
+15 sigue siendo la misma — por qué el juicio de `VerificadorGrounding` (con Ministral, con el techo
+que de verdad le corresponde) rechaza más de lo esperado en la zona `AMBIGUO` — solo que ahora con una
+muestra de 100 preguntas limpia para investigarla, en vez de 97 con ruido de infraestructura mezclado
+adentro.
+
+Estado del entorno al cierre: `kb-llama-server-ministral` reemplazó a `kb-llama-server` (Bonsai) como
+backend del `kb-api` de producción durante toda la sesión (perfil `compose.ministral.yml`, GPU
+compartida, no hay margen para tener los dos perfiles arriba a la vez con `ctx-size=8192` en ambos —
+ver hallazgo 56). No se volvió a Bonsai al cierre; queda como decisión pendiente del usuario cuál
+perfil dejar como default de facto. Los resultados de esta sesión quedan en
+`eval-100-preguntas/*-ministral-3-3b-sesion16-verificacion.*`, sin pisar los de la sesión 14
+(`*-100preguntas.*`).
