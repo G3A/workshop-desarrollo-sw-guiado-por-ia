@@ -113,7 +113,16 @@ async function main() {
       // Ministral), 62 preguntas seguidas cayeron en este loop sin que el
       // chequeo de isConnected() al inicio del siguiente ciclo lo detectara.
       // Cerrar y relanzar apenas se ve un error de este tipo corta el loop.
-      if (/crashed|Target closed|Protocol error/i.test(error)) {
+      // "closed" (no solo "Target closed") agregado en la sesion 16: el
+      // mensaje real que devuelve chromium.launch() cuando el proceso muere
+      // durante el arranque es "Target page, context or browser has been
+      // closed" -- no matcheaba ninguna de las tres alternativas de arriba,
+      // asi que el catch caia aca sin relanzar nada, dejaba `browser` en su
+      // referencia vieja ya muerta, y CADA pregunta siguiente repetia el
+      // mismo fallo instantaneo sin esperar ni reintentar -- medido en vivo,
+      // asi se perdieron 50 preguntas seguidas (51-100) en ~14 minutos en vez
+      // de las ~3 horas que hubieran tomado de verdad.
+      if (/crashed|closed|disconnected|Protocol error/i.test(error)) {
         console.warn("  -> parece un browser corrupto, cerrando y relanzando...");
         await browser.close().catch(() => {});
         // El relanzamiento mismo puede fallar -- medido en vivo dos causas
