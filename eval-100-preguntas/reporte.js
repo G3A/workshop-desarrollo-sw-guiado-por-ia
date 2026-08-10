@@ -21,6 +21,9 @@ const DB_USER = process.env.EVAL_DB_USER || "kb";
 const DB_NAME = process.env.EVAL_DB_NAME || "baseconocimiento";
 const API_CONTAINER = process.env.EVAL_API_CONTAINER || "kb-api";
 const PROYECTO = process.env.EVAL_PROYECTO || "default";
+// Mismo sufijo que ejecutar.js (EVAL_SUFIJO) para cruzar la muestra puntual
+// correcta en vez de resultados-brutos.json de la corrida completa.
+const SUFIJO = process.env.EVAL_SUFIJO ? `.${process.env.EVAL_SUFIJO}` : "";
 
 // Orquestador.MENSAJE_SIN_INFORMACION -- si cambia ese texto en el codigo,
 // actualizar tambien aca.
@@ -29,9 +32,9 @@ const MENSAJE_SIN_INFORMACION =
   "para responder esto. Prueba con otra formulación o verifica que el tema " +
   "esté cubierto por las fuentes ingeridas.";
 
-const ARCHIVO_RESULTADOS = path.join(DIR, "resultados-brutos.json");
-const ARCHIVO_SALIDA_JSON = path.join(DIR, "resultados-completos.json");
-const ARCHIVO_SALIDA_HTML = path.join(DIR, "reporte.html");
+const ARCHIVO_RESULTADOS = path.join(DIR, `resultados-brutos${SUFIJO}.json`);
+const ARCHIVO_SALIDA_JSON = path.join(DIR, `resultados-completos${SUFIJO}.json`);
+const ARCHIVO_SALIDA_HTML = path.join(DIR, `reporte${SUFIJO}.html`);
 
 function psqlJson(sql) {
   const salida = execFileSync(

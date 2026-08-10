@@ -1,0 +1,74 @@
+[
+  {
+    "id": 1,
+    "categoria": "tipos",
+    "pregunta": "¿Cuáles son los ocho tipos primitivos definidos en el lenguaje Java?",
+    "esperado": "responde",
+    "respuesta": "Los ocho tipos primitivos definidos en Java según el contexto son:\n\nbyte, short, int, long, char, float, double, boolean **[1]**.",
+    "estadoFinal": "",
+    "error": null,
+    "inicio": "2026-08-10T15:18:11.653Z",
+    "fin": "2026-08-10T15:20:11.352Z",
+    "elapsedMs": 119699
+  },
+  {
+    "id": 6,
+    "categoria": "tipos",
+    "pregunta": "¿Qué significa que un método tenga tipo de retorno void?",
+    "esperado": "responde",
+    "respuesta": "Un método declarado **`void`** **[3]** indica que **no devuelve ningún valor** al llamado que realiza el código que lo invoca.\n\n---\nNo hay más detalles específicos sobre su significado en este contexto.",
+    "estadoFinal": "",
+    "error": null,
+    "inicio": "2026-08-10T15:20:11.356Z",
+    "fin": "2026-08-10T15:24:33.338Z",
+    "elapsedMs": 261982
+  },
+  {
+    "id": 12,
+    "categoria": "variables",
+    "pregunta": "¿Qué implica declarar una variable como final?",
+    "esperado": "responde",
+    "respuesta": "Implica **no poder asignarle valores adicionales** después de su inicialización ([1]).\n\nSi es una referencia a un objeto (incluyendo arrays), puede modificar el estado interno del objeto, pero la variable siempre apuntará al mismo lugar en memoria ([1]). No permite operadores de incremento/decremento ([3][6]).\n\nNo aplica para constantes primitivas o `String` con expresiones constantes ([1]).",
+    "estadoFinal": "",
+    "error": null,
+    "inicio": "2026-08-10T15:24:33.339Z",
+    "fin": "2026-08-10T15:27:04.776Z",
+    "elapsedMs": 151437
+  },
+  {
+    "id": 23,
+    "categoria": "clases",
+    "pregunta": "¿Qué es una clase anónima en Java?",
+    "esperado": "responde",
+    "respuesta": "Una **clase anónima** en Java es un tipo de clase declarada **sin nombre propio**, creada directamente en el lugar donde se usa mediante expresiones como `new Clase() { ... }` o dentro de constantes de enumeraciones (`enum`).\n\nEspecíficamente:\n- No puede tener un nombre explícito ([1], [4]).\n- Es siempre una **subclase implícita** de un tipo dado por la expresión de creación ([1], [6]).\n- Tiene un cuerpo definido en el momento de su declaración ([1], [6]).\n\nNo puede heredar de otra clase anónima ni declararse como abstracta ([1]). Su constructor es **implícito** y sigue reglas específicas según su relación con clases internas ([3]).\n\n---\n*Nota sobre restricciones:*\nSi la clase anónima hereda de una clase local estática o de otro tipo especial, hay errores de compilación si no cumple condiciones de contexto ([5]).",
+    "estadoFinal": "",
+    "error": null,
+    "inicio": "2026-08-10T15:27:04.778Z",
+    "fin": "2026-08-10T15:30:34.161Z",
+    "elapsedMs": 209383
+  },
+  {
+    "id": 31,
+    "categoria": "records",
+    "pregunta": "¿Qué es el constructor canónico de un record?",
+    "esperado": "responde",
+    "respuesta": "El **constructor canónico** de un *record* es un método especial que inicializa todos los campos componentes del mismo mediante sus parámetros correspondientes en orden de declaración.\n\nSi no está explícitamente declarado en la declaración del *record*, se genera de forma **implicita** con las siguientes características:\n- Tiene el mismo nombre que la clase (*record*).\n- Sus parámetros son derivados de los componentes del *record* según su tipo y orden [1].\n- Su modificador de acceso coincide con el del *record* (si este no especifica acceso, usa acceso de paquete) [1].\n\nNo incluye cláusula `throws` ni invocación explícita de otro constructor [1].\n\n---\n**Nota sobre implicito vs explícito**:\n- Un constructor canónico puede declararse **explicitamente** como un constructor normal o compacto, pero solo existe **uno por *record*** [2].\n- En caso de conflicto entre ambos métodos (normal y compacto), el compilador marca error [1].",
+    "estadoFinal": "",
+    "error": null,
+    "inicio": "2026-08-10T15:30:34.163Z",
+    "fin": "2026-08-10T15:34:20.907Z",
+    "elapsedMs": 226744
+  },
+  {
+    "id": 64,
+    "categoria": "generics",
+    "pregunta": "¿Qué es un parámetro de tipo genérico en una clase o método?",
+    "esperado": "responde",
+    "respuesta": "Un parámetro de tipo genérico en una **clase** es una variable de tipo declarada dentro de la sección de tipos genéricos, delimitada por `<` y `>` después del nombre de la clase [1][2].\n\n---\nEn un **método**, los parámetros de tipo genérico son las variables de tipo definidas en la declaración del método dentro de la sintaxis `<T1, T2, ...>` (ejemplo: `<T>` o `<K, V>`), donde cada `T` representa un tipo que puede ser reemplazado por cualquier otro tipo al momento de invocar el método [1].\n\n---\nNo hay información específica sobre cómo se aplican estos conceptos en métodos vs. clases en este contexto, pero ambos usan el mismo formato sintáctico para definir **tipos genéricos**. En ambos casos, permiten crear instancias parametrizadas según los tipos proporcionados al usar la clase/método [1][2][3].",
+    "estadoFinal": "",
+    "error": null,
+    "inicio": "2026-08-10T15:34:20.908Z",
+    "fin": "2026-08-10T15:38:04.637Z",
+    "elapsedMs": 223729
+  }
+]

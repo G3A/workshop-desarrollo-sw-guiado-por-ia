@@ -26,12 +26,22 @@ const LIMITE = process.env.EVAL_LIMITE ? Number(process.env.EVAL_LIMITE) : Infin
 // pregunta de la zona AMBIGUO antes de completar. 900_000 (15 min) da margen
 // para el peor caso de las tres llamadas encadenadas sin abortar de más.
 const TIMEOUT_MS = Number(process.env.EVAL_TIMEOUT_MS || 900_000);
+// Lista de ids separados por coma (p. ej. "1,6,12,23,31,64") para correr solo
+// una muestra puntual -- confirmar en el pipeline real un puñado de preguntas
+// tras un cambio de configuración, sin repetir las 100 completas.
+const IDS = process.env.EVAL_IDS
+  ? new Set(process.env.EVAL_IDS.split(",").map((s) => Number(s.trim())))
+  : null;
+// Sufijo para no pisar resultados-brutos.json de una corrida completa al
+// correr una muestra puntual (EVAL_IDS) contra la misma carpeta.
+const SUFIJO = process.env.EVAL_SUFIJO ? `.${process.env.EVAL_SUFIJO}` : "";
 
 const ARCHIVO_PREGUNTAS = path.join(DIR, "preguntas.json");
-const ARCHIVO_RESULTADOS = path.join(DIR, "resultados-brutos.json");
+const ARCHIVO_RESULTADOS = path.join(DIR, `resultados-brutos${SUFIJO}.json`);
 
 const todas = JSON.parse(readFileSync(ARCHIVO_PREGUNTAS, "utf8"));
-const preguntas = todas.slice(0, Number.isFinite(LIMITE) ? LIMITE : todas.length);
+const limitadas = todas.slice(0, Number.isFinite(LIMITE) ? LIMITE : todas.length);
+const preguntas = IDS ? limitadas.filter((p) => IDS.has(p.id)) : limitadas;
 
 const resultados = existsSync(ARCHIVO_RESULTADOS)
   ? JSON.parse(readFileSync(ARCHIVO_RESULTADOS, "utf8"))

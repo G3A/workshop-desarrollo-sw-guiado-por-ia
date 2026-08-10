@@ -1,0 +1,478 @@
+[
+  {
+    "id": 2,
+    "pregunta": "¿Qué diferencia hay entre un tipo primitivo y un tipo de referencia en Java?",
+    "mejorRerankBaselineSesion16": 9.541721486983219,
+    "mejorRerank": 9.541721486983219,
+    "top1ChunkId": 128
+  },
+  {
+    "id": 3,
+    "pregunta": "¿Qué es una conversión de ensanchamiento (widening) entre tipos primitivos?",
+    "mejorRerankBaselineSesion16": 9.030814609196138,
+    "mejorRerank": 9.030814609196138,
+    "top1ChunkId": 192
+  },
+  {
+    "id": 5,
+    "pregunta": "¿Qué representa el tipo null y a qué tipos de referencia se puede asignar?",
+    "mejorRerankBaselineSesion16": 9.719980801452554,
+    "mejorRerank": 9.719980801452554,
+    "top1ChunkId": 124
+  },
+  {
+    "id": 7,
+    "pregunta": "¿Qué es un tipo genérico parametrizado, por ejemplo List<String>?",
+    "mejorRerankBaselineSesion16": 4.34498560109318,
+    "mejorRerank": 4.34498560109318,
+    "top1ChunkId": 148
+  },
+  {
+    "id": 8,
+    "pregunta": "¿Qué es un literal de tipo long y cómo se distingue de un literal int en el código fuente?",
+    "mejorRerankBaselineSesion16": 7.010517308040638,
+    "mejorRerank": 7.010517308040638,
+    "top1ChunkId": 109
+  },
+  {
+    "id": 9,
+    "pregunta": "¿Qué diferencia hay entre una variable local declarada con var y una declarada con un tipo explícito?",
+    "mejorRerankBaselineSesion16": 6.027717534326211,
+    "mejorRerank": 6.027717534326211,
+    "top1ChunkId": 685
+  },
+  {
+    "id": 10,
+    "pregunta": "¿Qué es el ámbito (scope) de una variable local?",
+    "mejorRerankBaselineSesion16": 6.616726558140255,
+    "mejorRerank": 6.616726558140255,
+    "top1ChunkId": 245
+  },
+  {
+    "id": 11,
+    "pregunta": "¿Qué significa que una variable esté sombreada (shadowing) por otra?",
+    "mejorRerankBaselineSesion16": 0.992449159578435,
+    "mejorRerank": 1.4463313314373394,
+    "top1ChunkId": 268
+  },
+  {
+    "id": 15,
+    "pregunta": "¿Qué diferencia hay entre los modificadores de acceso public, protected, private y el acceso por defecto (package-private)?",
+    "mejorRerankBaselineSesion16": 8.892989179946415,
+    "mejorRerank": 8.892989179946415,
+    "top1ChunkId": 307
+  },
+  {
+    "id": 16,
+    "pregunta": "¿Qué es una clase abstracta y en qué se diferencia de una clase concreta?",
+    "mejorRerankBaselineSesion16": 2.377523488498853,
+    "mejorRerank": 5.7487229617376965,
+    "top1ChunkId": 361
+  },
+  {
+    "id": 19,
+    "pregunta": "¿Para qué sirve la palabra clave static en un miembro de clase?",
+    "mejorRerankBaselineSesion16": 0.8482066715950737,
+    "mejorRerank": 0.851614175098615,
+    "top1ChunkId": 366
+  },
+  {
+    "id": 20,
+    "pregunta": "¿Qué es un bloque de inicialización estático y cuándo se ejecuta?",
+    "mejorRerankBaselineSesion16": 6.033970316076905,
+    "mejorRerank": 6.033970316076905,
+    "top1ChunkId": 451
+  },
+  {
+    "id": 22,
+    "pregunta": "¿Para qué se usan las palabras clave this y super dentro de un constructor?",
+    "mejorRerankBaselineSesion16": 8.209186844752438,
+    "mejorRerank": 8.209186844752438,
+    "top1ChunkId": 463
+  },
+  {
+    "id": 25,
+    "pregunta": "¿Pueden las interfaces tener métodos estáticos? ¿Para qué se usan?",
+    "mejorRerankBaselineSesion16": 8.170788978846483,
+    "mejorRerank": 8.170788978846483,
+    "top1ChunkId": 495
+  },
+  {
+    "id": 26,
+    "pregunta": "¿Puede una clase implementar más de una interfaz en Java? ¿Qué pasa con la herencia múltiple?",
+    "mejorRerankBaselineSesion16": 5.68518480494197,
+    "mejorRerank": 5.68518480494197,
+    "top1ChunkId": 381
+  },
+  {
+    "id": 27,
+    "pregunta": "¿Qué es una interfaz funcional?",
+    "mejorRerankBaselineSesion16": 3.329539448342096,
+    "mejorRerank": 7.802425553984984,
+    "top1ChunkId": 536
+  },
+  {
+    "id": 28,
+    "pregunta": "¿Qué modificadores implícitos tienen los campos declarados en una interfaz?",
+    "mejorRerankBaselineSesion16": 0.6565672608541375,
+    "mejorRerank": 1.5016681579190059,
+    "top1ChunkId": 492
+  },
+  {
+    "id": 29,
+    "pregunta": "¿Qué es una interfaz marcadora (marker interface)?",
+    "mejorRerankBaselineSesion16": 3.17483491829499,
+    "mejorRerank": 3.17483491829499,
+    "top1ChunkId": 519
+  },
+  {
+    "id": 33,
+    "pregunta": "¿Puede un record extender otra clase?",
+    "mejorRerankBaselineSesion16": 1.8679592448206728,
+    "mejorRerank": 1.8679592448206728,
+    "top1ChunkId": 374
+  },
+  {
+    "id": 34,
+    "pregunta": "¿Qué es un constructor compacto (compact constructor) en un record?",
+    "mejorRerankBaselineSesion16": 9.200906927607432,
+    "mejorRerank": 9.200906927607432,
+    "top1ChunkId": 489
+  },
+  {
+    "id": 35,
+    "pregunta": "¿Un record puede implementar interfaces?",
+    "mejorRerankBaselineSesion16": 4.353355346811494,
+    "mejorRerank": 6.985896631095024,
+    "top1ChunkId": 357
+  },
+  {
+    "id": 36,
+    "pregunta": "¿Qué es una clase sealed y qué controla la cláusula permits?",
+    "mejorRerankBaselineSesion16": 6.410680745307066,
+    "mejorRerank": 6.410680745307066,
+    "top1ChunkId": 383
+  },
+  {
+    "id": 37,
+    "pregunta": "¿Qué modificadores puede tener una subclase directa de una clase sealed?",
+    "mejorRerankBaselineSesion16": 8.850394346246661,
+    "mejorRerank": 8.850394346246661,
+    "top1ChunkId": 364
+  },
+  {
+    "id": 38,
+    "pregunta": "¿Una interfaz puede declararse sealed?",
+    "mejorRerankBaselineSesion16": 8.527323738699126,
+    "mejorRerank": 9.950603790115448,
+    "top1ChunkId": 496
+  },
+  {
+    "id": 39,
+    "pregunta": "¿Qué relación hay entre las clases selladas y la exhaustividad en una expresión switch?",
+    "mejorRerankBaselineSesion16": 7.813022096391552,
+    "mejorRerank": 7.813022096391552,
+    "top1ChunkId": 703
+  },
+  {
+    "id": 40,
+    "pregunta": "¿Qué pasa si una subclase de una clase sealed no se declara final, sealed ni non-sealed?",
+    "mejorRerankBaselineSesion16": 9.859442321601648,
+    "mejorRerank": 9.859442321601648,
+    "top1ChunkId": 364
+  },
+  {
+    "id": 41,
+    "pregunta": "¿Qué es el pattern matching con instanceof?",
+    "mejorRerankBaselineSesion16": 9.09808511111094,
+    "mejorRerank": 9.09808511111094,
+    "top1ChunkId": 889
+  },
+  {
+    "id": 42,
+    "pregunta": "¿Qué es un patrón de tipo (type pattern) en Java?",
+    "mejorRerankBaselineSesion16": 0.390646677577092,
+    "mejorRerank": 1.889936420663846,
+    "top1ChunkId": 757
+  },
+  {
+    "id": 44,
+    "pregunta": "¿Cómo funciona el pattern matching dentro de una expresión switch?",
+    "mejorRerankBaselineSesion16": 8.979098483855177,
+    "mejorRerank": 9.131218579793181,
+    "top1ChunkId": 255
+  },
+  {
+    "id": 45,
+    "pregunta": "¿Qué es una cláusula de guarda (when) en un patrón de switch?",
+    "mejorRerankBaselineSesion16": 2.710079660118468,
+    "mejorRerank": 2.710079660118468,
+    "top1ChunkId": 699
+  },
+  {
+    "id": 46,
+    "pregunta": "¿Un patrón de switch puede coincidir explícitamente con el valor null?",
+    "mejorRerankBaselineSesion16": 1.5327285793416694,
+    "mejorRerank": 1.8142034244174106,
+    "top1ChunkId": 699
+  },
+  {
+    "id": 50,
+    "pregunta": "¿En qué contexto es útil una variable no nombrada dentro de un bloque catch?",
+    "mejorRerankBaselineSesion16": 0.7430011581585055,
+    "mejorRerank": 0.7430011581585055,
+    "top1ChunkId": 746
+  },
+  {
+    "id": 53,
+    "pregunta": "¿Cuándo se lanza una ArrayStoreException?",
+    "mejorRerankBaselineSesion16": 8.752967613299385,
+    "mejorRerank": 8.752967613299385,
+    "top1ChunkId": 566
+  },
+  {
+    "id": 54,
+    "pregunta": "¿Cómo se declara e inicializa un array multidimensional en Java?",
+    "mejorRerankBaselineSesion16": 7.501412848035949,
+    "mejorRerank": 7.501412848035949,
+    "top1ChunkId": 800
+  },
+  {
+    "id": 56,
+    "pregunta": "¿Los arrays en Java son objetos? ¿Qué implica eso?",
+    "mejorRerankBaselineSesion16": 8.791180133836642,
+    "mejorRerank": 8.791180133836642,
+    "top1ChunkId": 558
+  },
+  {
+    "id": 58,
+    "pregunta": "¿Cuál es la jerarquía entre Throwable, Exception y Error?",
+    "mejorRerankBaselineSesion16": 9.677035919702455,
+    "mejorRerank": 9.677035919702455,
+    "top1ChunkId": 578
+  },
+  {
+    "id": 59,
+    "pregunta": "¿Qué es una sentencia try-with-resources y qué requisito debe cumplir el recurso?",
+    "mejorRerankBaselineSesion16": 7.40280930298305,
+    "mejorRerank": 7.40280930298305,
+    "top1ChunkId": 743
+  },
+  {
+    "id": 60,
+    "pregunta": "¿Qué es un bloque multi-catch y cuándo conviene usarlo?",
+    "mejorRerankBaselineSesion16": 0.15337044222596902,
+    "mejorRerank": 0.15337044222596902,
+    "top1ChunkId": 738
+  },
+  {
+    "id": 61,
+    "pregunta": "¿En qué orden se ejecuta un bloque finally respecto al try y al catch?",
+    "mejorRerankBaselineSesion16": 7.300058765624224,
+    "mejorRerank": 8.640810366108727,
+    "top1ChunkId": 742
+  },
+  {
+    "id": 65,
+    "pregunta": "¿Qué es un comodín (wildcard) del tipo ? extends en genéricos?",
+    "mejorRerankBaselineSesion16": 1.335824318708987,
+    "mejorRerank": 1.335824318708987,
+    "top1ChunkId": 149
+  },
+  {
+    "id": 66,
+    "pregunta": "¿Qué es el borrado de tipos (type erasure) en los genéricos de Java?",
+    "mejorRerankBaselineSesion16": 0.7848659586561624,
+    "mejorRerank": 7.683948332356963,
+    "top1ChunkId": 153
+  },
+  {
+    "id": 71,
+    "pregunta": "¿Qué diferencia hay entre las directivas exports y requires en un módulo?",
+    "mejorRerankBaselineSesion16": 8.492916325658786,
+    "mejorRerank": 9.747936922073743,
+    "top1ChunkId": 280
+  },
+  {
+    "id": 72,
+    "pregunta": "¿Qué es una declaración de importación de módulo (import module)?",
+    "mejorRerankBaselineSesion16": 8.409910869019281,
+    "mejorRerank": 9.906022085914987,
+    "top1ChunkId": 339
+  },
+  {
+    "id": 76,
+    "pregunta": "¿Qué ventaja aporta poder importar un módulo completo con una sola declaración import module?",
+    "mejorRerankBaselineSesion16": 6.61778179234533,
+    "mejorRerank": 9.794770816329251,
+    "top1ChunkId": 339
+  },
+  {
+    "id": 77,
+    "pregunta": "¿Qué se necesita tener instalado y en ejecución para desplegar este servicio?",
+    "mejorRerankBaselineSesion16": 8.56727743435691,
+    "mejorRerank": 8.56727743435691,
+    "top1ChunkId": 13
+  },
+  {
+    "id": 78,
+    "pregunta": "¿Qué archivo hay que copiar a .env antes de desplegar este servicio?",
+    "mejorRerankBaselineSesion16": 9.256902905876661,
+    "mejorRerank": 9.256902905876661,
+    "top1ChunkId": 13
+  },
+  {
+    "id": 79,
+    "pregunta": "¿Qué paso adicional hay que seguir en Windows para darle memoria a WSL2 antes de desplegar este servicio?",
+    "mejorRerankBaselineSesion16": 9.880198225950036,
+    "mejorRerank": 9.880198225950036,
+    "top1ChunkId": 13
+  },
+  {
+    "id": 80,
+    "pregunta": "¿Qué archivo de Docker Compose se usa automáticamente si la máquina tiene una GPU NVIDIA para este proyecto?",
+    "mejorRerankBaselineSesion16": 9.967077529898406,
+    "mejorRerank": 9.967077529898406,
+    "top1ChunkId": 13
+  },
+  {
+    "id": 81,
+    "pregunta": "¿Qué comando se ejecuta para levantar este servicio con Docker Compose?",
+    "mejorRerankBaselineSesion16": 5.751167853684111,
+    "mejorRerank": 5.751167853684111,
+    "top1ChunkId": 13
+  },
+  {
+    "id": 82,
+    "pregunta": "¿El make up de este proyecto detecta la GPU de forma manual o automática?",
+    "mejorRerankBaselineSesion16": 9.625440216556303,
+    "mejorRerank": 9.625440216556303,
+    "top1ChunkId": 13
+  },
+  {
+    "id": 83,
+    "pregunta": "¿Cuál es la capital de Francia?",
+    "mejorRerankBaselineSesion16": 0.001278322953058672,
+    "mejorRerank": 0.001278322953058672,
+    "top1ChunkId": 101
+  },
+  {
+    "id": 84,
+    "pregunta": "¿Cómo se prepara un arroz con pollo?",
+    "mejorRerankBaselineSesion16": 0.001002376279510329,
+    "mejorRerank": 0.001002376279510329,
+    "top1ChunkId": 1077
+  },
+  {
+    "id": 85,
+    "pregunta": "¿Qué clima va a hacer mañana en Bogotá?",
+    "mejorRerankBaselineSesion16": 0.00018185906123660998,
+    "mejorRerank": 0.0001844751778245768,
+    "top1ChunkId": 1068
+  },
+  {
+    "id": 86,
+    "pregunta": "¿Quién fue el primer emperador de Roma?",
+    "mejorRerankBaselineSesion16": 0.0030224320848295074,
+    "mejorRerank": 0.00502571152429077,
+    "top1ChunkId": 85
+  },
+  {
+    "id": 87,
+    "pregunta": "¿Cómo se cultivan tomates en una huerta casera?",
+    "mejorRerankBaselineSesion16": 0.0003482100379320446,
+    "mejorRerank": 0.0003482100379320446,
+    "top1ChunkId": 1077
+  },
+  {
+    "id": 88,
+    "pregunta": "¿Qué es Docker y para qué se usa en general?",
+    "mejorRerankBaselineSesion16": 0.5142711752350173,
+    "mejorRerank": 0.5142711752350173,
+    "top1ChunkId": 13
+  },
+  {
+    "id": 89,
+    "pregunta": "¿Qué es Ollama?",
+    "mejorRerankBaselineSesion16": 0.001208904433675617,
+    "mejorRerank": 0.001208904433675617,
+    "top1ChunkId": 1056
+  },
+  {
+    "id": 90,
+    "pregunta": "¿Qué es una GPU?",
+    "mejorRerankBaselineSesion16": 0.12986744576003562,
+    "mejorRerank": 0.12986744576003562,
+    "top1ChunkId": 13
+  },
+  {
+    "id": 91,
+    "pregunta": "¿Qué es WSL2?",
+    "mejorRerankBaselineSesion16": 2.629383039843471,
+    "mejorRerank": 2.629383039843471,
+    "top1ChunkId": 13
+  },
+  {
+    "id": 92,
+    "pregunta": "Explícame cómo usar Java 25",
+    "mejorRerankBaselineSesion16": 0.20966071057707764,
+    "mejorRerank": 0.9430239235330656,
+    "top1ChunkId": 77
+  },
+  {
+    "id": 93,
+    "pregunta": "¿Cómo instalo Java 25 en mi computador?",
+    "mejorRerankBaselineSesion16": 0.08948072408641884,
+    "mejorRerank": 0.1205404072582692,
+    "top1ChunkId": 77
+  },
+  {
+    "id": 94,
+    "pregunta": "¿Cuáles son las novedades de Java 25 para el desarrollo web?",
+    "mejorRerankBaselineSesion16": 2.1108399532476616,
+    "mejorRerank": 2.1108399532476616,
+    "top1ChunkId": 77
+  },
+  {
+    "id": 95,
+    "pregunta": "¿En qué se diferencian Java y Python como lenguajes de programación?",
+    "mejorRerankBaselineSesion16": 1.2656249664261032,
+    "mejorRerank": 1.2656249664261032,
+    "top1ChunkId": 67
+  },
+  {
+    "id": 96,
+    "pregunta": "Hola, ¿cómo estás?",
+    "mejorRerankBaselineSesion16": 0.00867213395354822,
+    "mejorRerank": 0.22490385866665766,
+    "top1ChunkId": 639
+  },
+  {
+    "id": 97,
+    "pregunta": "Gracias por tu ayuda",
+    "mejorRerankBaselineSesion16": 0.0010308412950226966,
+    "mejorRerank": 0.001355662805202242,
+    "top1ChunkId": 1073
+  },
+  {
+    "id": 98,
+    "pregunta": "¿Quién eres tú?",
+    "mejorRerankBaselineSesion16": 0.0350813780383324,
+    "mejorRerank": 0.0350813780383324,
+    "top1ChunkId": 1074
+  },
+  {
+    "id": 99,
+    "pregunta": "¿Qué es la máquina virtual de Java (JVM) y cómo funciona su recolector de basura?",
+    "mejorRerankBaselineSesion16": 0.22847160800820043,
+    "mejorRerank": 0.22847160800820043,
+    "top1ChunkId": 591
+  },
+  {
+    "id": 100,
+    "pregunta": "¿Qué es Kotlin?",
+    "mejorRerankBaselineSesion16": 0.0019091053587050667,
+    "mejorRerank": 0.0019091053587050667,
+    "top1ChunkId": 314
+  }
+]
