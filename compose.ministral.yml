@@ -134,8 +134,14 @@ services:
       KB_EXPANDIR_VECINOS: ${KB_EXPANDIR_VECINOS:-false}
       KB_MAX_FRAGMENTOS_CONTEXTO: ${KB_MAX_FRAGMENTOS_CONTEXTO:-6}
       KB_RECUPERACION_TOP_RERANK: ${KB_RECUPERACION_TOP_RERANK:-6}
-      # EXPERIMENTAL (sesion 16, tarea pendiente #2, hallazgo 63): sin overridear
-      # todavia en produccion -- default de application.yml (3) a menos que se
-      # pase por el shell. Existe aca solo para poder medir en vivo el efecto de
-      # subirlo, antes de comprometerse a un valor nuevo.
-      KB_RECUPERACION_TOPE_POR_DOCUMENTO: ${KB_RECUPERACION_TOPE_POR_DOCUMENTO:-3}
+      # Subido de 3 (default de application.yml) a 20 tras el hallazgo 65 (sesion
+      # 17): contra las 32 preguntas que rechazaba de mas, tope=20 mejora 28/32
+      # sin empeorar ninguna via /api/search, y confirmado en el pipeline real
+      # sobre una muestra de 6 -- las 6 pasan de rechazar a responder correcto.
+      # tope=10 se probo como alternativa de "menos riesgo" pero se descarta:
+      # dejaba sin cruzar el techo de confianza justo al caso mas fuerte (id 1,
+      # el unico de la muestra de 6 que con tope=10 no mejora nada frente al
+      # baseline), y el chequeo de regresion ya mostro que tope=20 no perjudica
+      # ninguna de las 68 preguntas que ya respondian bien -- no hay evidencia
+      # de riesgo real que tope=10 evite y tope=20 no.
+      KB_RECUPERACION_TOPE_POR_DOCUMENTO: ${KB_RECUPERACION_TOPE_POR_DOCUMENTO:-20}

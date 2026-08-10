@@ -2174,3 +2174,110 @@ dejarlo activo sin esa validación habría expuesto uso real de la base de conoc
 confirmar. `compose.ministral.yml` sí queda con la línea `KB_RECUPERACION_TOPE_POR_DOCUMENTO:
 ${KB_RECUPERACION_TOPE_POR_DOCUMENTO:-3}` agregada (default `3`, sin efecto salvo que se pase la
 variable) — el andamiaje para retomar el experimento sin tener que editar el archivo de nuevo.
+
+## Sesión 17: se compromete `tope-por-documento=20` como default de `compose.ministral.yml` — sin regresión medida y confirmado en el pipeline real
+
+Retoma los 4 pasos que la sesión 16 dejó documentados como plan explícito. Los primeros tres se
+completan en esta sesión; el cuarto (retomar la comparación de Bonsai como verificador) sigue
+pausado, con la misma justificación de entonces.
+
+### Hallazgo 65: paso 1 — chequeo de regresión, ninguna de las 68 preguntas buenas baja su `mejorRerank` con `tope-por-documento=20`
+
+Se agregó soporte de `EVAL_IDS` (lista de ids separados por coma) y `EVAL_SUFIJO` (sufijo de archivo
+de salida) a `ejecutar.js` y `reporte.js`, para poder correr una muestra puntual de `preguntas.json`
+sin pisar los resultados de una corrida completa ni repetirla entera. Con `kb-api` primero en el
+default (`tope=3`, confirmado con `docker inspect`) y después recreado con `tope=20`, se llamó
+`POST /api/search` (sin LLM) para las 68 preguntas que la sesión 16 ya calificaba como buenas
+(`comportamiento` correcto, sin importar si `esperado` era `responde` o `rechaza`):
+
+| Métrica | Valor |
+|---|---|
+| Corrida en vivo con `tope=3` vs el `mejorRerank` ya registrado en la sesión 16 | idéntico en las 68 (0 diferencias) |
+| Bajan su `mejorRerank` con `tope=20` | 0/68 |
+| Suben | 21/68 |
+| Quedan exactamente igual | 47/68 |
+| Cambia el chunk top-1 (aunque el puntaje no baje) | 21/68 |
+
+La corrida en vivo con `tope=3` reproduce bit a bit los valores de `mejorRerank` que ya estaban
+guardados en `resultados-completos.ministral-3-3b-sesion16-verificacion.json` — confirmación adicional
+del determinismo que ya había establecido el hallazgo 63, y evidencia de que el proxy mide exactamente
+lo mismo que el pipeline completo. **No hay regresión**: subir el tope no le quita candidatos a
+ninguna pregunta que ya iba bien. El dato que sí merece quedar anotado sin ser una regresión: en 21 de
+las 68 preguntas buenas cambia cuál chunk queda en el puesto top-1, aunque el `mejorRerank` no baje —
+más candidatos de `jls25.pdf` compitiendo mueve el ranking interno incluso cuando no lo empeora. No se
+investigó si el chunk nuevo es igual de correcto que el viejo para esas 21; queda como posible fuente
+de sorpresas si se audita a mano una respuesta que antes citaba un fragmento distinto.
+
+### Hallazgo 66: paso 2 — confirmado en el pipeline real (no solo en el proxy): las 6 preguntas del salto más grande pasan de rechazar a responder correcto
+
+Con `kb-api` en `tope=20`, se corrieron las 6 preguntas con el salto más grande del hallazgo 64
+(ids 1, 6, 12, 23, 31, 64) contra la UI real vía Playwright (`EVAL_IDS="1,6,12,23,31,64"
+EVAL_SUFIJO="tope20-confirmacion-6preguntas" npm run eval`, después `npm run reporte` con el mismo
+sufijo para cruzar con `query_log`):
+
+| id | Antes (`tope=3`) | Ahora (`tope=20`) |
+|---|---|---|
+| 1 | `AMBIGUO`, rechaza, `mejorRerank=2.505` | `SUFICIENTE`, responde, correcta, `mejorRerank=8.093` |
+| 6 | `INSUFICIENTE`, rechaza, `mejorRerank=0.011` | `AMBIGUO`, responde, correcta, `mejorRerank=6.737` |
+| 12 | `AMBIGUO`, rechaza, `mejorRerank=7.691` | `SUFICIENTE`, responde, correcta, `mejorRerank=9.826` |
+| 23 | `INSUFICIENTE`, rechaza, `mejorRerank=0.019` | `SUFICIENTE`, responde, correcta, `mejorRerank=8.921` |
+| 31 | `AMBIGUO`, rechaza, `mejorRerank=0.098` | `SUFICIENTE`, responde, correcta, `mejorRerank=8.431` |
+| 64 | `AMBIGUO`, rechaza, `mejorRerank=0.266` | `SUFICIENTE`, responde, correcta, `mejorRerank=9.083` |
+
+6/6 correctas (100%), incluida la id 6 que sube su `mejorRerank` pero se queda en zona `AMBIGUO`
+(6.737 < techo 8.0) y aun así responde correcto — el verificador de grounding sí acierta su juicio
+cuando el fragmento correcto está entre los candidatos, coherente con el diagnóstico del hallazgo 61.
+Esto cierra la duda que dejaba abierta el hallazgo 64: un `mejorRerank` más alto vía `/api/search` sí
+se traduce en respuestas correctas en el pipeline real, no es solo una mejora de recuperación que se
+pierde después en la síntesis o el juicio del verificador.
+
+### Hallazgo 67: paso 3 — `tope=10` no es una alternativa de "menos riesgo": pierde por completo el caso más fuerte de la muestra confirmada
+
+Se comparó `mejorRerank` para las 32 preguntas rechazadas de más entre los tres valores de tope,
+midiendo los tres con el mismo script (`chequeo-32-fallidas.mjs`, misma llamada a `/api/search` que el
+hallazgo 65) para que la comparación sea directa:
+
+| | `tope=3` (baseline) | `tope=10` | `tope=20` |
+|---|---|---|---|
+| Cruzan `techo-confianza=8.0` | 0/32 | 4/32 | 5/32 |
+| Suben `mejorRerank` vs baseline | — | 24/32 | 28/32 |
+| Bajan vs baseline | — | 0/32 | 0/32 |
+
+El caso que decide la comparación es la id 1 — la primera de la muestra de 6 que el hallazgo 66 ya
+confirmó en el pipeline real: con `tope=10`, su `mejorRerank` es `2.505`, **idéntico** al baseline de
+`tope=3` (cero mejora); recién cruza a `8.093` con `tope=20`. Los demás candidatos a `techo-confianza`
+(ids 12, 64, 23, 31) sí llegan igual con `tope=10`, pero la id 1 necesita específicamente los
+candidatos que aparecen entre las posiciones 11 y 20 — para esa pregunta puntual, `jls25.pdf` tiene más
+de 10 chunks compitiendo antes de que el correcto aparezca. `tope=10` deja ese caso exactamente donde
+estaba.
+
+`tope=10` no ofrece ninguna ventaja de riesgo medible que justifique perder ese caso: el hallazgo 65 ya
+mostró que `tope=20` no perjudica ninguna de las 68 preguntas que iban bien (0 regresiones), así que no
+hay evidencia de que `tope=10` evite un daño real que `tope=20` sí cause. Se descarta `10` y se
+mantiene `20` como el valor a comprometer.
+
+### Decisión: `KB_RECUPERACION_TOPE_POR_DOCUMENTO=20` pasa a ser el default de `compose.ministral.yml`
+
+Con los tres pasos anteriores confirmando la mejora sin regresión, se cambió el default de la línea
+`KB_RECUPERACION_TOPE_POR_DOCUMENTO: ${KB_RECUPERACION_TOPE_POR_DOCUMENTO:-3}` a `:-20}` en
+`compose.ministral.yml`, y se recreó `kb-api` sin ninguna variable de shell — confirmado con
+`docker inspect` que corre con `20` tomado del nuevo default del archivo, no de un override temporal.
+`compose.bonsai.yml` **no** se tocó: sigue en el default de `application.yml` (`3`) sin overridear,
+la misma situación que tenía antes de esta investigación — queda pendiente evaluar si Bonsai, con el
+mismo corpus dominado por `jls25.pdf`, se beneficiaría igual, pero no hay evidencia propia todavía
+(todo lo medido en las sesiones 16 y 17 corrió contra el perfil Ministral).
+
+### Próximos pasos
+
+1. **Piloto completo de 100 preguntas** con `tope=20` ya como default, para tener el número real de
+   precisión (no el proxy ni una muestra de 6) y confirmar que la mejora se sostiene a la escala
+   completa. Es la validación que falta antes de considerar cerrado el ajuste — pero corre contra el
+   pipeline real con LLM y tarda del orden de horas (la sesión 16 completa tardó eso), así que no se
+   lanzó en esta sesión sin que el usuario lo pida explícitamente.
+2. **Bonsai como verificador, pausada, no cancelada** (arrastrada de la sesión 16 sin cambios: con
+   solo 1 de 32 casos como candidato limpio de `JUICIO`, pierde casi toda su justificación frente al
+   plan original — retomar solo si el piloto completo del punto 1 deja un residuo real de casos que la
+   recuperación no explica).
+3. **`compose.bonsai.yml` sin decisión**: evaluar si conviene el mismo ajuste de `tope-por-documento`
+   cuando/si se retome ese perfil — no hay evidencia propia todavía, solo la inferencia de que el
+   mismo corpus debería comportarse parecido.
