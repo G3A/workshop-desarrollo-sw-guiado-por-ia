@@ -66,6 +66,7 @@
     turno.className = "turno";
     turno.innerHTML =
       `<p class="turno-pregunta">${escaparHtml(pregunta)}</p>` +
+      '<p class="turno-reformulacion"></p>' +
       '<p class="turno-estado"></p>' +
       "<h3>Respuesta</h3>" +
       '<div class="turno-respuesta"></div>' +
@@ -82,6 +83,7 @@
     return {
       raiz: turno,
       estado: turno.querySelector(".turno-estado"),
+      reformulacion: turno.querySelector(".turno-reformulacion"),
       previa: turno.querySelector(".turno-previa"),
       respuesta: turno.querySelector(".turno-respuesta"),
       citas: turno.querySelector(".turno-citas"),
@@ -138,6 +140,14 @@
     const url = "/api/chat?q=" + encodeURIComponent(pregunta) + "&projectId=" + encodeURIComponent(proyecto);
     const fuente = new EventSource(url);
     fuenteActual = fuente;
+
+    // Solo llega si el Reformulador cambio el texto de busqueda (ver ChatController):
+    // el vocabulario coloquial de la pregunta puede no coincidir con el termino formal
+    // de la fuente (ej. "autoboxing" en la pregunta, "boxing conversion" en el corpus).
+    fuente.addEventListener("reformulacion", (evento) => {
+      const consulta = JSON.parse(evento.data);
+      turno.reformulacion.textContent = "Buscando también como: “" + consulta + "”";
+    });
 
     fuente.addEventListener("citas", (evento) => {
       const citas = JSON.parse(evento.data);

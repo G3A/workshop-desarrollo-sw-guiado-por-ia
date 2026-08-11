@@ -70,13 +70,17 @@ public final class Dominio {
     /**
      * Respuesta sintetizada.
      *
-     * @param advertencias evidencia contradictoria o desactualizada que el sintetizador
-     *                     debe declarar en vez de dar falsa certeza
+     * @param advertencias        evidencia contradictoria o desactualizada que el sintetizador
+     *                            debe declarar en vez de dar falsa certeza
+     * @param consultaReformulada la consulta que de verdad se usó para buscar, si el
+     *                            {@code Reformulador} la cambió; {@code null} si buscó con la
+     *                            pregunta tal cual (caso normal)
      */
     public record Respuesta(
             String texto,
             List<Cita> citas,
             List<String> advertencias,
-            long latenciaMs) {
+            long latenciaMs,
+            String consultaReformulada) {
     }
 }

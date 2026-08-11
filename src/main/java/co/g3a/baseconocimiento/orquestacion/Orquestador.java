@@ -13,6 +13,7 @@ import co.g3a.baseconocimiento.compartido.Dominio.ProyectoId;
 import co.g3a.baseconocimiento.compartido.Dominio.Respuesta;
 import co.g3a.baseconocimiento.llm.Planificador;
 import co.g3a.baseconocimiento.llm.Planificador.PlanDeHerramientas;
+import co.g3a.baseconocimiento.llm.Reformulador;
 import co.g3a.baseconocimiento.llm.Sintetizador;
 import co.g3a.baseconocimiento.llm.VerificadorGrounding;
 
@@ -48,6 +49,7 @@ class Orquestador {
                     + "esté cubierto por las fuentes ingeridas.";
 
     private final Planificador planificador;
+    private final Reformulador reformulador;
     private final CatalogoHerramientas catalogo;
     private final Executor executor;
     private final ContextoRepositorio contextoRepo;
@@ -60,13 +62,14 @@ class Orquestador {
     private final UmbralRelevanciaPropiedades umbralRelevancia;
 
     Orquestador(
-            Planificador planificador, CatalogoHerramientas catalogo, Executor executor,
+            Planificador planificador, Reformulador reformulador, CatalogoHerramientas catalogo, Executor executor,
             ContextoRepositorio contextoRepo, HerramientasRepositorio herramientasRepo,
             Sintetizador sintetizador, VerificadorGrounding verificadorGrounding, QueryLogRepositorio queryLog,
             @Value("${kb.orquestacion.max-fragmentos-contexto:10}") int maxFragmentosContexto,
             @Value("${kb.orquestacion.expandir-vecinos:true}") boolean expandirVecinos,
             UmbralRelevanciaPropiedades umbralRelevancia) {
         this.planificador = planificador;
+        this.reformulador = reformulador;
         this.catalogo = catalogo;
         this.executor = executor;
         this.contextoRepo = contextoRepo;
@@ -100,6 +103,7 @@ class Orquestador {
             List<Cita> citas,
             String contexto,
             String respuestaFija,
+            String consultaReformulada,
             long inicioNanos) {
     }
 
@@ -117,7 +121,7 @@ class Orquestador {
         // campo estructurado aparte -- eso pediria una segunda llamada al LLM solo
         // para separar "respuesta" de "advertencia", en contra de que la sintesis
         // sea en streaming.
-        Respuesta respuesta = new Respuesta(textoRespuesta, pre.citas(), List.of(), latenciaMs);
+        Respuesta respuesta = new Respuesta(textoRespuesta, pre.citas(), List.of(), latenciaMs, pre.consultaReformulada());
 
         // Etapa 7: registrar.
         long queryLogId = queryLog.registrar(
@@ -150,7 +154,7 @@ class Orquestador {
                             acumulado.toString(), pre.citas(), latenciaMs);
                 });
 
-        return new Consultar.RespuestaEnStreaming(pre.citas(), texto);
+        return new Consultar.RespuestaEnStreaming(pre.citas(), texto, pre.consultaReformulada());
     }
 
     private String sintetizarBloqueante(Pregunta pregunta, PreSintesis pre) {
@@ -170,9 +174,22 @@ class Orquestador {
         // Etapa 1: planificar.
         PlanDeHerramientas plan = planificador.planificar(pregunta.texto(), catalogo.descripciones());
 
+        // Reformula la consulta de busqueda antes de ejecutar las herramientas -- el
+        // pipeline no reescribia la pregunta en ningun punto (investigacion de VRAM y
+        // modelo LLM, hallazgo 63 de la sesion 16), asi que una pregunta con vocabulario
+        // coloquial ("autoboxing") no encontraba un fragmento que si existe en el corpus
+        // bajo el termino formal de la fuente ("boxing conversion", JLS). No toca el plan
+        // de herramientas (ya elegido con la pregunta original) ni la sintesis final --
+        // solo el texto que reciben las herramientas de busqueda.
+        Reformulador.Reformulacion reformulacion = reformulador.reformular(pregunta.texto());
+        String consultaBusqueda = reformulacion.textoBusqueda();
+        // null cuando no reformulo: el llamador (ChatController) solo manda el evento SSE
+        // si esto no es null, en vez de comparar strings para saber si mostrarlo.
+        String consultaReformuladaParaMostrar = reformulacion.reformulada() ? consultaBusqueda : null;
+
         // Etapas 2-3: ejecutar herramientas en paralelo, con fallas aisladas por herramienta.
         List<Executor.EjecucionHerramienta> ejecuciones =
-                executor.ejecutar(plan.herramientas(), pregunta.texto(), proyecto);
+                executor.ejecutar(plan.herramientas(), consultaBusqueda, proyecto);
 
         // Etapa 4: fusionar y deduplicar entre herramientas.
         List<Fragmento> fragmentos = FusionDeHerramientas.combinar(
@@ -186,7 +203,8 @@ class Orquestador {
         long chunksProyecto = herramientasRepo.contarChunks(proyecto.valor());
         UmbralRelevancia.Resultado umbral = UmbralRelevancia.evaluar(fragmentos, chunksProyecto, umbralRelevancia);
         if (umbral.decision() == UmbralRelevancia.Decision.INSUFICIENTE) {
-            return new PreSintesis(plan, ejecuciones, fragmentos, List.of(), "", MENSAJE_SIN_INFORMACION, inicio);
+            return new PreSintesis(plan, ejecuciones, fragmentos, List.of(), "", MENSAJE_SIN_INFORMACION,
+                    consultaReformuladaParaMostrar, inicio);
         }
 
         // Etapa 5: expansion de contexto con secciones vecinas.
@@ -196,11 +214,13 @@ class Orquestador {
         if (umbral.decision() == UmbralRelevancia.Decision.AMBIGUO) {
             VerificadorGrounding.Veredicto veredicto = verificadorGrounding.verificar(pregunta.texto(), contexto);
             if (!veredicto.respondeLaPregunta()) {
-                return new PreSintesis(plan, ejecuciones, fragmentos, List.of(), "", MENSAJE_SIN_INFORMACION, inicio);
+                return new PreSintesis(plan, ejecuciones, fragmentos, List.of(), "", MENSAJE_SIN_INFORMACION,
+                        consultaReformuladaParaMostrar, inicio);
             }
         }
 
-        return new PreSintesis(plan, ejecuciones, fragmentos, citas, contexto, null, inicio);
+        return new PreSintesis(plan, ejecuciones, fragmentos, citas, contexto, null,
+                consultaReformuladaParaMostrar, inicio);
     }
 
     /**

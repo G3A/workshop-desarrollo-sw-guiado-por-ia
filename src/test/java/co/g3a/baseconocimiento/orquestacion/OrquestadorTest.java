@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -22,6 +23,7 @@ import co.g3a.baseconocimiento.compartido.Dominio.Pregunta;
 import co.g3a.baseconocimiento.compartido.Dominio.ProyectoId;
 import co.g3a.baseconocimiento.llm.Planificador;
 import co.g3a.baseconocimiento.llm.Planificador.PlanDeHerramientas;
+import co.g3a.baseconocimiento.llm.Reformulador;
 import co.g3a.baseconocimiento.llm.Sintetizador;
 import co.g3a.baseconocimiento.llm.VerificadorGrounding;
 import co.g3a.baseconocimiento.llm.VerificadorGrounding.Veredicto;
@@ -40,6 +42,8 @@ class OrquestadorTest {
     private static final ProyectoId PROYECTO = new ProyectoId("default");
     private static final UmbralRelevanciaPropiedades UMBRAL_POR_DEFECTO =
             new UmbralRelevanciaPropiedades(true, 0.003, 0.05, 500, 8.0);
+    private static final Reformulador REFORMULADOR_SIN_CAMBIOS =
+            pregunta -> new Reformulador.Reformulacion(pregunta, false);
 
     @Test
     @DisplayName("Conecta las siete etapas: plan, herramientas, fusion, sintesis y registro")
@@ -67,8 +71,8 @@ class OrquestadorTest {
         when(queryLog.registrar(any(), any(), any(), any(), any(), any(), any(), anyLong())).thenReturn(42L);
 
         var orquestador = new Orquestador(
-                planificador, catalogo, executor, contextoRepo, herramientasRepo, sintetizador,
-                verificadorGrounding, queryLog, 10, true, UMBRAL_POR_DEFECTO);
+                planificador, REFORMULADOR_SIN_CAMBIOS, catalogo, executor, contextoRepo, herramientasRepo,
+                sintetizador, verificadorGrounding, queryLog, 10, true, UMBRAL_POR_DEFECTO);
 
         Orquestador.EjecucionPipeline resultado =
                 orquestador.ejecutar(new Pregunta("¿Que es esto?"), PROYECTO, Filtros.NINGUNO);
@@ -83,6 +87,7 @@ class OrquestadorTest {
         assertThat(resultado.respuesta().texto()).isEqualTo("Respuesta citando [1].");
         assertThat(resultado.respuesta().citas()).hasSize(1);
         assertThat(resultado.respuesta().citas().get(0).uri()).isEqualTo("file:///doc1");
+        assertThat(resultado.respuesta().consultaReformulada()).isNull();
 
         assertThat(resultado.queryLogId()).isEqualTo(42L);
         verify(queryLog).registrar(any(), any(), any(), any(), any(), any(), any(), anyLong());
@@ -116,8 +121,8 @@ class OrquestadorTest {
         when(queryLog.registrar(any(), any(), any(), any(), any(), any(), any(), anyLong())).thenReturn(1L);
 
         var orquestador = new Orquestador(
-                planificador, catalogo, executor, contextoRepo, herramientasRepo, sintetizador,
-                verificadorGrounding, queryLog, 10, true, UMBRAL_POR_DEFECTO);
+                planificador, REFORMULADOR_SIN_CAMBIOS, catalogo, executor, contextoRepo, herramientasRepo,
+                sintetizador, verificadorGrounding, queryLog, 10, true, UMBRAL_POR_DEFECTO);
 
         Orquestador.EjecucionPipeline resultado =
                 orquestador.ejecutar(new Pregunta("explicame como usar Java 25"), PROYECTO, Filtros.NINGUNO);
@@ -157,8 +162,8 @@ class OrquestadorTest {
         when(queryLog.registrar(any(), any(), any(), any(), any(), any(), any(), anyLong())).thenReturn(1L);
 
         var orquestador = new Orquestador(
-                planificador, catalogo, executor, contextoRepo, herramientasRepo, sintetizador,
-                verificadorGrounding, queryLog, 10, true, UMBRAL_POR_DEFECTO);
+                planificador, REFORMULADOR_SIN_CAMBIOS, catalogo, executor, contextoRepo, herramientasRepo,
+                sintetizador, verificadorGrounding, queryLog, 10, true, UMBRAL_POR_DEFECTO);
 
         Orquestador.EjecucionPipeline resultado =
                 orquestador.ejecutar(new Pregunta("como usar java 25"), PROYECTO, Filtros.NINGUNO);
@@ -195,8 +200,8 @@ class OrquestadorTest {
         when(queryLog.registrar(any(), any(), any(), any(), any(), any(), any(), anyLong())).thenReturn(1L);
 
         var orquestador = new Orquestador(
-                planificador, catalogo, executor, contextoRepo, herramientasRepo, sintetizador,
-                verificadorGrounding, queryLog, 10, true, UMBRAL_POR_DEFECTO);
+                planificador, REFORMULADOR_SIN_CAMBIOS, catalogo, executor, contextoRepo, herramientasRepo,
+                sintetizador, verificadorGrounding, queryLog, 10, true, UMBRAL_POR_DEFECTO);
 
         Orquestador.EjecucionPipeline resultado =
                 orquestador.ejecutar(new Pregunta("como se despliega el servicio"), PROYECTO, Filtros.NINGUNO);
@@ -231,14 +236,69 @@ class OrquestadorTest {
         when(queryLog.registrar(any(), any(), any(), any(), any(), any(), any(), anyLong())).thenReturn(1L);
 
         var orquestador = new Orquestador(
-                planificador, catalogo, executor, contextoRepo, herramientasRepo, sintetizador,
-                verificadorGrounding, queryLog, 10, true, UMBRAL_POR_DEFECTO);
+                planificador, REFORMULADOR_SIN_CAMBIOS, catalogo, executor, contextoRepo, herramientasRepo,
+                sintetizador, verificadorGrounding, queryLog, 10, true, UMBRAL_POR_DEFECTO);
 
         Orquestador.EjecucionPipeline resultado =
                 orquestador.ejecutar(new Pregunta("¿quien sabe de auth?"), PROYECTO, Filtros.NINGUNO);
 
         assertThat(resultado.respuesta().texto()).isEqualTo("Respuesta.");
         verify(verificadorGrounding, never()).verificar(any(), any());
+    }
+
+    @Test
+    @DisplayName("Cuando el Reformulador cambia la consulta, las herramientas reciben el texto "
+            + "reformulado y la respuesta lo expone")
+    void pasaLaConsultaReformuladaALasHerramientasYALaRespuesta() {
+        Fragmento fragmento = new Fragmento(1L, 100L, "file:///doc1", "Doc 1",
+                "Boxing conversion treats expressions...", "doc_section", 0, Instant.EPOCH, Map.of(), 0.05, 9.0);
+
+        List<String> consultasRecibidas = new ArrayList<>();
+        Herramienta herramientaQueRegistraLaConsulta = new Herramienta() {
+            @Override
+            public String nombre() {
+                return "fake_tool";
+            }
+
+            @Override
+            public String descripcion() {
+                return "de prueba";
+            }
+
+            @Override
+            public List<Fragmento> ejecutar(String consulta, ProyectoId proyecto) {
+                consultasRecibidas.add(consulta);
+                return List.of(fragmento);
+            }
+        };
+        var catalogo = new CatalogoHerramientas(List.of(herramientaQueRegistraLaConsulta));
+        var executor = new Executor(catalogo);
+
+        Planificador planificador = (pregunta, herramientas) ->
+                new PlanDeHerramientas(List.of("fake_tool"), "porque si");
+        Reformulador reformulador = pregunta -> new Reformulador.Reformulacion("boxing conversion", true);
+
+        Sintetizador sintetizador = (pregunta, contexto) -> Flux.just("Respuesta.");
+        VerificadorGrounding verificadorGrounding = mock(VerificadorGrounding.class);
+
+        ContextoRepositorio contextoRepo = mock(ContextoRepositorio.class);
+        when(contextoRepo.vecinos(100L, 0)).thenReturn(List.of());
+
+        HerramientasRepositorio herramientasRepo = mock(HerramientasRepositorio.class);
+        when(herramientasRepo.contarChunks(anyString())).thenReturn(100L);
+
+        QueryLogRepositorio queryLog = mock(QueryLogRepositorio.class);
+        when(queryLog.registrar(any(), any(), any(), any(), any(), any(), any(), anyLong())).thenReturn(1L);
+
+        var orquestador = new Orquestador(
+                planificador, reformulador, catalogo, executor, contextoRepo, herramientasRepo, sintetizador,
+                verificadorGrounding, queryLog, 10, true, UMBRAL_POR_DEFECTO);
+
+        Orquestador.EjecucionPipeline resultado =
+                orquestador.ejecutar(new Pregunta("que es el autoboxing"), PROYECTO, Filtros.NINGUNO);
+
+        assertThat(consultasRecibidas).containsExactly("boxing conversion");
+        assertThat(resultado.respuesta().consultaReformulada()).isEqualTo("boxing conversion");
     }
 
     private static Herramienta herramientaFalsa(String nombre, Fragmento... fragmentos) {

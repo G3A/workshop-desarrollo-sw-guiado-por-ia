@@ -35,8 +35,12 @@ public interface Consultar {
      * terminó — y el texto de la síntesis en streaming, token a token. Existe
      * para el adaptador web de F4: dejar que la UI muestre las fuentes antes de
      * que el LLM termine de redactar.
+     *
+     * @param consultaReformulada ver {@code Dominio.Respuesta.consultaReformulada} —
+     *                            disponible en el mismo momento que las citas, porque la
+     *                            reformulación ocurre antes de ejecutar las herramientas
      */
-    record RespuestaEnStreaming(List<Cita> citas, Flux<String> texto) {
+    record RespuestaEnStreaming(List<Cita> citas, Flux<String> texto, String consultaReformulada) {
     }
 
     RespuestaEnStreaming responderEnStreaming(Pregunta pregunta, ProyectoId proyecto, Filtros filtros);

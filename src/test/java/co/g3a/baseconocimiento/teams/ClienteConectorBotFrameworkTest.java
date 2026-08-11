@@ -71,7 +71,8 @@ class ClienteConectorBotFrameworkTest {
         wireMock.stubFor(post(urlEqualTo("/v3/conversations/conv1/activities/activity1"))
                 .willReturn(aResponse().withStatus(200)));
         Respuesta respuesta = new Respuesta(
-                "la respuesta", List.of(new Cita("file:///doc1", "Doc 1", "extracto", "doc_section")), List.of(), 10);
+                "la respuesta", List.of(new Cita("file:///doc1", "Doc 1", "extracto", "doc_section")), List.of(), 10,
+                null);
 
         var conector = new ClienteConectorBotFramework(propiedades("", ""));
         conector.responderConTarjeta(actividadEntrante(), respuesta);
