@@ -67,10 +67,18 @@ class ReformuladorOpenAi implements Reformulador {
             if (resultado == null || resultado.textoBusqueda() == null || resultado.textoBusqueda().isBlank()) {
                 return new Reformulacion(pregunta, false);
             }
-            if (!resultado.reformulada() || resultado.textoBusqueda().equals(pregunta)) {
+            // El campo "reformulada" del propio modelo no es confiable: medido en vivo con
+            // Ministral-3-3B, devolvio un textoBusqueda genuinamente distinto de la pregunta
+            // ("autoboxing conversion in Java automatic occurrence conditions" para "que es
+            // el autoboxing...") pero con reformulada=false en la misma respuesta -- un modelo
+            // chico con salida estructurada no siempre mantiene ambos campos consistentes.
+            // Comparar el texto en si es la unica senal que no depende de que el modelo
+            // "sepa" que reformulo.
+            boolean cambio = !resultado.textoBusqueda().strip().equalsIgnoreCase(pregunta.strip());
+            if (!cambio) {
                 return new Reformulacion(pregunta, false);
             }
-            return resultado;
+            return new Reformulacion(resultado.textoBusqueda(), true);
         } catch (Exception e) {
             // Igual que el planner: la reformulacion nunca debe tumbar la pregunta. Si
             // llama-server no responde o el JSON no valida, se busca con el texto

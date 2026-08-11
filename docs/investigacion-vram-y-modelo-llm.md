@@ -2375,9 +2375,39 @@ Fuera del plan original, esta sesión también:
 - Encontró, con más evidencia que la sesión 16, una recurrencia del problema operativo del hallazgo 60
   (hallazgo 68) — vale la pena revisarlo antes de correr otro piloto largo en este entorno.
 
-Estado del entorno al cierre: `kb-api` sigue corriendo el `.jar` de antes de los cambios del
-`Reformulador` (sin desplegar, a propósito). `KB_RECUPERACION_TOPE_POR_DOCUMENTO=20` es el default activo
-de `compose.ministral.yml`, confirmado con `docker inspect`. Los procesos huérfanos del hallazgo 68
-quedaron terminados y la GPU liberada. Pendiente para la próxima sesión: desplegar el `Reformulador`, y
-la tarea que el usuario ya aprobó de descargar y probar `Qwen3.5 4B` (sin hacer todavía — se esperó a que
-el piloto liberara VRAM, y ya la liberó).
+### Hallazgo 70: desplegado el `Reformulador` — el campo `reformulada` que devuelve el propio modelo no es confiable, hay que derivarlo comparando el texto
+
+Con el piloto terminado y la GPU libre, se desplegó el `Reformulador` (reconstruyendo la imagen y
+recreando `kb-api` con `docker compose ... up -d --build --no-deps api`) y se probó en vivo la pregunta
+id 4 ("¿Qué es el autoboxing...?", el caso que motivó el componente). **Primer intento: siguió
+rechazando** — mismos seis candidatos de siempre en `query_log.candidates` (sin el chunk 205/206), pese a
+tener el `Reformulador` ya desplegado. Repetido dos veces más, mismo resultado: no era un problema de
+determinismo puntual.
+
+Se agregó un log temporal (`log.info` de la respuesta cruda del `ChatClient`) y se encontró la causa:
+Ministral-3-3B **sí generaba** un `textoBusqueda` distinto del original
+(`"autoboxing conversion in Java automatic occurrence conditions"` para la pregunta de autoboxing), pero
+devolvía `reformulada=false` en la misma respuesta estructurada — el código de `ReformuladorOpenAi`
+confiaba en ese booleano propio del modelo para decidir si usar el texto nuevo, así que descartaba una
+reformulación que sí había ocurrido. Un modelo de 3B con salida forzada por esquema JSON no garantiza
+consistencia entre dos campos de la misma respuesta -- confiar en un campo booleano que el modelo
+autoevalúa sobre su propia salida es más frágil que derivar el mismo dato de una comparación de texto
+hecha en código.
+
+**Corrección**: `reformular()` ya no lee el booleano del modelo — compara `textoBusqueda` contra la
+pregunta original (`strip()` + `equalsIgnoreCase`) y deriva `reformulada` de esa comparación. Es la única
+señal que no depende de que el modelo "sepa" que reformuló. Recompilado, redesplegado, y confirmado en
+`query_log`: el chunk 205 ("Boxing conversion treats expressions...") pasa a ser el candidato top-1
+(`rerank=1.76`, de estar completamente ausente) y la respuesta final describe el autoboxing correctamente
+citando la fuente.
+
+### Conclusión de la sesión 17 (actualizada)
+
+Estado del entorno al cierre: `kb-api` corre el `.jar` con el `Reformulador` ya desplegado y corregido
+(hallazgo 70). `KB_RECUPERACION_TOPE_POR_DOCUMENTO=20` sigue siendo el default activo de
+`compose.ministral.yml`, confirmado con `docker inspect`. Los procesos huérfanos del hallazgo 68 quedaron
+terminados y la GPU liberada. Pendiente para la próxima sesión: la tarea que el usuario ya aprobó de
+descargar y probar `Qwen3.5 4B` (sin hacer todavía — la GPU está libre para intentarlo). Vale la pena
+correr una muestra más amplia que la pregunta 4 sola para confirmar que el fix del hallazgo 70 no
+introduce regresiones en preguntas que ya buscaban bien sin reformular (no medido todavía, solo el caso
+puntual que motivó el componente).
