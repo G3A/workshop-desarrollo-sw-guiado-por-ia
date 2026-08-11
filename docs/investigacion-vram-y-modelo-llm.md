@@ -2281,3 +2281,103 @@ mismo corpus dominado por `jls25.pdf`, se beneficiaría igual, pero no hay evide
 3. **`compose.bonsai.yml` sin decisión**: evaluar si conviene el mismo ajuste de `tope-por-documento`
    cuando/si se retome ese perfil — no hay evidencia propia todavía, solo la inferencia de que el
    mismo corpus debería comportarse parecido.
+
+### Hallazgo 68: recurrencia del hallazgo 60 — 6 avisos de "killed" seguidos sin que el proceso muriera de verdad, esta vez con la causa raíz identificada: 5 sesiones de `ejecutar.js` concurrentes peleando por la GPU
+
+El piloto completo de 100 preguntas (paso siguiente tras el hallazgo 67) reprodujo el problema que el
+hallazgo 60 ya había documentado en la sesión 16 — un aviso de `status: killed` del harness sobre un
+comando en background **no significa que el proceso muera de verdad** — pero esta vez con evidencia más
+directa de la causa raíz y del costo real de no revisarlo a tiempo. Seis relanzamientos seguidos de
+`EVAL_SUFIJO=ministral-3-3b-sesion17-tope20 npm run eval` recibieron `status: killed` sin haber llegado a
+100/100, sin ningún error propio en el log del script. Los primeros tres relanzamientos se hicieron a
+ciegas (el mismo error que el hallazgo 60 ya advertía evitar) — recién al notar que la pregunta 36 nunca
+avanzaba pese a reintentos sucesivos se investigó con `wmic process where "name='node.exe'" get
+ProcessId,ParentProcessId,CommandLine`: **5 procesos `node ejecutar.js` completamente vivos y
+concurrentes** (lanzados en momentos distintos, ninguno terminado de verdad), más **~21 procesos
+`msedge.exe`** (el canal de Chromium que usa Playwright en este entorno ahora — no
+`chrome-headless-shell.exe` como en la sesión 16, dato a tener en cuenta si se reintenta el protocolo del
+hallazgo 60 tal cual), todos compitiendo por el único slot de inferencia de `kb-llama-server-ministral`.
+
+Evidencia concreta de la contención: una llamada a `POST /api/search` con una consulta trivial (`"test"`,
+sin LLM, debería resolver en menos de 1 segundo con la GPU libre) tardó **20.1 segundos**; los logs del
+propio `llama-server` mostraban una sola llamada de prompt-eval tardando **261 segundos para 4932
+tokens** — consistente con varios clientes simultáneos turnándose el único slot disponible. La pregunta
+36 no era intrínsecamente lenta: cada "reintento" era en realidad una sexta sesión más sumándose a la
+pila, nunca alcanzaba a terminar antes de que llegara el siguiente aviso de "killed" (que tampoco mataba
+nada).
+
+Con autorización explícita del usuario (el `taskkill` fue bloqueado por el clasificador de auto-mode por
+default), se terminaron los 10 procesos `node.exe` huérfanos y los 21 `msedge.exe` (`taskkill /F /IM
+msedge.exe /T`, que sí propagó a todo el árbol esta vez). Con la GPU libre, un solo proceso limpio avanzó
+sin cortes reales el resto del piloto (con 2 fallos más, genuinos y no de contención, cubiertos en el
+hallazgo 69).
+
+**Actualización al protocolo del hallazgo 60**: verificar el árbol de procesos real (`wmic process where
+"name='node.exe'" get ProcessId,CommandLine`, o el `Get-CimInstance` de PowerShell que ya proponía el
+hallazgo 60) es un paso que **hay que repetir cada vez** que llega un aviso de "killed", no solo la
+primera vez que se sospecha del problema — la existencia del hallazgo 60 no evitó que esta sesión
+relanzara a ciegas tres veces antes de investigar. `eval-100-preguntas/loop-eval.sh` (herramienta que la
+sesión 16 dejó lista para automatizar justo este ciclo de limpieza-y-relanzamiento) no se usó esta sesión
+porque no soporta `EVAL_SUFIJO` y apunta a `chrome-headless-shell.exe` en vez de `msedge.exe` — quedaría
+como mejora concreta antes de la próxima corrida larga: parametrizar el sufijo y el nombre del proceso de
+browser, para no tener que repetir el diagnóstico manual de este hallazgo.
+
+### Hallazgo 69: confirmado en el piloto completo de 100 preguntas — `tope=20` sube la precisión de 68% a 85.3% (medido, no proyectado), sin perder ninguna de las que ya rechazaba bien
+
+Con `tope-por-documento=20` como default de `compose.ministral.yml` (decisión del hallazgo 67, sin ningún
+otro cambio de configuración respecto a la sesión 16), se corrió el piloto completo de 100 preguntas
+contra el pipeline real (`ejecutar.js` + `reporte.js`, resultados en
+`eval-100-preguntas/*-ministral-3-3b-sesion17-tope20.*`):
+
+| Métrica | Sesión 16 (`tope=3`, baseline) | Sesión 17 (`tope=20`) |
+|---|---|---|
+| Precisión global | 68/100 (68.0%) | 81/95 (85.3%) |
+| Entre las que debían responder | 50/82 (61.0%) | 65/79 (82.3%) |
+| Entre las que debían rechazar | 18/18 (100.0%) | 16/16 (100.0%) |
+| Decisión `SUFICIENTE` | 22 | 28 |
+| Decisión `AMBIGUO` | 58 | 52 |
+| Decisión `INSUFICIENTE` | 20 | 15 |
+| Errores de infraestructura (no calificados) | 0 | 5 |
+
++21.3 puntos porcentuales exactamente donde se esperaba el impacto (las preguntas que debían responder),
+sin perder nada en las que debían rechazar (100% en ambas sesiones) — confirma en el pipeline completo lo
+que los hallazgos 65-66 ya habían mostrado con el proxy `/api/search` y con la muestra de 6 preguntas.
+
+**Los 5 errores de infraestructura** (ids 34, 35, 36, 90, 91: dos por "se perdió la conexión con
+Ollama", tres por timeout de 15 minutos) coinciden en parte con la ventana de contención del hallazgo 68
+— específicamente 34-36 cayeron durante el tramo con 5 sesiones concurrentes peleando por la GPU; 90 y 91
+fueron un crash real y aislado del navegador más adelante (`exitCode=3221225794`, el mismo defecto de
+memoria que documentaron las sesiones 14 y 16). Se excluyen de la precisión con el mismo criterio que
+usa `reporte.js` en todas las sesiones anteriores (un error de infraestructura no es ni acierto ni
+rechazo, no se califica) — pero para no ocultar el peor caso: si se contaran las 5 como incorrectas, la
+precisión global sería 81/100 (81.0%), igual muy por encima del 68.0% de la sesión 16.
+
+### Conclusión de la sesión 17
+
+Los tres primeros pasos del plan que dejó la sesión 16 quedan completados con evidencia real, no
+proyectada: regresión descartada (hallazgo 65), mejora confirmada en una muestra chica del pipeline real
+(hallazgo 66), valor final elegido con criterio frente a la alternativa de "menos riesgo" (hallazgo 67),
+y ahora confirmado a escala completa (hallazgo 69). `tope-por-documento=20` queda como default de
+`compose.ministral.yml`.
+
+Fuera del plan original, esta sesión también:
+
+- Diagnosticó y corrigió en el código el problema de vocabulario/idioma detrás de una de las preguntas
+  que ni `tope=20` resolvía (id 4, "autoboxing" vs. el término formal "boxing conversion" del corpus en
+  inglés, confirmado reformulando la pregunta a mano y viendo el chunk correcto saltar de ausente a
+  `rerank=6.58`) — `Reformulador`/`ReformuladorOpenAi` (paquete `llm`), cableado en `Orquestador` antes
+  de ejecutar las herramientas de búsqueda (sin tocar el plan de herramientas ni la síntesis final), con
+  la consulta reformulada expuesta en la UI (evento SSE `reformulacion`, `index.html`/`app.js`). Código
+  escrito con tests pasando (`OrquestadorTest`, `ChatControllerTest`, `ArquitecturaTest` sin violaciones
+  de capas) pero **deliberadamente sin desplegar** — se decidió no reconstruir la imagen ni recrear
+  `kb-api` para no arriesgar el piloto de 100 preguntas que corría en paralelo. Queda como el primer
+  paso pendiente de la próxima sesión.
+- Encontró, con más evidencia que la sesión 16, una recurrencia del problema operativo del hallazgo 60
+  (hallazgo 68) — vale la pena revisarlo antes de correr otro piloto largo en este entorno.
+
+Estado del entorno al cierre: `kb-api` sigue corriendo el `.jar` de antes de los cambios del
+`Reformulador` (sin desplegar, a propósito). `KB_RECUPERACION_TOPE_POR_DOCUMENTO=20` es el default activo
+de `compose.ministral.yml`, confirmado con `docker inspect`. Los procesos huérfanos del hallazgo 68
+quedaron terminados y la GPU liberada. Pendiente para la próxima sesión: desplegar el `Reformulador`, y
+la tarea que el usuario ya aprobó de descargar y probar `Qwen3.5 4B` (sin hacer todavía — se esperó a que
+el piloto liberara VRAM, y ya la liberó).

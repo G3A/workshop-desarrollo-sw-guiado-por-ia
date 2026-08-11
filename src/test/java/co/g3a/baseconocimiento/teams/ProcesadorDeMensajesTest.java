@@ -38,7 +38,7 @@ class ProcesadorDeMensajesTest {
         ClienteConectorBotFramework conector = mock(ClienteConectorBotFramework.class);
         Respuesta respuesta = new Respuesta(
                 "se despliega con docker compose", List.of(new Cita("file:///readme", "Readme", "extracto", "doc")),
-                List.of(), 42);
+                List.of(), 42, null);
         when(consultar.responder(any(), any(), any())).thenReturn(respuesta);
 
         new ProcesadorDeMensajes(consultar, conector).procesar(ACTIVIDAD);

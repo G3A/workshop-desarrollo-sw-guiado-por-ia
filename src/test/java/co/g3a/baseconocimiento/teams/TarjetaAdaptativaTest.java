@@ -16,7 +16,7 @@ class TarjetaAdaptativaTest {
     void construyeUnaAccionOpenUrlPorCadaCita() {
         Cita cita1 = new Cita("file:///doc1", "Doc 1", "extracto 1", "doc_section");
         Cita cita2 = new Cita("file:///doc2", "Doc 2", "extracto 2", "doc_section");
-        Respuesta respuesta = new Respuesta("la respuesta [1][2]", List.of(cita1, cita2), List.of(), 1234);
+        Respuesta respuesta = new Respuesta("la respuesta [1][2]", List.of(cita1, cita2), List.of(), 1234, null);
 
         Activity.Attachment tarjeta = TarjetaAdaptativa.desde(respuesta);
 
@@ -39,7 +39,7 @@ class TarjetaAdaptativaTest {
 
     @Test
     void agregaUnBloqueDeAdvertenciasCuandoLasHay() {
-        Respuesta respuesta = new Respuesta("texto", List.of(), List.of("info desactualizada"), 1);
+        Respuesta respuesta = new Respuesta("texto", List.of(), List.of("info desactualizada"), 1, null);
 
         Activity.Attachment tarjeta = TarjetaAdaptativa.desde(respuesta);
 

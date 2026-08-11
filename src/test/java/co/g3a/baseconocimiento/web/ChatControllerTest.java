@@ -1,6 +1,7 @@
 package co.g3a.baseconocimiento.web;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.when;
@@ -69,7 +70,7 @@ class ChatControllerTest {
     void chatTransmiteCitasYTokensPorSse() throws Exception {
         Cita cita = new Cita("file:///doc1", "Doc 1", "extracto", "doc_section");
         when(consultar.responderEnStreaming(any(), any(), any()))
-                .thenReturn(new Consultar.RespuestaEnStreaming(List.of(cita), Flux.just("Hola ", "mundo")));
+                .thenReturn(new Consultar.RespuestaEnStreaming(List.of(cita), Flux.just("Hola ", "mundo"), null));
 
         MvcResult resultadoAsincronico = mockMvc.perform(get("/api/chat").param("q", "como se despliega"))
                 .andExpect(request().asyncStarted())
@@ -82,7 +83,27 @@ class ChatControllerTest {
                 .andExpect(content().string(containsString("Doc 1")))
                 .andExpect(content().string(containsString("event:token")))
                 .andExpect(content().string(containsString("Hola")))
-                .andExpect(content().string(containsString("event:fin")));
+                .andExpect(content().string(containsString("event:fin")))
+                .andExpect(content().string(not(containsString("event:reformulacion"))));
+    }
+
+    @Test
+    @DisplayName("GET /api/chat manda el evento reformulacion, antes de los tokens, "
+            + "solo cuando el Reformulador cambio la consulta")
+    void chatMandaElEventoReformulacionCuandoAplica() throws Exception {
+        Cita cita = new Cita("file:///doc1", "Doc 1", "extracto", "doc_section");
+        when(consultar.responderEnStreaming(any(), any(), any()))
+                .thenReturn(new Consultar.RespuestaEnStreaming(
+                        List.of(cita), Flux.just("Respuesta."), "boxing conversion"));
+
+        MvcResult resultadoAsincronico = mockMvc.perform(get("/api/chat").param("q", "que es el autoboxing"))
+                .andExpect(request().asyncStarted())
+                .andReturn();
+
+        mockMvc.perform(asyncDispatch(resultadoAsincronico))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("event:reformulacion")))
+                .andExpect(content().string(containsString("data:\"boxing conversion\"")));
     }
 
     @Test
@@ -103,7 +124,7 @@ class ChatControllerTest {
         // primer caracter, no el espacio), y el cliente hace JSON.parse.
         Cita cita = new Cita("file:///doc1", "Doc 1", "extracto", "doc_section");
         when(consultar.responderEnStreaming(any(), any(), any()))
-                .thenReturn(new Consultar.RespuestaEnStreaming(List.of(cita), Flux.just("Hola", " mundo")));
+                .thenReturn(new Consultar.RespuestaEnStreaming(List.of(cita), Flux.just("Hola", " mundo"), null));
 
         MvcResult resultadoAsincronico = mockMvc.perform(get("/api/chat").param("q", "como se despliega"))
                 .andExpect(request().asyncStarted())

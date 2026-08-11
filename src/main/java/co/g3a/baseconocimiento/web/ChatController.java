@@ -54,10 +54,12 @@ class ChatController {
      * GET, no POST: {@code EventSource} del navegador solo sabe hacer GET, por
      * eso la pregunta viaja en query params y no en un cuerpo JSON.
      *
-     * <p>Tres tipos de evento, en orden: {@code citas} (una vez, con las
-     * fuentes que la etapa 5 ya resolvió), {@code token} (varias veces, el
-     * texto de la síntesis a medida que Ollama lo genera) y {@code fin} (una
-     * vez, para que el cliente cierre la conexión en vez de esperar más).
+     * <p>Hasta cuatro tipos de evento, en orden: {@code citas} (una vez, con
+     * las fuentes que la etapa 5 ya resolvió), {@code reformulacion} (solo si
+     * el {@code Reformulador} cambió el texto de búsqueda — omitido en el
+     * caso normal, no uno vacío), {@code token} (varias veces, el texto de la
+     * síntesis a medida que Ollama lo genera) y {@code fin} (una vez, para que
+     * el cliente cierre la conexión en vez de esperar más).
      *
      * <p><b>Cada token va como string JSON, no como texto crudo.</b> El
      * estándar SSE le quita al valor de un campo {@code data:} un único
@@ -78,13 +80,20 @@ class ChatController {
         Flux<ServerSentEvent<Object>> eventoCitas = Flux.just(
                 ServerSentEvent.builder().event("citas").data((Object) resultado.citas()).build());
 
+        // Mismo escape que los tokens (ver el javadoc de arriba): la consulta reformulada
+        // es texto libre del LLM, puede empezar con espacio o traer comillas.
+        Flux<ServerSentEvent<Object>> eventoReformulacion = resultado.consultaReformulada() == null
+                ? Flux.empty()
+                : Flux.just(ServerSentEvent.builder().event("reformulacion")
+                        .<Object>data(Json.escribir(resultado.consultaReformulada())).build());
+
         Flux<ServerSentEvent<Object>> eventosTexto = resultado.texto()
                 .map(token -> ServerSentEvent.builder().event("token").<Object>data(Json.escribir(token)).build());
 
         Flux<ServerSentEvent<Object>> eventoFin =
                 Flux.just(ServerSentEvent.builder().event("fin").<Object>data("").build());
 
-        return Flux.concat(eventoCitas, eventosTexto, eventoFin);
+        return Flux.concat(eventoCitas, eventoReformulacion, eventosTexto, eventoFin);
     }
 
     private static ProyectoId proyectoDe(String projectId) {
