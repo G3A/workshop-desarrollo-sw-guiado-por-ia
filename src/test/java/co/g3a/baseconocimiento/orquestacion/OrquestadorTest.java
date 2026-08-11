@@ -247,10 +247,15 @@ class OrquestadorTest {
     }
 
     @Test
-    @DisplayName("Cuando el Reformulador cambia la consulta, las herramientas reciben el texto "
-            + "reformulado y la respuesta lo expone")
-    void pasaLaConsultaReformuladaALasHerramientasYALaRespuesta() {
-        Fragmento fragmento = new Fragmento(1L, 100L, "file:///doc1", "Doc 1",
+    @DisplayName("Cuando la busqueda con la pregunta original no llega a SUFICIENTE, el Reformulador "
+            + "entra en juego y las herramientas reciben el texto reformulado en un segundo intento")
+    void pasaLaConsultaReformuladaALasHerramientasSoloCuandoElPrimerIntentoNoAlcanza() {
+        // rerank=0.01 esta por debajo del umbral efectivo con chunksProyecto=100
+        // (piso=0.003, techo=0.05, chunksReferencia=500 -> umbral=0.0124): INSUFICIENTE.
+        Fragmento fragmentoDebil = new Fragmento(1L, 100L, "file:///doc1", "Doc 1",
+                "algo tangencial a la pregunta", "doc_section", 0, Instant.EPOCH, Map.of(), 0.05, 0.01);
+        // rerank=9.0 supera techoConfianza: SUFICIENTE en el segundo intento.
+        Fragmento fragmentoFuerte = new Fragmento(2L, 100L, "file:///doc1", "Doc 1",
                 "Boxing conversion treats expressions...", "doc_section", 0, Instant.EPOCH, Map.of(), 0.05, 9.0);
 
         List<String> consultasRecibidas = new ArrayList<>();
@@ -268,7 +273,7 @@ class OrquestadorTest {
             @Override
             public List<Fragmento> ejecutar(String consulta, ProyectoId proyecto) {
                 consultasRecibidas.add(consulta);
-                return List.of(fragmento);
+                return consulta.equals("boxing conversion") ? List.of(fragmentoFuerte) : List.of(fragmentoDebil);
             }
         };
         var catalogo = new CatalogoHerramientas(List.of(herramientaQueRegistraLaConsulta));
@@ -297,8 +302,44 @@ class OrquestadorTest {
         Orquestador.EjecucionPipeline resultado =
                 orquestador.ejecutar(new Pregunta("que es el autoboxing"), PROYECTO, Filtros.NINGUNO);
 
-        assertThat(consultasRecibidas).containsExactly("boxing conversion");
+        assertThat(consultasRecibidas).containsExactly("que es el autoboxing", "boxing conversion");
         assertThat(resultado.respuesta().consultaReformulada()).isEqualTo("boxing conversion");
+        assertThat(resultado.respuesta().texto()).isEqualTo("Respuesta.");
+        verify(verificadorGrounding, never()).verificar(any(), any());
+    }
+
+    @Test
+    @DisplayName("Si la busqueda con la pregunta original ya llega a SUFICIENTE, el Reformulador no se llama")
+    void noLlamaAlReformuladorCuandoElPrimerIntentoYaEsSuficiente() {
+        Fragmento fragmentoFuerte = new Fragmento(1L, 100L, "file:///doc1", "Doc 1",
+                "Esto es el fragmento uno.", "doc_section", 0, Instant.EPOCH, Map.of(), 0.05, 9.0);
+
+        var catalogo = new CatalogoHerramientas(List.of(herramientaFalsa("fake_tool", fragmentoFuerte)));
+        var executor = new Executor(catalogo);
+
+        Planificador planificador = (pregunta, herramientas) ->
+                new PlanDeHerramientas(List.of("fake_tool"), "porque si");
+        Reformulador reformulador = mock(Reformulador.class);
+
+        Sintetizador sintetizador = (pregunta, contexto) -> Flux.just("Respuesta.");
+        VerificadorGrounding verificadorGrounding = mock(VerificadorGrounding.class);
+
+        ContextoRepositorio contextoRepo = mock(ContextoRepositorio.class);
+        when(contextoRepo.vecinos(100L, 0)).thenReturn(List.of());
+
+        HerramientasRepositorio herramientasRepo = mock(HerramientasRepositorio.class);
+        when(herramientasRepo.contarChunks(anyString())).thenReturn(100L);
+
+        QueryLogRepositorio queryLog = mock(QueryLogRepositorio.class);
+        when(queryLog.registrar(any(), any(), any(), any(), any(), any(), any(), anyLong())).thenReturn(1L);
+
+        var orquestador = new Orquestador(
+                planificador, reformulador, catalogo, executor, contextoRepo, herramientasRepo, sintetizador,
+                verificadorGrounding, queryLog, 10, true, UMBRAL_POR_DEFECTO);
+
+        orquestador.ejecutar(new Pregunta("pregunta cualquiera"), PROYECTO, Filtros.NINGUNO);
+
+        verify(reformulador, never()).reformular(any());
     }
 
     private static Herramienta herramientaFalsa(String nombre, Fragmento... fragmentos) {

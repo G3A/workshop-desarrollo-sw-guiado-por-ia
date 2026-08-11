@@ -174,22 +174,10 @@ class Orquestador {
         // Etapa 1: planificar.
         PlanDeHerramientas plan = planificador.planificar(pregunta.texto(), catalogo.descripciones());
 
-        // Reformula la consulta de busqueda antes de ejecutar las herramientas -- el
-        // pipeline no reescribia la pregunta en ningun punto (investigacion de VRAM y
-        // modelo LLM, hallazgo 63 de la sesion 16), asi que una pregunta con vocabulario
-        // coloquial ("autoboxing") no encontraba un fragmento que si existe en el corpus
-        // bajo el termino formal de la fuente ("boxing conversion", JLS). No toca el plan
-        // de herramientas (ya elegido con la pregunta original) ni la sintesis final --
-        // solo el texto que reciben las herramientas de busqueda.
-        Reformulador.Reformulacion reformulacion = reformulador.reformular(pregunta.texto());
-        String consultaBusqueda = reformulacion.textoBusqueda();
-        // null cuando no reformulo: el llamador (ChatController) solo manda el evento SSE
-        // si esto no es null, en vez de comparar strings para saber si mostrarlo.
-        String consultaReformuladaParaMostrar = reformulacion.reformulada() ? consultaBusqueda : null;
-
-        // Etapas 2-3: ejecutar herramientas en paralelo, con fallas aisladas por herramienta.
+        // Etapas 2-3: ejecutar herramientas en paralelo con la pregunta tal cual, con fallas
+        // aisladas por herramienta.
         List<Executor.EjecucionHerramienta> ejecuciones =
-                executor.ejecutar(plan.herramientas(), consultaBusqueda, proyecto);
+                executor.ejecutar(plan.herramientas(), pregunta.texto(), proyecto);
 
         // Etapa 4: fusionar y deduplicar entre herramientas.
         List<Fragmento> fragmentos = FusionDeHerramientas.combinar(
@@ -202,6 +190,31 @@ class Orquestador {
         // de confiar en que el propio sintetizador se autocensure.
         long chunksProyecto = herramientasRepo.contarChunks(proyecto.valor());
         UmbralRelevancia.Resultado umbral = UmbralRelevancia.evaluar(fragmentos, chunksProyecto, umbralRelevancia);
+
+        // Reformula la consulta de busqueda SOLO cuando la busqueda con la pregunta tal cual
+        // no llego a SUFICIENTE -- reformular siempre, incluso en las preguntas que ya
+        // buscaban bien, sumaba una llamada al LLM de mas en cada pregunta sin necesidad
+        // (hallazgos 70-71 de la investigacion de VRAM y modelo LLM confirmaron que ayuda en
+        // el caso dificil sin romper el caso facil, pero median el costo de la llamada
+        // incondicional). Cubre tanto INSUFICIENTE (el caso que motivo el componente, ver
+        // hallazgo 63: "autoboxing" vs. "boxing conversion") como AMBIGUO -- en ambos el score
+        // ya senala que el texto original no encontro un candidato fuerte.
+        String consultaReformuladaParaMostrar = null;
+        if (umbral.decision() != UmbralRelevancia.Decision.SUFICIENTE) {
+            Reformulador.Reformulacion reformulacion = reformulador.reformular(pregunta.texto());
+            if (reformulacion.reformulada()) {
+                List<Executor.EjecucionHerramienta> reejecuciones =
+                        executor.ejecutar(plan.herramientas(), reformulacion.textoBusqueda(), proyecto);
+                List<Fragmento> refragmentos = FusionDeHerramientas.combinar(
+                        reejecuciones.stream().map(Executor.EjecucionHerramienta::fragmentos).toList(),
+                        maxFragmentosContexto);
+                ejecuciones = reejecuciones;
+                fragmentos = refragmentos;
+                umbral = UmbralRelevancia.evaluar(fragmentos, chunksProyecto, umbralRelevancia);
+                consultaReformuladaParaMostrar = reformulacion.textoBusqueda();
+            }
+        }
+
         if (umbral.decision() == UmbralRelevancia.Decision.INSUFICIENTE) {
             return new PreSintesis(plan, ejecuciones, fragmentos, List.of(), "", MENSAJE_SIN_INFORMACION,
                     consultaReformuladaParaMostrar, inicio);
