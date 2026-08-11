@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Reporte de evaluación — 100 preguntas</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: system-ui, "Segoe UI", sans-serif; margin: 2rem; line-height: 1.4; }
+  h1 { margin-bottom: 0.2rem; }
+  .subtitulo { color: #777; margin-top: 0; }
+  .resumen { display: flex; flex-wrap: wrap; gap: 1rem; margin: 1.5rem 0; }
+  .tarjeta { border: 1px solid #8883; border-radius: 8px; padding: 0.9rem 1.2rem; min-width: 160px; }
+  .tarjeta .valor { font-size: 1.6rem; font-weight: 700; }
+  .tarjeta .etiqueta { font-size: 0.8rem; color: #888; text-transform: uppercase; letter-spacing: 0.03em; }
+  .controles { margin: 1rem 0; display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
+  th, td { border: 1px solid #8884; padding: 0.4rem 0.5rem; vertical-align: top; }
+  th { position: sticky; top: 0; background: Canvas; text-align: left; }
+  td.pregunta { max-width: 260px; }
+  td.respuesta { max-width: 320px; }
+  td.respuesta details summary { cursor: pointer; }
+  td.num, td.centro { text-align: center; white-space: nowrap; }
+  tr.ok { background: color-mix(in srgb, green 12%, Canvas); }
+  tr.bad { background: color-mix(in srgb, crimson 12%, Canvas); }
+  tr.err { background: color-mix(in srgb, orange 15%, Canvas); }
+  .contenedor-tabla { overflow-x: auto; max-height: 75vh; overflow-y: auto; border: 1px solid #8883; border-radius: 8px; }
+  code { background: #8882; padding: 0.05rem 0.3rem; border-radius: 4px; }
+</style>
+</head>
+<body>
+  <h1>Reporte de evaluación — 100 preguntas (jls25.pdf)</h1>
+  <p class="subtitulo">Umbral dinámico de relevancia (ADR-0008) recalculado a partir de <code>query_log</code>:
+    piso=0.003, techo=0.05, chunksReferencia=500, techoConfianza=8,
+    chunks del proyecto=1065.</p>
+
+  <div class="resumen">
+    <div class="tarjeta"><div class="valor">9/14</div><div class="etiqueta">Precisión global (64.3%)</div></div>
+    <div class="tarjeta"><div class="valor">9/14</div><div class="etiqueta">Correctas entre las que debían responder</div></div>
+    <div class="tarjeta"><div class="valor">0/0</div><div class="etiqueta">Correctas entre las que debían rechazar</div></div>
+    <div class="tarjeta"><div class="valor">2</div><div class="etiqueta">Decisión SUFICIENTE</div></div>
+    <div class="tarjeta"><div class="valor">12</div><div class="etiqueta">Decisión AMBIGUO</div></div>
+    <div class="tarjeta"><div class="valor">0</div><div class="etiqueta">Decisión INSUFICIENTE</div></div>
+    <div class="tarjeta"><div class="valor">314 s</div><div class="etiqueta">Latencia promedio por pregunta</div></div>
+    <div class="tarjeta"><div class="valor">0</div><div class="etiqueta">Errores de infraestructura (no calificados)</div></div>
+  </div>
+
+  <div class="controles">
+    <label>Categoría: <select id="filtroCategoria"><option value="">(todas)</option><option>tipos</option><option>clases</option><option>pattern-matching</option><option>unnamed</option><option>arrays</option><option>excepciones</option><option>generics</option><option>java25</option></select></label>
+    <label>Solo incorrectas: <input type="checkbox" id="filtroIncorrectas"></label>
+  </div>
+
+  <div class="contenedor-tabla">
+  <table id="tabla">
+    <thead>
+      <tr>
+        <th>#</th><th>Categoría</th><th>Pregunta</th><th>Respuesta</th><th>Esperado</th>
+        <th>Comportamiento real</th><th>¿Correcta?</th><th>Mejor rerank</th><th>Umbral(n)</th>
+        <th>Techo confianza</th><th>Decisión</th><th>Latencia</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="ok" data-categoria="tipos" data-correcta="true">
+        <td>4</td>
+        <td>tipos</td>
+        <td class="pregunta">¿Qué es el autoboxing y cuándo ocurre de forma automática?</td>
+        <td class="respuesta"><details><summary>El **autoboxing** es una conversión automática entre tipos primitivos y sus correspondient…</summary>El **autoboxing** es una conversión automática entre tipos primitivos y sus correspondientes clases wrappers (objetos referenciales) realizada por el compilador o intérprete de Java.
+
+Ocurre de forma **automática en estos casos**:
+- Cuando se realiza una **operación con operadores condicionales ternarios** (`?:`) si ambos operandos son de tipos compatibles mediante **boxing/unboxing** [4].
+- En **invocaciones de métodos** donde se requiere un objeto wrapper cuando el parámetro espera uno (ejemplo: `Collections.sort()` acepta `List&lt;Integer&gt;` pero no `List&lt;int&gt;` directamente) **[2]** (en *loose invocation contexts* también permite boxing seguido de unboxing).
+- En expresiones como **asignaciones** o **operaciones matemáticas implícitas** dentro del código, siempre que el compilador determine que la conversión es válida y no genera ambigüedad **[1]**.
+
+No ocurre automáticamente en todos los escenarios porque depende de las reglas de tipo del lenguaje:
+- Solo aplica para los nueve tipos primitivos mencionados (**boolean**, **byte**, **short**, **char**, **int**, **long**, **float**, **double**) y su respectivo wrapper **[1]**.
+- La conversión es **práctica**: para ciertos valores comunes (como enteros en rango `-128` a `127`), garantiza consistencia al crear objetos indistinguibles entre sí, mientras que otros valores pueden generar instancias distintas **[1]**.
+
+---
+**Ejemplos concretos**:
+- `Integer i = 42;` (el compilador crea automáticamente un objeto `Integer` desde el entero primitivo `42`).
+- En operaciones como `(x &gt; 0) ? new Integer(x) : null`, el `new Integer(x)` implica autoboxing explícito (no automático aquí, ya que es una expresión de creación de objeto).
+
+Si la pregunta se refiere específicamente a **cuándo ocurre sin intervención manual**, responde: **&quot;En operaciones implícitas como asignaciones en contexto de *invocation* o uso en estructuras condicionales ternarias con tipos compatibles&quot;** [2].</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">5.6252</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">397.8 s</td>
+      </tr>
+      <tr class="ok" data-categoria="clases" data-correcta="true">
+        <td>14</td>
+        <td>clases</td>
+        <td class="pregunta">¿Cómo funciona la herencia simple de clases en Java?</td>
+        <td class="respuesta"><details><summary>En **Java**, la **herencia simple** de clases opera bajo reglas estrictas definidas por el…</summary>En **Java**, la **herencia simple** de clases opera bajo reglas estrictas definidas por el JLS (Java Language Specification):
+
+1. Una clase **C** hereda **todos los métodos concretos** (*non-static*) de su **superclase directa D** cuando:
+   - El método `m` está declarado en `D`.
+   - Tiene acceso público, protegido o paquete (`package`) en el mismo paquete que `C`.
+   - No hay otro método en `C` con firma (*signature*) compatible (*subsignatura*, §8.4.2) con `m`.
+
+2. Para **métodos abstractos o defaults** heredados desde interfaces/superclases, se aplican condiciones similares, incluyendo:
+   - Evitar conflictos de sobrescritura (*override*) con otros métodos heredados (ej.: si hay dos métodos con nombres idénticos pero firmas distintas, no se permite).
+   - Excepciones solo si existe un método abstracto heredado de una superclase que comparta firma con el método *default* (caso excepcional, ver [2]).
+
+---
+**Detalles clave sobre sobrescrituras y conflictos:**
+- Un método concreto puede **prevenir la herencia** de un método abstracto/default si su firma coincide (*override-equivalente*), generando un error de compilación ([2]).
+- En interfaces múltiples (ej.: `I1` e `I2` ambas con `foo()` abstracto), la clase hereda ambos métodos **sin conflicto** si las interfaces no están jerarquizadas ([3]). Sin embargo, la clase debe declarar `Test` como **abstracta** si no sobrescribe ambos métodos.
+
+---
+**No aplica**:
+- Herencia de métodos privados o estáticos.
+- Conflictos entre overloads distintos (no override-equivalentes) son permitidos ([6]).
+
+[1][2][3]</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">4.4955</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">363.2 s</td>
+      </tr>
+      <tr class="ok" data-categoria="clases" data-correcta="true">
+        <td>18</td>
+        <td>clases</td>
+        <td class="pregunta">¿Qué diferencia hay entre sobrecargar (overload) y sobreescribir (override) un método?</td>
+        <td class="respuesta"><details><summary>**Sobrecarga (overload)** ocurre cuando **dos métodos tienen el mismo nombre pero diferent…</summary>**Sobrecarga (overload)** ocurre cuando **dos métodos tienen el mismo nombre pero diferentes firmas (parámetros distintos, inclusive tipos o cantidad de parámetros)** dentro de la misma clase o interfaz [1][3].
+
+**Sobreescripción (override)** implica reemplazar un método heredado por otro de la misma firma (misma declaración de parámetros y tipo de retorno) en una subclase o implementación de interfaz, manteniendo compatibilidad dinámica [2].
+
+---
+*Contradicción:*
+En interfaces, si dos métodos comparten solo el nombre pero sus firmas son distintas y no son *override-equivalentes*, también se considera **sobrecarga** [3].
+Sin embargo, en clases, el concepto de *override* exige que las firmas sean idénticas para considerar una verdadera sobreescripción, mientras que la sobrecarga permite diferencias en los parámetros [1][2].</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">6.7994</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">277.3 s</td>
+      </tr>
+      <tr class="ok" data-categoria="pattern-matching" data-correcta="true">
+        <td>47</td>
+        <td>pattern-matching</td>
+        <td class="pregunta">¿Se pueden anidar patrones de registro dentro de otros patrones de registro?</td>
+        <td class="respuesta"><details><summary>Sí, **se pueden anidar patrones de registro** dentro de otros patrones de registro **[4]**…</summary>Sí, **se pueden anidar patrones de registro** dentro de otros patrones de registro **[4]**.
+
+Los patrones de registro (*record patterns*) pueden contener componentes que son, a su vez, *component patterns* (incluyendo otros patrones como tipo o subpatrones de registros) **[4]** (ejemplo: `R(a -&gt; b)` donde `b` podría ser otro patrón de registro). Esto permite estructuras recursivas complejas en las declaraciones de patrones.</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">1.6167</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">359.3 s</td>
+      </tr>
+      <tr class="bad" data-categoria="pattern-matching" data-correcta="false">
+        <td>48</td>
+        <td>pattern-matching</td>
+        <td class="pregunta">¿Qué ventaja tiene deconstruir un objeto con un patrón frente a llamar a sus métodos de acceso manualmente?</td>
+        <td class="respuesta"><details><summary>No encontré información suficientemente relevante en la base de conocimiento para responde…</summary>No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.</details></td>
+        <td>responde</td>
+        <td>rechaza</td>
+        <td class="centro">❌</td>
+        <td class="num">0.3897</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">169.9 s</td>
+      </tr>
+      <tr class="ok" data-categoria="unnamed" data-correcta="true">
+        <td>49</td>
+        <td>unnamed</td>
+        <td class="pregunta">¿Qué es una variable no nombrada representada con guion bajo _?</td>
+        <td class="respuesta"><details><summary>En Java, **una variable no nombrada** (como `_`) **no existe como tal en el lenguaje**, pe…</summary>En Java, **una variable no nombrada** (como `_`) **no existe como tal en el lenguaje**, pero según las convenciones comunes en programación (y aunque no está explícitamente documentada en estos contextos técnicos sobre sintaxis), suele usarse para referirse a valores temporales o resultados ignorados de operaciones.
+
+Sin embargo, en el contexto técnico proporcionado ([1]), **no hay referencia directa a `_` como nombre válido de variable**. Las reglas mencionadas se refieren a nombres simples y no permiten usar guiones bajos como identificador de variables locales o parámetros.
+
+Si se usa en código práctico (ejemplo fuera del contexto dado), podría considerarse una convención informal para omitir referencias a valores irrelevantes en expresiones condicionales o bucles, pero **no cumple con las restricciones gramaticales de Java** ([1]) ni con los estándares de identificación de variables definidos en otros documentos técnicos ([4]).
+
+---
+*Nota técnica*: En **JavaScript** sí es común usar `_` para variables no nombradas, pero no aplica aquí.</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">0.1237</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">370.4 s</td>
+      </tr>
+      <tr class="bad" data-categoria="arrays" data-correcta="false">
+        <td>52</td>
+        <td>arrays</td>
+        <td class="pregunta">¿Qué significa que los arrays en Java sean covariantes?</td>
+        <td class="respuesta"><details><summary>No encontré información suficientemente relevante en la base de conocimiento para responde…</summary>No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.</details></td>
+        <td>responde</td>
+        <td>rechaza</td>
+        <td class="centro">❌</td>
+        <td class="num">1.5281</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">274.0 s</td>
+      </tr>
+      <tr class="ok" data-categoria="excepciones" data-correcta="true">
+        <td>62</td>
+        <td>excepciones</td>
+        <td class="pregunta">¿Cómo se propaga una excepción no capturada a través de la pila de llamadas?</td>
+        <td class="respuesta"><details><summary>La propagación de una excepción no capturada a través de la pila de llamadas sigue estas r…</summary>La propagación de una excepción no capturada a través de la pila de llamadas sigue estas reglas según el contexto:
+
+1. **Transfiere control** desde el código que causó la excepción hasta el primer bloque `catch` dinámicamente cercano en el mismo `try`, si existe [3].
+   - Ejemplo: Si un método lanza una excepción y no hay un `catch` dentro del mismo `try`, busca en los métodos padre en la pila de llamadas.
+
+2. **Si no hay ningún `catch` en el `try` actual**, la excepción continúa propagándose hacia arriba por la pila de llamadas hasta encontrar un manejador válido [3].
+
+3. **Si ninguna clase en la pila puede capturar la excepción** (ni mediante herencia de tipos ni mediante cláusulas multitangibles), la ejecución del hilo donde ocurrió la excepción termina abruptamente, ejecutando primero los bloques `finally` correspondientes y aplicando las reglas de manejo de excepciones no capturadas [2, 3].
+
+---
+**Nota clave**:
+- Las excepciones se propagan **dinámicamente**: se compara el tipo de la excepción lanzada contra los tipos declarados en los `catch` (incluyendo sus superclases) [3].
+- Si hay una cláusula multitangible (`|`) en un `catch`, cada alternativa debe poder capturar alguna excepción específica del bloque `try` y no duplicarse con otra [2].
+
+*Ejemplo práctico*: Una llamada a `m()` que lanza `FileNotFoundException` pero cuyo método padre declare solo `IOException` como posible excepción, permitirá que la excepción sea capturada si el objeto lanzado es *instantáneo* de `IOException` (por ejemplo, `RuntimeException`). En caso contrario, seguiría propagándose [1].</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">0.5291</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">476.9 s</td>
+      </tr>
+      <tr class="ok" data-categoria="excepciones" data-correcta="true">
+        <td>63</td>
+        <td>excepciones</td>
+        <td class="pregunta">¿Qué es la causa encadenada (cause) de una excepción?</td>
+        <td class="respuesta"><details><summary>La **causa encadenada** (*cause*) de una excepción en Java es el objeto `Throwable` (o su …</summary>La **causa encadenada** (*cause*) de una excepción en Java es el objeto `Throwable` (o su instancia específica) que representa el evento excepcional que ocurrió en el flujo de ejecución, incluyendo detalles como el tipo de excepción, su mensaje y el punto exacto donde se lanzó.
+
+En este contexto, la *cause* se refiere específicamente al **argumento adicional (`Cause`)** que puede asociarse a una excepción mediante el método [`initCause()`](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Throwable.html#initCause(java.lang.Throwable)) (no citado explícitamente en el fragmento proporcionado, pero implícito en la estructura de excepciones de Java):
+- Si una excepción ocurre dentro de otro proceso excepcional previo (por ejemplo, una excepción generada por un método que también lanza otra), la *cause* sería la excepción original que desencadenó la actual.
+- En el código de propagación de excepciones ([§14.18](jls25.pdf)), cuando una excepción se propaga desde un bloque `try`, la *cause* se conserva en el objeto `Throwable` hasta que sea capturada por un bloque `catch`.
+
+---
+**Detalles clave extraídos del contexto**:
+- Las excepciones son objetos de tipo `Throwable` o sus subclasses ([§11.1](jls25.pdf)) y transportan información sobre su origen ([§14.18](jls25.pdf)).
+- El mecanismo de propagación (**non-local transfer**) transfiere el control desde el punto donde ocurre la excepción hasta un bloque `catch` válido, manteniendo la *cause* como referencia al evento inicial ([§14.18](jls25.pdf)).
+
+No hay evidencia directa en el fragmento de cómo se define formalmente la *cause* en términos de clases específicas, pero se deduce que es el **objeto padre** (ejemplo: `NullPointerException` lanzada por `ArrayIndexOutOfBoundsException`) cuando una excepción se origina en un contexto de otra excepción previa. Para más precisión técnica, consultar la documentación oficial de Java sobre `Throwable` y sus métodos como `getCause()`.</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">1.3399</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">491.0 s</td>
+      </tr>
+      <tr class="ok" data-categoria="generics" data-correcta="true">
+        <td>65</td>
+        <td>generics</td>
+        <td class="pregunta">¿Qué es un comodín (wildcard) del tipo ? extends en genéricos?</td>
+        <td class="respuesta"><details><summary>Un **comodín del tipo `? extends`** en genéricos es una sintaxis que permite especificar q…</summary>Un **comodín del tipo `? extends`** en genéricos es una sintaxis que permite especificar que un tipo puede ser cualquier clase o interfaz que herede (extienda) de un tipo dado **B**, sin necesidad de conocer exactamente qué tipo será.
+
+Por ejemplo:
+```java
+List&lt;? extends Number&gt;
+```
+significa **&quot;una lista cuyo elemento puede ser cualquier objeto que sea instancia de `Number`&quot;** (como `Integer`, `Double`, etc.), pero **no necesariamente `Number` en sí mismo**.
+
+---
+**[1]** y **[6]** respaldan que este comodín define una **subclase (upper bound)** explícita sobre el tipo de los elementos del contenedor, permitiendo inferencias más flexibles sin perder seguridad tipológica cuando se usa en operaciones como métodos estáticos genéricos o conversiones de tipos.
+
+---
+No hay contradicción entre las fuentes citadas.</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">8.1465</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>SUFICIENTE</td>
+        <td class="num">239.7 s</td>
+      </tr>
+      <tr class="bad" data-categoria="generics" data-correcta="false">
+        <td>68</td>
+        <td>generics</td>
+        <td class="pregunta">¿Los genéricos en Java son covariantes o invariantes por defecto?</td>
+        <td class="respuesta"><details><summary>No encontré información suficientemente relevante en la base de conocimiento para responde…</summary>No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.</details></td>
+        <td>responde</td>
+        <td>rechaza</td>
+        <td class="centro">❌</td>
+        <td class="num">0.1539</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">228.0 s</td>
+      </tr>
+      <tr class="ok" data-categoria="generics" data-correcta="true">
+        <td>69</td>
+        <td>generics</td>
+        <td class="pregunta">¿Cómo se declara un método genérico independiente de si la clase que lo contiene es genérica?</td>
+        <td class="respuesta"><details><summary>En los **no-contextos genéricos** definidos en el JLS 25 ([1]), un método genérico puede d…</summary>En los **no-contextos genéricos** definidos en el JLS 25 ([1]), un método genérico puede declararse **sin referirse explícitamente a sus parámetros tipo**, siempre que aparezca en alguno de estos lugares:
+
+1. Como **tipo de retorno** de un método ([4], punto 3).
+   *Ejemplo válido*: `public &lt;T&gt; T metodoGenérico()`.
+   *(No requiere `&lt;T&gt;` explícito porque el compilador lo deduce como parte del contexto de declaración)*.
+
+2. En una **declaración de parámetro formal** de un método, constructor o expresión lambda ([4], puntos 7 y 8).
+   *Ejemplo válido*:
+   ```java
+   public void procesar(List&lt;T&gt; lista) { ... } // El `&lt;T&gt;` aquí es inferido por el contexto.
+   ```
+
+---
+**Nota clave**: Solo aplica esto para métodos genéricos **dentro de clases no genéricas**. Si la clase también es genérica, el contexto no permite omitir los parámetros tipo sin afectar la ambigüedad de tipos ([2]). Por ejemplo:
+```java
+// Valido (clase no genérica):
+public class NoGeneric {
+    public &lt;T&gt; T devolver(T valor) { return valor; } // Parámetros tipo omitidos por contexto.
+}
+
+// Inválido (clase genérica):
+public class Generic&lt;T&gt; {
+    public &lt;T&gt; T devolver(T valor) { return valor; } // Redundante y ambiguo.
+}
+```
+La omisión solo funciona cuando el método está dentro de un entorno donde el compilador puede deducir los parámetros tipo sin conflicto ([1], puntos 1–13).</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">8.5643</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>SUFICIENTE</td>
+        <td class="num">301.6 s</td>
+      </tr>
+      <tr class="bad" data-categoria="java25" data-correcta="false">
+        <td>74</td>
+        <td>java25</td>
+        <td class="pregunta">¿Qué son los archivos de código fuente compactos y los métodos main de instancia introducidos en Java 25?</td>
+        <td class="respuesta"><details><summary>No encontré información suficientemente relevante en la base de conocimiento para responde…</summary>No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.</details></td>
+        <td>responde</td>
+        <td>rechaza</td>
+        <td class="centro">❌</td>
+        <td class="num">3.8704</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">240.4 s</td>
+      </tr>
+      <tr class="bad" data-categoria="java25" data-correcta="false">
+        <td>75</td>
+        <td>java25</td>
+        <td class="pregunta">¿Qué son los cuerpos de constructor flexibles (flexible constructor bodies)?</td>
+        <td class="respuesta"><details><summary>No encontré información suficientemente relevante en la base de conocimiento para responde…</summary>No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.</details></td>
+        <td>responde</td>
+        <td>rechaza</td>
+        <td class="centro">❌</td>
+        <td class="num">6.8746</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">203.8 s</td>
+      </tr></tbody>
+  </table>
+  </div>
+
+  <script>
+    const selCategoria = document.getElementById("filtroCategoria");
+    const chkIncorrectas = document.getElementById("filtroIncorrectas");
+    function aplicarFiltro() {
+      const cat = selCategoria.value;
+      const soloIncorrectas = chkIncorrectas.checked;
+      for (const fila of document.querySelectorAll("#tabla tbody tr")) {
+        const pasaCategoria = !cat || fila.dataset.categoria === cat;
+        const pasaIncorrectas = !soloIncorrectas || fila.dataset.correcta === "false";
+        fila.style.display = (pasaCategoria && pasaIncorrectas) ? "" : "none";
+      }
+    }
+    selCategoria.addEventListener("change", aplicarFiltro);
+    chkIncorrectas.addEventListener("change", aplicarFiltro);
+  </script>
+</body>
+</html>

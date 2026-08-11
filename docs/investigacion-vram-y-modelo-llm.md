@@ -2403,11 +2403,53 @@ citando la fuente.
 
 ### Conclusión de la sesión 17 (actualizada)
 
-Estado del entorno al cierre: `kb-api` corre el `.jar` con el `Reformulador` ya desplegado y corregido
-(hallazgo 70). `KB_RECUPERACION_TOPE_POR_DOCUMENTO=20` sigue siendo el default activo de
-`compose.ministral.yml`, confirmado con `docker inspect`. Los procesos huérfanos del hallazgo 68 quedaron
-terminados y la GPU liberada. Pendiente para la próxima sesión: la tarea que el usuario ya aprobó de
-descargar y probar `Qwen3.5 4B` (sin hacer todavía — la GPU está libre para intentarlo). Vale la pena
-correr una muestra más amplia que la pregunta 4 sola para confirmar que el fix del hallazgo 70 no
-introduce regresiones en preguntas que ya buscaban bien sin reformular (no medido todavía, solo el caso
-puntual que motivó el componente).
+### Hallazgo 71: el `Reformulador` corrige 9 de las 14 preguntas que seguían fallando incluso con `tope=20`, sin regresión en una muestra de 9 preguntas que ya iban bien
+
+Con el fix del hallazgo 70 desplegado, se identificaron las 14 preguntas de `resultados-completos.ministral-3-3b-sesion17-tope20.json` que seguían incorrectas pese al `tope=20` (calificadas, sin error, `correcta=false`) y se corrieron de nuevo contra el pipeline real, ahora con el `Reformulador` activo (`EVAL_IDS` con los 14 ids, `EVAL_SUFIJO=reformulador-14fallidas`):
+
+| id | Antes (`tope=20`, sin Reformulador) | Ahora (con Reformulador) |
+|---|---|---|
+| 4 | incorrecta, `mejorRerank=0.033` | **corregida**, `mejorRerank=5.625` |
+| 14 | incorrecta, `mejorRerank=0.167` | **corregida**, `mejorRerank=4.495` |
+| 18 | incorrecta, `mejorRerank=2.763` | **corregida**, `mejorRerank=6.799` |
+| 47 | incorrecta, `mejorRerank=0.008` | **corregida**, `mejorRerank=1.617` |
+| 48 | incorrecta, `mejorRerank=0.004` | sigue mal, `mejorRerank=0.390` |
+| 49 | incorrecta, `mejorRerank=0.038` | **corregida**, `mejorRerank=0.124` |
+| 52 | incorrecta, `mejorRerank=1.063` | sigue mal, `mejorRerank=1.528` |
+| 62 | incorrecta, `mejorRerank=0.008` | **corregida**, `mejorRerank=0.529` |
+| 63 | incorrecta, `mejorRerank=0.145` | **corregida**, `mejorRerank=1.340` |
+| 65 | incorrecta, `mejorRerank=1.336` | **corregida**, `mejorRerank=8.147` |
+| 68 | incorrecta, `mejorRerank=0.040` | sigue mal, `mejorRerank=0.154` |
+| 69 | incorrecta, `mejorRerank=5.051` | **corregida**, `mejorRerank=8.564` |
+| 74 | incorrecta, `mejorRerank=2.972` | sigue mal, `mejorRerank=3.870` |
+| 75 | incorrecta, `mejorRerank=1.312` | sigue mal, `mejorRerank=6.875` |
+
+**9/14 corregidas (64.3%)**, y en las 14 el `mejorRerank` sube o queda igual — ninguna baja. Las 5 que
+siguen mal (48, 52, 68, 74, 75) no son necesariamente fallas del `Reformulador`: varias suben bastante el
+`mejorRerank` (75 pasa de 1.312 a 6.875) sin cruzar el veredicto del `VerificadorGrounding`, lo que apunta
+a un problema distinto (zona `AMBIGUO` donde el juicio del verificador falla, no la recuperación) —
+consistente con el diagnóstico del hallazgo 61 de la sesión 16.
+
+Chequeo de regresión: se tomó una muestra de 9 preguntas que ya respondían correcto con `tope=20` (ids 1,
+11, 22, 31, 43, 56, 70, 81, 92, repartidas por todo el rango de las 81 buenas) y se corrieron con el
+`Reformulador` activo — **9/9 siguieron correctas (100%)**. No se pudo confirmar por `query_log` si el
+`Reformulador` se activó para alguna de estas 9 (la consulta reformulada no se persiste en la base,
+solo se expone por SSE) — queda como mejora pendiente de observabilidad, no bloquea la conclusión: no
+hubo regresión medible en el resultado final, se haya activado o no.
+
+**Proyección** (no una corrida completa de 100 preguntas, que tomaría ~4h más): si se combinan los 81
+aciertos ya confirmados de la sesión 17 con las 9 correcciones nuevas de esta muestra, la precisión
+proyectada subiría de 85.3% a **90/95 (94.7%)** sobre las mismas 95 preguntas calificadas — pendiente de
+confirmar con un piloto completo si se necesita el número oficial.
+
+### Conclusión de la sesión 17 (actualizada)
+
+Estado del entorno al cierre: `kb-api` corre el `.jar` con el `Reformulador` ya desplegado, corregido
+(hallazgo 70) y confirmado en una muestra amplia sin regresión (hallazgo 71).
+`KB_RECUPERACION_TOPE_POR_DOCUMENTO=20` sigue siendo el default activo de `compose.ministral.yml`,
+confirmado con `docker inspect`. Los procesos huérfanos del hallazgo 68 quedaron terminados y la GPU
+liberada. Pendiente para la próxima sesión: la tarea que el usuario ya aprobó de descargar y probar
+`Qwen3.5 4B` (sin hacer todavía — la GPU está libre para intentarlo); opcionalmente, un piloto completo
+de 100 preguntas con el `Reformulador` activo para reemplazar la proyección del hallazgo 71 por un
+número medido; y agregar la consulta reformulada a `query_log` para poder auditar cuándo se activa sin
+depender de logs temporales.

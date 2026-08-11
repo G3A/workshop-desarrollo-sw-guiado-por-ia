@@ -1,0 +1,110 @@
+[
+  {
+    "id": 1,
+    "categoria": "tipos",
+    "pregunta": "¿Cuáles son los ocho tipos primitivos definidos en el lenguaje Java?",
+    "esperado": "responde",
+    "respuesta": "Los **eight** tipos primitivos definidos en Java según el contexto son:\n\n- `byte` [1]\n- `short` [1]\n- `int` [1]\n- `long` [1]\n- `char` [1]\n- `float` [1]\n- `double` [1]\n- `boolean` [1]\n\n*(Nota: No hay evidencia clara en el contexto sobre un octavo tipo adicional distinto a estos ocho mencionados explícitamente en el esquema de tipos primitivos).*",
+    "estadoFinal": "",
+    "error": null,
+    "inicio": "2026-08-11T17:28:37.326Z",
+    "fin": "2026-08-11T17:31:39.453Z",
+    "elapsedMs": 182127
+  },
+  {
+    "id": 11,
+    "categoria": "variables",
+    "pregunta": "¿Qué significa que una variable esté sombreada (shadowing) por otra?",
+    "esperado": "responde",
+    "respuesta": "Cuando una **variable local** (`x`) dentro de un método oculta (sombra) a una **variable miembro** (`Test.x`) del mismo nombre en la clase, **no hay *obscuring*** sino **shadowing**.\n\nLa variable local `x` **sobrepone** su ámbito de uso al de la variable miembro `x`, limitando su acceso solo al bloque donde está declarado —en este caso, el cuerpo del método—.\n\nEl resultado es que dentro del método, puedes usar `x` como la variable local, pero para acceder a la variable miembro de la clase, debes usarla con su nombre completo: `Test.x`.\n\n---\n**Resumen clave**:\n- **Shadowing** ocurre cuando una declaración de nombre coincide con otra en un ámbito más interno ([2]).\n- No es lo mismo que *obscuring* (ej.: cuando un tipo o paquete queda oculto por un campo o parámetro con el mismo nombre, requiriendo nombres cualificados o importaciones) ([1]).\n\nEjemplo aplicado:\n```java\nSystem.out.print(\"x=\" + x);       // Usa la variable local (shadowed)\nSystem.out.println(\", Test.x=\" + Test.x); // Accede a la variable miembro original\n```",
+    "estadoFinal": "",
+    "error": null,
+    "inicio": "2026-08-11T17:31:39.456Z",
+    "fin": "2026-08-11T17:39:20.659Z",
+    "elapsedMs": 461203
+  },
+  {
+    "id": 22,
+    "categoria": "clases",
+    "pregunta": "¿Para qué se usan las palabras clave this y super dentro de un constructor?",
+    "esperado": "responde",
+    "respuesta": "En los constructores, **`this`** y **`super`** se usan principalmente para:\n\n- **`this`**:\n  Invocar otro constructor de la misma clase ([2]). Ejemplo:\n  ```java\n  this(arguments); // Llamada a otro constructor de la clase actual.\n  ```\n  También puede usarse como referencia al objeto actualmente creado para acceder a sus atributos/métodos ([4]).\n\n- **`super`**:\n  Invocar al constructor de la clase padre ([2]), permitiendo inicializar campos heredados desde la superclase. Ejemplo:\n  ```java\n  super(arguments); // Llamada al constructor de la clase padre.\n  ```\n\nAmbos son válidos en constructores porque estos operan en un **contexto de construcción normal**, no en uno temprano (*early construction*), donde están restringidos ([2], [4]).\n\n---\n*Nota sobre restricciones:*\nSi hay conflicto entre reglas de inicialización de variables estáticas e instancias ([1]), **`this`/`super`** no pueden usarse en inicializadores de variables estáticas ([1], [5]).",
+    "estadoFinal": "",
+    "error": null,
+    "inicio": "2026-08-11T17:39:20.661Z",
+    "fin": "2026-08-11T17:42:50.525Z",
+    "elapsedMs": 209864
+  },
+  {
+    "id": 31,
+    "categoria": "records",
+    "pregunta": "¿Qué es el constructor canónico de un record?",
+    "esperado": "responde",
+    "respuesta": "El **constructor canónico** de un *record* es aquel que cumple estas características clave según el JLS 25:\n\n- Es el único constructor explícito (si existe) que inicializa automáticamente los componentes del *record*, siguiendo el orden declarado en el encabezado del mismo [1].\n- Su firma coincide con la derivada del *record*: nombre del tipo, sin parámetros genéricos, y con tipos de parámetro correspondientes a los campos declarados del *record* [1].\n\nSi no hay constructor canónico explícito, Java lo declara **implicitamente**:\n- Con acceso igual al del *record* (o paquete si no hay modificador) [2].\n- Sin cláusula `throws` [2].\n- Su cuerpo asigna directamente los valores de los parámetros a los campos del *record* en el orden declarado [2].\n\nNo incluye un constructor manual como este:\n```java\nPerson(String name) { ... } // No es canónico si el *record* solo tiene un campo @Foo String name\n```\n[1].",
+    "estadoFinal": "",
+    "error": null,
+    "inicio": "2026-08-11T17:42:50.529Z",
+    "fin": "2026-08-11T17:46:31.710Z",
+    "elapsedMs": 221181
+  },
+  {
+    "id": 43,
+    "categoria": "pattern-matching",
+    "pregunta": "¿Qué es un patrón de registro (record pattern) y cómo permite deconstruir un record?",
+    "esperado": "responde",
+    "respuesta": "Un patrón de registro (**record pattern**) es una estructura sintáctica que permite **deconstruir** valores de tipos de registros (*records*) en Java, descomponiendo sus componentes para asignarlos a variables locales o expresiones.\n\nSegún el contexto ([1]):\n- Un *record pattern* consiste en un tipo de registro (`ReferenceType`) acompañado de una lista de patrones de componente (`ComponentPatternList`), cada uno asociado con un campo del registro.\n- Permite extraer los valores de los campos del registro y asignarlos a variables locales mediante nombres o variables anónimas (si son **unnamed pattern variables**), como en:\n  ```java\n  record Person(String name, int age) {}\n  Person p = new Person(\"Ana\", 30);\n  if (p instanceof Person(var name, int age)) {\n      System.out.println(name); // \"Ana\"\n  }\n  ```\n  Aquí, `name` y `age` representan los valores de los campos correspondientes al registro `Person`.\n\n---\n**Construcción recursiva**:\nLos patrones de registro pueden combinarse bajo condiciones específicas cuando múltiples patrones equivalen a un mismo registro erizado (*record class*), siempre que algunos componentes coincidan en su conjunto de patrones reducidos a un único patrón (`qi`). Esto se aplica en casos donde varios registros derivados de la misma clase base (`I`) pueden ser reducidos a un solo patrón general, pero requiere que otros componentes mantengan consistencia ([1]).\n\n---\n**Ejemplo de aplicación en *switch* exhaustivo**:\nEn un bloque `switch`, si todos los casos cubren los posibles valores de un registro, el patrón puede considerarse exhaustivo. Por ejemplo:\n```java\nsealed interface I permits A, B, C {};\nfinal class A implements I {}, final class B implements I {};\nrecord C(int x) implements I {};\n\nint testExhaustive(Box<I> b) {\n    return switch (b) {\n        case Box(A a) -> 0;\n        case Box(B b) -> 1;\n        case Box(C c) -> 2;\n    };\n}\n```\nAquí, `Box(I)` es equivalente a la unión de los tres casos porque los patrones `A a`, `B b`, y `C c` reducen a `I i` ([1]).\n\n---\n**Limitaciones clave**:\nNo es posible combinar patrones de registro si los componentes no coinciden en sus valores esperados. Ejemplo fallido:\n```java",
+    "estadoFinal": "",
+    "error": null,
+    "inicio": "2026-08-11T17:46:31.713Z",
+    "fin": "2026-08-11T17:55:44.523Z",
+    "elapsedMs": 552810
+  },
+  {
+    "id": 56,
+    "categoria": "arrays",
+    "pregunta": "¿Los arrays en Java son objetos? ¿Qué implica eso?",
+    "esperado": "responde",
+    "respuesta": "En **Java**, los arrays **son objetos** [1][2][3].\n\nImplica que:\n- Pueden ser asignados como referencia a variables de tipo `Object` [2].\n- Tienen un tamaño fijo al crearse y almacenan elementos del mismo tipo (componentes) mediante índices enteros [2].\n- Heredan métodos de `Object`, como `clone()`, `equals()` o `toString()` [2][4][5].\n- Cada array tiene asociado un objeto `Class` compartido por todos los arrays del mismo tipo de componentes [4].\n\n---\n*Nota: No hay contradicción entre las fuentes citadas.*",
+    "estadoFinal": "",
+    "error": null,
+    "inicio": "2026-08-11T17:55:44.525Z",
+    "fin": "2026-08-11T17:58:20.563Z",
+    "elapsedMs": 156038
+  },
+  {
+    "id": 70,
+    "categoria": "modulos",
+    "pregunta": "¿Qué declara el archivo module-info.java de un módulo?",
+    "esperado": "responde",
+    "respuesta": "El **archivo `module-info.java`** declara un módulo en Java mediante directivas específicas que definen:\n\n- **Dependencias** sobre otros módulos con la directiva **[requires]** (ej.: `requires java.base`).\n- **Paquetes exportados** accesibles desde fuera del módulo con la directiva **[exports]** (ej.: `exports com.example.bar`).\n- **Acceso abierto** a paquetes internos con la directiva **[opens]** (opcional).\n- **Servicios consumidos/providados** con `[uses]` y `[provides]` (ej.: `uses com.example.spi.Intf`).\n\nLa estructura básica es:\n```java\nmodule NombreDelModulo {\n    requires ModuloDependiente [transitive/static];\n    exports PaqueteExportable;\n    // ...\n}\n```\n[6]\n\n---\n*Nota*: El contenido del archivo no incluye declaraciones de clases/interfaces ni lógica de código, solo las directivas de módulo.",
+    "estadoFinal": "",
+    "error": null,
+    "inicio": "2026-08-11T17:58:20.565Z",
+    "fin": "2026-08-11T18:06:38.026Z",
+    "elapsedMs": 497461
+  },
+  {
+    "id": 81,
+    "categoria": "proyecto",
+    "pregunta": "¿Qué comando se ejecuta para levantar este servicio con Docker Compose?",
+    "esperado": "responde",
+    "respuesta": "No información relevante sobre cómo levantar un servicio con **Docker Compose** en el contexto proporcionado [1].\n\nEl comando solicitado está explícitamente descrito como:\n**`docker compose up -d`**[1].",
+    "estadoFinal": "",
+    "error": null,
+    "inicio": "2026-08-11T18:06:38.028Z",
+    "fin": "2026-08-11T18:09:23.589Z",
+    "elapsedMs": 165561
+  },
+  {
+    "id": 92,
+    "categoria": "control",
+    "pregunta": "Explícame cómo usar Java 25",
+    "esperado": "rechaza",
+    "respuesta": "No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.",
+    "estadoFinal": "",
+    "error": null,
+    "inicio": "2026-08-11T18:09:23.591Z",
+    "fin": "2026-08-11T18:11:31.196Z",
+    "elapsedMs": 127605
+  }
+]
