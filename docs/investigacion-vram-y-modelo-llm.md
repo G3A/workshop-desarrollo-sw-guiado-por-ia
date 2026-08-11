@@ -2446,10 +2446,42 @@ confirmar con un piloto completo si se necesita el número oficial.
 
 Estado del entorno al cierre: `kb-api` corre el `.jar` con el `Reformulador` ya desplegado, corregido
 (hallazgo 70) y confirmado en una muestra amplia sin regresión (hallazgo 71).
+
+### Hallazgo 72: el `Reformulador` pasa a llamarse solo cuando la búsqueda inicial no llega a `SUFICIENTE`
+
+A pedido del usuario, se condicionó la llamada al `Reformulador`: hasta el hallazgo 71 se llamaba en
+**cada** pregunta, sin importar si hacía falta — una llamada al LLM de más incluso en las preguntas que
+ya buscaban bien con el texto original. `Orquestador.prepararHastaContexto()` ahora busca primero con la
+pregunta tal cual, evalúa `UmbralRelevancia` sobre ese resultado, y solo si la decisión **no** es
+`SUFICIENTE` (cubre tanto `AMBIGUO` como `INSUFICIENTE` — el caso que motivó el componente, la pregunta de
+"autoboxing", era `INSUFICIENTE`) llama al `Reformulador` y, si de verdad reformula, repite la búsqueda
+con el texto nuevo antes de seguir con el resto del pipeline.
+
+Confirmado en vivo tras recompilar y redesplegar: la pregunta 1 (ya `SUFICIENTE` con el texto original,
+`mejorRerank=8.093`) responde correcto sin pasar por el `Reformulador`; la pregunta 4 (autoboxing, sigue
+sin llegar a `SUFICIENTE` con el texto original) dispara el segundo intento y responde correcto igual
+(esta vez por la vía `AMBIGUO` + `VerificadorGrounding`, no `SUFICIENTE` directo como en el hallazgo 70 —
+el `Reformulador` no es determinista, cada llamada al LLM puede generar una consulta reformulada distinta
+y aun así cruzar el umbral por una vía diferente). Tests nuevos en `OrquestadorTest`: uno confirma que las
+herramientas reciben primero la pregunta original y después el texto reformulado solo cuando el primer
+intento no alcanza; otro confirma con un mock que el `Reformulador` **no** se invoca ni una vez cuando el
+primer intento ya es `SUFICIENTE`.
+
+**Trade-off de costo, no medido con precisión todavía**: para las preguntas fáciles (ya `SUFICIENTE` a la
+primera) esto ahorra una llamada al LLM completa. Para las preguntas difíciles, el costo sube frente al
+diseño incondicional del hallazgo 70 -- ahora hacen *dos* rondas de búsqueda en vez de una (aunque
+siguen gastando solo una llamada al `Reformulador`, igual que antes). No se comparó latencia end-to-end
+entre ambos diseños con las mismas preguntas bajo las mismas condiciones de carga de GPU -- los números
+sueltos medidos (100s para la pregunta 1, 488s para la pregunta 4) no son directamente comparables contra
+corridas anteriores por la variabilidad de contención de GPU ya documentada en el hallazgo 68.
+
+### Conclusión de la sesión 17 (actualizada de nuevo)
+
 `KB_RECUPERACION_TOPE_POR_DOCUMENTO=20` sigue siendo el default activo de `compose.ministral.yml`,
-confirmado con `docker inspect`. Los procesos huérfanos del hallazgo 68 quedaron terminados y la GPU
-liberada. Pendiente para la próxima sesión: la tarea que el usuario ya aprobó de descargar y probar
-`Qwen3.5 4B` (sin hacer todavía — la GPU está libre para intentarlo); opcionalmente, un piloto completo
-de 100 preguntas con el `Reformulador` activo para reemplazar la proyección del hallazgo 71 por un
-número medido; y agregar la consulta reformulada a `query_log` para poder auditar cuándo se activa sin
+confirmado con `docker inspect`. `kb-api` corre el `.jar` con el `Reformulador` condicionado (hallazgo 72)
+ya desplegado. Los procesos huérfanos del hallazgo 68 quedaron terminados y la GPU liberada. Pendiente
+para la próxima sesión: la tarea que el usuario ya aprobó de descargar y probar `Qwen3.5 4B` (sin hacer
+todavía — la GPU está libre para intentarlo); opcionalmente, un piloto completo de 100 preguntas con el
+`Reformulador` condicional activo para reemplazar la proyección del hallazgo 71 por un número medido bajo
+el diseño final; y agregar la consulta reformulada a `query_log` para poder auditar cuándo se activa sin
 depender de logs temporales.
