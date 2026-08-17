@@ -18,6 +18,26 @@ work items, con **citas verificables**. Reproduce la arquitectura que Cerebras d
 | **Cross-encoder antes de sintetizar** | La defensa contra falsos positivos que ninguna búsqueda por similitud da sola. |
 | **Los adaptadores son piel** | Una prueba de ArchUnit falla el build si la UI o el bot tocan el retrieval. |
 
+## Agentic RAG, acotado
+
+No es "recupero top-k y genero": el pipeline decide en cada pregunta qué hacer, no siempre el mismo
+camino — detalle completo en [`docs/architecture.md`](docs/architecture.md#pipeline-de-7-etapas-apiask-apichat).
+
+- **Elige herramientas, no un camino fijo**: `Planificador` decide con salida estructurada cuáles de
+  las 6 herramientas de búsqueda correr según la pregunta; `Executor` las corre en paralelo sobre
+  hilos virtuales, aislando el fallo de una del resto.
+- **Se auto-evalúa antes de responder**: el mejor score del cross-encoder decide si hay evidencia
+  suficiente; en la zona ambigua, `VerificadorGrounding` hace un juicio aparte contra el LLM antes
+  de dejar sintetizar.
+- **Reintenta una vez, con la consulta reescrita**: si la búsqueda original no alcanza, `Reformulador`
+  reescribe la pregunta al vocabulario probable de la fuente y repite el mismo plan de herramientas.
+- **Sabe cuándo no sabe**: si tras eso sigue sin evidencia suficiente, corta con un mensaje fijo sin
+  gastar la llamada de síntesis.
+
+Es Agentic RAG **acotado**, no un agente abierto tipo ReAct: el conjunto de acciones es fijo (6
+herramientas + 1 reformulación + 1 verificación) y el reintento es de una sola vuelta, no una
+planificación libre sin límite.
+
 ## Requisitos
 
 - Docker Desktop con WSL2
@@ -51,6 +71,97 @@ make pin-embeddings-cpu   # deja toda la VRAM para la síntesis
 `make gpu-up` sigue disponible para forzar el perfil GPU si por algún motivo la detección
 automática no encuentra `nvidia-smi`. `make help` lista todo lo demás.
 
+## Perfiles de modelo
+
+El LLM que resuelve planner, verificador de grounding y síntesis se habla por HTTP con una API
+compatible con OpenAI — ver [ADR-0009](docs/adrs/0009-bonsai-8b-integracion-pospuesta.md) y
+[la investigación completa](docs/investigacion-vram-y-modelo-llm.md). Quién sirve esa API varía por
+perfil: Bonsai necesita un `llama-server` aparte (cuantización propia, sin soporte en Ollama);
+Ministral y `gemma3:4b` se sirven los dos desde el mismo `ollama` que ya usás para embeddings
+(`bge-m3`) y, si habilitás Teams, para el destilador (F6) — Ministral vía su endpoint compatible con
+OpenAI (`http://ollama:11434/v1`), sin necesitar ningún contenedor propio. Tres perfiles, cada uno
+con su propio `docker compose` y sus propios comandos:
+
+| Perfil | Arranque | LLM | GPU |
+|---|---|---|---|
+| **Bonsai-8B** (default de `application.yml`) | `make pull-bonsai-gguf` (~1.16 GB, una vez) + `make up-bonsai` | 1-bit nativo, la mejor citación medida | Obligatoria |
+| **Ministral 3B** (mejor precisión medida en el piloto: 85.3%, en ajuste activo) | `make pull-ministral` (~2 GB, una vez) + `make up-ministral` | GGUF oficial sin fork, servido por Ollama | Opcional |
+| **gemma3:4b vía Ollama** (perfil original) | `make up` | Cuantizado, corre en CPU si no hay GPU | Opcional |
+
+`make down-bonsai` / `make down-ministral` detienen cada perfil con los mismos `-f` que su `up`
+correspondiente; `make down` sigue sirviendo como cierre genérico (limpia contenedores huérfanos
+si vienes de cambiar de perfil). Bonsai reserva la tarjeta completa para su `llama-server`: no
+combines `make pin-embeddings-cpu` con ese perfil. Ministral sí puede combinarse con
+`make pin-embeddings-cpu` — comparte el mismo `ollama` que `bge-m3`, así que es el mismo ajuste que
+ya usás con `gemma3:4b`. `make pull-models` (embeddings + reranker) aplica igual a los tres perfiles.
+
+### Por qué Ministral no usa `llama-server` (y Bonsai sí)
+
+Hasta hace poco, Ministral también levantaba su propio `llama-server` (mismo patrón que Bonsai). Se
+cambió a Ollama por un bug real, medido en vivo, no por preferencia: la imagen
+`ghcr.io/ggml-org/llama.cpp:server-cuda` publicada el 17/08/2026 no puede cargar el GGUF oficial de
+este modelo — falla con `error loading model vocabulary: invalid gguf type for tokenizer.ggml.scores`
+(arquitectura `Ministral3ForCausalLM`, muy nueva: el soporte de conversión en `llama.cpp` mainline
+recién se mergeó el 21/01/2026, [PR #18972](https://github.com/ggml-org/llama.cpp/pull/18972) sobre
+el [issue #17987](https://github.com/ggml-org/llama.cpp/issues/17987)). Ollama sí carga el mismo
+GGUF sin problema. A diferencia de Bonsai, Ministral nunca necesitó una cuantización que Ollama no
+soporte — no hay ninguna razón técnica para que dependa de un `llama-server` propio, así que sacarlo
+de encima evita el bug de arriba, un contenedor menos, y sin volumen de cache propio (el modelo queda
+en el mismo `${KB_DATA_DIR}/ollama` que `bge-m3`/`gemma3:4b`).
+
+### Cambiar de perfil sin perder lo ya descargado
+
+`down`/`up` solo borran y recrean **contenedores**, nunca `KB_DATA_DIR` ni las imágenes de Docker
+cacheadas — el GGUF de Bonsai, el modelo de Ministral (en el volumen de Ollama), los embeddings y el
+reranker sobreviven a cualquier cambio de perfil sin volver a descargarse. Eso se pierde solo con
+comandos que este Makefile nunca ejecuta: `docker compose down -v`, `down --rmi all` o
+`docker system prune`; no los uses para alternar perfiles. Ojo aparte con `docker image prune -a`:
+libera espacio real, pero también se lleva imágenes que no estén en uso por ningún contenedor en ese
+momento — si la corrés estando abajo el perfil Bonsai, la próxima `make up-bonsai` puede tener que
+volver a bajar la imagen base de compilación.
+
+Ejemplo, de Bonsai a Ministral y de vuelta:
+
+```bash
+make pull-bonsai-gguf   # una sola vez
+make pull-ministral      # una sola vez
+make pull-models        # una sola vez (embeddings + reranker, comunes a los 3 perfiles)
+make up-bonsai
+
+make down-bonsai        # para TODO el stack de ese perfil (db, ollama, docling, api, llama-server)
+make up-ministral       # el modelo ya esta en el volumen de Ollama, no se vuelve a bajar
+
+make down-ministral
+make up-bonsai          # el GGUF ya está en .data/bonsai, no se vuelve a bajar
+```
+
+Con Bonsai en el medio, hace falta su `down` antes de levantar otro perfil: reserva la GPU completa
+para su propio `llama-server`, así que dejarlo corriendo mientras levantás otro deja un contenedor
+huérfano compitiendo por la misma VRAM (riesgo real de OOM en una GPU de 4 GB). Ministral no tiene
+ese problema — comparte el `ollama` de siempre, así que alternar hacia o desde ese perfil es más
+liviano. `db`, `ollama` y `docling-serve` sí se detienen y se vuelven a crear en cada cambio de
+perfil, pero sus datos viven en volúmenes de `KB_DATA_DIR` que ese `down` no toca — tarda segundos,
+no descarga nada de nuevo.
+
+### Por qué `--build` no repite el build completo cada vez
+
+`up` y `up-bonsai` corren `docker compose ... up --build` (`up-ministral` no reconstruye nada — ya
+no hay ningún servicio propio con imagen para ese perfil), pero eso solo le pide a Docker que
+**revise** si algo cambió — con el cache de capas intacto, un `make down` seguido de
+`make up-bonsai` reconstruye `api` (Maven) y `llama-server` (el fork CUDA de Bonsai) en unos pocos
+segundos, no en los ~15-20 minutos que tarda la primera vez (medido en vivo: 4.4s y 3.2s
+respectivamente, todo `CACHED`, con `docker compose build` sobre ambos servicios).
+
+Lo que sí invalida ese cache y fuerza a repetir el build largo:
+
+- Cambiar `pom.xml`, `mvnw`, `.mvn/` o `src/` — invalida la etapa de dependencias/compilación de `api`.
+- Cambiar `Dockerfile.bonsai` o `entrypoint-bonsai.sh` — invalida la compilación del fork CUDA
+  (~20 min, ver [ADR-0009](docs/adrs/0009-bonsai-8b-integracion-pospuesta.md)).
+- Correr `docker builder prune`, o que Docker Desktop libere espacio solo por presión de disco — el
+  cache de build es finito y compite con el de otros proyectos en la misma máquina.
+
+Nada de esto lo dispara un `down`/`up-bonsai` normal.
+
 ## Dónde vive cada cosa
 
 Todo lo pesado y persistente cae bajo `KB_DATA_DIR` (por defecto `./.data`, junto al repo):
@@ -83,7 +194,8 @@ wsl --shutdown
 |---|---|
 | Núcleo | Java 21 · Spring Boot 4.1 · Spring Modulith 2.1 |
 | Datos | PostgreSQL 18 · pgvector 0.8.6 · Flyway |
-| Generación | Ollama con `gemma3:4b` — planner, destilación y síntesis |
+| Generación | API compatible con OpenAI — planner, verificador de grounding y síntesis; `llama-server` (Bonsai) u Ollama (Ministral, `gemma3:4b`) según el perfil, ver [Perfiles de modelo](#perfiles-de-modelo) |
+| Destilación (Teams, F6) | Ollama con `gemma3:4b` |
 | Embeddings | `bge-m3` por Ollama, 1024 dimensiones, multilingüe |
 | Reranking | `bge-reranker-v2-m3` sobre ONNX Runtime, en proceso |
 | Extracción de documentos | Docling (`docling-serve`) — PDF, DOCX y PPTX a Markdown, ver [ADR-0010](docs/adrs/0010-docling-reemplaza-pdfbox.md) |

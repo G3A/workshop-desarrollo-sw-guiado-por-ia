@@ -1,8 +1,17 @@
 .DEFAULT_GOAL := help
-.PHONY: help up gpu-up down restart logs ps build test verify pull-models pull-reranker pin-embeddings-cpu seed ingest ingest-repos ingest-teams ingest-azdo psql health clean
+.PHONY: help up gpu-up up-bonsai down-bonsai up-ministral down-ministral down restart logs ps build test verify pull-models pull-reranker pull-bonsai-gguf pull-ministral pin-embeddings-cpu seed ingest ingest-repos ingest-teams ingest-azdo psql health clean
 
-COMPOSE     := docker compose
-COMPOSE_GPU := docker compose -f compose.yml -f compose.gpu.yml
+COMPOSE           := docker compose
+COMPOSE_GPU       := docker compose -f compose.yml -f compose.gpu.yml
+# Bonsai sirve el LLM desde un llama-server aparte (ver ADR-0009), que reserva
+# la GPU completa para si mismo -- no tiene sentido levantarlo sin GPU, a
+# diferencia de `up`, que si detecta su ausencia y usa CPU. Ministral en cambio
+# se sirve desde el mismo `ollama` de siempre (ver compose.ministral.yml sobre
+# por que se dejo de usar llama-server) -- sigue encadenando compose.gpu.yml
+# aca por consistencia con el resto de los perfiles GPU, pero a diferencia de
+# Bonsai no es un requisito duro: Ollama cae a CPU solo si no hay tarjeta.
+COMPOSE_BONSAI    := docker compose -f compose.yml -f compose.gpu.yml -f compose.bonsai.yml
+COMPOSE_MINISTRAL := docker compose -f compose.yml -f compose.gpu.yml -f compose.ministral.yml
 LLM         ?= gemma3:4b
 EMBEDDINGS  ?= bge-m3
 KB_DATA_DIR ?= ./.data
@@ -55,8 +64,20 @@ up:  ## Levanta los 4 servicios; usa la GPU NVIDIA automaticamente si el host ti
 gpu-up:  ## Fuerza el perfil GPU aunque la deteccion automatica no encuentre nvidia-smi
 	$(COMPOSE_GPU) up -d --build
 
-down:  ## Detiene los servicios (los datos en KB_DATA_DIR sobreviven)
-	$(COMPOSE_ACTIVO) down
+up-bonsai:  ## Levanta el perfil Bonsai-8B (LLM 1-bit via llama-server); requiere GPU NVIDIA y el GGUF de pull-bonsai-gguf
+	$(COMPOSE_BONSAI) up -d --build
+
+down-bonsai:  ## Detiene el perfil Bonsai (mismos -f que up-bonsai, para no dejar contenedores huerfanos)
+	$(COMPOSE_BONSAI) down
+
+up-ministral:  ## Levanta el perfil Ministral 3B (LLM via Ollama); corre make pull-ministral antes la primera vez
+	$(COMPOSE_MINISTRAL) up -d
+
+down-ministral:  ## Detiene el perfil Ministral (mismos -f que up-ministral)
+	$(COMPOSE_MINISTRAL) down
+
+down:  ## Detiene los servicios (los datos en KB_DATA_DIR sobreviven); --remove-orphans limpia si venis de un perfil Bonsai/Ministral
+	$(COMPOSE_ACTIVO) down --remove-orphans
 
 restart:  ## Reinicia solo la api, sin tocar db ni ollama
 	$(COMPOSE_ACTIVO) up -d --build api
@@ -94,6 +115,19 @@ pull-reranker:  ## Descarga y verifica el ONNX del cross-encoder (~545 MB)
 		mv "$(RERANKER_DIR)/tokenizer.json.tmp" "$(RERANKER_DIR)/tokenizer.json" && \
 		echo "Reranker listo y verificado."; \
 	fi
+
+pull-bonsai-gguf:  ## Descarga el GGUF de Bonsai-8B (~1.16 GB) a KB_DATA_DIR, una sola vez (perfil up-bonsai)
+	@mkdir -p "$(KB_DATA_DIR)/bonsai"
+	@if [ -f "$(KB_DATA_DIR)/bonsai/Bonsai-8B-Q1_0.gguf" ]; then \
+		echo "El GGUF ya esta en $(KB_DATA_DIR)/bonsai, no se descarga de nuevo."; \
+	else \
+		echo "Descargando Bonsai-8B-Q1_0.gguf a $(KB_DATA_DIR)/bonsai ..."; \
+		curl -fL --progress-bar -o "$(KB_DATA_DIR)/bonsai/Bonsai-8B-Q1_0.gguf" \
+			https://huggingface.co/prism-ml/Bonsai-8B-gguf/resolve/main/Bonsai-8B-Q1_0.gguf; \
+	fi
+
+pull-ministral:  ## Descarga el modelo Ministral 3B a Ollama (~2 GB via Hugging Face), una sola vez (perfil up-ministral)
+	$(COMPOSE_ACTIVO) exec ollama ollama pull hf.co/mistralai/Ministral-3-3B-Instruct-2512-GGUF:Q4_K_M
 
 pin-embeddings-cpu:  ## Crea bge-m3-cpu, fijado a CPU, para dejarle toda la VRAM al LLM
 	@# La T600 tiene 4 GB: gemma3:4b mas bge-m3 no caben juntos con holgura.

@@ -1,96 +1,44 @@
-# Perfil de modelo: Ministral 3 3B Instruct-2512 (Mistral AI), via la imagen oficial
-# ghcr.io/ggml-org/llama.cpp:server-cuda -- sin fork, ver sesion 10 de
-# docs/investigacion-vram-y-modelo-llm.md.
+# Perfil de modelo: Ministral 3 3B Instruct-2512 (Mistral AI), servido por el
+# `ollama` que ya levanta compose.yml -- ver sesion 10 de
+# docs/investigacion-vram-y-modelo-llm.md para el porque de este modelo.
 #
-# Hermano de compose.bonsai.yml: mismo patron (agrega un servicio llama-server y
-# apunta `api` a el), pero con SUS PROPIOS valores. No comparten .env ni el mismo
-# bloque de environment -- eso fue justamente el problema que la sesion 14 destapo
-# sin querer: al probar Ministral se reuso compose.bonsai.yml con solo el base-url
-# cambiado, asi que el piloto de 100 preguntas de Ministral corrio con
-# KB_UMBRAL_RELEVANCIA_TECHO_CONFIANZA=6.0 (tuneado a mano PARA Bonsai, sesion 9) en
-# vez de un valor calibrado para Ministral. Este archivo existe para que la proxima
-# vez que se pruebe o compare un modelo nuevo, no haga falta pisar ni adivinar los
-# ajustes de otro ya tuneado -- cada modelo tiene su propio archivo, su propio
-# puerto, y sus propios valores.
+# Hasta esta version, este perfil agregaba un servicio `llama-server-ministral`
+# aparte (imagen ghcr.io/ggml-org/llama.cpp:server-cuda), siguiendo el mismo
+# patron que compose.bonsai.yml. Se cambio a Ollama por un bug real, no por
+# preferencia: la imagen server-cuda publicada el 17/08/2026 (build 10454,
+# commit 4df29be4f) no puede cargar el GGUF oficial de este modelo -- falla con
+# "error loading model vocabulary: invalid gguf type for tokenizer.ggml.scores"
+# (arquitectura Ministral3ForCausalLM, muy nueva: el soporte de conversion en
+# llama.cpp mainline recien se mergeo el 21/01/2026, PR #18972 sobre el issue
+# #17987 -- el GGUF oficial de mistralai probablemente se genero con otra
+# herramienta, no con ese conversor). Ollama SI carga el mismo GGUF sin
+# problema -- probado en vivo con `ollama pull hf.co/mistralai/...` seguido de
+# una consulta real, que respondio correcto. A diferencia de Bonsai, Ministral
+# nunca necesito el fork de PrismML ni una cuantizacion exotica -- no hay
+# ninguna razon tecnica para que dependa de un `llama-server` aparte, y sacarlo
+# de encima evita el bug de arriba, un contenedor menos, y un pull de imagen
+# de ~2.5 GB que ya no hace falta.
 #
 # Uso, junto con el perfil GPU real:
 #   docker compose -f compose.yml -f compose.gpu.yml -f compose.ministral.yml up -d
 #
-# A diferencia de Bonsai, no hace falta compilar nada ni montar un GGUF del host:
-# la imagen oficial ya soporta este modelo, y el flag -hf de llama-server resuelve
-# el repo de Hugging Face solo (se cachea en el volumen de abajo, ~2 GB la primera
-# vez).
+# El modelo NO se baja solo: a diferencia del `-hf` de llama-server, la API de
+# Ollama no descarga bajo demanda -- hace falta `make pull-ministral` (o
+# `docker compose exec ollama ollama pull hf.co/mistralai/Ministral-3-3B-Instruct-2512-GGUF:Q4_K_M`)
+# antes de levantar `api`, una sola vez. Queda en el volumen de Ollama que ya
+# monta compose.yml (${KB_DATA_DIR}/ollama), el mismo que bge-m3/gemma3:4b --
+# sin volumen ni ruta de cache propios que mantener aparte.
 
 services:
-  llama-server-ministral:
-    image: ghcr.io/ggml-org/llama.cpp:server-cuda
-    container_name: kb-llama-server-ministral
-    command:
-      - "-hf"
-      - "mistralai/Ministral-3-3B-Instruct-2512-GGUF:Q4_K_M"
-      - "--host"
-      - "0.0.0.0"
-      - "--port"
-      - "8080"
-      # Subido a 8192 (sesion 15, igual que BONSAI_CTX_SIZE en compose.bonsai.yml)
-      # para cubrir el mismo desborde de contexto medido en el piloto de Ministral
-      # (hallazgo 51). A diferencia de Bonsai, esto NO es gratis aca: medido en vivo
-      # con nvidia-smi (produccion detenida un momento para una linea base limpia),
-      # Ministral en 4096 usa 2595 MiB; en 8192 sube a 3015 MiB (+420 MiB), dejando
-      # solo 924 MiB libres de los ~3.9 GB reales de esta T600 -- sin margen para
-      # otro consumidor de GPU concurrente (el propio escritorio de Windows,
-      # hallazgo 1). Decision explicita del usuario de aceptar ese margen mas
-      # ajustado a cambio de cubrir el desborde, no un ajuste barato como en Bonsai
-      # (que parte de un modelo que pesa una fraccion de esto y deja 1.6 GB libres
-      # al mismo ctx-size). Si esta GPU empieza a dar OOM con este perfil activo,
-      # bajar a un punto intermedio (6144, sin medir todavia) antes que volver a 4096.
-      - "--ctx-size"
-      - "${MINISTRAL_CTX_SIZE:-8192}"
-      # --parallel 1 --no-mmproj: sin esto, llama-server autodetecta 4 slots de
-      # generacion concurrente (cada uno con su propia cache KV) y carga el
-      # componente de vision del modelo (mmproj, no lo usa este pipeline de solo
-      # texto) -- medido en vivo (sesion 10): 3463 MiB usados con los defaults,
-      # solo 476 MiB libres de los 4096 MiB de la T600, contra 2603 MiB/1336 MiB
-      # libres con estos dos flags. El caso real de uso es una sola consulta a la
-      # vez, texto puro.
-      - "--parallel"
-      - "1"
-      - "--no-mmproj"
-      - "--n-gpu-layers"
-      - "99"
-    volumes:
-      # Cache de Hugging Face, separado del de Bonsai (que monta el GGUF directo
-      # sin cache -hf). Sin este volumen persistente, un contenedor efimero pierde
-      # los ~2 GB descargados al eliminarse -- paso en las sesiones 10 y 14, hubo
-      # que volver a bajarlo para esta investigacion.
-      - ${KB_DATA_DIR:-./.data}/ministral-cache:/root/.cache/llama.cpp
-    ports:
-      # 8083, no 8081 (ese es Bonsai, compose.bonsai.yml) ni 8082 (el puerto ad-hoc
-      # que usaron las sesiones 10/14 para pruebas aisladas fuera de compose):
-      # los dos perfiles pueden convivir arriba a la vez si hace falta comparar.
-      - "${MINISTRAL_PORT:-8083}:8080"
-    healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
-      interval: 10s
-      timeout: 10s
-      retries: 30
-      start_period: 60s
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-    restart: unless-stopped
-
   api:
-    depends_on:
-      llama-server-ministral:
-        condition: service_healthy
     environment:
-      SPRING_AI_OPENAI_BASE_URL: http://llama-server-ministral:8080
-      KB_LLM_MODELO: mistralai/Ministral-3-3B-Instruct-2512-GGUF:Q4_K_M
+      # http://ollama:11434/v1: el endpoint compatible con OpenAI que ya expone
+      # el `ollama` de compose.yml -- no hace falta otro cliente ni tocar
+      # PlanificadorOpenAi/VerificadorGroundingOpenAi/SintetizadorOpenAi, que ya
+      # hablan esa API (el mismo mecanismo que usa compose.bonsai.yml contra
+      # `llama-server`).
+      SPRING_AI_OPENAI_BASE_URL: http://ollama:11434/v1
+      KB_LLM_MODELO: hf.co/mistralai/Ministral-3-3B-Instruct-2512-GGUF:Q4_K_M
       # Ministral genera mas rapido que Bonsai (9.2 tok/s vs 5.8-6.9, sesion 10)
       # pero el prefill es igual de lento que la generacion (hallazgo 33) -- con
       # contextos largos (jls25.pdf domina el corpus) el total no es tan distinto.
@@ -113,12 +61,14 @@ services:
       # Estos tres SI se copian del perfil Bonsai, a proposito y por una razon
       # distinta a la de arriba: no son un ajuste de calidad/confianza de un
       # modelo puntual, son consecuencia directa de compartir el mismo limite
-      # fisico -- Ministral corre con el mismo ctx-size=4096 que Bonsai (arriba),
-      # y el corpus (jls25.pdf, ~900 paginas) es el mismo para cualquier modelo
-      # que se pruebe. Sin este recorte, la sesion 14 midio 3 de 100 preguntas de
-      # Ministral cayendo con "exceeds the available context size" -- y eso corrio
-      # CON este recorte ya activo (heredado sin querer del perfil Bonsai), asi
-      # que quitarlo aca arriesgaria mas fallas de este tipo, no menos.
+      # fisico -- confirmado en vivo (`ollama ps`) que Ollama carga este modelo
+      # con num_ctx=4096, igual que el ctx-size que usaba llama-server -- y el
+      # corpus (jls25.pdf, ~900 paginas) es el mismo para cualquier modelo que se
+      # pruebe. Sin este recorte, la sesion 14 midio 3 de 100 preguntas de
+      # Ministral cayendo con "exceeds the available context size" bajo
+      # llama-server; no re-medido todavia bajo Ollama, pero el limite de
+      # contexto de origen (4096) no cambio, asi que se mantiene el mismo
+      # recorte hasta tener evidencia propia de que ya no hace falta.
       #
       # Aun con este recorte activo, la sesion 15 midio que 6 de las 17 preguntas
       # AMBIGUO que el piloto rechazo de mas (35%) YA exceden los 4096 tokens en
