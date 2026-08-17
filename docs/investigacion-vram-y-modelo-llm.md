@@ -2485,3 +2485,147 @@ todavía — la GPU está libre para intentarlo); opcionalmente, un piloto compl
 `Reformulador` condicional activo para reemplazar la proyección del hallazgo 71 por un número medido bajo
 el diseño final; y agregar la consulta reformulada a `query_log` para poder auditar cuándo se activa sin
 depender de logs temporales.
+
+## Sesión 18: `qwen3.5:4b` — el thinking obligatorio rompe las dos etapas de salida JSON forzada; se identifica el fix (`reasoning_effort:none`) pero no se integra
+
+Retoma el pendiente que cerraba la sesión 17. Antes de probarlo, se evaluaron dos candidatos que el
+usuario propuso de pasada: `qwen3.6:4b` no existe — el tag más chico de la serie `qwen3.6` en la
+librería oficial de Ollama es `27b` (17 GB en `Q4_K_M`), descartado sin probar por tamaño, ni de lejos
+compatible con esta GPU de 4 GB; y `empero-ai/Qwen3.8-4B`, una destilación fine-tuned de una
+organización comunitaria pequeña (341 descargas/mes) sobre la misma arquitectura `Qwen3.5-4B`, con
+chain-of-thought horneado en **cada** respuesta y sin ningún parámetro para desactivarlo (el propio
+README recomienda dejarlo pensar y recortar el bloque `<think>` en post-procesamiento) — descartado sin
+descargar por reproducir de entrada el modo de falla que esta misma sesión termina confirmando con el
+modelo base.
+
+`qwen3.5:4b` sí es oficial (Alibaba, vía la librería de Ollama, arquitectura `qwen35`, Apache 2.0,
+contexto nativo 262144, 4.7B parámetros, `Q4_K_M`, 3.4 GB en disco). Mismo entorno y metodología que el
+resto de la investigación: perfil `compose.ministral.yml` como base (Ministral sigue de producción,
+sin tocar), `qwen3.5:4b` descargado en el mismo `kb-ollama`, y un `kb-api-test` temporal (`docker
+compose run -d --no-deps -p 8081:8080 -e KB_LLM_MODELO=qwen3.5:4b -e
+KB_UMBRAL_RELEVANCIA_HABILITADO=false`) contra los mismos dos casos canónicos (pregunta de despliegue,
+pregunta de control "Java 25") de todas las sesiones anteriores.
+
+### Hallazgo 73: reparto CPU/GPU y confirmación de que `think:false` sí funciona contra `/api/generate`, a diferencia del bug de `qwen3:4b`
+
+`ollama show qwen3.5:4b` confirma la capacidad `thinking` (además de `tools` y `vision`). Cargado,
+`ollama ps` mide **53% CPU / 47% GPU** (3.8 GB) — peor ajuste que `qwen2.5:3b` (100% GPU, sesión 4) pero
+mejor que `gemma3:4b` (60/40, hallazgo 1). Contra `/api/generate` con `think:false` explícito, una
+pregunta trivial responde en **2-4 s en caliente**, sin fuga de razonamiento en el campo `response` — a
+diferencia del bug de `qwen3:4b` documentado en el hallazgo 5 (`ollama/ollama#12917`), acá `think:false`
+sí suprime el pensamiento de verdad en este endpoint. Sin `think` explícito (el comportamiento por
+defecto), la misma pregunta trivial **no terminó ni pasados 4 minutos** — se canceló manualmente
+(`TaskStop`) para no dejar el slot de `kb-ollama` ocupado; confirma que el modo pensamiento está
+**activado por defecto**.
+
+### Hallazgo 74: como `Planificador` (`maxTokens=80`, salida JSON forzada), el plan cae al respaldo el 100% de las veces — el thinking se come todo el presupuesto de tokens sin dejar nada para el JSON
+
+Las dos preguntas del `kb-api-test` (relevante y de control) cayeron en el mismo log:
+`PlanificadorOpenAi: Fallo al planificar, se usa search_unified como respaldo:
+tools.jackson.databind.exc.MismatchedInputException: No content to map due to end-of-input` — el campo
+`content` de la respuesta llegó vacío, indistinguible para Jackson de no haber recibido nada.
+
+Reproducido de forma aislada contra `POST /v1/chat/completions` (mismo endpoint que usa
+`PlanificadorOpenAi` vía `OpenAiChatModel`) con el mismo `max_tokens=80` real y `response_format:
+json_schema`: la respuesta trae `"content": ""` y un campo `"reasoning"` aparte con el pensamiento
+cortado a mitad de frase por `finish_reason: "length"` — Ollama expone el pensamiento en un campo propio
+en su API compatible con OpenAI, pero **ese campo consume el mismo presupuesto de `max_tokens`** que el
+`content` final, y el modelo no llega a escribir el JSON antes de agotarlo. Con `max_tokens=800` pasa
+lo mismo (0 tokens de `content`, razonamiento divagando sin decidirse). Recién con `max_tokens=3000`
+(88 s) convergió a un JSON válido — casi 40 veces el presupuesto real de `PlanificadorOpenAi`, y con un
+costo de latencia que por sí solo ya lo descarta para una etapa que se llama en cada pregunta.
+
+### Hallazgo 75: como `VerificadorGrounding` (`maxTokens=40`), el veredicto falla el 100% de las veces — con la puerta de relevancia encendida en producción, rechazaría cada pregunta
+
+Mismo patrón, confirmado con los dos casos canónicos del ADR-0008 (contexto de `despliegue.md`,
+pregunta relevante y de control) contra `/v1/chat/completions` con el prompt de sistema real de
+`VerificadorGroundingOpenAi` y `max_tokens=40`: **las dos llamadas devuelven `content: ""`**, la misma
+excepción de Jackson que el hallazgo 74. A diferencia del `Planificador` (que se cae a
+`search_unified`), el catch de `VerificadorGroundingOpenAi.verificar()` trata cualquier fallo que no sea
+desborde de contexto como "no se pudo verificar" y devuelve `false` por precaución (ver el comentario
+del propio código: "arriesgar una alucinacion es peor que negarse"). Con la puerta de relevancia en su
+valor de producción (`KB_UMBRAL_RELEVANCIA_HABILITADO=true`, default), esto significa que
+**`qwen3.5:4b` rechazaría el 100% de las preguntas, incluidas las legítimas** — un modo de falla más
+severo que cualquiera de los doce candidatos anteriores, ninguno de los cuales rompía la puerta de forma
+sistemática e incondicional.
+
+### Hallazgo 76: se encuentra el fix — `reasoning_effort:"none"` sí lo desactiva vía la API compatible con OpenAI; `think:false` y `chat_template_kwargs.enable_thinking:false` no
+
+Antes de descartar el candidato, se probaron tres formas de apagar el pensamiento contra
+`/v1/chat/completions` (la API que de verdad usa el pipeline, a diferencia del `/api/generate` nativo
+del hallazgo 73):
+
+| Parámetro probado | Resultado |
+|---|---|
+| `"think": false` (nivel superior del body) | Ignorado — siguió pensando y llenó `max_tokens` igual |
+| `"chat_template_kwargs": {"enable_thinking": false}` | Ignorado — mismo resultado |
+| `"reasoning_effort": "none"` | **Funciona** — responde directo, sin campo `reasoning`, `finish_reason: "stop"` |
+
+Con `reasoning_effort:"none"` agregado, se repitieron los dos veredictos canónicos del hallazgo 75 con
+el `max_tokens=40` real: **los dos correctos** (`true` para la pregunta de despliegue, `false` para la
+de control), en 14 tokens de `content` cada uno — sobra margen dentro del presupuesto real, nada del
+problema del hallazgo 75. El `Planificador` (prompt simplificado, sin el catálogo completo ni las
+salvedades código-vs-documentación del prompt real) también convergió con `max_tokens=80` en 13 s, 33
+tokens — aunque sin las guardas completas del prompt real, esta prueba aislada no es evidencia de que
+elegiría bien las herramientas, solo de que converge dentro del presupuesto.
+
+Este parámetro no está cableado hoy: `PlanificadorOpenAi`, `VerificadorGroundingOpenAi` y
+`SintetizadorOpenAi` arman su `OpenAiChatOptions` con `extraBody(Map.of("repeat_penalty", 1.1))` (ver
+comentario de `PlanificadorOpenAi` sobre por qué usa `extraBody` y no un campo propio de
+`OpenAiChatOptions`) — agregar `"reasoning_effort", "none"` a ese mismo mapa es, en principio, el mismo
+patrón ya usado para `repeat_penalty`. **No se integró en esta sesión**: confirmar que de verdad arregla
+el `Planificador` con el prompt completo (catálogo real, salvedades código-vs-documentación) y medir el
+costo de latencia real con el pipeline completo queda pendiente, y tocar código de producción para un
+candidato que todavía no se decidió adoptar no es el alcance de esta sesión.
+
+### Hallazgo 77: como `Sintetizador` (`maxTokens=512`, texto libre), el resultado es inconsistente — buena citación en la pregunta relevante, respuesta truncada sin ninguna cita en la de control
+
+A diferencia de las dos etapas con salida JSON forzada, `Sintetizador` no lanza una excepción cuando el
+pensamiento se come el presupuesto: como es texto libre, Spring AI igual devuelve lo que haya en
+`content`, vacío o no. Con `maxTokens=512` el resultado fue opuesto entre las dos preguntas:
+
+- **Pregunta relevante** ("como se despliega el servicio", 283 s de latencia total): respuesta completa
+  y bien formada, con **una sola cita `[1]` por afirmación puntual** — la misma calidad de citación que
+  tuvo Bonsai en el hallazgo 12, mejor que la sobre-citación de `gemma3:4b` (hallazgo 6) y que el pegado
+  de texto crudo de `granite4.1:3b`/`phi4-mini:3.8b`/`qwen2.5:3b` (hallazgos 3, 8, 9).
+- **Pregunta de control** ("explícame cómo usar Java 25", 277 s): la respuesta quedó **cortada a mitad
+  de frase** — *"Para usar Java 25, el proceso de inicio del JVM implica invocar un método main de una
+  clase o interfaz"*, sin punto final y **sin ninguna cita `[n]`** — y, a diferencia de los doce
+  candidatos anteriores (que alucinaban pegando las instrucciones de despliegue como si respondieran la
+  pregunta), acá el modelo sí intentó engancharse con el contenido real de `jls25.pdf` (arranque de la
+  JVM) antes de quedarse sin presupuesto de tokens a mitad de camino — una forma de falla nueva, no una
+  repetición de la alucinación del ADR-0008.
+
+Esto confirma que el problema del thinking no es exclusivo de las etapas con esquema JSON: incluso con
+un presupuesto 6-12 veces más generoso que `Planificador`/`VerificadorGrounding`, el resultado depende
+de cuánto tarde el modelo en terminar de "pensar" para esa pregunta puntual — no determinista, no
+predecible por adelantado, y sin ninguna garantía de que el presupuesto alcance.
+
+### Conclusión de la sesión 18
+
+**`qwen3.5:4b` queda descartado sin integrar el fix.** El pensamiento nativo, activado por defecto y sin
+forma de suprimirlo con los mecanismos que el pipeline ya usa (`think` a nivel de body,
+`chat_template_kwargs`), rompe las dos etapas de salida JSON forzada de forma sistemática con los
+presupuestos de tokens reales de este pipeline (hallazgos 74-75) — el modo de falla más severo de los
+trece candidatos probados en esta investigación, porque con la puerta de relevancia en su valor de
+producción rechazaría cada pregunta, no solo las de control. Es, otra vez, el mismo patrón estructural
+del hallazgo 7 (sesión 2): ni el tamaño en disco, ni el `Intelligence Index`, ni las capacidades
+declaradas por `ollama show` predicen este comportamiento — solo probarlo contra las llamadas reales de
+salida forzada lo revela.
+
+La diferencia con los candidatos anteriores es que esta vez sí se encontró un fix concreto y barato
+(hallazgo 76: `reasoning_effort:"none"` en el `extraBody` ya existente) que en teoría resuelve el
+problema de raíz sin gramáticas GBNF a mano ni un fork de llama.cpp — mucho más simple que el camino que
+exigió integrar Bonsai (ADR-0009). Queda como candidato a retomar, no cerrado por completo: antes de
+decidir si vale la pena integrarlo hace falta (a) agregar `reasoning_effort` al `extraBody` de los tres
+componentes `*OpenAi`, (b) confirmar que el `Planificador` con el prompt completo (catálogo real,
+salvedades código-vs-documentación) elige bien con el pensamiento apagado, y (c) medir la latencia real
+del pipeline completo con esta config, porque `qwen3.5:4b` con 47% GPU no promete ser más rápido que
+Ministral solo por evitar el pensamiento.
+
+Estado del entorno al cierre: `qwen3.5:4b` queda descargado en `kb-ollama` (3.4 GB en disco) sin
+borrar, junto a los doce modelos de sesiones anteriores. El `kb-api-test` temporal (puerto 8081) se
+eliminó al terminar. `kb-api` real sigue en el perfil Ministral (`compose.ministral.yml`,
+`tope-por-documento=20`, `Reformulador` condicional del hallazgo 72), sin cambios — nunca se tocó
+durante esta sesión. No se descargó `qwen3.6` (no existe una variante de ~4B) ni
+`empero-ai/Qwen3.8-4B` (descartado por análisis, sin evidencia propia en vivo).
