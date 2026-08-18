@@ -54,7 +54,7 @@ class RecuperacionRepositorioTest {
         insertarChunk("fts-2", "otro texto sin relacion con nada", "{}", null);
 
         List<CandidatoSenal> resultados =
-                repositorio.buscarPorFts("como se despliega", "default", List.of(), 10);
+                repositorio.buscarPorFts("como se despliega", "default", List.of(), List.of(), 10);
 
         assertThat(resultados).extracting(CandidatoSenal::chunkId).contains(id1);
     }
@@ -68,9 +68,25 @@ class RecuperacionRepositorioTest {
                 "{\"summary\":\"contenido de documentacion sobre despliegue\"}", "code_block");
 
         List<CandidatoSenal> soloDocs = repositorio.buscarPorFts(
-                "documentacion despliegue", "default", List.of("doc_section"), 10);
+                "documentacion despliegue", "default", List.of("doc_section"), List.of(), 10);
 
         assertThat(soloDocs).extracting(CandidatoSenal::chunkId).contains(doc).doesNotContain(codigo);
+    }
+
+    @Test
+    @DisplayName("El filtro de documentos excluye chunks de un documento no permitido "
+            + "(F11: activar/desactivar documentos por conversacion)")
+    void filtroDeDocumentos() {
+        long permitido = insertarChunk("doc-permitido", "contenido sobre despliegue del servicio",
+                "{\"summary\":\"contenido sobre despliegue del servicio\"}", null);
+        long excluido = insertarChunk("doc-excluido", "contenido sobre despliegue del servicio",
+                "{\"summary\":\"contenido sobre despliegue del servicio\"}", null);
+        long documentoPermitidoId = documentIdDe(permitido);
+
+        List<CandidatoSenal> soloPermitido = repositorio.buscarPorFts(
+                "despliegue servicio", "default", List.of(), List.of(documentoPermitidoId), 10);
+
+        assertThat(soloPermitido).extracting(CandidatoSenal::chunkId).contains(permitido).doesNotContain(excluido);
     }
 
     @Test
@@ -80,7 +96,7 @@ class RecuperacionRepositorioTest {
         long lejano = insertarChunk("vec-2", "lejano", "{}", vectorUnitario(1));
 
         List<CandidatoSenal> resultados =
-                repositorio.buscarPorVector(vectorUnitario(0), "default", List.of(), 10);
+                repositorio.buscarPorVector(vectorUnitario(0), "default", List.of(), List.of(), 10);
 
         assertThat(resultados).extracting(CandidatoSenal::chunkId).contains(cercano, lejano);
         assertThat(indiceDe(resultados, cercano))
@@ -101,7 +117,7 @@ class RecuperacionRepositorioTest {
         repositorio.recalcularEstadisticasTerminos();
 
         List<CandidatoSenal> resultados =
-                repositorio.buscarPorIdf("desplegar sistema", "default", List.of(), 10);
+                repositorio.buscarPorIdf("desplegar sistema", "default", List.of(), List.of(), 10);
 
         assertThat(resultados).isNotEmpty();
         assertThat(resultados.get(0).chunkId())
@@ -117,7 +133,8 @@ class RecuperacionRepositorioTest {
                 .param("id", viejo).update();
         long reciente = insertarChunk("dec-2", "reciente", "{}", null);
 
-        List<CandidatoSenal> resultados = repositorio.buscarPorDecaimiento("default", List.of(), 30.0, 10);
+        List<CandidatoSenal> resultados =
+                repositorio.buscarPorDecaimiento("default", List.of(), List.of(), 30.0, 10);
 
         assertThat(indiceDe(resultados, reciente))
                 .as("30 dias de vida media: a los 10 dias el reciente debe seguir rankeando antes")
@@ -131,6 +148,11 @@ class RecuperacionRepositorioTest {
             }
         }
         throw new AssertionError("chunk " + chunkId + " no aparecio en los resultados");
+    }
+
+    private long documentIdDe(long chunkId) {
+        return jdbc.sql("SELECT document_id FROM chunks WHERE id = :id")
+                .param("id", chunkId).query(Long.class).single();
     }
 
     private static float[] vectorUnitario(int indice) {

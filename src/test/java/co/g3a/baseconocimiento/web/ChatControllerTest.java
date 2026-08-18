@@ -47,7 +47,7 @@ class ChatControllerTest {
     @DisplayName("POST /api/preview delega en Consultar.previsualizar y devuelve las citas")
     void previsualizarDelegaEnConsultar() throws Exception {
         Cita cita = new Cita("file:///doc1", "Doc 1", "extracto", "doc_section");
-        when(consultar.previsualizar(any(), any(), anyInt())).thenReturn(List.of(cita));
+        when(consultar.previsualizar(any(), any(), anyInt(), any())).thenReturn(List.of(cita));
 
         mockMvc.perform(post("/api/preview")
                         .contentType(MediaType.APPLICATION_JSON)

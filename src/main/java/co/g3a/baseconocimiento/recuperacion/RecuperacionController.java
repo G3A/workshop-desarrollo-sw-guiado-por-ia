@@ -36,6 +36,6 @@ class RecuperacionController {
                 ? ProyectoId.POR_DEFECTO.valor()
                 : consulta.projectId();
         List<String> tipos = consulta.tipos() == null ? List.of() : consulta.tipos();
-        return buscador.buscar(consulta.q(), proyecto, tipos);
+        return buscador.buscar(consulta.q(), proyecto, tipos, List.of());
     }
 }

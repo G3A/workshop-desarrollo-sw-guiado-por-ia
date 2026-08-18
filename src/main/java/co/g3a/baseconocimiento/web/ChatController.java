@@ -1,5 +1,6 @@
 package co.g3a.baseconocimiento.web;
 
+import java.util.Arrays;
 import java.util.List;
 
 import jakarta.validation.Valid;
@@ -42,12 +43,15 @@ class ChatController {
         this.previewLimite = previewLimite;
     }
 
-    record PreguntaWeb(@NotBlank String q, String projectId) {
+    /** @param documentos IDs de {@code documents} a los que acotar la búsqueda; null/vacío = sin restricción. */
+    record PreguntaWeb(@NotBlank String q, String projectId, List<Long> documentos) {
     }
 
     @PostMapping("/api/preview")
     List<Cita> previsualizar(@Valid @RequestBody PreguntaWeb pregunta) {
-        return consultar.previsualizar(new Pregunta(pregunta.q()), proyectoDe(pregunta.projectId()), previewLimite);
+        return consultar.previsualizar(
+                new Pregunta(pregunta.q()), proyectoDe(pregunta.projectId()), previewLimite,
+                documentosDe(pregunta.documentos()));
     }
 
     /**
@@ -73,9 +77,11 @@ class ChatController {
      */
     @GetMapping(value = "/api/chat", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     Flux<ServerSentEvent<Object>> chat(
-            @RequestParam @NotBlank String q, @RequestParam(required = false) String projectId) {
+            @RequestParam @NotBlank String q, @RequestParam(required = false) String projectId,
+            @RequestParam(required = false) String documentos) {
+        Filtros filtros = Filtros.conDocumentos(documentosDe(documentos));
         Consultar.RespuestaEnStreaming resultado =
-                consultar.responderEnStreaming(new Pregunta(q), proyectoDe(projectId), Filtros.NINGUNO);
+                consultar.responderEnStreaming(new Pregunta(q), proyectoDe(projectId), filtros);
 
         Flux<ServerSentEvent<Object>> eventoCitas = Flux.just(
                 ServerSentEvent.builder().event("citas").data((Object) resultado.citas()).build());
@@ -98,5 +104,22 @@ class ChatController {
 
     private static ProyectoId proyectoDe(String projectId) {
         return (projectId == null || projectId.isBlank()) ? ProyectoId.POR_DEFECTO : new ProyectoId(projectId);
+    }
+
+    private static List<Long> documentosDe(List<Long> documentos) {
+        return documentos == null ? List.of() : documentos;
+    }
+
+    /**
+     * IDs separados por coma: {@code EventSource} solo sabe hacer GET, así que
+     * el filtro viaja en un query param plano, no en un cuerpo JSON con lista
+     * (mismo motivo que {@code q}/{@code projectId} — ver el javadoc de {@link #chat}).
+     */
+    private static List<Long> documentosDe(String documentosCsv) {
+        if (documentosCsv == null || documentosCsv.isBlank()) {
+            return List.of();
+        }
+        return Arrays.stream(documentosCsv.split(","))
+                .map(String::trim).filter(s -> !s.isEmpty()).map(Long::parseLong).toList();
     }
 }

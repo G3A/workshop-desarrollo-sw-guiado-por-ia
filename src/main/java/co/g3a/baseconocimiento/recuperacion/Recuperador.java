@@ -44,13 +44,9 @@ class Recuperador implements Buscador {
     }
 
     @Override
-    public List<ResultadoBusqueda> buscar(String consulta, String projectId) {
-        return buscar(consulta, projectId, List.of());
-    }
-
-    @Override
-    public List<Fragmento> buscarPalabraClave(String consulta, String projectId, int limite) {
-        return repositorio.buscarPorFts(consulta, projectId, List.of(), limite).stream()
+    public List<Fragmento> buscarPalabraClave(
+            String consulta, String projectId, List<Long> documentosPermitidos, int limite) {
+        return repositorio.buscarPorFts(consulta, projectId, List.of(), documentosPermitidos, limite).stream()
                 .map(c -> new Fragmento(
                         c.chunkId(), c.documentoId(), c.uri(), c.titulo(), c.texto(), c.tipo(), c.ord(),
                         c.actualizadoEn(), Map.of(Senal.FTS.name(), c.puntaje()), c.puntaje(), null))
@@ -58,9 +54,10 @@ class Recuperador implements Buscador {
     }
 
     @Override
-    public List<ResultadoBusqueda> buscar(String consulta, String projectId, List<String> tiposPermitidos) {
+    public List<ResultadoBusqueda> buscar(
+            String consulta, String projectId, List<String> tiposPermitidos, List<Long> documentosPermitidos) {
         Map<Senal, List<CandidatoSenal>> porSenal = ejecutarSenalesEnParalelo(
-                consulta, projectId, tiposPermitidos, propiedades.candidatosPorSenal());
+                consulta, projectId, tiposPermitidos, documentosPermitidos, propiedades.candidatosPorSenal());
 
         List<CandidatoFusionado> fusionados = RrfFusion.fusionar(
                 porSenal, pesos(), propiedades.rrfK(), propiedades.topePorDocumento(),
@@ -97,16 +94,16 @@ class Recuperador implements Buscador {
      * igual que el fan-out del executor de F3.
      */
     private Map<Senal, List<CandidatoSenal>> ejecutarSenalesEnParalelo(
-            String consulta, String projectId, List<String> tipos, int limite) {
+            String consulta, String projectId, List<String> tipos, List<Long> documentos, int limite) {
         try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
             Future<List<CandidatoSenal>> fts = executor.submit(
-                    () -> repositorio.buscarPorFts(consulta, projectId, tipos, limite));
+                    () -> repositorio.buscarPorFts(consulta, projectId, tipos, documentos, limite));
             Future<List<CandidatoSenal>> idf = executor.submit(
-                    () -> repositorio.buscarPorIdf(consulta, projectId, tipos, limite));
+                    () -> repositorio.buscarPorIdf(consulta, projectId, tipos, documentos, limite));
             Future<List<CandidatoSenal>> decaimiento = executor.submit(() -> repositorio.buscarPorDecaimiento(
-                    projectId, tipos, propiedades.decaimiento().lambdaDias(), limite));
+                    projectId, tipos, documentos, propiedades.decaimiento().lambdaDias(), limite));
             Future<List<CandidatoSenal>> vector = executor.submit(() -> repositorio.buscarPorVector(
-                    embeddings.embeber(consulta), projectId, tipos, limite));
+                    embeddings.embeber(consulta), projectId, tipos, documentos, limite));
 
             Map<Senal, List<CandidatoSenal>> resultado = new EnumMap<>(Senal.class);
             resultado.put(Senal.FTS, obtener(fts));

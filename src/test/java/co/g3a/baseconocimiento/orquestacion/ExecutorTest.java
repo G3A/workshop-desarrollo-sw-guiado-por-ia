@@ -30,7 +30,7 @@ class ExecutorTest {
         var executor = new Executor(catalogo);
 
         List<Executor.EjecucionHerramienta> resultado =
-                executor.ejecutar(List.of("buena", "mala"), "consulta", PROYECTO);
+                executor.ejecutar(List.of("buena", "mala"), "consulta", PROYECTO, List.of());
 
         assertThat(resultado).hasSize(2);
 
@@ -51,7 +51,7 @@ class ExecutorTest {
         var executor = new Executor(catalogo);
 
         List<Executor.EjecucionHerramienta> resultado =
-                executor.ejecutar(List.of("herramienta_que_no_existe"), "consulta", PROYECTO);
+                executor.ejecutar(List.of("herramienta_que_no_existe"), "consulta", PROYECTO, List.of());
 
         assertThat(resultado).hasSize(1);
         assertThat(resultado.get(0).nombre()).isEqualTo("search_unified");
@@ -75,7 +75,7 @@ class ExecutorTest {
             }
 
             @Override
-            public List<Fragmento> ejecutar(String consulta, ProyectoId proyecto) {
+            public List<Fragmento> ejecutar(String consulta, ProyectoId proyecto, List<Long> documentosPermitidos) {
                 return List.of(fragmentos);
             }
         };
@@ -94,7 +94,7 @@ class ExecutorTest {
             }
 
             @Override
-            public List<Fragmento> ejecutar(String consulta, ProyectoId proyecto) {
+            public List<Fragmento> ejecutar(String consulta, ProyectoId proyecto, List<Long> documentosPermitidos) {
                 throw new IllegalStateException("fallo simulado");
             }
         };

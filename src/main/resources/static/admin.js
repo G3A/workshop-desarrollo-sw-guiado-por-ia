@@ -163,8 +163,14 @@
 
   function filaArchivoVault(a) {
     const enError = a.estado === "error";
-    const boton = enError
+    const botonReintentar = enError
       ? '<button type="button" class="boton-reintentar-archivo" data-tipo="' + escaparHtml(a.kind) + '">Reintentar</button>'
+      : "";
+    // Reindexar es "reingesta toda la fuente"; eliminar es puntual y solo tiene
+    // sentido para local_docs, donde hay un archivo real que borrar del vault
+    // (ver el javadoc de AdminController.eliminarArchivo sobre por que).
+    const botonEliminar = a.kind === "local_docs"
+      ? '<button type="button" class="boton-eliminar-archivo" data-id="' + a.id + '">Eliminar</button>'
       : "";
     const detalleError = enError && a.lastError
       ? '<div style="font-size:0.78rem;">' + escaparHtml(a.lastError) + "</div>"
@@ -175,7 +181,7 @@
       "<td>" + escaparHtml(ETIQUETAS_TIPO[a.kind] || a.kind) + " / " + escaparHtml(a.fuenteNombre) + "</td>" +
       '<td><span class="estado-badge ' + claseBadge(a.estado) + '">' + escaparHtml(a.estado) + "</span>" + detalleError + "</td>" +
       "<td>" + formatearFecha(a.actualizadoEn) + "</td>" +
-      "<td>" + boton + "</td>" +
+      '<td class="col-acciones">' + botonReintentar + botonEliminar + "</td>" +
       "</tr>"
     );
   }
@@ -190,6 +196,9 @@
       : '<tr><td colspan="5">Todavía no se detectó ningún archivo.</td></tr>';
     cuerpoArchivosVault.querySelectorAll(".boton-reintentar-archivo").forEach((boton) => {
       boton.addEventListener("click", () => reintentarArchivo(boton.dataset.tipo, boton));
+    });
+    cuerpoArchivosVault.querySelectorAll(".boton-eliminar-archivo").forEach((boton) => {
+      boton.addEventListener("click", () => eliminarArchivo(boton.dataset.id, boton));
     });
   }
 
@@ -209,6 +218,20 @@
       await Promise.all([cargarArchivosVault(), cargarFuentes(), cargarCola()]);
     } catch (error) {
       boton.disabled = false;
+    }
+  }
+
+  async function eliminarArchivo(id, boton) {
+    if (!confirm("¿Eliminar este archivo del índice? Borra también el archivo del vault y no se puede deshacer.")) {
+      return;
+    }
+    boton.disabled = true;
+    try {
+      await pedir("/api/admin/vault/archivos/" + encodeURIComponent(id), { method: "DELETE" });
+      await Promise.all([cargarArchivosVault(), cargarFuentes(), cargarCola()]);
+    } catch (error) {
+      boton.disabled = false;
+      alert(error.message);
     }
   }
 

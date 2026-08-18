@@ -32,21 +32,23 @@ import jakarta.servlet.http.HttpServletResponse;
  *       persona (ver Supuestos del plan): este token protege llamadas
  *       programaticas, no la pagina que cualquiera con acceso a la red ya
  *       puede abrir.</li>
- *   <li>{@code /api/admin/ayuda} y {@code /api/admin/proyectos} (F9/F10) — el
- *       botón {@code ?} y el selector de proyecto viven también en la página
+ *   <li>{@code /api/admin/ayuda}, {@code /api/admin/proyectos} y {@code /api/admin/documentos}
+ *       (F9/F10) — el botón {@code ?}, el selector de proyecto y el checklist de
+ *       documentos activos por conversación viven también en la página
  *       de chat, con el mismo problema de {@code /api/chat}: no hay una
- *       sesión de persona logueada que les pase un token. Ambos son de solo
+ *       sesión de persona logueada que les pase un token. Los tres son de solo
  *       lectura y no exponen contenido del corpus (rutas/config el primero,
- *       nombres de proyecto el segundo) — el resto de {@code /api/admin/*}
- *       (fuentes, reindexar, la cola, subir archivos) sigue exigiendo el
- *       token.</li>
+ *       nombres de proyecto el segundo, id+título de documento el tercero) —
+ *       el resto de {@code /api/admin/*} (fuentes, reindexar, la cola,
+ *       subir/borrar archivos) sigue exigiendo el token.</li>
  * </ul>
  */
 class ApiTokenFilter extends HttpFilter {
 
     private static final Logger log = LoggerFactory.getLogger(ApiTokenFilter.class);
     private static final Set<String> RUTAS_SIN_TOKEN = Set.of(
-            "/api/messages", "/api/chat", "/api/preview", "/api/admin/ayuda", "/api/admin/proyectos");
+            "/api/messages", "/api/chat", "/api/preview",
+            "/api/admin/ayuda", "/api/admin/proyectos", "/api/admin/documentos");
 
     private final SeguridadPropiedades propiedades;
 

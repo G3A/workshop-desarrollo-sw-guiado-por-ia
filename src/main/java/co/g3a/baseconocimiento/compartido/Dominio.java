@@ -35,9 +35,20 @@ public final class Dominio {
         }
     }
 
-    /** Restricciones opcionales sobre el corpus. */
-    public record Filtros(List<String> fuentes, Instant desde, int maxCandidatos) {
-        public static final Filtros NINGUNO = new Filtros(List.of(), null, 20);
+    /**
+     * Restricciones opcionales sobre el corpus.
+     *
+     * @param documentosPermitidos IDs de {@code documents} a los que acotar la búsqueda;
+     *                             vacío = sin restricción (todo el corpus del proyecto). Es
+     *                             el filtro "activar/desactivar documentos por conversación"
+     *                             de la UI web.
+     */
+    public record Filtros(List<String> fuentes, Instant desde, int maxCandidatos, List<Long> documentosPermitidos) {
+        public static final Filtros NINGUNO = new Filtros(List.of(), null, 20, List.of());
+
+        public static Filtros conDocumentos(List<Long> documentosPermitidos) {
+            return new Filtros(List.of(), null, 20, documentosPermitidos);
+        }
     }
 
     /**

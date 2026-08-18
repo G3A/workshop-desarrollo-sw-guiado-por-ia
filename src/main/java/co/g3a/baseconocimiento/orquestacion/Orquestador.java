@@ -109,7 +109,7 @@ class Orquestador {
 
     /** Bloqueante: espera a que la síntesis termine antes de devolver nada. Usado por {@code /api/ask}. */
     EjecucionPipeline ejecutar(Pregunta pregunta, ProyectoId proyecto, Filtros filtros) {
-        PreSintesis pre = prepararHastaContexto(pregunta, proyecto);
+        PreSintesis pre = prepararHastaContexto(pregunta, proyecto, filtros);
 
         // Etapa 6: sintesis en streaming, coleccionada aqui porque este metodo
         // devuelve una respuesta completa, no un Flux.
@@ -139,7 +139,7 @@ class Orquestador {
      * llamador termine de consumirlo.
      */
     Consultar.RespuestaEnStreaming ejecutarEnStreaming(Pregunta pregunta, ProyectoId proyecto, Filtros filtros) {
-        PreSintesis pre = prepararHastaContexto(pregunta, proyecto);
+        PreSintesis pre = prepararHastaContexto(pregunta, proyecto, filtros);
 
         StringBuilder acumulado = new StringBuilder();
         Flux<String> textoBase = pre.respuestaFija() != null
@@ -168,8 +168,9 @@ class Orquestador {
         return texto == null ? "" : texto;
     }
 
-    private PreSintesis prepararHastaContexto(Pregunta pregunta, ProyectoId proyecto) {
+    private PreSintesis prepararHastaContexto(Pregunta pregunta, ProyectoId proyecto, Filtros filtros) {
         long inicio = System.nanoTime();
+        List<Long> documentosPermitidos = filtros.documentosPermitidos();
 
         // Etapa 1: planificar.
         PlanDeHerramientas plan = planificador.planificar(pregunta.texto(), catalogo.descripciones());
@@ -177,7 +178,7 @@ class Orquestador {
         // Etapas 2-3: ejecutar herramientas en paralelo con la pregunta tal cual, con fallas
         // aisladas por herramienta.
         List<Executor.EjecucionHerramienta> ejecuciones =
-                executor.ejecutar(plan.herramientas(), pregunta.texto(), proyecto);
+                executor.ejecutar(plan.herramientas(), pregunta.texto(), proyecto, documentosPermitidos);
 
         // Etapa 4: fusionar y deduplicar entre herramientas.
         List<Fragmento> fragmentos = FusionDeHerramientas.combinar(
@@ -203,15 +204,26 @@ class Orquestador {
         if (umbral.decision() != UmbralRelevancia.Decision.SUFICIENTE) {
             Reformulador.Reformulacion reformulacion = reformulador.reformular(pregunta.texto());
             if (reformulacion.reformulada()) {
-                List<Executor.EjecucionHerramienta> reejecuciones =
-                        executor.ejecutar(plan.herramientas(), reformulacion.textoBusqueda(), proyecto);
+                List<Executor.EjecucionHerramienta> reejecuciones = executor.ejecutar(
+                        plan.herramientas(), reformulacion.textoBusqueda(), proyecto, documentosPermitidos);
                 List<Fragmento> refragmentos = FusionDeHerramientas.combinar(
                         reejecuciones.stream().map(Executor.EjecucionHerramienta::fragmentos).toList(),
                         maxFragmentosContexto);
-                ejecuciones = reejecuciones;
-                fragmentos = refragmentos;
-                umbral = UmbralRelevancia.evaluar(fragmentos, chunksProyecto, umbralRelevancia);
-                consultaReformuladaParaMostrar = reformulacion.textoBusqueda();
+                UmbralRelevancia.Resultado umbralReformulado =
+                        UmbralRelevancia.evaluar(refragmentos, chunksProyecto, umbralRelevancia);
+                // La reformulacion no siempre mejora: un LLM chico puede reformular mal y
+                // alejarse del tema (medido en vivo: "que es un enum" -> una pregunta sobre
+                // "estructuras de datos con acceso por indice numerico", sin relacion real).
+                // Sin esta comparacion, una busqueda original ya buena (AMBIGUO con rerank
+                // 5.35, candidata real: "enum Coin { PENNY(1)...") quedaba pisada sin mas
+                // por la reformulada, mucho peor (INSUFICIENTE, rerank 0.2) -- se perdia una
+                // respuesta que ya estaba bien encontrada. Se queda con lo que rinda mas.
+                if (esMejor(umbralReformulado, umbral)) {
+                    ejecuciones = reejecuciones;
+                    fragmentos = refragmentos;
+                    umbral = umbralReformulado;
+                    consultaReformuladaParaMostrar = reformulacion.textoBusqueda();
+                }
             }
         }
 
@@ -234,6 +246,30 @@ class Orquestador {
 
         return new PreSintesis(plan, ejecuciones, fragmentos, citas, contexto, null,
                 consultaReformuladaParaMostrar, inicio);
+    }
+
+    /**
+     * Compara dos rondas de búsqueda por qué tan bien pasan la puerta de
+     * relevancia: primero por {@code Decision} (SUFICIENTE > AMBIGUO >
+     * INSUFICIENTE), y a igual decisión, por el mejor score del reranker.
+     */
+    private static boolean esMejor(UmbralRelevancia.Resultado candidato, UmbralRelevancia.Resultado base) {
+        int rangoCandidato = rangoDecision(candidato.decision());
+        int rangoBase = rangoDecision(base.decision());
+        if (rangoCandidato != rangoBase) {
+            return rangoCandidato > rangoBase;
+        }
+        double puntajeCandidato = candidato.mejorPuntaje() == null ? Double.NEGATIVE_INFINITY : candidato.mejorPuntaje();
+        double puntajeBase = base.mejorPuntaje() == null ? Double.NEGATIVE_INFINITY : base.mejorPuntaje();
+        return puntajeCandidato > puntajeBase;
+    }
+
+    private static int rangoDecision(UmbralRelevancia.Decision decision) {
+        return switch (decision) {
+            case SUFICIENTE -> 2;
+            case AMBIGUO -> 1;
+            case INSUFICIENTE -> 0;
+        };
     }
 
     /**

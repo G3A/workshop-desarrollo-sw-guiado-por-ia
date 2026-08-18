@@ -43,8 +43,8 @@ class Consultador implements Consultar {
     }
 
     @Override
-    public List<Cita> previsualizar(Pregunta pregunta, ProyectoId proyecto, int limite) {
-        return buscador.buscarPalabraClave(pregunta.texto(), proyecto.valor(), limite).stream()
+    public List<Cita> previsualizar(Pregunta pregunta, ProyectoId proyecto, int limite, List<Long> documentosPermitidos) {
+        return buscador.buscarPalabraClave(pregunta.texto(), proyecto.valor(), documentosPermitidos, limite).stream()
                 .map(Citas::desde)
                 .toList();
     }

@@ -13,15 +13,14 @@ import co.g3a.baseconocimiento.compartido.Dominio.Fragmento;
  */
 public interface Buscador {
 
-    /** Las cuatro señales sobre todo el corpus del proyecto, sin restringir por tipo de chunk. */
-    List<ResultadoBusqueda> buscar(String consulta, String projectId);
-
     /**
-     * Igual que {@link #buscar(String, String)}, pero solo considera chunks cuyo
-     * {@code kind} esté en {@code tiposPermitidos}. Una lista vacía equivale a
-     * no filtrar.
+     * Las cuatro señales sobre el corpus del proyecto. Solo considera chunks
+     * cuyo {@code kind} esté en {@code tiposPermitidos} y cuyo documento esté
+     * en {@code documentosPermitidos}; una lista vacía en cualquiera de los dos
+     * equivale a no filtrar por ese eje.
      */
-    List<ResultadoBusqueda> buscar(String consulta, String projectId, List<String> tiposPermitidos);
+    List<ResultadoBusqueda> buscar(
+            String consulta, String projectId, List<String> tiposPermitidos, List<Long> documentosPermitidos);
 
     /**
      * Solo la señal 1 (texto completo): sin embedding, sin IDF, sin decaimiento
@@ -29,5 +28,6 @@ public interface Buscador {
      * on landing" del artículo: algo que responde casi al instante mientras el
      * pipeline completo de siete etapas todavía está corriendo detrás.
      */
-    List<Fragmento> buscarPalabraClave(String consulta, String projectId, int limite);
+    List<Fragmento> buscarPalabraClave(
+            String consulta, String projectId, List<Long> documentosPermitidos, int limite);
 }

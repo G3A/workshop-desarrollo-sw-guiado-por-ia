@@ -65,7 +65,7 @@ class HerramientaSearchCode implements Herramienta {
     }
 
     @Override
-    public List<Fragmento> ejecutar(String consulta, ProyectoId proyecto) {
+    public List<Fragmento> ejecutar(String consulta, ProyectoId proyecto, List<Long> documentosPermitidos) {
         if (!Files.isDirectory(raiz)) {
             log.debug("kb.orquestacion.codigo-dir ({}) no existe; search_code no tiene nada que buscar", raiz);
             return List.of();
