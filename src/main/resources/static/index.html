@@ -309,7 +309,7 @@
   .turno { display: flex; flex-direction: column; gap: 1rem; }
 
   .mensaje { display: flex; gap: 0.75rem; }
-  .mensaje-usuario { justify-content: flex-end; }
+  .mensaje-usuario { justify-content: flex-end; align-items: center; }
   .mensaje-usuario .burbuja {
     background: var(--bg-burbuja-usuario);
     border-radius: 18px;
@@ -317,6 +317,7 @@
     max-width: 34rem;
     white-space: pre-wrap;
   }
+  .mensaje-usuario:hover .boton-copiar { opacity: 1; }
 
   .mensaje-asistente { align-items: flex-start; }
   .avatar-asistente {
@@ -414,14 +415,37 @@
     gap: 0.4rem;
   }
   .turno-previa li, .turno-citas li {
+    position: relative;
     border: 1px solid var(--borde);
     border-radius: 10px;
-    padding: 0.55rem 0.75rem;
+    padding: 0.55rem 2.1rem 0.55rem 0.75rem;
     background: var(--bg-elevado);
   }
   .turno-previa a, .turno-citas a { color: var(--acento); text-decoration: none; font-weight: 600; }
   .turno-previa a:hover, .turno-citas a:hover { text-decoration: underline; }
   .extracto { display: block; color: var(--texto-atenuado); font-size: 0.87rem; margin-top: 0.2rem; }
+  .boton-copiar {
+    flex: none;
+    opacity: 0;
+    border: 1px solid var(--borde);
+    border-radius: 6px;
+    background: var(--bg-elevado);
+    color: var(--texto-atenuado);
+    font-size: 0.8rem;
+    line-height: 1;
+    padding: 0.2rem 0.35rem;
+    cursor: pointer;
+  }
+  .boton-copiar:focus-visible { opacity: 1; }
+  .boton-copiar:hover { background: var(--bg-hover); color: var(--texto); }
+  /* Dentro de las listas va anclado arriba a la derecha del fragmento; en la
+     burbuja de la pregunta (mas abajo) sigue el flujo normal del flexbox. */
+  .turno-previa li .boton-copiar, .turno-citas li .boton-copiar {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.55rem;
+  }
+  .turno-previa li:hover .boton-copiar, .turno-citas li:hover .boton-copiar { opacity: 1; }
 
   /* ---------- Barra de entrada ---------- */
   .barra-entrada {

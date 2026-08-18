@@ -343,14 +343,47 @@
     return contenedor.innerHTML;
   }
 
+  // "texto" ya tiene que venir escapado para HTML (se usa tal cual como atributo).
+  function botonCopiar(texto, etiqueta) {
+    return `<button type="button" class="boton-copiar" data-texto="${texto}" ` +
+        `title="${etiqueta}" aria-label="${etiqueta}">⧉</button>`;
+  }
+
   function itemCita(cita, indice) {
     const titulo = escaparHtml(cita.titulo || cita.uri);
     const uri = escaparHtml(cita.uri);
     const extracto = escaparHtml(cita.extracto || "");
     const prefijo = indice == null ? "" : `[${indice}] `;
     const lineaExtracto = extracto ? `<span class="extracto">${extracto}</span>` : "";
-    return `<li>${prefijo}<a href="${uri}" target="_blank" rel="noopener">${titulo}</a>${lineaExtracto}</li>`;
+    // Copia el fragmento tal como se ve (el extracto, ya recortado por el
+    // servidor); si no hay extracto, al menos el titulo sirve de algo.
+    const textoACopiar = escaparHtml(cita.extracto || cita.titulo || cita.uri);
+    return `<li>${prefijo}<a href="${uri}" target="_blank" rel="noopener">${titulo}</a>${lineaExtracto}` +
+        `${botonCopiar(textoACopiar, "Copiar fragmento")}</li>`;
   }
+
+  // Delegado en "historial" (nunca se reemplaza, solo su innerHTML) para que
+  // funcione con cualquier li de cualquier turno, incluidos los que todavia
+  // no existian cuando se registro este listener.
+  historial.addEventListener("click", async (evento) => {
+    const boton = evento.target.closest(".boton-copiar");
+    if (!boton) {
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(boton.dataset.texto || "");
+      const original = boton.textContent;
+      boton.textContent = "✓";
+      boton.disabled = true;
+      setTimeout(() => {
+        boton.textContent = original;
+        boton.disabled = false;
+      }, 1200);
+    } catch (error) {
+      // Sin permiso de portapapeles o navegador viejo: no hay mucho mas que
+      // hacer aca, el usuario puede seguir seleccionando el texto a mano.
+    }
+  });
 
   function nuevoTurno(pregunta) {
     if (bienvenida) {
@@ -360,6 +393,7 @@
     turno.className = "turno";
     turno.innerHTML =
       '<div class="mensaje mensaje-usuario">' +
+      botonCopiar(escaparHtml(pregunta), "Copiar pregunta") +
       `<div class="burbuja">${escaparHtml(pregunta)}</div>` +
       "</div>" +
       '<div class="mensaje mensaje-asistente">' +
