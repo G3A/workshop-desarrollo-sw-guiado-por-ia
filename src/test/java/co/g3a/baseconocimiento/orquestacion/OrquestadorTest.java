@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -72,7 +73,7 @@ class OrquestadorTest {
 
         var orquestador = new Orquestador(
                 planificador, REFORMULADOR_SIN_CAMBIOS, catalogo, executor, contextoRepo, herramientasRepo,
-                sintetizador, verificadorGrounding, queryLog, 10, true, UMBRAL_POR_DEFECTO);
+                sintetizador, verificadorGrounding, queryLog, 10, true, UMBRAL_POR_DEFECTO, 10, mock(StreamsEnCursoRepositorio.class));
 
         Orquestador.EjecucionPipeline resultado =
                 orquestador.ejecutar(new Pregunta("¿Que es esto?"), PROYECTO, Filtros.NINGUNO);
@@ -122,7 +123,7 @@ class OrquestadorTest {
 
         var orquestador = new Orquestador(
                 planificador, REFORMULADOR_SIN_CAMBIOS, catalogo, executor, contextoRepo, herramientasRepo,
-                sintetizador, verificadorGrounding, queryLog, 10, true, UMBRAL_POR_DEFECTO);
+                sintetizador, verificadorGrounding, queryLog, 10, true, UMBRAL_POR_DEFECTO, 10, mock(StreamsEnCursoRepositorio.class));
 
         Orquestador.EjecucionPipeline resultado =
                 orquestador.ejecutar(new Pregunta("explicame como usar Java 25"), PROYECTO, Filtros.NINGUNO);
@@ -163,7 +164,7 @@ class OrquestadorTest {
 
         var orquestador = new Orquestador(
                 planificador, REFORMULADOR_SIN_CAMBIOS, catalogo, executor, contextoRepo, herramientasRepo,
-                sintetizador, verificadorGrounding, queryLog, 10, true, UMBRAL_POR_DEFECTO);
+                sintetizador, verificadorGrounding, queryLog, 10, true, UMBRAL_POR_DEFECTO, 10, mock(StreamsEnCursoRepositorio.class));
 
         Orquestador.EjecucionPipeline resultado =
                 orquestador.ejecutar(new Pregunta("como usar java 25"), PROYECTO, Filtros.NINGUNO);
@@ -201,7 +202,7 @@ class OrquestadorTest {
 
         var orquestador = new Orquestador(
                 planificador, REFORMULADOR_SIN_CAMBIOS, catalogo, executor, contextoRepo, herramientasRepo,
-                sintetizador, verificadorGrounding, queryLog, 10, true, UMBRAL_POR_DEFECTO);
+                sintetizador, verificadorGrounding, queryLog, 10, true, UMBRAL_POR_DEFECTO, 10, mock(StreamsEnCursoRepositorio.class));
 
         Orquestador.EjecucionPipeline resultado =
                 orquestador.ejecutar(new Pregunta("como se despliega el servicio"), PROYECTO, Filtros.NINGUNO);
@@ -237,7 +238,7 @@ class OrquestadorTest {
 
         var orquestador = new Orquestador(
                 planificador, REFORMULADOR_SIN_CAMBIOS, catalogo, executor, contextoRepo, herramientasRepo,
-                sintetizador, verificadorGrounding, queryLog, 10, true, UMBRAL_POR_DEFECTO);
+                sintetizador, verificadorGrounding, queryLog, 10, true, UMBRAL_POR_DEFECTO, 10, mock(StreamsEnCursoRepositorio.class));
 
         Orquestador.EjecucionPipeline resultado =
                 orquestador.ejecutar(new Pregunta("¿quien sabe de auth?"), PROYECTO, Filtros.NINGUNO);
@@ -297,7 +298,7 @@ class OrquestadorTest {
 
         var orquestador = new Orquestador(
                 planificador, reformulador, catalogo, executor, contextoRepo, herramientasRepo, sintetizador,
-                verificadorGrounding, queryLog, 10, true, UMBRAL_POR_DEFECTO);
+                verificadorGrounding, queryLog, 10, true, UMBRAL_POR_DEFECTO, 10, mock(StreamsEnCursoRepositorio.class));
 
         Orquestador.EjecucionPipeline resultado =
                 orquestador.ejecutar(new Pregunta("que es el autoboxing"), PROYECTO, Filtros.NINGUNO);
@@ -363,7 +364,7 @@ class OrquestadorTest {
 
         var orquestador = new Orquestador(
                 planificador, reformulador, catalogo, executor, contextoRepo, herramientasRepo, sintetizador,
-                verificadorGrounding, queryLog, 10, true, UMBRAL_POR_DEFECTO);
+                verificadorGrounding, queryLog, 10, true, UMBRAL_POR_DEFECTO, 10, mock(StreamsEnCursoRepositorio.class));
 
         Orquestador.EjecucionPipeline resultado =
                 orquestador.ejecutar(new Pregunta("que es un enum"), PROYECTO, Filtros.NINGUNO);
@@ -403,11 +404,84 @@ class OrquestadorTest {
 
         var orquestador = new Orquestador(
                 planificador, reformulador, catalogo, executor, contextoRepo, herramientasRepo, sintetizador,
-                verificadorGrounding, queryLog, 10, true, UMBRAL_POR_DEFECTO);
+                verificadorGrounding, queryLog, 10, true, UMBRAL_POR_DEFECTO, 10, mock(StreamsEnCursoRepositorio.class));
 
         orquestador.ejecutar(new Pregunta("pregunta cualquiera"), PROYECTO, Filtros.NINGUNO);
 
         verify(reformulador, never()).reformular(any());
+    }
+
+    @Test
+    @DisplayName("Sin cupo de consultas concurrentes, corta antes de planificar y devuelve un mensaje claro")
+    void devuelveServidorOcupadoSinCupoDisponible() {
+        var catalogo = new CatalogoHerramientas(List.of());
+        var executor = new Executor(catalogo);
+
+        Planificador planificador = mock(Planificador.class);
+        Reformulador reformulador = mock(Reformulador.class);
+        Sintetizador sintetizador = mock(Sintetizador.class);
+        VerificadorGrounding verificadorGrounding = mock(VerificadorGrounding.class);
+        ContextoRepositorio contextoRepo = mock(ContextoRepositorio.class);
+        HerramientasRepositorio herramientasRepo = mock(HerramientasRepositorio.class);
+
+        QueryLogRepositorio queryLog = mock(QueryLogRepositorio.class);
+        when(queryLog.registrar(any(), any(), any(), any(), any(), any(), any(), anyLong())).thenReturn(1L);
+
+        // 0 cupos: tryAcquire() nunca consigue permiso, sea cual sea la pregunta.
+        var orquestador = new Orquestador(
+                planificador, reformulador, catalogo, executor, contextoRepo, herramientasRepo, sintetizador,
+                verificadorGrounding, queryLog, 10, true, UMBRAL_POR_DEFECTO, 0, mock(StreamsEnCursoRepositorio.class));
+
+        Orquestador.EjecucionPipeline resultado =
+                orquestador.ejecutar(new Pregunta("cualquier cosa"), PROYECTO, Filtros.NINGUNO);
+
+        assertThat(resultado.respuesta().texto()).isEqualTo(Orquestador.MENSAJE_SERVIDOR_OCUPADO);
+        assertThat(resultado.respuesta().citas()).isEmpty();
+        verify(planificador, never()).planificar(any(), any());
+        verify(sintetizador, never()).sintetizar(any(), any());
+        verify(verificadorGrounding, never()).verificar(any(), any());
+    }
+
+    @Test
+    @DisplayName("En streaming, con conversacionId persiste el inicio, las citas y el resultado final "
+            + "en StreamsEnCursoRepositorio -- para que la UI se pueda reconectar tras un F5")
+    void persisteElEstadoDelStreamCuandoHayConversacionId() {
+        Fragmento fragmento = new Fragmento(1L, 100L, "file:///doc1", "Doc 1",
+                "Esto es el fragmento uno.", "doc_section", 0, Instant.EPOCH, Map.of(), 0.05, 9.0);
+
+        var catalogo = new CatalogoHerramientas(List.of(herramientaFalsa("fake_tool", fragmento)));
+        var executor = new Executor(catalogo);
+
+        Planificador planificador = (pregunta, herramientas) ->
+                new PlanDeHerramientas(List.of("fake_tool"), "porque si");
+
+        Sintetizador sintetizador = (pregunta, contexto) -> Flux.just("Respuesta ", "final.");
+        VerificadorGrounding verificadorGrounding = mock(VerificadorGrounding.class);
+
+        ContextoRepositorio contextoRepo = mock(ContextoRepositorio.class);
+        when(contextoRepo.vecinos(100L, 0)).thenReturn(List.of());
+
+        HerramientasRepositorio herramientasRepo = mock(HerramientasRepositorio.class);
+        when(herramientasRepo.contarChunks(anyString())).thenReturn(100L);
+
+        QueryLogRepositorio queryLog = mock(QueryLogRepositorio.class);
+        when(queryLog.registrar(any(), any(), any(), any(), any(), any(), any(), anyLong())).thenReturn(1L);
+
+        StreamsEnCursoRepositorio streamsEnCurso = mock(StreamsEnCursoRepositorio.class);
+
+        var orquestador = new Orquestador(
+                planificador, REFORMULADOR_SIN_CAMBIOS, catalogo, executor, contextoRepo, herramientasRepo,
+                sintetizador, verificadorGrounding, queryLog, 10, true, UMBRAL_POR_DEFECTO, 10, streamsEnCurso);
+
+        Consultar.RespuestaEnStreaming resultado =
+                orquestador.ejecutarEnStreaming(new Pregunta("¿Que es esto?"), PROYECTO, Filtros.NINGUNO, 42L);
+        // El Flux es perezoso: doOnNext/doFinally recien corren al suscribirse.
+        String textoCompleto = resultado.texto().collectList().map(partes -> String.join("", partes)).block();
+
+        assertThat(textoCompleto).isEqualTo("Respuesta final.");
+        verify(streamsEnCurso).iniciar(42L, "¿Que es esto?", "default");
+        verify(streamsEnCurso).actualizarCitas(eq(42L), any(), any());
+        verify(streamsEnCurso).finalizar(42L, "completo", "Respuesta final.");
     }
 
     private static Herramienta herramientaFalsa(String nombre, Fragmento... fragmentos) {

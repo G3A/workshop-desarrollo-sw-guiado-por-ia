@@ -1,6 +1,7 @@
 package co.g3a.baseconocimiento.orquestacion;
 
 import java.util.List;
+import java.util.Optional;
 
 import co.g3a.baseconocimiento.compartido.Dominio.Cita;
 import co.g3a.baseconocimiento.compartido.Dominio.Filtros;
@@ -43,7 +44,26 @@ public interface Consultar {
     record RespuestaEnStreaming(List<Cita> citas, Flux<String> texto, String consultaReformulada) {
     }
 
-    RespuestaEnStreaming responderEnStreaming(Pregunta pregunta, ProyectoId proyecto, Filtros filtros);
+    /**
+     * @param conversacionId identifica la conversación para poder reconectarse con
+     *                       {@link #estadoDeStream} tras un F5 a mitad de una respuesta;
+     *                       {@code null} = no persistir nada para reconectar (p. ej. un
+     *                       adaptador sin noción de conversación).
+     */
+    RespuestaEnStreaming responderEnStreaming(Pregunta pregunta, ProyectoId proyecto, Filtros filtros, Long conversacionId);
+
+    /**
+     * Estado de la pregunta más reciente de una conversación — para que la UI
+     * se reconecte después de un F5 a mitad de una respuesta en vez de perderla
+     * por completo. {@code estado}: {@code "en_curso"}, {@code "completo"} o
+     * {@code "error"}.
+     */
+    record EstadoStream(
+            String estado, String pregunta, String projectId, String texto, List<Cita> citas,
+            String reformulacion) {
+    }
+
+    Optional<EstadoStream> estadoDeStream(long conversacionId);
 
     /**
      * Vista previa casi instantánea: solo la señal de texto completo, sin

@@ -8,6 +8,7 @@ import jakarta.validation.constraints.NotBlank;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -78,10 +79,11 @@ class ChatController {
     @GetMapping(value = "/api/chat", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     Flux<ServerSentEvent<Object>> chat(
             @RequestParam @NotBlank String q, @RequestParam(required = false) String projectId,
-            @RequestParam(required = false) String documentos) {
+            @RequestParam(required = false) String documentos,
+            @RequestParam(required = false) Long conversacionId) {
         Filtros filtros = Filtros.conDocumentos(documentosDe(documentos));
         Consultar.RespuestaEnStreaming resultado =
-                consultar.responderEnStreaming(new Pregunta(q), proyectoDe(projectId), filtros);
+                consultar.responderEnStreaming(new Pregunta(q), proyectoDe(projectId), filtros, conversacionId);
 
         Flux<ServerSentEvent<Object>> eventoCitas = Flux.just(
                 ServerSentEvent.builder().event("citas").data((Object) resultado.citas()).build());
@@ -100,6 +102,19 @@ class ChatController {
                 Flux.just(ServerSentEvent.builder().event("fin").<Object>data("").build());
 
         return Flux.concat(eventoCitas, eventoReformulacion, eventosTexto, eventoFin);
+    }
+
+    /**
+     * Para que la página se reconecte tras un F5 a mitad de una respuesta —
+     * ver el javadoc de {@code Orquestador.MENSAJE_SERVIDOR_OCUPADO} y
+     * {@code StreamsEnCursoRepositorio}. 404 si esta conversación nunca
+     * preguntó nada (o ya no queda registro).
+     */
+    @GetMapping("/api/chat/estado")
+    ResponseEntity<Consultar.EstadoStream> estado(@RequestParam long conversacionId) {
+        return consultar.estadoDeStream(conversacionId)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     private static ProyectoId proyectoDe(String projectId) {
