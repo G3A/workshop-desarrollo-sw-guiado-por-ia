@@ -1,6 +1,8 @@
 package co.g3a.baseconocimiento.orquestacion;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.Semaphore;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -18,6 +20,7 @@ import co.g3a.baseconocimiento.llm.Sintetizador;
 import co.g3a.baseconocimiento.llm.VerificadorGrounding;
 
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.SignalType;
 
 /**
  * Las siete etapas de F3, conectadas: planificar, ejecutar herramientas en
@@ -48,6 +51,26 @@ class Orquestador {
                     + "para responder esto. Prueba con otra formulación o verifica que el tema "
                     + "esté cubierto por las fuentes ingeridas.";
 
+    /**
+     * {@code prepararHastaContexto} es bloqueante de punta a punta (planificador,
+     * herramientas, reformulador, verificador de grounding) y arranca ANTES de
+     * que exista ningún {@link Flux} — si el cliente se desconecta a mitad de
+     * camino (un F5, cerrar la pestaña), no hay forma de que el servidor se
+     * entere: la consulta sigue corriendo entera igual, gastando uno de los
+     * {@code OLLAMA_NUM_PARALLEL} cupos de Ollama en un trabajo que nadie va a
+     * leer. Medido en vivo: esa sola etapa tardó más de 4 minutos con Ministral
+     * 3B — de sobra para que una consulta nueva se quede sin cupo detrás de una
+     * huérfana y termine mostrando "se perdió la conexión" sin ser ese el
+     * problema real. Cancelar la huérfana a mitad de camino exigiría propagar
+     * la desconexión a través de Planificador/Reformulador/VerificadorGrounding
+     * (varias clases, con cuidado real) — como mitigación más simple, este
+     * semáforo evita que una consulta nueva SUME otra espera larga encima: si
+     * no hay cupo, corta al toque con un mensaje claro en vez de competir.
+     */
+    static final String MENSAJE_SERVIDOR_OCUPADO =
+            "El servidor ya está atendiendo el máximo de consultas al mismo tiempo. "
+                    + "Esperá un momento y volvé a intentarlo.";
+
     private final Planificador planificador;
     private final Reformulador reformulador;
     private final CatalogoHerramientas catalogo;
@@ -60,6 +83,8 @@ class Orquestador {
     private final int maxFragmentosContexto;
     private final boolean expandirVecinos;
     private final UmbralRelevanciaPropiedades umbralRelevancia;
+    private final Semaphore cupoConsultas;
+    private final StreamsEnCursoRepositorio streamsEnCurso;
 
     Orquestador(
             Planificador planificador, Reformulador reformulador, CatalogoHerramientas catalogo, Executor executor,
@@ -67,7 +92,12 @@ class Orquestador {
             Sintetizador sintetizador, VerificadorGrounding verificadorGrounding, QueryLogRepositorio queryLog,
             @Value("${kb.orquestacion.max-fragmentos-contexto:10}") int maxFragmentosContexto,
             @Value("${kb.orquestacion.expandir-vecinos:true}") boolean expandirVecinos,
-            UmbralRelevanciaPropiedades umbralRelevancia) {
+            UmbralRelevanciaPropiedades umbralRelevancia,
+            // Default 2 = OLLAMA_NUM_PARALLEL por defecto (compose.yml): no tiene
+            // sentido admitir mas consultas reales en simultaneo que las que Ollama
+            // puede atender a la vez.
+            @Value("${kb.orquestacion.max-consultas-concurrentes:2}") int maxConsultasConcurrentes,
+            StreamsEnCursoRepositorio streamsEnCurso) {
         this.planificador = planificador;
         this.reformulador = reformulador;
         this.catalogo = catalogo;
@@ -80,6 +110,8 @@ class Orquestador {
         this.maxFragmentosContexto = maxFragmentosContexto;
         this.expandirVecinos = expandirVecinos;
         this.umbralRelevancia = umbralRelevancia;
+        this.cupoConsultas = new Semaphore(maxConsultasConcurrentes);
+        this.streamsEnCurso = streamsEnCurso;
     }
 
     record EjecucionPipeline(
@@ -109,26 +141,36 @@ class Orquestador {
 
     /** Bloqueante: espera a que la síntesis termine antes de devolver nada. Usado por {@code /api/ask}. */
     EjecucionPipeline ejecutar(Pregunta pregunta, ProyectoId proyecto, Filtros filtros) {
-        PreSintesis pre = prepararHastaContexto(pregunta, proyecto, filtros);
+        boolean cupoAdquirido = cupoConsultas.tryAcquire();
+        try {
+            PreSintesis pre = cupoAdquirido
+                    ? prepararHastaContexto(pregunta, proyecto, filtros)
+                    : respuestaServidorOcupado();
 
-        // Etapa 6: sintesis en streaming, coleccionada aqui porque este metodo
-        // devuelve una respuesta completa, no un Flux.
-        String textoRespuesta = sintetizarBloqueante(pregunta, pre);
+            // Etapa 6: sintesis en streaming, coleccionada aqui porque este metodo
+            // devuelve una respuesta completa, no un Flux.
+            String textoRespuesta = sintetizarBloqueante(pregunta, pre);
 
-        long latenciaMs = (System.nanoTime() - pre.inicioNanos()) / 1_000_000;
-        // advertencias queda vacio a proposito: el prompt de sintesis exige señalar
-        // contradicciones EN el texto de la respuesta (con [n] y prosa), no en un
-        // campo estructurado aparte -- eso pediria una segunda llamada al LLM solo
-        // para separar "respuesta" de "advertencia", en contra de que la sintesis
-        // sea en streaming.
-        Respuesta respuesta = new Respuesta(textoRespuesta, pre.citas(), List.of(), latenciaMs, pre.consultaReformulada());
+            long latenciaMs = (System.nanoTime() - pre.inicioNanos()) / 1_000_000;
+            // advertencias queda vacio a proposito: el prompt de sintesis exige señalar
+            // contradicciones EN el texto de la respuesta (con [n] y prosa), no en un
+            // campo estructurado aparte -- eso pediria una segunda llamada al LLM solo
+            // para separar "respuesta" de "advertencia", en contra de que la sintesis
+            // sea en streaming.
+            Respuesta respuesta =
+                    new Respuesta(textoRespuesta, pre.citas(), List.of(), latenciaMs, pre.consultaReformulada());
 
-        // Etapa 7: registrar.
-        long queryLogId = queryLog.registrar(
-                pregunta.texto(), proyecto.valor(), pre.plan(), pre.ejecuciones(), pre.fragmentos(),
-                textoRespuesta, pre.citas(), latenciaMs);
+            // Etapa 7: registrar.
+            long queryLogId = queryLog.registrar(
+                    pregunta.texto(), proyecto.valor(), pre.plan(), pre.ejecuciones(), pre.fragmentos(),
+                    textoRespuesta, pre.citas(), latenciaMs);
 
-        return new EjecucionPipeline(pre.plan(), pre.ejecuciones(), pre.fragmentos(), respuesta, queryLogId);
+            return new EjecucionPipeline(pre.plan(), pre.ejecuciones(), pre.fragmentos(), respuesta, queryLogId);
+        } finally {
+            if (cupoAdquirido) {
+                cupoConsultas.release();
+            }
+        }
     }
 
     /**
@@ -138,8 +180,22 @@ class Orquestador {
      * {@link StringBuilder} con {@code doOnNext} en vez de esperar a que el
      * llamador termine de consumirlo.
      */
-    Consultar.RespuestaEnStreaming ejecutarEnStreaming(Pregunta pregunta, ProyectoId proyecto, Filtros filtros) {
-        PreSintesis pre = prepararHastaContexto(pregunta, proyecto, filtros);
+    Consultar.RespuestaEnStreaming ejecutarEnStreaming(
+            Pregunta pregunta, ProyectoId proyecto, Filtros filtros, Long conversacionId) {
+        // Antes que nada: si esta pagina se recarga al toque de preguntar, que
+        // ya haya algo que encontrar via StreamsEnCursoRepositorio.buscar().
+        if (conversacionId != null) {
+            streamsEnCurso.iniciar(conversacionId, pregunta.texto(), proyecto.valor());
+        }
+
+        boolean cupoAdquirido = cupoConsultas.tryAcquire();
+        PreSintesis pre = cupoAdquirido
+                ? prepararHastaContexto(pregunta, proyecto, filtros)
+                : respuestaServidorOcupado();
+
+        if (conversacionId != null) {
+            streamsEnCurso.actualizarCitas(conversacionId, pre.citas(), pre.consultaReformulada());
+        }
 
         StringBuilder acumulado = new StringBuilder();
         Flux<String> textoBase = pre.respuestaFija() != null
@@ -152,9 +208,35 @@ class Orquestador {
                     queryLog.registrar(
                             pregunta.texto(), proyecto.valor(), pre.plan(), pre.ejecuciones(), pre.fragmentos(),
                             acumulado.toString(), pre.citas(), latenciaMs);
+                })
+                // El cupo cubre TODA la consulta, no solo prepararHastaContexto: la
+                // sintesis tambien le pide tokens a Ollama. Se libera aca, cuando el
+                // Flux de verdad termina (completa, falla o el cliente se desconecta),
+                // no antes -- doFinally cubre las tres formas de terminar. Mismo
+                // razonamiento para dejar el resultado final en streams_en_curso: pasa
+                // lo mismo haya o no alguien todavia escuchando del otro lado.
+                .doFinally(signal -> {
+                    if (cupoAdquirido) {
+                        cupoConsultas.release();
+                    }
+                    if (conversacionId != null) {
+                        String estadoFinal = signal == SignalType.ON_COMPLETE ? "completo" : "error";
+                        streamsEnCurso.finalizar(conversacionId, estadoFinal, acumulado.toString());
+                    }
                 });
 
         return new Consultar.RespuestaEnStreaming(pre.citas(), texto, pre.consultaReformulada());
+    }
+
+    /** Para que la UI se reconecte tras un F5 -- ver el javadoc de {@link StreamsEnCursoRepositorio}. */
+    Optional<StreamsEnCursoRepositorio.Estado> estadoDeStream(long conversacionId) {
+        return streamsEnCurso.buscar(conversacionId);
+    }
+
+    private static PreSintesis respuestaServidorOcupado() {
+        return new PreSintesis(
+                new PlanDeHerramientas(List.of(), "cupo de consultas concurrentes agotado"),
+                List.of(), List.of(), List.of(), "", MENSAJE_SERVIDOR_OCUPADO, null, System.nanoTime());
     }
 
     private String sintetizarBloqueante(Pregunta pregunta, PreSintesis pre) {

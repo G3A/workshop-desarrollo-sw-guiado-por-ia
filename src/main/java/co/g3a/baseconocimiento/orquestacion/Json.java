@@ -1,6 +1,11 @@
 package co.g3a.baseconocimiento.orquestacion;
 
+import java.util.Arrays;
+import java.util.List;
+
 import tools.jackson.databind.json.JsonMapper;
+
+import co.g3a.baseconocimiento.compartido.Dominio.Cita;
 
 /**
  * Un {@code JsonMapper} propio de este módulo, igual que el de {@code ingesta}:
@@ -17,5 +22,10 @@ final class Json {
 
     static String escribir(Object valor) {
         return MAPPER.writeValueAsString(valor);
+    }
+
+    /** Deserializa via array en vez de un tipo generico -- mas simple y portable entre versiones de Jackson. */
+    static List<Cita> leerCitas(String texto) {
+        return Arrays.asList(MAPPER.readValue(texto, Cita[].class));
     }
 }

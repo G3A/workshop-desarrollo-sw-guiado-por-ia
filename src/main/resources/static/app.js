@@ -155,8 +155,9 @@
     if (bienvenida) {
       bienvenida.classList.add("oculto");
     }
+    let turnos = [];
     try {
-      const turnos = await kbHistorialDb.listarTurnosDeConversacion(conversacionId);
+      turnos = await kbHistorialDb.listarTurnosDeConversacion(conversacionId);
       turnos.forEach(pintarTurnoGuardado);
     } catch (error) {
       // Sin IndexedDB no hay turnos que recuperar.
@@ -176,14 +177,110 @@
     // Si esta conversacion quedo generando una respuesta mientras el usuario
     // miraba otra, su turno "en vivo" sigue existiendo (detenido de la vista,
     // no del stream) -- se reengancha al final, con lo que ya lleva escrito.
+    // Eso cubre cambiar de conversacion SIN recargar la pagina; un F5 de
+    // verdad se pierde streamsActivos entero, para eso esta reconectarSiHaceFalta.
     const activo = streamsActivos.get(conversacionId);
     if (activo) {
       historial.appendChild(activo.turno.raiz);
+    } else {
+      await reconectarSiHaceFalta(conversacionId, turnos);
     }
-    boton.disabled = !!activo;
+    boton.disabled = !!streamsActivos.get(conversacionId);
 
     await cargarListaConversaciones();
     historial.lastElementChild?.scrollIntoView({ behavior: "auto", block: "start" });
+  }
+
+  /**
+   * Le pregunta al servidor si la pregunta mas reciente de esta conversacion
+   * (StreamsEnCursoRepositorio, del lado del servidor) ya se ve reflejada en
+   * el ultimo turno guardado localmente. Si no -- porque la pagina se recargo
+   * a mitad de una respuesta y ese turno nunca llego a guardarse -- la
+   * reconstruye: la muestra ya resuelta, o la deja "reconectando" y sondea
+   * hasta que el servidor la termine.
+   *
+   * Comparar por texto de la pregunta (no por un id propio) es una
+   * simplificacion a proposito: alcanza para el caso real (recargar a mitad
+   * de una respuesta), aunque no distingue dos preguntas identicas seguidas.
+   */
+  async function reconectarSiHaceFalta(conversacionId, turnosGuardados) {
+    let estado;
+    try {
+      const respuesta = await fetch("/api/chat/estado?conversacionId=" + conversacionId);
+      if (!respuesta.ok) {
+        return; // 404: esta conversacion nunca le pregunto nada al servidor.
+      }
+      estado = await respuesta.json();
+    } catch (error) {
+      return; // Sin conexion con el backend todavia: no hay nada que reconectar.
+    }
+
+    const ultimaGuardada = turnosGuardados.length ? turnosGuardados[turnosGuardados.length - 1].pregunta : null;
+    if (estado.pregunta === ultimaGuardada) {
+      return; // Ya esta guardada por el camino normal (evento "fin"): nada que hacer.
+    }
+
+    const turno = nuevoTurno(estado.pregunta);
+    if (estado.reformulacion) {
+      turno.reformulacion.textContent = "Buscando también como: “" + estado.reformulacion + "”";
+    }
+    turno.previa.innerHTML = "<li>No disponible después de reconectar.</li>";
+    turno.citasDatos = estado.citas || [];
+    turno.citas.innerHTML = estado.citas && estado.citas.length
+      ? estado.citas.map((c, i) => itemCita(c, i + 1)).join("")
+      : "<li>Sin citas.</li>";
+
+    if (estado.estado === "en_curso") {
+      turno.estado.textContent = "Reconectando con una respuesta que sigue en curso…";
+      iniciarSondeo(conversacionId, turno, estado.projectId);
+    } else {
+      renderizarStreamResuelto(conversacionId, turno, estado);
+    }
+  }
+
+  // Registra el sondeo como una entrada mas de streamsActivos (con "fuente"
+  // en null, para distinguirla de un EventSource real) -- asi reusa gratis
+  // todo lo que ya depende de ese mapa: el boton deshabilitado, el "⋯" de
+  // "generando" en la barra lateral, y la limpieza si se borra la conversacion.
+  function iniciarSondeo(conversacionId, turno, proyecto) {
+    const intervaloId = setInterval(async () => {
+      let estado;
+      try {
+        const respuesta = await fetch("/api/chat/estado?conversacionId=" + conversacionId);
+        if (!respuesta.ok) {
+          clearInterval(intervaloId);
+          streamsActivos.delete(conversacionId);
+          return;
+        }
+        estado = await respuesta.json();
+      } catch (error) {
+        return; // Un hipo de red no corta el sondeo: reintenta en la proxima vuelta.
+      }
+      if (estado.estado === "en_curso") {
+        return;
+      }
+      clearInterval(intervaloId);
+      streamsActivos.delete(conversacionId);
+      turno.citasDatos = estado.citas || [];
+      turno.citas.innerHTML = estado.citas && estado.citas.length
+        ? estado.citas.map((c, i) => itemCita(c, i + 1)).join("")
+        : "<li>Sin citas.</li>";
+      renderizarStreamResuelto(conversacionId, turno, estado, proyecto);
+    }, 5000);
+    streamsActivos.set(conversacionId, { fuente: null, turno: turno, detenerContador: () => {}, intervaloId: intervaloId });
+  }
+
+  function renderizarStreamResuelto(conversacionId, turno, estado, proyecto) {
+    turno.respuesta.textContent = estado.texto || "";
+    const huboError = estado.estado === "error";
+    turno.estado.textContent = huboError ? "La respuesta quedó incompleta." : "Respondido";
+    turno.estado.classList.add(huboError ? "error" : "completado");
+    if (conversacionActualId === conversacionId) {
+      boton.disabled = false;
+    }
+    guardarTurno(
+        estado.pregunta, proyecto || estado.projectId, turno, huboError,
+        huboError ? turno.estado.textContent : null, conversacionId, null);
   }
 
   async function eliminarConversacion(conversacionId) {
@@ -192,7 +289,14 @@
     }
     const activo = streamsActivos.get(conversacionId);
     if (activo) {
-      activo.fuente.close();
+      // "fuente" es null cuando es un sondeo reconectado (ver iniciarSondeo),
+      // no un EventSource real -- no tiene .close().
+      if (activo.fuente) {
+        activo.fuente.close();
+      }
+      if (activo.intervaloId) {
+        clearInterval(activo.intervaloId);
+      }
       activo.detenerContador();
       streamsActivos.delete(conversacionId);
     }
@@ -508,6 +612,12 @@
     let url = "/api/chat?q=" + encodeURIComponent(pregunta) + "&projectId=" + encodeURIComponent(proyecto);
     if (documentos.length) {
       url += "&documentos=" + documentos.join(",");
+    }
+    // Sin esto el servidor no tiene forma de guardar el progreso en
+    // StreamsEnCursoRepositorio -- y sin eso, un F5 a mitad de una respuesta
+    // la pierde por completo (ver reconectarSiHaceFalta).
+    if (conversacionId != null) {
+      url += "&conversacionId=" + conversacionId;
     }
     const fuente = new EventSource(url);
     streamsActivos.set(conversacionId, { fuente: fuente, turno: turno, detenerContador: detenerContador });

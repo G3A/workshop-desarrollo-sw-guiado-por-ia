@@ -25,13 +25,14 @@ import jakarta.servlet.http.HttpServletResponse;
  *   <li>{@code /api/messages} — el Bot Connector ya trae su propia validacion
  *       de JWT contra Azure AD ({@code ValidadorTokenBotFramework}); exigir
  *       ademas este token rechazaria trafico legitimo de Azure Bot Service.</li>
- *   <li>{@code /api/chat} y {@code /api/preview} — la UI web de F4. El
- *       {@code EventSource} nativo del navegador no puede mandar cabeceras
- *       propias, y estas dos rutas son justamente el "keyword search on
- *       landing" pensado para no tener friccion. El MVP no tiene login de
- *       persona (ver Supuestos del plan): este token protege llamadas
- *       programaticas, no la pagina que cualquiera con acceso a la red ya
- *       puede abrir.</li>
+ *   <li>{@code /api/chat}, {@code /api/chat/estado} y {@code /api/preview} —
+ *       la UI web de F4. El {@code EventSource} nativo del navegador no puede
+ *       mandar cabeceras propias, y estas rutas son justamente el "keyword
+ *       search on landing" (mas la reconexion tras un F5, ver
+ *       {@code StreamsEnCursoRepositorio}) pensadas para no tener friccion.
+ *       El MVP no tiene login de persona (ver Supuestos del plan): este token
+ *       protege llamadas programaticas, no la pagina que cualquiera con
+ *       acceso a la red ya puede abrir.</li>
  *   <li>{@code /api/admin/ayuda}, {@code /api/admin/proyectos} y {@code /api/admin/documentos}
  *       (F9/F10) — el botón {@code ?}, el selector de proyecto y el checklist de
  *       documentos activos por conversación viven también en la página
@@ -47,7 +48,7 @@ class ApiTokenFilter extends HttpFilter {
 
     private static final Logger log = LoggerFactory.getLogger(ApiTokenFilter.class);
     private static final Set<String> RUTAS_SIN_TOKEN = Set.of(
-            "/api/messages", "/api/chat", "/api/preview",
+            "/api/messages", "/api/chat", "/api/chat/estado", "/api/preview",
             "/api/admin/ayuda", "/api/admin/proyectos", "/api/admin/documentos");
 
     private final SeguridadPropiedades propiedades;

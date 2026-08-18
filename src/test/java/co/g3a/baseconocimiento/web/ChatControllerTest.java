@@ -13,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -69,7 +70,7 @@ class ChatControllerTest {
     @DisplayName("GET /api/chat transmite las citas y los tokens por SSE, en ese orden")
     void chatTransmiteCitasYTokensPorSse() throws Exception {
         Cita cita = new Cita("file:///doc1", "Doc 1", "extracto", "doc_section");
-        when(consultar.responderEnStreaming(any(), any(), any()))
+        when(consultar.responderEnStreaming(any(), any(), any(), any()))
                 .thenReturn(new Consultar.RespuestaEnStreaming(List.of(cita), Flux.just("Hola ", "mundo"), null));
 
         MvcResult resultadoAsincronico = mockMvc.perform(get("/api/chat").param("q", "como se despliega"))
@@ -92,7 +93,7 @@ class ChatControllerTest {
             + "solo cuando el Reformulador cambio la consulta")
     void chatMandaElEventoReformulacionCuandoAplica() throws Exception {
         Cita cita = new Cita("file:///doc1", "Doc 1", "extracto", "doc_section");
-        when(consultar.responderEnStreaming(any(), any(), any()))
+        when(consultar.responderEnStreaming(any(), any(), any(), any()))
                 .thenReturn(new Consultar.RespuestaEnStreaming(
                         List.of(cita), Flux.just("Respuesta."), "boxing conversion"));
 
@@ -123,7 +124,7 @@ class ChatControllerTest {
         // eso va como string JSON (`data:" servicio"`, con la comilla como
         // primer caracter, no el espacio), y el cliente hace JSON.parse.
         Cita cita = new Cita("file:///doc1", "Doc 1", "extracto", "doc_section");
-        when(consultar.responderEnStreaming(any(), any(), any()))
+        when(consultar.responderEnStreaming(any(), any(), any(), any()))
                 .thenReturn(new Consultar.RespuestaEnStreaming(List.of(cita), Flux.just("Hola", " mundo"), null));
 
         MvcResult resultadoAsincronico = mockMvc.perform(get("/api/chat").param("q", "como se despliega"))
@@ -134,5 +135,28 @@ class ChatControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("data:\"Hola\"")))
                 .andExpect(content().string(containsString("data:\" mundo\"")));
+    }
+
+    @Test
+    @DisplayName("GET /api/chat/estado devuelve el estado de la conversacion cuando existe")
+    void estadoDevuelveElEstadoCuandoExiste() throws Exception {
+        Cita cita = new Cita("file:///doc1", "Doc 1", "extracto", "doc_section");
+        Consultar.EstadoStream estado = new Consultar.EstadoStream(
+                "completo", "que es un enum", "default", "Un enum es...", List.of(cita), null);
+        when(consultar.estadoDeStream(7L)).thenReturn(Optional.of(estado));
+
+        mockMvc.perform(get("/api/chat/estado").param("conversacionId", "7"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("\"estado\":\"completo\"")))
+                .andExpect(content().string(containsString("Un enum es...")));
+    }
+
+    @Test
+    @DisplayName("GET /api/chat/estado devuelve 404 cuando la conversacion nunca pregunto nada")
+    void estadoDevuelve404CuandoNoHayRegistro() throws Exception {
+        when(consultar.estadoDeStream(7L)).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/api/chat/estado").param("conversacionId", "7"))
+                .andExpect(status().isNotFound());
     }
 }

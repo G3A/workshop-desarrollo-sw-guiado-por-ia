@@ -1,6 +1,7 @@
 package co.g3a.baseconocimiento.orquestacion;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.stereotype.Component;
 
@@ -38,8 +39,15 @@ class Consultador implements Consultar {
     }
 
     @Override
-    public RespuestaEnStreaming responderEnStreaming(Pregunta pregunta, ProyectoId proyecto, Filtros filtros) {
-        return orquestador.ejecutarEnStreaming(pregunta, proyecto, filtros);
+    public RespuestaEnStreaming responderEnStreaming(
+            Pregunta pregunta, ProyectoId proyecto, Filtros filtros, Long conversacionId) {
+        return orquestador.ejecutarEnStreaming(pregunta, proyecto, filtros, conversacionId);
+    }
+
+    @Override
+    public Optional<EstadoStream> estadoDeStream(long conversacionId) {
+        return orquestador.estadoDeStream(conversacionId)
+                .map(e -> new EstadoStream(e.estado(), e.pregunta(), e.projectId(), e.texto(), e.citas(), e.reformulacion()));
     }
 
     @Override
