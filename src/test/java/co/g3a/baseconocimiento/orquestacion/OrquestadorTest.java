@@ -271,7 +271,7 @@ class OrquestadorTest {
             }
 
             @Override
-            public List<Fragmento> ejecutar(String consulta, ProyectoId proyecto) {
+            public List<Fragmento> ejecutar(String consulta, ProyectoId proyecto, List<Long> documentosPermitidos) {
                 consultasRecibidas.add(consulta);
                 return consulta.equals("boxing conversion") ? List.of(fragmentoFuerte) : List.of(fragmentoDebil);
             }
@@ -306,6 +306,74 @@ class OrquestadorTest {
         assertThat(resultado.respuesta().consultaReformulada()).isEqualTo("boxing conversion");
         assertThat(resultado.respuesta().texto()).isEqualTo("Respuesta.");
         verify(verificadorGrounding, never()).verificar(any(), any());
+    }
+
+    @Test
+    @DisplayName("Si la reformulacion empeora el resultado (rerank mas bajo que el original), se descarta y "
+            + "se sintetiza con la ronda original")
+    void descartaLaReformulacionCuandoEmpeoraElResultado() {
+        // rerank=5.0: por encima del umbral efectivo (0.0124) pero por debajo de
+        // techoConfianza (8.0) -> AMBIGUO, dispara la reformulacion.
+        Fragmento fragmentoOriginalAmbiguo = new Fragmento(1L, 100L, "file:///doc1", "Doc 1",
+                "enum Coin { PENNY(1), NICKEL(5)... }", "doc_section", 0, Instant.EPOCH, Map.of(), 0.05, 5.0);
+        // rerank=0.01: la reformulacion se fue al tema equivocado y busca peor que
+        // el original -> INSUFICIENTE, mucho peor que el AMBIGUO de arriba.
+        Fragmento fragmentoReformuladoDebil = new Fragmento(2L, 100L, "file:///doc2", "Doc 2",
+                "algo sin relacion con la pregunta original", "doc_section", 0, Instant.EPOCH, Map.of(), 0.05, 0.01);
+
+        Herramienta herramientaQueEmpeoraAlReformular = new Herramienta() {
+            @Override
+            public String nombre() {
+                return "fake_tool";
+            }
+
+            @Override
+            public String descripcion() {
+                return "de prueba";
+            }
+
+            @Override
+            public List<Fragmento> ejecutar(String consulta, ProyectoId proyecto, List<Long> documentosPermitidos) {
+                return consulta.equals("que es un enum")
+                        ? List.of(fragmentoOriginalAmbiguo)
+                        : List.of(fragmentoReformuladoDebil);
+            }
+        };
+        var catalogo = new CatalogoHerramientas(List.of(herramientaQueEmpeoraAlReformular));
+        var executor = new Executor(catalogo);
+
+        Planificador planificador = (pregunta, herramientas) ->
+                new PlanDeHerramientas(List.of("fake_tool"), "porque si");
+        // Como el "que es un record" real: un LLM chico puede reformular lejos del tema.
+        Reformulador reformulador = pregunta ->
+                new Reformulador.Reformulacion("estructura con acceso por indice numerico", true);
+
+        Sintetizador sintetizador = (pregunta, contexto) -> Flux.just("Un enum es un tipo restringido.");
+        VerificadorGrounding verificadorGrounding = mock(VerificadorGrounding.class);
+        when(verificadorGrounding.verificar(any(), any())).thenReturn(new Veredicto(true));
+
+        ContextoRepositorio contextoRepo = mock(ContextoRepositorio.class);
+        when(contextoRepo.vecinos(100L, 0)).thenReturn(List.of());
+
+        HerramientasRepositorio herramientasRepo = mock(HerramientasRepositorio.class);
+        when(herramientasRepo.contarChunks(anyString())).thenReturn(100L);
+
+        QueryLogRepositorio queryLog = mock(QueryLogRepositorio.class);
+        when(queryLog.registrar(any(), any(), any(), any(), any(), any(), any(), anyLong())).thenReturn(1L);
+
+        var orquestador = new Orquestador(
+                planificador, reformulador, catalogo, executor, contextoRepo, herramientasRepo, sintetizador,
+                verificadorGrounding, queryLog, 10, true, UMBRAL_POR_DEFECTO);
+
+        Orquestador.EjecucionPipeline resultado =
+                orquestador.ejecutar(new Pregunta("que es un enum"), PROYECTO, Filtros.NINGUNO);
+
+        // Se queda con el fragmento original (id=1), no con el de la reformulacion (id=2).
+        assertThat(resultado.fragmentosUsados()).extracting(Fragmento::id).containsExactly(1L);
+        assertThat(resultado.respuesta().texto()).isEqualTo("Un enum es un tipo restringido.");
+        // No se muestra una reformulacion que ni siquiera se termino usando.
+        assertThat(resultado.respuesta().consultaReformulada()).isNull();
+        verify(verificadorGrounding).verificar(any(), any());
     }
 
     @Test
@@ -355,7 +423,7 @@ class OrquestadorTest {
             }
 
             @Override
-            public List<Fragmento> ejecutar(String consulta, ProyectoId proyecto) {
+            public List<Fragmento> ejecutar(String consulta, ProyectoId proyecto, List<Long> documentosPermitidos) {
                 return List.of(fragmentos);
             }
         };

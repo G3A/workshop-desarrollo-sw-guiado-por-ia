@@ -37,8 +37,8 @@ class HerramientaSearchDocs implements Herramienta {
     }
 
     @Override
-    public List<Fragmento> ejecutar(String consulta, ProyectoId proyecto) {
-        return buscador.buscar(consulta, proyecto.valor(), TIPOS).stream()
+    public List<Fragmento> ejecutar(String consulta, ProyectoId proyecto, List<Long> documentosPermitidos) {
+        return buscador.buscar(consulta, proyecto.valor(), TIPOS, documentosPermitidos).stream()
                 .map(ResultadoBusqueda::fragmento).toList();
     }
 }

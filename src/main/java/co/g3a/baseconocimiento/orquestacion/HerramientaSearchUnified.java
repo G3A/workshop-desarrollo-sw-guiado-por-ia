@@ -36,7 +36,8 @@ class HerramientaSearchUnified implements Herramienta {
     }
 
     @Override
-    public List<Fragmento> ejecutar(String consulta, ProyectoId proyecto) {
-        return buscador.buscar(consulta, proyecto.valor()).stream().map(ResultadoBusqueda::fragmento).toList();
+    public List<Fragmento> ejecutar(String consulta, ProyectoId proyecto, List<Long> documentosPermitidos) {
+        return buscador.buscar(consulta, proyecto.valor(), List.of(), documentosPermitidos).stream()
+                .map(ResultadoBusqueda::fragmento).toList();
     }
 }

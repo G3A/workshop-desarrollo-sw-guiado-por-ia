@@ -218,6 +218,28 @@ class IngestaRepositorio {
         jdbc.sql("DELETE FROM documents WHERE id = :id").param("id", documentId).update();
     }
 
+    /** Lo que hace falta para borrar un archivo del vault desde la consola: su fuente, su tipo y el documento que lo indexa (si ya llegó a existir). */
+    record ArchivoVaultParaEliminar(long id, long sourceId, String kind, String externalId, Long documentId) {
+    }
+
+    Optional<ArchivoVaultParaEliminar> buscarArchivoVaultParaEliminar(long id) {
+        return jdbc.sql("""
+                        SELECT va.id, va.source_id, s.kind, va.external_id, va.document_id
+                        FROM vault_archivos va
+                        JOIN sources s ON s.id = va.source_id
+                        WHERE va.id = :id
+                        """)
+                .param("id", id)
+                .query((rs, n) -> new ArchivoVaultParaEliminar(
+                        rs.getLong("id"), rs.getLong("source_id"), rs.getString("kind"), rs.getString("external_id"),
+                        rs.getObject("document_id") == null ? null : rs.getLong("document_id")))
+                .optional();
+    }
+
+    void eliminarArchivoVault(long id) {
+        jdbc.sql("DELETE FROM vault_archivos WHERE id = :id").param("id", id).update();
+    }
+
     /**
      * Tarea async de docling-serve en curso para un archivo (ADR-0010): si
      * {@code kb-api} se reinicia mientras la conversión sigue en vuelo, el
@@ -280,6 +302,29 @@ class IngestaRepositorio {
     List<String> listarProyectos() {
         return jdbc.sql("SELECT DISTINCT project_id FROM sources ORDER BY project_id")
                 .query(String.class).list();
+    }
+
+    /** Un documento local, para el selector de "documentos activos por conversación" de la UI web. */
+    record DocumentoResumen(long id, String titulo) {
+    }
+
+    /**
+     * Solo {@code local_docs}: es el único tipo de fuente donde "documento" es
+     * un archivo puntual que tiene sentido prender/apagar desde la consola —
+     * repos Git, Teams y Azure DevOps se sincronizan solos (mismo criterio que
+     * {@code AdminController.eliminarArchivo}).
+     */
+    List<DocumentoResumen> listarDocumentosLocales(String projectId) {
+        return jdbc.sql("""
+                        SELECT d.id, d.title
+                        FROM documents d
+                        JOIN sources s ON s.id = d.source_id
+                        WHERE s.kind = 'local_docs' AND d.project_id = :projectId
+                        ORDER BY d.title
+                        """)
+                .param("projectId", projectId)
+                .query((rs, n) -> new DocumentoResumen(rs.getLong("id"), rs.getString("title")))
+                .list();
     }
 
     record ConteoEstado(String estado, long total) {

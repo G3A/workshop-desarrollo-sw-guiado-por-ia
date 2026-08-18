@@ -28,38 +28,70 @@ class RecuperacionRepositorio {
         this.jdbc = jdbc;
     }
 
-    /** Señal 1: texto completo. {@code ts_rank_cd} sobre el GIN, configuración española. */
-    List<CandidatoSenal> buscarPorFts(String consulta, String projectId, List<String> tipos, int limite) {
+    /**
+     * Señal 1: texto completo. {@code ts_rank_cd} sobre el GIN, configuración española.
+     *
+     * <p>{@code plainto_tsquery} combina sus lexemas con AND: alcanza con que uno
+     * solo no comparta stem con el corpus (frecuente en preguntas en lenguaje
+     * natural con verbos conjugados, p. ej. "despliega" stemea distinto que
+     * "desplegar") para que la consulta entera devuelva cero filas. Relajar
+     * directo a OR sobrecorrige: en una pregunta larga alcanza con matchear el
+     * término más común del corpus (p. ej. "java" en un corpus de la propia
+     * especificación de Java) para inundar de resultados sin relación real con
+     * la pregunta (visto en vivo con "cuáles son los tipos primitivos en
+     * java" — sin ningún chunk sobre tipos primitivos en el top, solo ruido
+     * que comparte la palabra "java"). Por eso se exige cobertura: al menos
+     * {@code N-1} de los {@code N} lexemas de la consulta (no todos, como
+     * antes; no cualquiera, como una relajación plana) — suficiente para
+     * absorber un solo término que no stemeó igual, sin abrir la puerta a
+     * coincidencias de un único término genérico. {@code ts_rank_cd} sigue
+     * rankeando arriba a los que matchean más lexemas.
+     */
+    List<CandidatoSenal> buscarPorFts(
+            String consulta, String projectId, List<String> tipos, List<Long> documentos, int limite) {
         return jdbc.sql("""
+                        WITH consulta AS (
+                            SELECT plainto_tsquery('spanish', :consulta) AS q_and
+                        ), terminos AS (
+                            SELECT q_and,
+                                   ARRAY(SELECT (regexp_matches(q_and::text, '''([^'']+)''', 'g'))[1]) AS lex
+                            FROM consulta
+                        ), relajado AS (
+                            SELECT lex, to_tsquery('spanish', replace(q_and::text, ' & ', ' | ')) AS q,
+                                   GREATEST(1, array_length(lex, 1) - 1) AS minimo
+                            FROM terminos
+                        )
                         SELECT c.id, c.document_id, d.uri, d.title, c.text, c.kind, c.ord, c.source_updated_at,
-                               ts_rank_cd(c.fts, q) AS puntaje
+                               ts_rank_cd(c.fts, r.q) AS puntaje
                         FROM chunks c
                         JOIN documents d ON d.id = c.document_id
-                        CROSS JOIN plainto_tsquery('spanish', :consulta) q
-                        WHERE c.project_id = :projectId AND c.fts @@ q %s
+                        CROSS JOIN relajado r
+                        WHERE c.project_id = :projectId AND c.fts @@ r.q %s %s
+                          AND (SELECT count(*) FROM unnest(tsvector_to_array(c.fts)) w WHERE w = ANY (r.lex))
+                              >= r.minimo
                         ORDER BY puntaje DESC
                         LIMIT :limite
-                        """.formatted(filtroTipo(tipos)))
+                        """.formatted(filtroTipo(tipos), filtroDocumento(documentos)))
                 .param("consulta", consulta).param("projectId", projectId).param("limite", limite)
-                .param("tipos", tipos)
+                .param("tipos", tipos).param("documentos", documentos)
                 .query(RecuperacionRepositorio::mapear).list();
     }
 
     /** Señal 2: densa. Distancia coseno sobre el HNSW; puntaje = similitud (1 - distancia). */
     List<CandidatoSenal> buscarPorVector(
-            float[] embeddingConsulta, String projectId, List<String> tipos, int limite) {
+            float[] embeddingConsulta, String projectId, List<String> tipos, List<Long> documentos, int limite) {
         var vector = new PGvector(embeddingConsulta);
         return jdbc.sql("""
                         SELECT c.id, c.document_id, d.uri, d.title, c.text, c.kind, c.ord, c.source_updated_at,
                                1 - (c.embedding <=> :embedding) AS puntaje
                         FROM chunks c
                         JOIN documents d ON d.id = c.document_id
-                        WHERE c.project_id = :projectId AND c.embedding IS NOT NULL %s
+                        WHERE c.project_id = :projectId AND c.embedding IS NOT NULL %s %s
                         ORDER BY c.embedding <=> :embedding
                         LIMIT :limite
-                        """.formatted(filtroTipo(tipos)))
+                        """.formatted(filtroTipo(tipos), filtroDocumento(documentos)))
                 .param("embedding", vector).param("projectId", projectId).param("limite", limite)
-                .param("tipos", tipos)
+                .param("tipos", tipos).param("documentos", documentos)
                 .query(RecuperacionRepositorio::mapear).list();
     }
 
@@ -90,7 +122,8 @@ class RecuperacionRepositorio {
      * contiene: castiga el relleno (términos comunes, IDF bajo) y premia los
      * términos informativos.
      */
-    List<CandidatoSenal> buscarPorIdf(String consulta, String projectId, List<String> tipos, int limite) {
+    List<CandidatoSenal> buscarPorIdf(
+            String consulta, String projectId, List<String> tipos, List<Long> documentos, int limite) {
         return jdbc.sql("""
                         WITH terminos_consulta AS (
                             SELECT word FROM ts_stat(
@@ -107,13 +140,13 @@ class RecuperacionRepositorio {
                         FROM chunks c
                         JOIN documents d ON d.id = c.document_id
                         JOIN terminos_idf ti ON c.fts @@ plainto_tsquery('simple', ti.term)
-                        WHERE c.project_id = :projectId %s
+                        WHERE c.project_id = :projectId %s %s
                         GROUP BY c.id, c.document_id, d.uri, d.title, c.text, c.kind, c.ord, c.source_updated_at
                         ORDER BY puntaje DESC
                         LIMIT :limite
-                        """.formatted(filtroTipo(tipos)))
+                        """.formatted(filtroTipo(tipos), filtroDocumento(documentos)))
                 .param("consulta", consulta).param("projectId", projectId).param("limite", limite)
-                .param("tipos", tipos)
+                .param("tipos", tipos).param("documentos", documentos)
                 .query(RecuperacionRepositorio::mapear).list();
     }
 
@@ -123,7 +156,7 @@ class RecuperacionRepositorio {
      * {@code lambdaDias} es la vida media: a esos días el puntaje cae a la mitad.
      */
     List<CandidatoSenal> buscarPorDecaimiento(
-            String projectId, List<String> tipos, double lambdaDias, int limite) {
+            String projectId, List<String> tipos, List<Long> documentos, double lambdaDias, int limite) {
         return jdbc.sql("""
                         SELECT c.id, c.document_id, d.uri, d.title, c.text, c.kind, c.ord, c.source_updated_at,
                                exp(
@@ -132,12 +165,12 @@ class RecuperacionRepositorio {
                                ) AS puntaje
                         FROM chunks c
                         JOIN documents d ON d.id = c.document_id
-                        WHERE c.project_id = :projectId %s
+                        WHERE c.project_id = :projectId %s %s
                         ORDER BY c.source_updated_at DESC
                         LIMIT :limite
-                        """.formatted(filtroTipo(tipos)))
+                        """.formatted(filtroTipo(tipos), filtroDocumento(documentos)))
                 .param("projectId", projectId).param("lambdaDias", lambdaDias).param("limite", limite)
-                .param("tipos", tipos)
+                .param("tipos", tipos).param("documentos", documentos)
                 .query(RecuperacionRepositorio::mapear).list();
     }
 
@@ -182,6 +215,16 @@ class RecuperacionRepositorio {
      */
     private static String filtroTipo(List<String> tipos) {
         return tipos.isEmpty() ? "" : "AND c.kind IN (:tipos)";
+    }
+
+    /**
+     * {@code documentos} vacío = sin restricción (todo el corpus del proyecto).
+     * Es el filtro "activar/desactivar documentos por conversación" de la UI web
+     * (ver {@code Dominio.Filtros.documentosPermitidos}); mismo patrón que
+     * {@link #filtroTipo}.
+     */
+    private static String filtroDocumento(List<Long> documentos) {
+        return documentos.isEmpty() ? "" : "AND c.document_id IN (:documentos)";
     }
 
     private static CandidatoSenal mapear(ResultSet rs, int n) throws SQLException {

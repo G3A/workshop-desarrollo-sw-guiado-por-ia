@@ -40,12 +40,13 @@ class Executor {
     record EjecucionHerramienta(String nombre, List<Fragmento> fragmentos, long duracionMs, String error) {
     }
 
-    List<EjecucionHerramienta> ejecutar(List<String> nombresHerramientas, String consulta, ProyectoId proyecto) {
+    List<EjecucionHerramienta> ejecutar(
+            List<String> nombresHerramientas, String consulta, ProyectoId proyecto, List<Long> documentosPermitidos) {
         List<Herramienta> seleccionadas = resolver(nombresHerramientas);
 
         try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
             List<Future<EjecucionHerramienta>> futuros = seleccionadas.stream()
-                    .map(h -> executor.submit(() -> ejecutarUna(h, consulta, proyecto)))
+                    .map(h -> executor.submit(() -> ejecutarUna(h, consulta, proyecto, documentosPermitidos)))
                     .toList();
             return futuros.stream().map(Executor::obtener).toList();
         }
@@ -65,10 +66,11 @@ class Executor {
         return catalogo.porNombre("search_unified").map(List::of).orElse(List.of());
     }
 
-    private static EjecucionHerramienta ejecutarUna(Herramienta herramienta, String consulta, ProyectoId proyecto) {
+    private static EjecucionHerramienta ejecutarUna(
+            Herramienta herramienta, String consulta, ProyectoId proyecto, List<Long> documentosPermitidos) {
         long inicio = System.nanoTime();
         try {
-            List<Fragmento> fragmentos = herramienta.ejecutar(consulta, proyecto);
+            List<Fragmento> fragmentos = herramienta.ejecutar(consulta, proyecto, documentosPermitidos);
             return new EjecucionHerramienta(herramienta.nombre(), fragmentos, duracionMs(inicio), null);
         } catch (Exception e) {
             log.warn("La herramienta {} fallo: {}", herramienta.nombre(), e.toString());

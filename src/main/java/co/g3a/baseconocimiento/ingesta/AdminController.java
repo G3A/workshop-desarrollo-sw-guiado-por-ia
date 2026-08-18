@@ -12,6 +12,7 @@ import java.util.Optional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -124,6 +125,17 @@ class AdminController {
         return repo.listarProyectos();
     }
 
+    /**
+     * Para el checklist de "documentos activos" de la conversación en la página
+     * de chat — mismo motivo que {@code /api/admin/proyectos} para estar afuera
+     * de {@code ApiTokenFilter}: lo llama la página de chat sin sesión ni token.
+     */
+    @GetMapping("/api/admin/documentos")
+    List<IngestaRepositorio.DocumentoResumen> documentos(
+            @RequestParam(defaultValue = "default") String projectId) {
+        return repo.listarDocumentosLocales(projectId);
+    }
+
     record Ayuda(
             String documentosDir, String reposDir, List<String> extensionesAceptadas,
             long relevoIntervaloMs, boolean relevoHabilitado, boolean cargaHabilitada) {
@@ -171,6 +183,49 @@ class AdminController {
             throw new UncheckedIOException("No se pudo escribir " + destino, e);
         }
         return ResponseEntity.ok("Archivo guardado: " + nombreValido.get());
+    }
+
+    /**
+     * Borra un archivo del vault de verdad: el archivo físico y su documento/chunks
+     * indexados. Un borrado que solo tocara la base de datos se revertiría solo en el
+     * próximo relevo — {@code marcarArchivoDetectado} vuelve a ver el archivo en disco,
+     * sin hash previo con el que compararlo, y lo reingesta como si fuera nuevo. Por
+     * eso exige el mismo flag que la carga: sin él el vault está montado {@code :ro} y
+     * escribir ahí fallaría con un error de E/S.
+     */
+    @DeleteMapping("/api/admin/vault/archivos/{id}")
+    ResponseEntity<String> eliminarArchivo(@PathVariable long id) {
+        if (!cargaHabilitada) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
+                    "Borrado deshabilitado (kb.ingesta.carga-habilitada=false): el vault esta montado de solo lectura, "
+                            + "asi que un borrado que solo tocara el indice reaparaceria en el proximo relevo.");
+        }
+        Optional<IngestaRepositorio.ArchivoVaultParaEliminar> archivo = repo.buscarArchivoVaultParaEliminar(id);
+        if (archivo.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        if (!"local_docs".equals(archivo.get().kind())) {
+            return ResponseEntity.badRequest().body(
+                    "Solo se pueden eliminar archivos de tipo Documentos locales; las demas fuentes se sincronizan solas.");
+        }
+
+        String nombre = Path.of(archivo.get().externalId()).getFileName().toString();
+        Path objetivo = documentosDir.resolve(nombre).normalize();
+        if (!objetivo.startsWith(documentosDir.normalize())) {
+            return ResponseEntity.badRequest().body("Ruta de archivo invalida");
+        }
+        try {
+            Files.deleteIfExists(objetivo);
+        } catch (IOException e) {
+            throw new UncheckedIOException("No se pudo borrar " + objetivo, e);
+        }
+
+        if (archivo.get().documentId() != null) {
+            repo.eliminarDocumento(archivo.get().documentId());
+        }
+        repo.eliminarArchivoVault(id);
+
+        return ResponseEntity.ok("Archivo eliminado: " + archivo.get().externalId());
     }
 
     private static Optional<String> validarNombre(String nombreOriginal) {

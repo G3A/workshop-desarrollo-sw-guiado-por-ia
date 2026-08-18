@@ -117,7 +117,7 @@ services:
       # F8: cada cuanto se releva sola la ingesta, sin correr ningun comando.
       KB_INGESTA_RELEVO_INTERVALO_MS: ${KB_INGESTA_RELEVO_INTERVALO_MS:-900000}
       # F9: apagado por defecto -- ver el comentario junto a kb.ingesta.carga-habilitada
-      # en application.yml sobre por que tambien exige quitar el :ro de abajo.
+      # en application.yml sobre por que tambien exige KB_VAULT_MODO=rw abajo.
       KB_INGESTA_CARGA_HABILITADA: ${KB_INGESTA_CARGA_HABILITADA:-false}
       KB_TEAMS_HABILITADO: ${KB_TEAMS_HABILITADO:-false}
       KB_TEAMS_EMULATOR: ${KB_TEAMS_EMULATOR:-true}
@@ -145,7 +145,11 @@ services:
       KB_VAULT_RUTA: /vault
       JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--XX:MaxRAMPercentage=60}
     volumes:
-      - ${KB_VAULT_DIR:-../vault}:/vault:ro
+      # Solo lectura por defecto -- decision consciente (ver kb.ingesta.carga-habilitada
+      # en application.yml), no un flag cosmetico. KB_VAULT_MODO=rw en .env es el
+      # unico interruptor: sin eso, KB_INGESTA_CARGA_HABILITADA=true igual falla al
+      # escribir, con un error de E/S explicito.
+      - ${KB_VAULT_DIR:-../vault}:/vault:${KB_VAULT_MODO:-ro}
       - ${KB_DATA_DIR:-./.data}/models:/models
     ports:
       - "${KB_PORT:-8080}:8080"

@@ -26,6 +26,12 @@ interface Herramienta {
      * Nunca lanza para errores esperables (sin resultados, fuente no configurada
      * todavía): devuelve una lista vacía. El {@link Executor} solo aísla fallos
      * inesperados (Postgres caído, proceso externo que no arranca).
+     *
+     * @param documentosPermitidos IDs de {@code documents} a los que acotar la búsqueda
+     *                             (ver {@code Dominio.Filtros.documentosPermitidos}); vacío =
+     *                             sin restricción. Solo lo respetan las herramientas que buscan
+     *                             sobre {@code chunks} (search_unified, search_docs, who_knows) —
+     *                             las demás lo ignoran.
      */
-    List<Fragmento> ejecutar(String consulta, ProyectoId proyecto);
+    List<Fragmento> ejecutar(String consulta, ProyectoId proyecto, List<Long> documentosPermitidos);
 }

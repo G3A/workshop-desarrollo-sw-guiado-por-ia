@@ -42,7 +42,7 @@ class HerramientaSubsystemIndex implements Herramienta {
     }
 
     @Override
-    public List<Fragmento> ejecutar(String consulta, ProyectoId proyecto) {
+    public List<Fragmento> ejecutar(String consulta, ProyectoId proyecto, List<Long> documentosPermitidos) {
         return repo.indiceDeSubsistemas(proyecto.valor(), limite);
     }
 }

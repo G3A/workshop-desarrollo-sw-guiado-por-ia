@@ -50,7 +50,8 @@ public interface Consultar {
      * embeddings ni cross-encoder — el "keyword search on landing" del
      * artículo, para mostrar algo mientras el pipeline completo corre detrás.
      *
-     * @param limite cuántos resultados como máximo; lo decide el adaptador
+     * @param limite               cuántos resultados como máximo; lo decide el adaptador
+     * @param documentosPermitidos ver {@link Filtros#documentosPermitidos()}; vacío = sin restricción
      */
-    List<Cita> previsualizar(Pregunta pregunta, ProyectoId proyecto, int limite);
+    List<Cita> previsualizar(Pregunta pregunta, ProyectoId proyecto, int limite, List<Long> documentosPermitidos);
 }

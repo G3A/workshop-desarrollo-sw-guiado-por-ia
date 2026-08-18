@@ -43,8 +43,8 @@ class HerramientaWhoKnows implements Herramienta {
     }
 
     @Override
-    public List<Fragmento> ejecutar(String consulta, ProyectoId proyecto) {
-        List<Fragmento> todos = buscador.buscar(consulta, proyecto.valor()).stream()
+    public List<Fragmento> ejecutar(String consulta, ProyectoId proyecto, List<Long> documentosPermitidos) {
+        List<Fragmento> todos = buscador.buscar(consulta, proyecto.valor(), List.of(), documentosPermitidos).stream()
                 .map(ResultadoBusqueda::fragmento).toList();
 
         Map<Long, Fragmento> mejorPorDocumento = new LinkedHashMap<>();
