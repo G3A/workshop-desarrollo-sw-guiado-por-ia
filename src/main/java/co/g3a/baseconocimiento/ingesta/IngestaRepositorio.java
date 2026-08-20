@@ -298,9 +298,20 @@ class IngestaRepositorio {
                 .list();
     }
 
-    /** Los {@code project_id} que existen de verdad, para poblar el selector de proyecto de F10. */
+    /**
+     * Los {@code project_id} que existen de verdad, para poblar el selector de proyecto
+     * de F10. No alcanza con mirar {@code sources}: una sola fuente de documentos locales
+     * (una fila) puede repartir sus archivos en varios proyectos según la subcarpeta
+     * (ver {@code ConectorDocumentosLocales.proyectoDe}), así que el proyecto real vive
+     * en {@code documents}, no en la fuente que los trajo.
+     */
     List<String> listarProyectos() {
-        return jdbc.sql("SELECT DISTINCT project_id FROM sources ORDER BY project_id")
+        return jdbc.sql("""
+                        SELECT project_id FROM sources
+                        UNION
+                        SELECT project_id FROM documents
+                        ORDER BY project_id
+                        """)
                 .query(String.class).list();
     }
 

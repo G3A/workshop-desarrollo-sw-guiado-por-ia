@@ -153,6 +153,29 @@ class ConectorDocumentosLocalesTest {
         Files.deleteIfExists(documentosDir.resolve("fallido.pdf"));
     }
 
+    @Test
+    @DisplayName("Un archivo bajo documentos/<proyecto>/ se ingiere con ese project_id; uno suelto en la raíz, con 'default'")
+    void derivaElProyectoDeLaSubcarpeta() throws Exception {
+        Files.write(documentosDir.resolve("suelto.md"), "# Suelto\ncontenido".getBytes());
+        Path subcarpeta = Files.createDirectories(documentosDir.resolve("ejemplo"));
+        Files.write(subcarpeta.resolve("anidado.md"), "# Anidado\ncontenido".getBytes());
+
+        conector.ingerir();
+
+        assertThat(proyectoDeDocumento("suelto.md")).contains("default");
+        assertThat(proyectoDeDocumento("ejemplo/anidado.md")).contains("ejemplo");
+
+        Files.deleteIfExists(documentosDir.resolve("suelto.md"));
+        Files.deleteIfExists(subcarpeta.resolve("anidado.md"));
+        Files.deleteIfExists(subcarpeta);
+    }
+
+    private Optional<String> proyectoDeDocumento(String externalId) {
+        return jdbc.sql("SELECT project_id FROM documents WHERE external_id = :externalId")
+                .param("externalId", externalId)
+                .query(String.class).optional();
+    }
+
     /**
      * Inserta (o reutiliza) la fila de {@code sources} sin escanear el
      * vault — a diferencia de llamar a {@code conector.ingerir()}, no
