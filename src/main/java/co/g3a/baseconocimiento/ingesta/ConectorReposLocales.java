@@ -119,7 +119,7 @@ class ConectorReposLocales {
             try {
                 String texto = new String(bytes, StandardCharsets.UTF_8);
                 long documentoId = repo.upsertDocumento(sourceId, externalId,
-                        "file:///vault/repos/" + nombreRepo + "/" + externalId, externalId, texto, hash,
+                        VaultUri.deRepo(nombreRepo, externalId), externalId, texto, hash,
                         ProyectoId.POR_DEFECTO.valor());
                 repo.marcarArchivoProcesado(sourceId, externalId, documentoId);
 

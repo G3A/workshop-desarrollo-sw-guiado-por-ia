@@ -172,15 +172,15 @@ class AdminController {
         if (nombreValido.isEmpty()) {
             return ResponseEntity.badRequest().body("Nombre de archivo invalido o extension no aceptada");
         }
-        Path destino = documentosDir.resolve(nombreValido.get()).normalize();
-        if (!destino.startsWith(documentosDir.normalize())) {
+        Optional<Path> destino = RutasVault.resolverDentroDe(documentosDir, nombreValido.get());
+        if (destino.isEmpty()) {
             return ResponseEntity.badRequest().body("Ruta de archivo invalida");
         }
         try {
             Files.createDirectories(documentosDir);
-            archivo.transferTo(destino);
+            archivo.transferTo(destino.get());
         } catch (IOException e) {
-            throw new UncheckedIOException("No se pudo escribir " + destino, e);
+            throw new UncheckedIOException("No se pudo escribir " + destino.get(), e);
         }
         return ResponseEntity.ok("Archivo guardado: " + nombreValido.get());
     }
@@ -210,14 +210,14 @@ class AdminController {
         }
 
         String nombre = Path.of(archivo.get().externalId()).getFileName().toString();
-        Path objetivo = documentosDir.resolve(nombre).normalize();
-        if (!objetivo.startsWith(documentosDir.normalize())) {
+        Optional<Path> objetivo = RutasVault.resolverDentroDe(documentosDir, nombre);
+        if (objetivo.isEmpty()) {
             return ResponseEntity.badRequest().body("Ruta de archivo invalida");
         }
         try {
-            Files.deleteIfExists(objetivo);
+            Files.deleteIfExists(objetivo.get());
         } catch (IOException e) {
-            throw new UncheckedIOException("No se pudo borrar " + objetivo, e);
+            throw new UncheckedIOException("No se pudo borrar " + objetivo.get(), e);
         }
 
         if (archivo.get().documentId() != null) {
