@@ -86,6 +86,7 @@ class ConectorDocumentosLocales {
             String externalId = rutaRelativaPosix(archivo);
             vistos.add(externalId);
 
+            String proyecto = proyectoDe(externalId);
             byte[] bytes = leer(archivo);
             String hash = sha256Hex(bytes);
             repo.marcarArchivoDetectado(sourceId, externalId, bytes.length);
@@ -107,14 +108,14 @@ class ConectorDocumentosLocales {
 
                 long documentoId = repo.upsertDocumento(
                         sourceId, externalId, "file:///vault/documentos/" + externalId,
-                        archivo.getFileName().toString(), texto, hash, ProyectoId.POR_DEFECTO.valor());
+                        archivo.getFileName().toString(), texto, hash, proyecto);
                 repo.marcarArchivoProcesado(sourceId, externalId, documentoId);
 
                 int ord = 0;
                 for (ChunkATexto chunk : trocear(texto)) {
                     String distilled = Json.escribir(Map.of("summary", chunk.resumen()));
                     long chunkId = repo.insertarChunk(
-                            documentoId, sourceId, ProyectoId.POR_DEFECTO.valor(), ord++,
+                            documentoId, sourceId, proyecto, ord++,
                             "doc_section", chunk.cuerpo(), distilled);
                     repo.encolarEmbeberChunk(chunkId);
                     chunksCreados++;
@@ -231,6 +232,16 @@ class ConectorDocumentosLocales {
 
     private String rutaRelativaPosix(Path archivo) {
         return raiz.relativize(archivo).toString().replace('\\', '/');
+    }
+
+    /**
+     * El primer segmento de la ruta relativa ES el proyecto: un archivo suelto
+     * en la raíz de {@code documentos/} cae en {@link ProyectoId#POR_DEFECTO},
+     * uno bajo {@code documentos/<proyecto>/...} cae en {@code <proyecto>}.
+     */
+    private static String proyectoDe(String externalId) {
+        int barra = externalId.indexOf('/');
+        return barra < 0 ? ProyectoId.POR_DEFECTO.valor() : new ProyectoId(externalId.substring(0, barra)).valor();
     }
 
     private static byte[] leer(Path archivo) {
