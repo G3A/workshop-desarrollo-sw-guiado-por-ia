@@ -136,6 +136,18 @@ class ApiTokenFilterTest {
     }
 
     @Test
+    @DisplayName("Con token configurado, /api/vault/contenido queda excluido: el visor de citas tambien vive en el chat")
+    void vaultContenidoQuedaExcluido() throws Exception {
+        ApiTokenFilter filtro = new ApiTokenFilter(new SeguridadPropiedades("secreto"));
+
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/vault/contenido");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        FilterChain chain = mock(FilterChain.class);
+        filtro.doFilter(request, response, chain);
+        verify(chain).doFilter(request, response);
+    }
+
+    @Test
     @DisplayName("Con token configurado, el resto de /api/admin/* si lo exige")
     void restoDeAdminExigeToken() throws Exception {
         ApiTokenFilter filtro = new ApiTokenFilter(new SeguridadPropiedades("secreto"));

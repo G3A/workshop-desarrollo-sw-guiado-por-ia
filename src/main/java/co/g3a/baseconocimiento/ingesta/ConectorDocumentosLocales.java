@@ -107,7 +107,7 @@ class ConectorDocumentosLocales {
                         : new String(bytes, StandardCharsets.UTF_8);
 
                 long documentoId = repo.upsertDocumento(
-                        sourceId, externalId, "file:///vault/documentos/" + externalId,
+                        sourceId, externalId, VaultUri.deDocumentoLocal(externalId),
                         archivo.getFileName().toString(), texto, hash, proyecto);
                 repo.marcarArchivoProcesado(sourceId, externalId, documentoId);
 

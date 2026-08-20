@@ -12,6 +12,10 @@
   const listaDocumentos = document.getElementById("lista-documentos");
   const contadorDocumentos = document.getElementById("contador-documentos");
   const modalInfoPrevia = document.getElementById("modal-info-previa");
+  const modalDocumento = document.getElementById("modal-documento");
+  const modalDocumentoTitulo = document.getElementById("modal-documento-titulo");
+  const modalDocumentoCuerpo = document.getElementById("modal-documento-cuerpo");
+  const modalDocumentoDescarga = document.getElementById("modal-documento-descarga");
 
   // Esta vista previa (Señal 1: FTS) matchea por raíz de palabra, no por
   // significado: si la pregunta no comparte vocabulario con el documento
@@ -441,10 +445,17 @@
     return documentosActivosActuales.length === documentosDisponibles.length ? [] : documentosActivosActuales;
   }
 
+  // No basta con textContent->innerHTML (asi era antes): esa serializacion solo
+  // escapa &, < y > porque asume que el resultado se usa en posicion de texto.
+  // Pero el resultado de escaparHtml tambien se usa dentro de VALORES DE
+  // ATRIBUTO (data-titulo="...", data-uri="...") en varios lugares de este
+  // archivo -- una comilla doble sin escapar en, por ejemplo, el titulo de un
+  // documento cierra el atributo antes de tiempo y deja el resto como HTML
+  // nuevo. Por eso escapa las 5 entidades relevantes a mano, validas en
+  // cualquier posicion (texto o atributo).
+  const ENTIDADES_HTML = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
   function escaparHtml(texto) {
-    const contenedor = document.createElement("div");
-    contenedor.textContent = texto == null ? "" : texto;
-    return contenedor.innerHTML;
+    return String(texto == null ? "" : texto).replace(/[&<>"']/g, (caracter) => ENTIDADES_HTML[caracter]);
   }
 
   // "texto" ya tiene que venir escapado para HTML (se usa tal cual como atributo).
@@ -453,23 +464,125 @@
         `title="${etiqueta}" aria-label="${etiqueta}">⧉</button>`;
   }
 
+  // "file:///vault/..." identifica un archivo dentro del contenedor: el
+  // navegador no puede navegar ahi (ni el esquema file:// abre desde una
+  // pagina http, ni esa ruta existe fuera del servidor), por eso estas citas
+  // abren el visor modal en vez de un link normal. Las citas de Azure DevOps
+  // o Teams son URLs reales y siguen abriendo en pestaña nueva.
+  // OJO: este prefijo tiene que coincidir con VaultUri.PREFIJO del lado del
+  // servidor (co.g3a.baseconocimiento.ingesta) -- no hay forma de compartir
+  // la constante entre Java y JS, asi que un cambio de uno exige el otro.
+  function esUriDelVault(uri) {
+    return typeof uri === "string" && uri.startsWith("file:///vault/");
+  }
+
   function itemCita(cita, indice) {
     const titulo = escaparHtml(cita.titulo || cita.uri);
-    const uri = escaparHtml(cita.uri);
+    const uri = cita.uri || "";
     const extracto = escaparHtml(cita.extracto || "");
     const prefijo = indice == null ? "" : `[${indice}] `;
     const lineaExtracto = extracto ? `<span class="extracto">${extracto}</span>` : "";
     // Copia el fragmento tal como se ve (el extracto, ya recortado por el
     // servidor); si no hay extracto, al menos el titulo sirve de algo.
     const textoACopiar = escaparHtml(cita.extracto || cita.titulo || cita.uri);
-    return `<li>${prefijo}<a href="${uri}" target="_blank" rel="noopener">${titulo}</a>${lineaExtracto}` +
-        `${botonCopiar(textoACopiar, "Copiar fragmento")}</li>`;
+    const enlace = esUriDelVault(uri)
+        ? `<button type="button" class="enlace-cita" data-uri="${escaparHtml(uri)}" data-titulo="${titulo}">${titulo}</button>`
+        : `<a href="${escaparHtml(uri)}" target="_blank" rel="noopener">${titulo}</a>`;
+    return `<li>${prefijo}${enlace}${lineaExtracto}${botonCopiar(textoACopiar, "Copiar fragmento")}</li>`;
   }
 
-  // Delegado en "historial" (nunca se reemplaza, solo su innerHTML) para que
-  // funcione con cualquier li de cualquier turno, incluidos los que todavia
-  // no existian cuando se registro este listener.
+  function esPrevisualizable(tipoContenido) {
+    return tipoContenido.startsWith("text/") || tipoContenido === "application/pdf";
+  }
+
+  // Se incrementa en cada apertura y en cada cierre del modal: cualquier
+  // fetch en vuelo de una apertura anterior compara su propio numero contra
+  // este antes de tocar el DOM, asi una respuesta que llega tarde (cita A,
+  // red lenta) no pisa lo que ya se ve de una cita B abierta despues.
+  let peticionModalActual = 0;
+  let urlObjetoModalActual = null;
+
+  function liberarUrlObjetoModal() {
+    if (urlObjetoModalActual) {
+      URL.revokeObjectURL(urlObjetoModalActual);
+      urlObjetoModalActual = null;
+    }
+  }
+
+  async function abrirModalDocumento(uri, titulo) {
+    if (!modalDocumento) {
+      return;
+    }
+    const idPeticion = ++peticionModalActual;
+    liberarUrlObjetoModal();
+    const urlContenido = `/api/vault/contenido?uri=${encodeURIComponent(uri)}`;
+    modalDocumentoTitulo.textContent = titulo || uri;
+    modalDocumentoDescarga.href = `${urlContenido}&descargar=true`;
+    modalDocumentoCuerpo.innerHTML = '<p class="documento-estado">Cargando vista previa…</p>';
+    modalDocumento.showModal();
+    try {
+      // Un solo GET (no HEAD + GET): ademas de la mitad de las idas y vueltas,
+      // esto evita la ventana entre "HEAD dijo que existe" y "el iframe hace
+      // su propio GET" en la que el archivo se pudo haber borrado -- el mismo
+      // fetch que decide si se puede previsualizar es el que trae el contenido.
+      const respuesta = await fetch(urlContenido);
+      if (idPeticion !== peticionModalActual) {
+        return; // El usuario ya cerro este modal o abrio otra cita.
+      }
+      if (!respuesta.ok) {
+        throw new Error("GET " + respuesta.status);
+      }
+      const tipoContenido = respuesta.headers.get("Content-Type") || "";
+      if (!esPrevisualizable(tipoContenido)) {
+        modalDocumentoCuerpo.innerHTML =
+            '<p class="documento-estado">No hay vista previa disponible para este tipo de archivo. ' +
+            "Usa \"Descargar\" para abrirlo.</p>";
+        return;
+      }
+      const blob = await respuesta.blob();
+      if (idPeticion !== peticionModalActual) {
+        return;
+      }
+      const urlObjeto = URL.createObjectURL(blob);
+      urlObjetoModalActual = urlObjeto;
+      const iframe = document.createElement("iframe");
+      // sandbox="" (sin allow-scripts ni allow-same-origin): si algun archivo
+      // del vault terminara siendo text/html, su contenido se renderiza inerte
+      // -- ningun script embebido corre con el origen de esta pagina.
+      iframe.setAttribute("sandbox", "");
+      iframe.title = "Vista previa del documento";
+      iframe.src = urlObjeto;
+      modalDocumentoCuerpo.innerHTML = "";
+      modalDocumentoCuerpo.appendChild(iframe);
+    } catch (error) {
+      if (idPeticion === peticionModalActual) {
+        modalDocumentoCuerpo.innerHTML =
+            '<p class="documento-estado">No se pudo cargar la vista previa. Usa "Descargar" para abrirlo.</p>';
+      }
+    }
+  }
+
+  if (modalDocumento) {
+    // Corta cualquier PDF/iframe que siga cargando, invalida cualquier fetch
+    // todavia en vuelo (ver peticionModalActual) y evita el flash del
+    // contenido anterior la proxima vez que se abra.
+    modalDocumento.addEventListener("close", () => {
+      peticionModalActual++;
+      liberarUrlObjetoModal();
+      modalDocumentoCuerpo.innerHTML = "";
+    });
+  }
+
+  // Un solo delegado en "historial" para ambas acciones de las citas (abrir
+  // preview, copiar): "historial" nunca se reemplaza (solo su innerHTML), asi
+  // que alcanza para cualquier cita de cualquier turno, incluidos los que
+  // todavia no existian al registrarlo.
   historial.addEventListener("click", async (evento) => {
+    const enlace = evento.target.closest(".enlace-cita");
+    if (enlace) {
+      abrirModalDocumento(enlace.dataset.uri, enlace.dataset.titulo);
+      return;
+    }
     const boton = evento.target.closest(".boton-copiar");
     if (!boton) {
       return;

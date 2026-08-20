@@ -42,6 +42,11 @@ import jakarta.servlet.http.HttpServletResponse;
  *       nombres de proyecto el segundo, id+título de documento el tercero) —
  *       el resto de {@code /api/admin/*} (fuentes, reindexar, la cola,
  *       subir/borrar archivos) sigue exigiendo el token.</li>
+ *   <li>{@code /api/vault/contenido} — el visor modal de citas de la página de
+ *       chat, mismo motivo que {@code /api/chat}: sin sesión ni token. Acotado
+ *       igual a solo lectura sobre archivos indexados de verdad (no cualquier
+ *       archivo físicamente presente bajo el vault) — ver el chequeo contra
+ *       {@code documents.uri} en {@code ContenidoVaultController}.</li>
  * </ul>
  */
 class ApiTokenFilter extends HttpFilter {
@@ -49,7 +54,8 @@ class ApiTokenFilter extends HttpFilter {
     private static final Logger log = LoggerFactory.getLogger(ApiTokenFilter.class);
     private static final Set<String> RUTAS_SIN_TOKEN = Set.of(
             "/api/messages", "/api/chat", "/api/chat/estado", "/api/preview",
-            "/api/admin/ayuda", "/api/admin/proyectos", "/api/admin/documentos");
+            "/api/admin/ayuda", "/api/admin/proyectos", "/api/admin/documentos",
+            "/api/vault/contenido");
 
     private final SeguridadPropiedades propiedades;
 

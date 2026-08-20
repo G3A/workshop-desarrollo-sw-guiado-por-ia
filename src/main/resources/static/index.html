@@ -421,8 +421,24 @@
     padding: 0.55rem 2.1rem 0.55rem 0.75rem;
     background: var(--bg-elevado);
   }
-  .turno-previa a, .turno-citas a { color: var(--acento); text-decoration: none; font-weight: 600; }
-  .turno-previa a:hover, .turno-citas a:hover { text-decoration: underline; }
+  .turno-previa a, .turno-citas a,
+  .turno-previa .enlace-cita, .turno-citas .enlace-cita {
+    color: var(--acento);
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .turno-previa a:hover, .turno-citas a:hover,
+  .turno-previa .enlace-cita:hover, .turno-citas .enlace-cita:hover {
+    text-decoration: underline;
+  }
+  .enlace-cita {
+    border: none;
+    background: none;
+    padding: 0;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
   .extracto { display: block; color: var(--texto-atenuado); font-size: 0.87rem; margin-top: 0.2rem; }
   .boton-copiar {
     flex: none;
@@ -520,6 +536,65 @@
     cursor: pointer;
   }
 
+  /* ---------- Dialogo de vista previa de documento ---------- */
+  #modal-documento {
+    width: min(90vw, 900px);
+    max-width: none;
+    height: min(85vh, 800px);
+    padding: 1rem 1.25rem;
+  }
+  #modal-documento[open] {
+    display: flex;
+    flex-direction: column;
+  }
+  .modal-documento-cabecera {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+  #modal-documento-titulo {
+    font-size: 0.95rem;
+    margin: 0;
+    word-break: break-word;
+  }
+  .modal-documento-cuerpo {
+    flex: 1;
+    margin-top: 0.75rem;
+    border: 1px solid var(--borde);
+    border-radius: 8px;
+    overflow: auto;
+    background: var(--bg-burbuja-usuario);
+  }
+  .modal-documento-cuerpo iframe {
+    width: 100%;
+    height: 100%;
+    min-height: 50vh;
+    border: 0;
+  }
+  .documento-estado {
+    padding: 1.5rem;
+    color: var(--texto-atenuado);
+    text-align: center;
+  }
+  .modal-documento-acciones {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+  }
+  .modal-documento-acciones .cerrar { margin-top: 0; }
+  #modal-documento-descarga {
+    margin-top: 0;
+    padding: 0.45rem 1rem;
+    border: 1px solid var(--borde);
+    border-radius: 8px;
+    background: var(--acento);
+    color: var(--acento-texto);
+    text-decoration: none;
+    cursor: pointer;
+  }
+
   /* ---------- Responsivo ---------- */
   @media (max-width: 760px) {
     .sidebar {
@@ -607,6 +682,17 @@
       aunque el contenido exista. La respuesta completa de abajo sí busca por
       significado y no tiene esta limitación.</p>
     <button type="button" class="cerrar" onclick="document.getElementById('modal-info-previa').close()">Cerrar</button>
+  </dialog>
+
+  <dialog id="modal-documento">
+    <div class="modal-documento-cabecera">
+      <h2 id="modal-documento-titulo"></h2>
+    </div>
+    <div class="modal-documento-cuerpo" id="modal-documento-cuerpo"></div>
+    <div class="modal-documento-acciones">
+      <a id="modal-documento-descarga" href="#" download>Descargar</a>
+      <button type="button" class="cerrar" onclick="document.getElementById('modal-documento').close()">Cerrar</button>
+    </div>
   </dialog>
 
   <script src="ayuda.js"></script>

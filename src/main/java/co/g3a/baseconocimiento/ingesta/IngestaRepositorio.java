@@ -74,6 +74,19 @@ class IngestaRepositorio {
         return id;
     }
 
+    /**
+     * Para {@code ContenidoVaultController}: la uri pedida solo se sirve si de
+     * verdad quedó indexada como {@code documents.uri} — sin este chequeo, el
+     * controlador serviría cualquier archivo físicamente presente bajo el
+     * vault (basura de docling, archivos no aceptados, etc.), no solo los que
+     * ya son parte de una cita.
+     */
+    boolean existeDocumentoConUri(String uri) {
+        return jdbc.sql("SELECT 1 FROM documents WHERE uri = :uri")
+                .param("uri", uri)
+                .query(Integer.class).optional().isPresent();
+    }
+
     /** @param distilledJson JSON ya serializado; ver {@code chunks.distilled} en el esquema */
     long insertarChunk(long documentId, long sourceId, String projectId, int ord, String kind,
             String texto, String distilledJson) {
