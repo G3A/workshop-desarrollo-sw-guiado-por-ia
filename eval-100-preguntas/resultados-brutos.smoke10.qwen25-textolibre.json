@@ -1,0 +1,122 @@
+[
+  {
+    "id": 1,
+    "categoria": "tipos",
+    "pregunta": "¿Cuáles son los ocho tipos primitivos definidos en el lenguaje Java?",
+    "esperado": "responde",
+    "respuesta": "byte, short, int, long, char, boolean, float, double [n]",
+    "estadoFinal": "Respondido en 4:46",
+    "error": null,
+    "inicio": "2026-08-22T02:13:10.139Z",
+    "fin": "2026-08-22T02:17:56.723Z",
+    "elapsedMs": 286584
+  },
+  {
+    "id": 2,
+    "categoria": "tipos",
+    "pregunta": "¿Qué diferencia hay entre un tipo primitivo y un tipo de referencia en Java?",
+    "esperado": "responde",
+    "respuesta": "Based on the provided information from the Java Language Specification (JLS) and other relevant sections, here's an overview of key points related to heap pollution:\n\n### Key Points Related to Heap Pollution\n\n**Definition:**\nHeap pollution occurs when a variable is declared as holding objects of one type but actually holds objects that are instances of a subclass or subinterface. This situation can only arise due to operations involving raw types or unsafe array aliasing.\n\n**Causes:**\n\n1. **Raw Types and Compile-Time Unchecked Warnings:**\n   - When using raw types (e.g., `List<String>` instead of `List<String>`) in the declaration, it results in a compile-time unchecked warning.\n   - Example:\n     ```java\n     List l = new ArrayList<Number>(); // Raw type used for Number\n     List<String> ls = l;              // Unchecked warning\n     ```\n   - This leads to heap pollution because `ls` actually holds an object of the wrong type, but this is not detected at runtime.\n\n2. **Unsafe Array Aliasing:**\n   - When a variable of non-reifiable element type (e.g., `List<String>`) is aliased through another array variable with a supertype that is either raw or non-generic.\n   - Example:\n     ```java\n     static void m(List<String>... stringLists) {\n         Object[] array = stringLists; // Raw type used for List<String>\n         List<Integer> tmpList = Arrays.asList(42);\n         array[0] = tmpList;            // Unsafe aliasing, leads to heap pollution\n     }\n     ```\n   - At runtime, this can lead to a `ClassCastException` because the element at index 0 of the array is actually an instance of `List<Integer>`.\n\n3. **Parameterized Types and Raw Types:**\n   - When using raw types with parameterized types, it results in unchecked warnings.\n   - Example:\n     ```java\n     List<String> ls = new ArrayList<Number>(); // Unchecked warning due to raw type used for Number\n     ```\n\n### Specific Cases of Heap Pollution\n\n1. **Raw Type Usage:**\n   - Using a raw type (e.g., `List<String>` instead of `List<String>`) in the declaration leads to unchecked warnings and heap pollution.\n   - Example:\n     ```java\n     List l = new ArrayList<Number>(); // Raw type used for Number\n     List<String> ls = l;              // Unchecked warning, but",
+    "estadoFinal": "Respondido en 2:34",
+    "error": null,
+    "inicio": "2026-08-22T02:17:56.724Z",
+    "fin": "2026-08-22T02:20:30.748Z",
+    "elapsedMs": 154024
+  },
+  {
+    "id": 3,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es una conversión de ensanchamiento (widening) entre tipos primitivos?",
+    "esperado": "responde",
+    "respuesta": "Una conversión de ensanchamiento (widening) entre tipos primitivos consiste en que se convierten valores de un tipo a otro, manteniendo la información sobre el valor numérico en casos específicos. Estos incluyen:\n\n- byte a short, int, long, float o double\n- short a int, long, float o double\n- char a int, long, float o double\n- int a long, float o double\n- long a float o double\n- float a double\n\nEstas conversiones no pierden información sobre la magnitud numérica del valor. Sin embargo, pueden perder precisión y rango en ciertos casos.\n\nLas conversiones de ensanchamiento se utilizan para convertir un tipo primitivo a otro más amplio sin perder información relevante. Las conversiones de ensanchamiento son necesarias cuando se necesita pasar de un tipo primitivo a uno que puede contener valores mayores o menores, como pasar de int a float.\n\nPor ejemplo, en el código proporcionado:\n\n```java\nclass Test { public static void main(String[] args) { int big = 1234567890; float approx = big; System.out.println(big - (int)approx); } }\n```\n\nLa salida de este programa es `-46`, lo que indica que se perdió información durante la conversión de tipo `int` a `float`.",
+    "estadoFinal": "Respondido en 2:48",
+    "error": null,
+    "inicio": "2026-08-22T02:20:30.750Z",
+    "fin": "2026-08-22T02:23:19.426Z",
+    "elapsedMs": 168676
+  },
+  {
+    "id": 4,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es el autoboxing y cuándo ocurre de forma automática?",
+    "esperado": "responde",
+    "respuesta": "Here's a summary and explanation of the key points from the provided text:\n\n### Primitive Types:\n- **Definition**: Defined consistently across all machines and implementations.\n- **Sizes**:\n  - Two's-complement integers (e.g., byte, short, int, long)\n  - IEEE 754 floating-point numbers\n  - Boolean type\n  - Unicode character (`char`)\n\n- **State Sharing**: Values of primitive types do not share state.\n\n### Reference Types:\n- **Definition**: Classes, interfaces, and arrays.\n- **Implementation**: Dynamically created objects that are instances of classes or subclasses.\n- **Object Hierarchy**: All objects support the methods of `java.lang.Object`.\n- **String Class**: A predefined class for Unicode character strings.\n- **Wrapping/Unwrapping**: Automatic boxing/unboxing by compiler, called \"boxing\" and \"unboxing\".\n  - Boxing: Wraps primitive values into objects (e.g., `Integer` from int).\n  - Unboxing: Converts object references back to primitives.\n\n### Variables:\n- **Primitive Types**: Hold exact values of their type.\n- **Class/Interface Types**: Can hold null or instances of the class/interface or its subclasses.\n- **Array Types**: Can hold null or arrays of any element type.\n- **Object Type**: Can hold null or any object reference.\n\n### Assignment Contexts:\n- **Conversions**:\n  - Identity conversion, widening primitive conversions, and reference conversions are allowed.\n  - Unboxing followed by widening primitive is also valid.\n  - Boxing can be used with primitives to convert back to objects.\n  - Raw types (§4.8) may undergo unchecked conversions after the above list of conversions.\n\n### Constant Expressions:\n- **Narrowing Primitive Conversions**: Allowed if the constant expression value fits within the variable's type range.\n- **Boxing and Unboxing**:\n  - Boxing is used to convert primitives to objects.\n  - Unboxing converts boxed objects back to their primitive values, throwing a `NullPointerException` on null references.\n\n### Assignment Compatibility:\n- If an expression can be converted to the type of a variable by assignment conversion, it is considered assignable to that variable.\n- Exceptions include:\n  - ClassCastException: When converting between parameterized types (e.g., `Comparable<Integer>`).\n  - OutOfMemoryError: From boxing conversions.\n  - NullPointerException: From unboxing null references.\n  - ArrayStoreException: In cases involving array elements or field access.\n\n### Unboxing Conversion:\n-",
+    "estadoFinal": "Respondido en 3:16",
+    "error": null,
+    "inicio": "2026-08-22T02:23:19.427Z",
+    "fin": "2026-08-22T02:26:35.228Z",
+    "elapsedMs": 195801
+  },
+  {
+    "id": 5,
+    "categoria": "tipos",
+    "pregunta": "¿Qué representa el tipo null y a qué tipos de referencia se puede asignar?",
+    "esperado": "responde",
+    "respuesta": "El tipo null representa el valor único de la referencia nula. Se asigna a cualquier tipo de referencia, excepto los tipos primitivos (booleano, numéricos y caracteres).",
+    "estadoFinal": "Respondido en 2:13",
+    "error": null,
+    "inicio": "2026-08-22T02:26:35.231Z",
+    "fin": "2026-08-22T02:28:48.940Z",
+    "elapsedMs": 133709
+  },
+  {
+    "id": 6,
+    "categoria": "tipos",
+    "pregunta": "¿Qué significa que un método tenga tipo de retorno void?",
+    "esperado": "responde",
+    "respuesta": "No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.",
+    "estadoFinal": "Respondido en 2:32",
+    "error": null,
+    "inicio": "2026-08-22T02:28:48.942Z",
+    "fin": "2026-08-22T02:31:21.587Z",
+    "elapsedMs": 152645
+  },
+  {
+    "id": 7,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es un tipo genérico parametrizado, por ejemplo List<String>?",
+    "esperado": "responde",
+    "respuesta": "List<String> es un tipo genérico parametrizado donde String es el tipo de elementos que contiene la lista y List<T> es el tipo genérico base.",
+    "estadoFinal": "Respondido en 3:37",
+    "error": null,
+    "inicio": "2026-08-22T02:31:21.590Z",
+    "fin": "2026-08-22T02:34:59.299Z",
+    "elapsedMs": 217709
+  },
+  {
+    "id": 8,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es un literal de tipo long y cómo se distingue de un literal int en el código fuente?",
+    "esperado": "responde",
+    "respuesta": "No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.",
+    "estadoFinal": "Respondido en 3:27",
+    "error": null,
+    "inicio": "2026-08-22T02:34:59.300Z",
+    "fin": "2026-08-22T02:38:27.199Z",
+    "elapsedMs": 207899
+  },
+  {
+    "id": 9,
+    "categoria": "variables",
+    "pregunta": "¿Qué diferencia hay entre una variable local declarada con var y una declarada con un tipo explícito?",
+    "esperado": "responde",
+    "respuesta": "Based on the provided text, here are key points regarding local variable declarations and patterns in Java:\n\n### Local Variable Declarations\n\n1. **Annotation Support**:\n   - Annotations can be placed directly on formal parameters, local variables, local classes, or lambda expressions.\n   - For local variables declared within a lambda expression, there is no special dispensation to allow them to shadow variables from an enclosing method.\n\n2. **Type Patterns and Record Patterns**:\n   - A type pattern declares one local variable (pattern variable).\n   - The type of the pattern variable depends on whether it's top-level or nested in a record pattern.\n     - Top-level: Denoted by `LocalVariableType`.\n     - Nested: Determined based on `LocalVariableType` and synthetic type variables.\n\n3. **Null-Matching Type Patterns**:\n   - A type pattern is null-matching if it appears directly in the component pattern list of a record pattern with type R, where the corresponding record component has type U.\n   - This property is used during runtime pattern matching.\n\n### Record Patterns\n\n1. **Record Pattern Structure**:\n   - A record pattern consists of a `ReferenceType` and a component pattern list containing one or more component patterns.\n   - If the reference type is not a record class, it results in a compile-time error.\n\n2. **Raw Types**:\n   - If the reference type is raw (unbounded), the type of the record pattern is inferred according to §18.5.5 rules.\n   - A compile-time error occurs if no type can be inferred for the record pattern or if any part of it is annotated.\n\n### Example Analysis\n\nGiven the declaration:\n```java\nrecord R<T>(ArrayList<T> a) {}\n```\n\nAnd the record pattern:\n```java\nR<String>(var b)\n```\n\n- **Type of Pattern Variable `b`**:\n  - The type of the pattern variable `b` in this case is inferred to be `ArrayList<String>`.\n\n### Summary\n\n1. **Annotations and Shadowing**: Local variables declared within lambda expressions do not have special shadowing rules compared to other declarations.\n2. **Type Patterns and Record Patterns**: These are used for matching values against record types, with specific rules for inference and type determination.\n3. **Null-Matching Type Patterns**: This property is useful during runtime pattern matching but only applies when the condition is met.\n\nThese points cover the main aspects of local variable declarations and patterns in Java as described in the provided text.",
+    "estadoFinal": "Respondido en 3:19",
+    "error": null,
+    "inicio": "2026-08-22T02:38:27.203Z",
+    "fin": "2026-08-22T02:41:47.074Z",
+    "elapsedMs": 199871
+  },
+  {
+    "id": 10,
+    "categoria": "variables",
+    "pregunta": "¿Qué es el ámbito (scope) de una variable local?",
+    "esperado": "responde",
+    "respuesta": "El ámbito (scope) de una variable local es el resto del bloque en que se declara, comenzando con su propio inicializador y incluyendo cualquier declarador adicional a la derecha en la declaración de variables locales.",
+    "estadoFinal": "Respondido en 2:33",
+    "error": null,
+    "inicio": "2026-08-22T02:41:47.077Z",
+    "fin": "2026-08-22T02:44:20.878Z",
+    "elapsedMs": 153801
+  }
+]

@@ -136,6 +136,16 @@ kb:
     # asi que no hace falta apagarselo.
     thinking-habilitado: ${KB_LLM_THINKING_HABILITADO:false}
 
+    sintesis-estructurada:
+      # false (default): SintetizadorOpenAi, prosa libre con [n] incrustado --
+      # el sintetizador de produccion, sin cambios de comportamiento. true:
+      # SintetizadorEstructuradoOpenAi, salida JSON forzada ({afirmacion,
+      # fuente}) -- ver su javadoc. Pensado para modelos que en texto libre
+      # pegan el fragmento crudo en vez de redactar (ver docs/investigacion-
+      # vram-y-modelo-llm.md, sesiones 2-23); la UI en streaming pierde el
+      # efecto palabra-por-palabra con esta opcion (ver el mismo javadoc).
+      habilitada: ${KB_LLM_SINTESIS_ESTRUCTURADA_HABILITADA:false}
+
   embeddings:
     modelo: "${KB_EMBEDDINGS_MODELO:bge-m3}"
     # Debe coincidir con vector(1024) en V1__esquema.sql.

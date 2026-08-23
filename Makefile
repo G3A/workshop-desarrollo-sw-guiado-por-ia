@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help up gpu-up up-bonsai down-bonsai up-ministral down-ministral down restart logs ps build test verify pull-models pull-reranker pull-bonsai-gguf pull-ministral pin-embeddings-cpu seed ingest ingest-repos ingest-teams ingest-azdo psql health clean
+.PHONY: help up gpu-up up-bonsai down-bonsai up-ministral down-ministral up-qwen35 down-qwen35 up-nemotron down-nemotron up-granite41 down-granite41 up-phi4mini down-phi4mini up-qwen25 down-qwen25 down restart logs ps build test verify pull-models pull-reranker pull-bonsai-gguf pull-ministral pull-qwen35 pull-nemotron pull-granite41 pull-phi4mini pull-qwen25 pin-embeddings-cpu seed ingest ingest-repos ingest-teams ingest-azdo psql health clean
 
 COMPOSE           := docker compose
 COMPOSE_GPU       := docker compose -f compose.yml -f compose.gpu.yml
@@ -12,6 +12,20 @@ COMPOSE_GPU       := docker compose -f compose.yml -f compose.gpu.yml
 # Bonsai no es un requisito duro: Ollama cae a CPU solo si no hay tarjeta.
 COMPOSE_BONSAI    := docker compose -f compose.yml -f compose.gpu.yml -f compose.bonsai.yml
 COMPOSE_MINISTRAL := docker compose -f compose.yml -f compose.gpu.yml -f compose.ministral.yml
+# Mismo caso que Ministral: se sirve desde el `ollama` de siempre, no de un
+# llama-server aparte -- ver compose.qwen35.yml sobre el estado experimental
+# de este perfil (fix de "thinking" integrado, sin piloto de evaluacion propio
+# todavia).
+COMPOSE_QWEN35    := docker compose -f compose.yml -f compose.gpu.yml -f compose.qwen35.yml
+# Mismo caso: se sirve desde el `ollama` de siempre -- ver compose.nemotron.yml.
+COMPOSE_NEMOTRON  := docker compose -f compose.yml -f compose.gpu.yml -f compose.nemotron.yml
+# Mismo caso, los tres: se sirven desde el `ollama` de siempre. Perfiles nuevos
+# de la sesion 25 para el piloto de 100 preguntas con sintesis estructurada
+# contra los candidatos descartados por "texto pegado" que no tenian compose
+# dedicado todavia (probados originalmente con overrides sueltos, sesiones 2-9).
+COMPOSE_GRANITE41 := docker compose -f compose.yml -f compose.gpu.yml -f compose.granite41.yml
+COMPOSE_PHI4MINI  := docker compose -f compose.yml -f compose.gpu.yml -f compose.phi4mini.yml
+COMPOSE_QWEN25    := docker compose -f compose.yml -f compose.gpu.yml -f compose.qwen25.yml
 LLM         ?= gemma3:4b
 EMBEDDINGS  ?= bge-m3
 KB_DATA_DIR ?= ./.data
@@ -76,6 +90,36 @@ up-ministral:  ## Levanta el perfil Ministral 3B (LLM via Ollama); corre make pu
 down-ministral:  ## Detiene el perfil Ministral (mismos -f que up-ministral)
 	$(COMPOSE_MINISTRAL) down
 
+up-qwen35:  ## Levanta el perfil experimental Qwen3.5 4B (LLM via Ollama, fix de thinking integrado); corre make pull-qwen35 antes la primera vez
+	$(COMPOSE_QWEN35) up -d
+
+down-qwen35:  ## Detiene el perfil Qwen3.5 (mismos -f que up-qwen35)
+	$(COMPOSE_QWEN35) down
+
+up-nemotron:  ## Levanta el perfil experimental Nemotron-mini 4B (LLM via Ollama, sin thinking); corre make pull-nemotron antes la primera vez
+	$(COMPOSE_NEMOTRON) up -d
+
+down-nemotron:  ## Detiene el perfil Nemotron-mini (mismos -f que up-nemotron)
+	$(COMPOSE_NEMOTRON) down
+
+up-granite41:  ## Levanta el perfil experimental Granite 4.1 3B; corre make pull-granite41 antes la primera vez
+	$(COMPOSE_GRANITE41) up -d
+
+down-granite41:  ## Detiene el perfil Granite 4.1 (mismos -f que up-granite41)
+	$(COMPOSE_GRANITE41) down
+
+up-phi4mini:  ## Levanta el perfil experimental Phi-4 Mini 3.8B; corre make pull-phi4mini antes la primera vez
+	$(COMPOSE_PHI4MINI) up -d
+
+down-phi4mini:  ## Detiene el perfil Phi-4 Mini (mismos -f que up-phi4mini)
+	$(COMPOSE_PHI4MINI) down
+
+up-qwen25:  ## Levanta el perfil experimental Qwen2.5 3B; corre make pull-qwen25 antes la primera vez
+	$(COMPOSE_QWEN25) up -d
+
+down-qwen25:  ## Detiene el perfil Qwen2.5 (mismos -f que up-qwen25)
+	$(COMPOSE_QWEN25) down
+
 down:  ## Detiene los servicios (los datos en KB_DATA_DIR sobreviven); --remove-orphans limpia si venis de un perfil Bonsai/Ministral
 	$(COMPOSE_ACTIVO) down --remove-orphans
 
@@ -128,6 +172,21 @@ pull-bonsai-gguf:  ## Descarga el GGUF de Bonsai-8B (~1.16 GB) a KB_DATA_DIR, un
 
 pull-ministral:  ## Descarga el modelo Ministral 3B a Ollama (~2 GB via Hugging Face), una sola vez (perfil up-ministral)
 	$(COMPOSE_ACTIVO) exec ollama ollama pull hf.co/mistralai/Ministral-3-3B-Instruct-2512-GGUF:Q4_K_M
+
+pull-qwen35:  ## Descarga el modelo Qwen3.5 4B a Ollama (~3.4 GB), una sola vez (perfil up-qwen35)
+	$(COMPOSE_ACTIVO) exec ollama ollama pull qwen3.5:4b
+
+pull-nemotron:  ## Descarga el modelo Nemotron-mini 4B a Ollama (~2.7 GB), una sola vez (perfil up-nemotron)
+	$(COMPOSE_ACTIVO) exec ollama ollama pull nemotron-mini:4b
+
+pull-granite41:  ## Descarga Granite 4.1 3B a Ollama (~2.1 GB), una sola vez (perfil up-granite41)
+	$(COMPOSE_ACTIVO) exec ollama ollama pull granite4.1:3b
+
+pull-phi4mini:  ## Descarga Phi-4 Mini 3.8B a Ollama (~2.5 GB), una sola vez (perfil up-phi4mini)
+	$(COMPOSE_ACTIVO) exec ollama ollama pull phi4-mini:3.8b
+
+pull-qwen25:  ## Descarga Qwen2.5 3B a Ollama (~1.9 GB), una sola vez (perfil up-qwen25)
+	$(COMPOSE_ACTIVO) exec ollama ollama pull qwen2.5:3b
 
 pin-embeddings-cpu:  ## Crea bge-m3-cpu, fijado a CPU, para dejarle toda la VRAM al LLM
 	@# La T600 tiene 4 GB: gemma3:4b mas bge-m3 no caben juntos con holgura.

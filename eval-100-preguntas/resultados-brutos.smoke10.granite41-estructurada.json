@@ -1,0 +1,122 @@
+[
+  {
+    "id": 1,
+    "categoria": "tipos",
+    "pregunta": "¿Cuáles son los ocho tipos primitivos definidos en el lenguaje Java?",
+    "esperado": "responde",
+    "respuesta": "Los ocho tipos primitivos definidos en el lenguaje Java son booleano, byte, short, int, long, char y los dos tipos de punto flotante: float e double. [1] Estos tipos incluyen los números enteros (byte, short, int, long) y el tipo carácter (char), así como los tipos de punto flotante (float y double). [1]",
+    "estadoFinal": "Respondido en 6:26",
+    "error": null,
+    "inicio": "2026-08-20T22:43:51.266Z",
+    "fin": "2026-08-20T22:50:17.564Z",
+    "elapsedMs": 386298
+  },
+  {
+    "id": 2,
+    "categoria": "tipos",
+    "pregunta": "¿Qué diferencia hay entre un tipo primitivo y un tipo de referencia en Java?",
+    "esperado": "responde",
+    "respuesta": "Un tipo primitivo en Java es uno de los tipos definidos por el lenguaje como byte, short, int, long, char o boolean. Estos tipos no pueden ser nulos y tienen valores numéricos específicos. [4] Un tipo de referencia (o objeto) en Java puede ser una instancia de cualquier clase o interfaz definida por el programador. Los tipos de referencia incluyen todas las clases y interfaces creadas por el usuario, así como los arrays. [5] Los tipos primitivos no comparten estado entre sí; cada variable primitiva contiene su propio valor único. [4] Un tipo de referencia puede contener un valor nulo o una referencia a cualquier instancia de la clase o interfaz correspondiente. Por ejemplo, una variable del tipo 'List<String>' puede almacenar una referencia a una lista que realmente contiene Strings o a otra lista diferente. [5] La diferencia clave es que los tipos primitivos no pueden ser nulos y tienen valores numéricos fijos, mientras que los tipos de referencia pueden referenciar cualquier objeto (incluyendo objetos nulos) y son susceptibles a la heap pollution si se alisan a tipos no reales como raw types. [6] La heap pollution ocurre cuando un tipo parametrizado (como List<String>) almacena una referencia a un objeto de otro tipo parametrizado (como List<Integer>). Esto puede pasar sin que se detecte en tiempo de compilación porque las variables de tipos genéricos no son reales. [6] Esto ilustra que los tipos primitivos y los tipos de referencia tienen características fundamentales diferentes: los primeros están acotados a valores numéricos específicos y no pueden ser nulos; los segundos pueden referenciar cualquier objeto incluyendo objetos nulos y son susceptibles a la heap pollution debido a su naturaleza parametrizada. [6]",
+    "estadoFinal": "Respondido en 5:27",
+    "error": null,
+    "inicio": "2026-08-20T22:50:17.568Z",
+    "fin": "2026-08-20T22:55:44.844Z",
+    "elapsedMs": 327276
+  },
+  {
+    "id": 3,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es una conversión de ensanchamiento (widening) entre tipos primitivos?",
+    "esperado": "responde",
+    "respuesta": "Una conversión de ensanchamiento (widening) entre tipos primitivos es una conversión que permite pasar de un tipo con menor precisión a uno con mayor precisión sin perder información sobre el monto general del valor numérico en casos específicos. [1] Los ejemplos de conversiones de ensanchamiento entre tipos primitivos incluyen: byte a short, int, long, float o double; short a int, long, float o double; char a int, long, float o double; int a long, float o double; y long a float o double. [1] Estas conversiones de ensanchamiento no pierden información sobre el monto general en casos como: conversiones entre tipos integrales sin cambios; conversiones desde byte, short o char a tipos de punto flotante; int a double; y long a float o double. [1] Sin embargo, la conversión de int a float o de long a float (o a double) puede resultar en pérdida de precisión, ya que el valor resultante puede perder algunos de los bits menos significativos del valor original. El resultado es una versión correctamente redondeada del valor entero utilizando la política de redondeo hacia el número más cercano (round to nearest rounding policy). [1] Por otro lado, una conversión de anchura nula entre tipos primitivos incluye conversiones como: short a byte o double a byte, short, char, int, long o float. [5] Estas conversiones de anchura nula pueden perder información sobre el monto general del valor numérico y también pueden perder precisión y rango. Por ejemplo, una conversión de un número entero a un tipo T puede simplemente descartar todos los menos n bits más bajos, donde n es el número de bits usado para representar tipo T. [6] Además, una conversión de un carácter (char) a un tipo integral T también solo conserva los menos n bits más bajos, lo que puede resultar en pérdida de información sobre el monto del valor numérico y potencialmente generar un número negativo incluso cuando chars representan valores enteros no signados de 16 bits. [6] La conversión de un número de punto flotante a un tipo integral T se realiza en dos pasos: primero convierte el número de punto flotante a long si T es long, o a int si T es byte, short, char o int, utilizando la política de redondeo hacia cero. Luego, si el resultado puede representarse como int (o long para long), se mantiene; de lo contrario, se usa el valor más pequeño o más grande posible para ese tipo. [6]",
+    "estadoFinal": "Respondido en 6:58",
+    "error": null,
+    "inicio": "2026-08-21T01:33:33.116Z",
+    "fin": "2026-08-21T01:40:32.823Z",
+    "elapsedMs": 419707
+  },
+  {
+    "id": 4,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es el autoboxing y cuándo ocurre de forma automática?",
+    "esperado": "responde",
+    "respuesta": "El autoboxing es el proceso de convertir un valor de tipo primitivo a su tipo correspondiente de referencia automáticamente por la compilación en Java. Por ejemplo, una variable int se puede asignar a una Variable de tipo Integer sin escribir código explícito para realizar la conversión. [3] El autoboxing ocurre automáticamente cuando un valor primitivo es pasado como argumento a métodos que aceptan parámetros del tipo correspondiente de referencia (por ejemplo, un int se convierte en Integer). [5] La conversión automática solo aplica para los siguientes tipos: Boolean a boolean, Byte a byte, Short a short, Character a char, Integer a int, Long a long, Float a float y Double a double. [3] Si el valor de referencia es null, la conversión falla lanzando una NullPointerException. [5]",
+    "estadoFinal": "Respondido en 6:48",
+    "error": null,
+    "inicio": "2026-08-21T01:40:32.826Z",
+    "fin": "2026-08-21T01:47:21.039Z",
+    "elapsedMs": 408213
+  },
+  {
+    "id": 5,
+    "categoria": "tipos",
+    "pregunta": "¿Qué representa el tipo null y a qué tipos de referencia se puede asignar?",
+    "esperado": "responde",
+    "respuesta": "El tipo null tiene un solo valor: el null reference, representado por la palabra clave null. [1] Un null reference puede ser asignado a cualquier tipo de referencia, resultando en un null reference de ese tipo. [6] Una variable de tipo Object[] puede contener una referencia a cualquier array de tipo referencia. [5] Una variable de tipo Object puede contener tanto una referencia nula como una referencia a cualquier objeto, ya sea un instancia de clase o un array. [5]",
+    "estadoFinal": "Respondido en 2:43",
+    "error": null,
+    "inicio": "2026-08-21T01:47:21.040Z",
+    "fin": "2026-08-21T01:50:04.819Z",
+    "elapsedMs": 163779
+  },
+  {
+    "id": 6,
+    "categoria": "tipos",
+    "pregunta": "¿Qué significa que un método tenga tipo de retorno void?",
+    "esperado": "responde",
+    "respuesta": "El resultado de una declaración de método puede declarar el tipo de valor que el método devuelve (el tipo devuelto), o usar la palabra clave void para indicar que el método no devuelve un valor. [3] Si un método es abstracto o nativo, su cuerpo debe ser simplemente un punto y coma; esto significa que no puede tener código ejecutable dentro de él. [2] Una declaración de tipo devuelto void indica que el método no devuelve ningún valor. En este caso, el método no puede terminar normalmente sin usar una sentencia return. [3]",
+    "estadoFinal": "Respondido en 4:06",
+    "error": null,
+    "inicio": "2026-08-21T01:50:04.820Z",
+    "fin": "2026-08-21T01:54:11.504Z",
+    "elapsedMs": 246684
+  },
+  {
+    "id": 8,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es un literal de tipo long y cómo se distingue de un literal int en el código fuente?",
+    "esperado": "responde",
+    "respuesta": "Un literal de tipo long es aquel que termina con una letra 'L' o 'l', lo cual indica al compilador que el valor debe ser tratado como un tipo long en lugar de int. [1] Por el contrario, un literal de tipo int no tiene sufijo y se utiliza para representar valores enteros menores a 2147483648 (2^31), el límite superior del rango de un entero de 32 bits. [2]",
+    "estadoFinal": "Respondido en 7:11",
+    "error": null,
+    "inicio": "2026-08-21T01:57:59.498Z",
+    "fin": "2026-08-21T02:05:11.496Z",
+    "elapsedMs": 431998
+  },
+  {
+    "id": 9,
+    "categoria": "variables",
+    "pregunta": "¿Qué diferencia hay entre una variable local declarada con var y una declarada con un tipo explícito?",
+    "esperado": "responde",
+    "respuesta": "Una variable declarada con var recibe su tipo automáticamente del valor inicializado, mientras que una variable con un tipo explícito debe indicar el tipo de datos desde el comienzo. [1] Cuando se usa var, el compilador determina el tipo de la variable basándose en el tipo del valor inicializado y luego aplica proyección ascendente para eliminar cualquier captura de variables que puedan ser involucradas. [2] Si una variable con un tipo explícito tiene más de un declarador, o el declarador no incluye un identificador o contiene corchetes (para arrays), es un error compilatorio. [3] El uso de var restringe ciertas características como la inicialización múltiple, el uso de array initializers o referencias auto-referenciales en los iniciales. [4]",
+    "estadoFinal": "Respondido en 6:56",
+    "error": null,
+    "inicio": "2026-08-21T02:05:11.499Z",
+    "fin": "2026-08-21T02:12:07.907Z",
+    "elapsedMs": 416408
+  },
+  {
+    "id": 10,
+    "categoria": "variables",
+    "pregunta": "¿Qué es el ámbito (scope) de una variable local?",
+    "esperado": "responde",
+    "respuesta": "El ámbito (scope) de una variable local es el resto del bloque en el que está declarada, comenzando con su inicializador y incluyendo cualquier declarador adicional a la derecha en la declaración de variables locales. [1] La clase Test tiene un campo estático x que pertenece a la clase Test, así como un método main que es miembro de la clase Test y una variable de parámetro args para el método main. La variable local x del método main puede oscurecer (o 'ocultar') al campo x de la clase. [2] Cada declarador en una declaración de variables locales declara una sola variable local. Si el declarador incluye un identificador, este es el nombre de la variable local; si no lo hace, la variable local está sin nombre (§6.1). [3] El ámbito y el oscurecimiento de una declaración de variables locales están especificados en los apartados §6.3 y §6.4. [4] Las referencias a una variable local desde una clase anidada o un expresión lambda están restringidas, tal como se describe en el apartado §6.5.6.1. [5]",
+    "estadoFinal": "Respondido en 3:48",
+    "error": null,
+    "inicio": "2026-08-21T02:12:07.909Z",
+    "fin": "2026-08-21T02:15:56.428Z",
+    "elapsedMs": 228519
+  },
+  {
+    "id": 7,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es un tipo genérico parametrizado, por ejemplo List<String>?",
+    "esperado": "responde",
+    "respuesta": "A variable of a class type T can hold a null reference or a reference to an instance of class T or of any class that is a subclass of T. [6] A variable of an interface type can hold a null reference or a reference to any instance of any class that implements the interface. [6] If T is a primitive type, then a variable of type \"array of T\" can hold a null reference or a reference to any array of type \"array of T\". [6] If T is a reference type, then a variable of type \"array of T\" can hold a null reference or a reference to any array of type \"array of S\" such that type S is a subclass or subinterface of type T. [6] A variable of type Object[] can hold a reference to an array of any reference type. [6] A variable of type Object can hold a null reference or a reference to any object, whether it is an instance of a class or an array. [6]",
+    "estadoFinal": "Respondido en 1:07",
+    "error": null,
+    "inicio": "2026-08-21T02:18:02.375Z",
+    "fin": "2026-08-21T02:19:10.414Z",
+    "elapsedMs": 68039
+  }
+]

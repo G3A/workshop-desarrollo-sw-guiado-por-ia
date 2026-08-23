@@ -2629,3 +2629,917 @@ eliminó al terminar. `kb-api` real sigue en el perfil Ministral (`compose.minis
 `tope-por-documento=20`, `Reformulador` condicional del hallazgo 72), sin cambios — nunca se tocó
 durante esta sesión. No se descargó `qwen3.6` (no existe una variante de ~4B) ni
 `empero-ai/Qwen3.8-4B` (descartado por análisis, sin evidencia propia en vivo).
+
+## Sesión 19: `gemma4:e2b` descartado sin completar la descarga — el paquete real pesa 7.2 GB, no ~2 GB
+
+Candidato propuesto fuera de esta serie de sesiones (comparación externa de velocidad contra Ministral,
+sin evidencia propia todavía) como alternativa "chica y rápida". Antes de gastar tiempo probándolo contra
+los tres roles reales del pipeline, se aplicó el mismo filtro que ya usó la sesión 4 y descartó a
+`qwen3.6:4b` en la sesión 18: confirmar primero que el modelo entra en la VRAM real de esta GPU.
+
+### Hallazgo 78: el tag existe en la librería oficial de Ollama, pero el manifiesto declara 7.2 GB de descarga — se aborta antes de completarla
+
+Con `kb-api`, `kb-llama-server` (Ministral) y `kb-docling-serve` corriendo en paralelo (stack real, no un
+entorno limpio), `nvidia-smi` medía **1594 MiB libres de 4096 MiB** al momento de lanzar la prueba —
+bastante menos que los ~3.3-3.9 GB "en frío" que documentaron las sesiones 1 y 5, porque el resto del
+stack y el escritorio de Windows ya venían consumiendo VRAM.
+
+`docker exec kb-ollama ollama pull gemma4:e2b` sí resolvió el tag (no es un nombre inventado), pero el
+progreso reportó un tamaño total de **7.2 GB** para la primera capa (`4e30e2665218`) — más grande que
+cualquier candidato de ≤4B probado hasta ahora en esta investigación, incluido el más pesado
+(`gemma3:4b-it-qat`, 4.0 GB cargado, hallazgo 6). Sin llegar a completar la descarga ni acercarse al
+punto de poder medir `ollama ps`, ya es evidencia suficiente de que no entra ni parcialmente sin un
+offload masivo a CPU — el mismo motivo que descartó a `gemma4:26b`/`qwen3-coder:30b` sin probarlos
+(tamaño total, no parámetros activos, es lo que hay que cargar en memoria).
+
+Se abortó la descarga a los ~280 MB (~4% del total): se cortó la tarea del harness y, al notar que el
+proceso `ollama pull` seguía vivo dentro del contenedor pese a eso (mismo patrón operativo que el
+hallazgo 60 — un "killed" del harness no garantiza que el proceso real haya muerto, aquí para un `docker
+exec` en vez de una tarea de Windows), se lo mató explícitamente con `kill` dentro de `kb-ollama` para no
+seguir gastando ancho de banda ni disco en un candidato ya descartado por tamaño.
+
+Hipótesis no verificada de por qué pesa tanto: la línea "Gemma 4" de Google (2026) se describe en fuentes
+externas como una arquitectura "unificada" que empaqueta encoders de visión/audio incluso en el tier más
+chico (E2B), a diferencia de `gemma3:4b` (solo texto). No se abrió el manifiesto capa por capa para
+confirmarlo — es la explicación más consistente con el tamaño observado, no un hecho verificado contra
+este pipeline.
+
+### Conclusión de la sesión 19
+
+**`gemma4:e2b` queda descartado sin llegar a probar ningún rol del pipeline** (Planificador,
+VerificadorGrounding, Sintetizador) — el filtro de VRAM de la sesión 4 lo elimina antes de esa etapa,
+igual que pasó con `qwen3.6:4b` en la sesión 18. No es un candidato viable para esta GPU
+independientemente de cuántos parámetros "activa" por token, porque el paquete completo (7.2 GB) no cabe
+en los ~4 GB nominales de la T600 bajo ningún reparto CPU/GPU razonable.
+
+Estado del entorno al cierre: la descarga parcial de `gemma4:e2b` quedó cancelada y no aparece en
+`docker exec kb-ollama ollama list`. Ningún archivo de compose, `.env` ni el `kb-api` real se tocaron —
+el resto del stack (`kb-api`, `kb-db`, `kb-llama-server`, `kb-docling-serve`, `kb-ollama`) siguió
+corriendo sin interrupción durante toda la prueba.
+
+## Sesión 20: se integra el fix de `qwen3.5:4b` (hallazgo 76) en un perfil propio, sin tocar producción
+
+Retoma el pendiente que dejó abierto la sesión 18: `reasoning_effort:"none"` en el `extraBody` de los
+tres componentes `*OpenAi`, más un perfil de compose dedicado para no competir con `compose.ministral.yml`
+(el perfil real de producción, sin cambios).
+
+### Cambios de código
+
+- `PlanificadorOpenAi.java`, `VerificadorGroundingOpenAi.java`, `SintetizadorOpenAi.java`: se agregó
+  `"reasoning_effort", "none"` al `extraBody` que ya llevaba `repeat_penalty` en los tres, mismo patrón
+  que ya usaba ese parámetro (no es parte de la API oficial de OpenAI). Aplica sin condicionar por
+  perfil — un campo extra que Ministral/Bonsai (sin "thinking") ignoran, mismo argumento que ya vale
+  para `repeat_penalty` en esos dos backends.
+- `compose.qwen35.yml` (nuevo): perfil de Ollama para `qwen3.5:4b`, mismo mecanismo que
+  `compose.ministral.yml` (`SPRING_AI_OPENAI_BASE_URL: http://ollama:11434/v1`, sin `llama-server`
+  aparte). Copia como punto de partida los mismos recortes de contexto de Ministral
+  (`KB_EXPANDIR_VECINOS`, `KB_MAX_FRAGMENTOS_CONTEXTO`, `KB_RECUPERACION_TOP_RERANK`,
+  `KB_RECUPERACION_TOPE_POR_DOCUMENTO=20`), pero deja anotado explícitamente que el `num_ctx=4096` que
+  motivó esos valores para Ministral (hallazgo 56, confirmado con `ollama ps`) **no se remidió para
+  `qwen3.5:4b`** — arquitectura distinta (`qwen35` vs `Ministral3ForCausalLM`), sin garantía de que
+  Ollama le aplique el mismo default pese a su contexto nativo de 262144.
+- `Makefile`: `up-qwen35`/`down-qwen35`/`pull-qwen35`, mismo patrón que los targets de Ministral.
+
+Verificado: `./mvnw clean compile` sin errores, `docker compose -f compose.yml -f compose.gpu.yml -f
+compose.qwen35.yml config --quiet` valida sin errores de sintaxis. No se levantó el perfil contra el
+pipeline real en esta sesión.
+
+### Lo que esta sesión NO hizo — sigue pendiente antes de considerar `qwen3.5:4b` un candidato viable
+
+1. **Confirmar el fix con el prompt completo del `Planificador`**: la sesión 18 solo probó un prompt
+   simplificado (sin el catálogo real de herramientas ni las salvedades código-vs-documentación) — sigue
+   sin evidencia de que elija bien las herramientas con el prompt de producción.
+2. **Medir `num_ctx` real** con `docker compose exec ollama ollama ps` después de una consulta, para
+   confirmar o corregir los valores de recorte de contexto copiados de Ministral.
+3. **Correr el piloto de evaluación** (`eval-100-preguntas/`) contra el pipeline real para tener un
+   número de precisión comparable al 85.3% de Ministral (sesión 17) — nada de esto se midió todavía con
+   `qwen3.5:4b`.
+4. **Medir latencia end-to-end del pipeline completo**, no solo llamadas aisladas — 47% GPU (peor reparto
+   que Ministral) significa que evitar el "thinking" no garantiza ser más rápido en total.
+
+Estado del entorno al cierre: `kb-api` real sigue en el perfil Ministral (`compose.ministral.yml`), sin
+tocar. `compose.qwen35.yml` es nuevo y no se levantó. El código de `*OpenAi` sí cambió (afecta a
+cualquier perfil que se use a partir de ahora, incluido Ministral/Bonsai, de forma inocua) — recompilado
+y verificado, pendiente de que `kb-api` en producción se reconstruya con la próxima build normal.
+
+## Sesión 21: primera corrida real del perfil `qwen35` contra el pipeline completo — el mejor resultado cualitativo de toda la investigación, con un gap nuevo encontrado y corregido en vivo
+
+Retoma el pendiente #1 de la sesión 20 (confirmar el fix con el prompt completo, no el simplificado de
+la sesión 18). A diferencia de todas las sesiones anteriores, esta corrió contra `kb-api` real (no un
+`kb-api-test` aislado en otro puerto) porque, al momento de empezar, **el stack completo ya no existía**
+— se había reiniciado entre sesiones (contenedores `kb-*` ausentes de `docker ps -a`, sin relación con
+esta investigación). Los modelos de Ollama sí persistieron en `${KB_DATA_DIR}/ollama` (bind mount, 36 GB
+en disco). Se levantó todo de nuevo con
+`docker compose -f compose.yml -f compose.gpu.yml -f compose.qwen35.yml up -d --build`, con la puerta de
+relevancia en su valor de producción (`KB_UMBRAL_RELEVANCIA_HABILITADO=true`, sin overridear) — a
+diferencia de la mayoría de sesiones anteriores (2-18), que la apagaban a propósito para comparar
+síntesis en aislamiento.
+
+### Hallazgo 79: `num_ctx=4096` confirmado para `qwen3.5:4b` — la suposición de `compose.qwen35.yml` era correcta
+
+`docker exec kb-ollama ollama ps` durante la primera consulta real: `qwen3.5:4b`, 3.8 GB, **53%/47%
+CPU/GPU, num_ctx=4096** — exactamente lo que `compose.qwen35.yml` había dejado como suposición sin
+confirmar (comentario de la sesión 20: "no se remidió para qwen3.5:4b"). Cierra el pendiente #2 de esa
+sesión: los recortes de contexto copiados de Ministral (`KB_EXPANDIR_VECINOS`, `KB_MAX_FRAGMENTOS_CONTEXTO`,
+`KB_RECUPERACION_TOP_RERANK`) están bien fundamentados para este modelo también, no solo por analogía.
+
+### Hallazgo 80: pregunta relevante ("cómo se despliega el servicio") — Planificador correcto con el prompt real, y la mejor citación medida contra este caso en toda la investigación
+
+Plan: `{"herramientas":["search_unified","search_docs"],"razon":"pregunta de despliegue"}` — correcto,
+sin la confusión código-vs-documentación que el prompt real (con catálogo completo y salvedades)
+advierte explícitamente. A diferencia de la prueba simplificada de la sesión 18 (hallazgo 76, prompt sin
+catálogo real), esta sí usó `PlanificadorOpenAi` de producción tal cual — cierra el pendiente #1 de la
+sesión 20.
+
+Síntesis: prosa correcta y completa, **una sola cita `[1]` pegada al final de cada afirmación puntual**,
+e ignoró por completo los 5 fragmentos irrelevantes de `jls25.pdf` que trajo la búsqueda (sobre
+`ServiceLoader`, texto legal de la licencia) sin citarlos por citar — el mismo patrón que la sesión 5
+había medido como "la mejor citación de la investigación" para Bonsai (hallazgo 12), aquí igualado.
+Ningún fallback ni advertencia en los logs. Latencia total: **344 s** (dos herramientas en paralelo,
+~38 s cada una, más planificador + síntesis).
+
+### Hallazgo 81: pregunta de control ("explícame cómo usar Java 25") — interceptada por la puerta de relevancia, cero alucinación
+
+A diferencia de los doce candidatos de las sesiones 2-9 y de `qwen2.5:3b`/`llama3.2:3b` (que alucinaban
+pegando las instrucciones de despliegue como respuesta, con la puerta apagada a propósito en esas
+pruebas), esta corrida usó la puerta en su valor real de producción y el resultado fue el mensaje
+`MENSAJE_SIN_INFORMACION` ("No encontré información suficientemente relevante..."), `citas: []` — el
+mismo comportamiento protegido que el hallazgo 16 ya había confirmado con `gemma3:4b`, ahora también con
+`qwen3.5:4b`. El mejor fragmento recuperado tuvo `rerank=0.918`, muy por debajo del `techo-confianza=8.0`
+heredado de Ministral. Latencia: **192 s**. Sin fallback ni advertencias del Planificador/VerificadorGrounding
+en los logs — el `reasoning_effort:none` de ambos componentes sostuvo la salida JSON forzada también en
+este caso.
+
+### Hallazgo 82: gap nuevo encontrado en vivo — `ReformuladorOpenAi` (sesión 17) había quedado sin el fix, porque no existía cuando se escribió la sesión 18
+
+La pregunta de control disparó el `Reformulador` (la búsqueda inicial no llegó a `SUFICIENTE`) y el log
+mostró exactamente el mismo síntoma de los hallazgos 74/75: `Fallo al reformular la consulta, se usa la
+pregunta original: ... MismatchedInputException: No content to map due to end-of-input` — el pensamiento
+se comía el `maxTokens(120)` sin dejar nada para el JSON de `Reformulacion`. Benigno en este caso (el
+`catch` ya usa la pregunta original como respaldo, así que no rompió la consulta), pero desperdiciaba la
+llamada entera. Motivo: `ReformuladorOpenAi.java` se agregó en la sesión 17 (docs de esa sesión,
+hallazgo 70), **después** de que la investigación de `qwen3.5:4b` (sesión 18) ya hubiera cerrado — el
+grep que armó la sesión 20 sobre `extraBody|repeat_penalty|reasoning_effort` sí lo habría encontrado,
+pero el inventario de "los tres componentes `*OpenAi`" quedó desactualizado desde antes de esa sesión.
+
+**Corregido en vivo dentro de esta misma sesión**: se agregó `extraBody(Map.of("reasoning_effort",
+"none"))` a `ReformuladorOpenAi.java` (sin `repeat_penalty`, a diferencia de los otros tres — sin
+evidencia propia de que este componente lo necesite), se recompiló, se reconstruyó la imagen
+(`docker compose ... up -d --build api`) y se repitió una pregunta que dispara el `Reformulador` a
+propósito ("que es el autoboxing en Java", el mismo ejemplo canónico del hallazgo 70).
+
+### Hallazgo 83: con el fix del `Reformulador` aplicado, la pregunta de autoboxing responde correcto y sin fallback
+
+`consultaReformulada: "autoboxing"` (el `Reformulador` sí se activó y devolvió algo distinto al texto
+original, disparando una segunda ronda de búsqueda). Síntesis: explicación correcta de autoboxing/unboxing
+citando `jls25.pdf` (`[2]` y `[3]`, pegados al final de cada afirmación, terminología técnica precisa
+en español latinoamericano neutro). **Sin ningún "Fallo al reformular" en los logs** — el gap del
+hallazgo 82 queda cerrado. Latencia: 428 s (incluye la ronda de búsqueda extra que dispara el
+`Reformulador`).
+
+### Conclusión de la sesión 21
+
+**Los tres casos probados contra el pipeline real, con la puerta de relevancia en su valor de
+producción, salieron limpios**: pregunta relevante (citación impecable), pregunta de control (rechazo
+correcto, cero alucinación) y pregunta que dispara el `Reformulador` (una vez corregido el gap del
+hallazgo 82, también limpia). Es la primera vez en la investigación que un candidato pasa los tres casos
+canónicos sin ningún defecto medido — ni sobre-citación (`gemma3:4b`), ni pegado de texto crudo
+(`granite4.1:3b`/`phi4-mini:3.8b`/`qwen2.5:3b`), ni alucinación de contenido nuevo (`llama3.2:3b`), ni
+fallo de convergencia en salida forzada (`qwen3:4b`/`nanbeige4.1:3b`/`minicpm5`).
+
+**Esto NO es todavía "listo para producción"**: son 3 preguntas, no el piloto de 100 preguntas que le
+dio a Ministral su cifra de 85.3% de precisión (sesión 17). Las latencias (192-428 s por pregunta) son
+altas y no se compararon con Ministral bajo la misma carga de GPU/contención — el reparto 47% GPU sigue
+siendo peor que el 100% de `qwen2.5:3b` o la carga completa de Ministral. El pendiente real para una
+recomendación firme sigue siendo el piloto completo (`eval-100-preguntas/`), no descartado por esta
+sesión sino reforzado: por primera vez hay evidencia cualitativa suficiente para justificar el costo de
+correrlo.
+
+Estado del entorno al cierre: **el stack queda arriba con el perfil `qwen35` activo** (`kb-api` real
+sirviendo `qwen3.5:4b`, con el fix del `Reformulador` ya reconstruido en la imagen) — a diferencia de
+todas las sesiones anteriores, que revertían a Ministral o apagaban todo al cerrar. `compose.ministral.yml`
+sigue intacto y disponible (`make up-ministral` para volver). El código de `ReformuladorOpenAi.java`
+quedó modificado junto a los tres de la sesión 20 — los cuatro componentes `*OpenAi` que llaman al LLM ya
+tienen `reasoning_effort:none`.
+
+## Sesión 22: buscando algo mejor que Ministral — `nemotron-mini:4b` es más rápido que `qwen3.5:4b` pero reproduce el defecto de "texto pegado" que ya había descartado a otros tres candidatos
+
+Pregunta directa del usuario: ¿hay una alternativa mejor que Ministral? Búsqueda de candidatos nuevos no
+probados en las 21 sesiones anteriores (WebSearch, agosto 2026): `SmolLM3-3B` (1.92 GB, pero con modo
+"reasoning" nativo — mismo riesgo estructural que ya complicó a `qwen3.5:4b`, no probado por eso) y
+`nemotron-mini:4b` (NVIDIA, Ollama oficial, 2.7 GB en disco). Se eligió este último para probar primero:
+`ollama show nemotron-mini:4b` declara capacidades `completion` y `tools` **sin `thinking`** — el primer
+candidato desde `qwen2.5:3b` (sesión 4) sin ese riesgo estructural de origen, y contexto 4096 confirmado
+directo (no una suposición heredada como con `qwen3.5:4b`).
+
+Se creó `compose.nemotron.yml` (mismo patrón que los otros perfiles de Ollama, sin cambios de código —
+no hace falta `reasoning_effort` para un modelo sin "thinking") y se probó contra el pipeline real,
+mismo protocolo que la sesión 21: puerta de relevancia en su valor de producción, `POST /api/ask` contra
+`kb-api` real (el stack seguía arriba desde la sesión 21).
+
+### Hallazgo 84: reparto CPU/GPU mejor que `qwen3.5:4b`, y más rápido en los dos casos — pero sigue por detrás de Ministral
+
+`ollama ps`: 3.9 GB cargado, **40% CPU / 60% GPU** — mejor ajuste que `qwen3.5:4b` (53%/47%), aunque
+peor que Ministral. Latencias contra el pipeline real:
+
+| Caso | Ministral (sesión 10) | `qwen3.5:4b` (sesión 21) | `nemotron-mini:4b` (esta sesión) |
+|---|---|---|---|
+| Pregunta relevante | 177 s | 344 s | **281 s** |
+| Pregunta de control | 141 s | 192 s | **186 s** |
+
+Más rápido que `qwen3.5:4b` en los dos casos, consistente con no pagar el impuesto de "thinking" y con
+un modelo más chico (4.2B vs 4.7B) — pero todavía claramente más lento que Ministral en ambos.
+
+### Hallazgo 85: la pregunta relevante reproduce el defecto de "texto pegado sin citas" que ya había descartado a tres candidatos — sin ningún marcador `[n]`, y la respuesta queda incompleta
+
+Plan del Planificador correcto (`["search_docs"]`, razón "pregunta de despliegue"). Pero la síntesis:
+
+> "Para desplegar el servicio se necesita Docker Desktop con el motor iniciado. En Windows, además hay
+> que copiar wslconfig.example a .wslconfig para darle memoria a WSL2."
+
+Casi texto literal de `despliegue.md` (compárese con el fragmento fuente, hallazgo 80), **sin un solo
+marcador `[n]`** pese a que el prompt de sistema lo exige explícitamente, y **incompleta**: se corta
+después del segundo párrafo del fragmento fuente, sin mencionar `.env.example`, `docker compose up -d`
+ni la detección automática de GPU — los otros dos pasos que sí estaban en el mismo fragmento citado. Es
+el mismo patrón de "pegado de texto crudo" que ya había descartado a `granite4.1:3b`, `phi4-mini:3.8b`
+y `qwen2.5:3b` (hallazgos 3, 8 y 9) — la ausencia de "thinking" evita el modo de falla de convergencia
+JSON (hallazgo 7), pero no garantiza una síntesis de calidad en texto libre.
+
+### Hallazgo 86: la pregunta de control sí funciona bien — rechazo correcto, cero alucinación, con una imprecisión menor del Planificador
+
+`MENSAJE_SIN_INFORMACION`, `citas: []` — igual que Ministral, `gemma3:4b` (hallazgo 16) y `qwen3.5:4b`
+(hallazgo 81). El plan agregó `who_knows` de más (`["search_docs","search_unified","who_knows"]`) sin
+necesitarlo para esta pregunta — imprecisión menor, no una falla (herramientas de más solo cuestan
+latencia, mismo tipo de defecto que el hallazgo 15 de Bonsai), no impidió el rechazo correcto.
+
+### Conclusión de la sesión 22
+
+**`nemotron-mini:4b` no es una alternativa mejor que Ministral.** Gana en dos ejes puntuales (sin riesgo
+de "thinking", más rápido que `qwen3.5:4b`) pero pierde en el eje que más importa para este pipeline: la
+calidad de síntesis. El defecto de citación medido (hallazgo 85) lo coloca en el mismo grupo que ya
+había descartado a otros tres candidatos, y sigue siendo más lento que Ministral en los dos casos
+comparables.
+
+**Balance de las tres sesiones de esta búsqueda (20-22), respondiendo la pregunta original del
+usuario ("busca una alternativa mejor a Ministral")**: ninguno de los dos candidatos nuevos lo supera en
+conjunto.
+
+- `qwen3.5:4b`: mejor citación medida de toda la investigación (hallazgo 80, empata con Bonsai), pero
+  ~2x más lento que Ministral en los dos casos comparables.
+- `nemotron-mini:4b`: más rápido que `qwen3.5:4b` pero sigue por detrás de Ministral, y con un defecto
+  de síntesis real (texto pegado sin citas, respuesta incompleta).
+- Diecisiete candidatos probados en 22 sesiones, y **ninguno desplaza a Ministral** como el mejor
+  balance velocidad/calidad para esta GPU de 4 GB — la conclusión de la sesión 4 ("no hay alternativa
+  que entre 100% en VRAM y pase la barra de calidad") se extiende ahora también al eje de velocidad.
+
+`SmolLM3-3B` queda sin probar (riesgo de "thinking" no descartado) — candidato a investigar si se retoma
+esta búsqueda, con la misma metodología: confirmar capacidades con `ollama show` antes de invertir tiempo
+en probarlo contra el pipeline.
+
+Estado del entorno al cierre: el stack sigue arriba con el perfil `nemotron` activo (`kb-api` sirviendo
+`nemotron-mini:4b`). Dado que ni `qwen3.5:4b` ni `nemotron-mini:4b` superaron a Ministral, la
+recomendación es volver al perfil de producción (`make up-ministral`) — pendiente de que el usuario lo
+confirme, no se ejecutó en esta sesión. `compose.nemotron.yml` y los targets `up-nemotron`/`down-nemotron`/
+`pull-nemotron` del Makefile quedan como nuevo perfil experimental disponible, igual que `qwen35`.
+
+## Sesión 23: `SmolLM3-3B` — el mejor reparto de VRAM de los 18 candidatos, pero la peor síntesis medida en toda la investigación
+
+Retoma el pendiente que cerraba la sesión 22: el candidato con "thinking" nativo que había quedado sin
+probar por el riesgo estructural ya conocido. `ollama show hf.co/ggml-org/SmolLM3-3B-GGUF:Q4_K_M`
+confirma capacidades `tools`, `thinking`, `completion` (arquitectura `smollm3`, 3.08B parámetros,
+contexto nativo 65536, 1.9 GB en disco) — mismo riesgo que `qwen3.5:4b`. Se probó igual porque el fix
+`reasoning_effort:none` (hallazgo 76) ya está cableado sin condicionar por modelo en los cuatro
+componentes `*OpenAi`: si Ollama no lo respetara para esta arquitectura, se vería de inmediato como
+fallback del Planificador en los logs, sin necesitar código nuevo para descartarlo. Se creó
+`compose.smollm3.yml` (mismo patrón que los otros perfiles de Ollama) y se probó contra el pipeline real,
+mismo protocolo que las sesiones 21-22.
+
+### Hallazgo 87: `reasoning_effort:none` sí funciona para esta arquitectura también, y el reparto de VRAM es el mejor medido en 18 candidatos
+
+`ollama ps`: 2.6 GB cargado, **11% CPU / 89% GPU**, `num_ctx=4096` — el mejor ajuste de GPU de todos los
+candidatos de las sesiones 20-23, mejor incluso que `qwen2.5:3b` (100% GPU pero VRAM total más alta) en
+términos de dejar margen a la vez que usa la GPU casi por completo. Sin ningún "Fallo al planificar" ni
+"Fallo al verificar" en los logs — el fix genérico (sin condicionar por modelo) sostuvo la salida JSON
+forzada también en esta arquitectura, tercera confirmación después de `qwen3.5:4b` (sesión 21) y, por
+ausencia total de "thinking", el caso trivial de `nemotron-mini:4b` (sesión 22). Latencia: **251 s** —
+más rápido que `qwen3.5:4b` (344s) y `nemotron-mini:4b` (281s), aunque sigue por detrás de Ministral
+(177s).
+
+### Hallazgo 88: la síntesis es la peor medida en toda la investigación — pegó el fragmento crudo completo, con un encabezado que imita una cita real sin serlo
+
+Plan del Planificador correcto (`["search_unified"]`), aunque con una `razon` que no respeta el límite
+de 6-8 palabras del prompt (una oración completa con punto final — imprecisión menor, no una falla).
+La síntesis, en cambio, es un caso nuevo y peor que el "pegado de texto crudo" ya visto en
+`granite4.1:3b`/`phi4-mini:3.8b`/`qwen2.5:3b`/`nemotron-mini:4b` (hallazgos 3, 8, 9, 85):
+
+```
+[1] despliegue.md (file:///vault/documentos/despliegue.md)
+Para desplegar el servicio se necesita Docker Desktop con el motor iniciado. En Windows, además hay
+que copiar wslconfig.example a .wslconfig para darle memoria a WSL2.
+
+1. Copia .env.example a .env.
+2. Corre docker compose up -d. El make up detecta la GPU sola.
+...
+```
+
+No hay una sola oración de prosa propia: el modelo reprodujo el fragmento completo tal cual llega en el
+contexto, incluido el encabezado `[1] despliegue.md (uri)` que **imita el formato de una cita real sin
+serlo** — el prompt pide `[n]` pegado al final de cada afirmación puntual, no un bloque de metadatos al
+inicio seguido de una copia literal. Es cualitativamente peor que los otros cuatro candidatos con este
+defecto: ninguno de ellos había llegado a reproducir el propio formato `[n] titulo (uri)` como si fuera
+parte de la respuesta.
+
+### Conclusión de la sesión 23
+
+**`SmolLM3-3B` queda descartado.** Resuelve los dos riesgos estructurales que más candidatos habían
+eliminado en esta investigación (VRAM — el mejor reparto medido — y "thinking" sin apagar — el fix
+genérico funcionó sin ajuste), pero falla en el eje que de verdad importa para este pipeline: la síntesis
+en español no es prosa, es una copia literal del contexto con metadatos de cita falsos. Ni el mejor
+ajuste de VRAM ni la velocidad (251s, la mejor de los tres candidatos nuevos) compensan eso.
+
+**Cierra, por ahora, la búsqueda de alternativa a Ministral iniciada en la sesión 20**: dieciocho
+candidatos probados en 23 sesiones, ninguno desplaza a Ministral como mejor balance velocidad/calidad
+para esta GPU de 4 GB. El patrón que emerge de las sesiones 20-23 en particular: los candidatos sin
+"thinking" o con el fix aplicado (`nemotron-mini:4b`, `SmolLM3-3B`) evitan el modo de falla de
+convergencia JSON, pero eso no garantiza nada sobre la calidad de la síntesis en texto libre — son ejes
+independientes, ninguno de los dos predice al otro.
+
+Estado del entorno al cierre: el stack sigue arriba con el perfil `smollm3` activo (`kb-api` sirviendo
+`hf.co/ggml-org/SmolLM3-3B-GGUF:Q4_K_M`). `compose.smollm3.yml` queda como nuevo perfil experimental
+descartado (documentado, no eliminado). Recomendación reiterada: volver a `make up-ministral`, pendiente
+de confirmación del usuario.
+
+## Sesión 24: se agrega `SintetizadorEstructuradoOpenAi` (vía forzada JSON en vez de prosa libre) y se prueba contra el defecto exacto del hallazgo 88 — mejora medible
+
+A pedido del usuario, se implementa la vía que la sesión 3 había dejado anotada como no explorada: en vez
+de pedirle al modelo prosa libre con `[n]` incrustado a mano, forzar la síntesis como salida JSON
+estructurada (`{afirmaciones: [{texto, fuente}]}`), el mismo patrón que ya usan `Planificador` y
+`VerificadorGrounding`. Implementado como componente **nuevo y opt-in**, sin tocar el `Sintetizador` de
+producción:
+
+- `SintetizadorEstructuradoOpenAi.java` (nuevo): llama al LLM una sola vez (bloqueante, con
+  `useProviderStructuredOutput()`), arma el texto final uniendo cada afirmación con su `[n]` pegado al
+  final, y lo devuelve como un `Flux` de un solo elemento -- cumple el contrato de la interfaz
+  (`Flux<String> sintetizar(...)`) sin tocar `Orquestador` ni el adaptador SSE. Trade-off documentado en
+  el propio javadoc: la UI en streaming pierde el efecto palabra-por-palabra (la respuesta completa llega
+  de una vez), sin medición propia todavía de si eso es aceptable para el caso de uso real.
+- `SintetizadorOpenAi.java` (existente): sin cambios de comportamiento -- se le agregó
+  `@ConditionalOnProperty(..., havingValue = "false", matchIfMissing = true)` para que siga siendo el
+  único bean activo salvo que se active la alternativa explícitamente.
+- Propiedad nueva `kb.llm.sintesis-estructurada.habilitada` (`KB_LLM_SINTESIS_ESTRUCTURADA_HABILITADA`,
+  default `false`) -- ningún perfil ni `.env` existente cambia de comportamiento sin overridearla.
+- Cada `Afirmacion` lleva una sola fuente (`int`, no una lista): el esquema mismo impide por construcción
+  la sobre-citación que tuvo `gemma3:4b` (hallazgo 6) -- si una idea depende de dos fragmentos, el modelo
+  tiene que partirla en dos afirmaciones, no hay campo para poner dos números.
+
+`./mvnw test` completo (123 tests, 0 fallos) confirmó que no rompió nada existente antes de probarlo en
+vivo.
+
+### Hallazgo 89: error operativo real -- modificar código Java y reiniciar el contenedor sin `--build` deja corriendo el jar viejo, sin ningún aviso
+
+Al activar `KB_LLM_SINTESIS_ESTRUCTURADA_HABILITADA=true` contra el perfil `smollm3` (sesión 23) con
+`docker compose ... up -d api` (sin `--build`), la respuesta salió sorprendentemente rápida (56s, contra
+251s de la sesión 23) y con prosa bien formada -- pero **sin ningún marcador `[n]` real** (solo un `[1]`
+suelto en medio de la primera oración, estilo distinto al que produce el código nuevo). La sospecha se
+confirmó copiando el jar en ejecución del contenedor (`docker cp` + inspección con
+`System.IO.Compression.ZipFile`, ya que la imagen runtime no trae `unzip` ni `jar`): **la clase
+`SintetizadorEstructuradoOpenAi` no estaba en el jar** -- el contenedor seguía corriendo la imagen
+compilada antes de escribir el código nuevo (sesión 21), y `docker compose up -d` sin `--build` no
+reconstruye nada si el `Dockerfile`/contexto no cambió de forma que Compose detecte. La variable de
+entorno nueva no tenía ningún efecto real: corrió el `SintetizadorOpenAi` de siempre, y la latencia/
+calidad distintas de la sesión 23 fueron variación normal de muestreo del mismo modelo, no evidencia de
+nada. **Lección operativa**: cualquier cambio de código Java exige `--build` explícito antes de la
+siguiente prueba -- `docker compose up -d` sin ese flag no es una señal confiable de "ya corre lo nuevo".
+
+### Hallazgo 90: con la imagen reconstruida de verdad, la síntesis estructurada resuelve el defecto exacto del hallazgo 88 -- y es más rápida
+
+Reconstruido con `--build` y verificado que la clase sí está en el jar corriendo (mismo método de
+`docker cp` + `ZipFile`), se repitió la pregunta de despliegue contra `SmolLM3-3B` con la puerta de
+relevancia en su valor de producción:
+
+```
+Para desplegar el servicio se necesita Docker Desktop con el motor iniciado. En Windows, además hay
+que copiar wslconfig.example a .wslconfig para darle memoria a WSL2. [1] Se recomienda copiar
+.env.example a .env antes de desplegar el servicio. [1] El comando 'docker compose up -d' se utiliza
+para iniciar el servicio en modo detallado, detectando la GPU sola si está presente. [1]
+```
+
+Comparado con el hallazgo 88 (mismo modelo, mismo perfil, síntesis en texto libre):
+
+| | Hallazgo 88 (texto libre) | Hallazgo 90 (estructurada) |
+|---|---|---|
+| Formato de cita | ninguno real (un encabezado `[1] titulo (uri)` que imita una cita) | `[1]` pegado al final de cada afirmación, correcto |
+| Contenido | fragmento crudo, cortado a la mitad | tres afirmaciones, cubre despliegue + `.env` + `docker compose up -d` |
+| Prosa propia | ninguna (copia literal) | sí, aunque la primera afirmación sigue cerca del fragmento fuente |
+| Latencia | 251 s | **104 s** |
+| Fallos/reintentos | ninguno | ninguno (el esquema anidado `afirmaciones: [{texto, fuente}]` no le costó más que el esquema plano de `Planificador`) |
+
+Sin ningún "Fallo al planificar"/"Fallo al verificar" en los logs -- el esquema anidado no rompió nada
+que el esquema plano de `PlanDeHerramientas` ya sostenía.
+
+### Conclusión de la sesión 24
+
+**La vía de salida estructurada sí mejora el defecto de "texto pegado" en este candidato puntual**:
+mejor formato de citación, contenido más completo, y más rápida. No es una validación completa
+(una sola pregunta, no las dos del protocolo habitual ni el piloto de 100) y la primera afirmación
+todavía queda bastante cerca del texto fuente en vez de una paráfrasis genuina -- pero es evidencia
+concreta de que la hipótesis de la sesión 3 tenía fundamento: el problema de varios candidatos no era
+necesariamente "no saben redactar", sino "en texto libre con instrucciones de formato finas, el camino
+de menor esfuerzo es copiar". Queda pendiente, si se retoma: la pregunta de control (validar que sigue
+sin alucinar), probar esta misma opción con `nemotron-mini:4b` (el otro candidato con el mismo defecto),
+y medir el trade-off real de perder el streaming palabra-por-palabra en la UI.
+
+Estado del entorno al cierre: el stack sigue arriba con el perfil `smollm3` y
+`KB_LLM_SINTESIS_ESTRUCTURADA_HABILITADA=true` activo -- no es la configuración de producción.
+`compose.smollm3.yml` quedó con la variable agregada (default `false`, overrideable por shell, sin
+cambiar su comportamiento si no se pasa explícitamente). Recomendación reiterada: volver a
+`make up-ministral` para producción; este perfil queda como banco de pruebas de la opción nueva.
+
+### Hallazgo 91: la pregunta de control cierra la validación de las dos preguntas canónicas -- rechazo correcto, cero alucinación
+
+Con la misma imagen reconstruida (hallazgo 90), se corrió "explícame cómo usar Java 25" contra
+`SmolLM3-3B` + síntesis estructurada: `MENSAJE_SIN_INFORMACION`, `citas: []`, **186.5 s**, sin ningún
+"Fallo al planificar"/"Fallo al verificar" en los logs. Igual que Ministral, `gemma3:4b` (hallazgo 16) y
+`qwen3.5:4b` (hallazgo 81) -- la puerta de relevancia interceptó la pregunta antes de que llegara a
+síntesis, así que esta prueba puntual no valida la resistencia a alucinar del
+`SintetizadorEstructuradoOpenAi` en sí (nunca se lo llamó para este caso) -- valida que el resto del
+pipeline (Planificador, recuperación, `VerificadorGrounding`) sigue funcionando sin regresión con esta
+opción activa.
+
+Con las dos preguntas canónicas resueltas, la comparación de latencia contra Ministral (sesión 10,
+177s/141s) queda:
+
+| Pregunta | Ministral | `SmolLM3-3B` + síntesis estructurada |
+|---|---|---|
+| Relevante | 177 s | **104 s** |
+| Control | **141 s** | 186 s |
+| Promedio | 159 s | **145 s** |
+
+Con esta muestra de dos preguntas, el promedio queda del lado de `SmolLM3-3B` + síntesis estructurada --
+pero es una comparación de una sola pregunta por lado contra un modelo (Ministral) que sí tiene un
+piloto de 100 preguntas detrás (85.3%, sesión 17) y un historial de 24 sesiones de ajuste fino. No es
+evidencia suficiente para recomendar el cambio, solo para justificar que vale la pena medirlo en serio.
+
+### Conclusión final de la sesión 24
+
+**`SmolLM3-3B` + síntesis estructurada pasa las dos pruebas canónicas sin ningún defecto medido**:
+citación correcta y completa en la pregunta relevante (hallazgo 90), rechazo limpio sin alucinación en
+la de control (hallazgo 91), latencia competitiva con Ministral en esta muestra chica. Es, junto con
+Ministral, el único candidato de los 18 probados en toda la investigación que pasa ambos casos sin un
+defecto de síntesis, alucinación, o fallo de convergencia -- con la salvedad de que esto depende de una
+característica (síntesis estructurada) que ningún otro candidato usó, y que tiene su propio costo no
+medido (perder el streaming palabra-por-palabra en la UI, señalado desde el javadoc de
+`SintetizadorEstructuradoOpenAi`).
+
+**No reemplaza al piloto de 100 preguntas** como criterio para promover un cambio de producción -- eso
+sigue pendiente, junto con medir el trade-off de UI y probar la misma opción con `nemotron-mini:4b` (el
+otro candidato con el mismo defecto de "texto pegado" que la síntesis estructurada podría resolver
+igual).
+
+## Sesión 25: piloto de 10 preguntas (smoke10) con síntesis estructurada contra los ocho candidatos
+## descartados en sesiones anteriores -- dos bugs reales de producción encontrados en el camino
+
+Retoma el pendiente que cerraba la sesión 24: probar `SintetizadorEstructuradoOpenAi` contra un lote de
+10 preguntas reales (no 2), y extenderlo a los candidatos que la investigación ya había descartado por
+"texto pegado" o por no converger en salida JSON forzada, para ver si la vía de la sesión 24 los rescata
+a escala. Mismo protocolo que las sesiones 20-24: perfil compose dedicado por modelo,
+`KB_LLM_SINTESIS_ESTRUCTURADA_HABILITADA=true`, puerta de relevancia en su valor de producción, y
+`eval-100-preguntas/ejecutar.js` con `EVAL_LIMITE=10 EVAL_SUFIJO=smoke10.<modelo>-estructurada` contra
+`kb-api` real (nunca un `kb-api-test` aislado esta vez).
+
+Perfiles compose nuevos creados en esta sesión, mismo patrón que los ya existentes:
+`compose.granite41.yml`, `compose.phi4mini.yml`, `compose.qwen25.yml` (los tres candidatos de "texto
+pegado" de las sesiones 2-9 que nunca habían tenido un perfil dedicado), y más adelante
+`compose.nanbeige.yml`/`compose.minicpm5.yml` (los dos candidatos de "no converge" de la sesión 2).
+`compose.bonsai.yml` y `compose.ministral.yml` predatan la propiedad `sintesis-estructurada.habilitada`
+(sesión 24) y no la pasaban al contenedor -- se les agregó la misma línea
+`KB_LLM_SINTESIS_ESTRUCTURADA_HABILITADA: ${KB_LLM_SINTESIS_ESTRUCTURADA_HABILITADA:-false}` que ya
+tenían los perfiles más nuevos.
+
+### Hallazgo 92: bug real de producción -- `SintetizadorEstructuradoOpenAi` podía dejar el cupo de
+### consultas concurrentes agotado para siempre
+
+Corriendo el smoke10 de `granite4.1:3b` y `qwen2.5:3b`, la mayoría de las preguntas respondía bien pero
+alguna quedaba "servidor ocupado" de forma **permanente** -- ni reintentos ni esperar arreglaban nada,
+solo `docker restart kb-api` liberaba el cupo. Causa raíz en `Orquestador.ejecutarEnStreaming()`: el
+cupo (`Semaphore cupoConsultas`) se libera en un `.doFinally()` enganchado al `Flux<String>` que devuelve
+`sintetizador.sintetizar(...)`. Pero `SintetizadorEstructuradoOpenAi.sintetizar()` (sesión 24) llamaba a
+`chatClient.prompt().call().entity(...)` **de forma bloqueante y sincrónica, antes de construir el
+`Flux`** -- si esa llamada lanzaba una excepción (por ejemplo, JSON truncado por quedarse sin
+`maxTokens`, ver hallazgo 93), la excepción escapaba de `sintetizar()` antes de que existiera ningún
+`Flux` al que engancharle el `doFinally()`. El cupo quedaba adquirido para siempre, sin ningún camino de
+liberación. **Corregido** envolviendo el cuerpo del método en `Flux.defer(() -> { ... })`: ahora la
+llamada bloqueante ocurre dentro del `Flux`, cualquier excepción se convierte en una señal `onError` que
+sí dispara el `doFinally()`, y el cupo se libera siempre. Recompilado, `./mvnw test` (123 tests, 0
+fallos) y reconstruida la imagen antes de seguir.
+
+### Hallazgo 93: el JSON truncado por `maxTokens` insuficiente es un problema recurrente, no de un solo
+### modelo -- subido dos veces en vivo (700 → 1500 → 4000)
+
+`maxTokens(700)` (valor de partida de la sesión 24, "sin medición propia, margen de partida") truncó a
+`qwen2.5:3b` a mitad de la 9ª afirmación (`Jackson.UnexpectedEndOfInputException`). Subido a 1500,
+confirmado sin cortes en `granite4.1:3b`, `phi4-mini:3.8b`, `qwen2.5:3b` y `qwen3.5:4b` -- pero
+`SmolLM3-3B` lo volvió a truncar, esta vez a mitad de la **23ª** afirmación (índice 22 del array), muy
+por encima de lo que 1500 tokens de JSON pueden sostener. Subido a 4000, `SmolLM3-3B` completó las 10
+preguntas en un solo intento. La cantidad de afirmaciones en que un modelo divide una respuesta no tiene
+relación clara con la longitud real de la respuesta ni con el tamaño del modelo -- no hay forma de
+predecir el presupuesto necesario sin medirlo en vivo. `Ministral 3B` truncó 2/10 preguntas con
+`maxTokens=1500` (hallazgo 96) y **no se volvió a probar con 4000** -- queda pendiente confirmar si el
+mismo aumento lo arregla, igual que arregló a `SmolLM3-3B`.
+
+### Hallazgo 94: bug real, sin corregir -- cuando la síntesis estructurada falla, el cliente ve una
+### conexión cortada en vez de un mensaje de error legible
+
+Cada vez que el hallazgo 93 truncaba el JSON, los logs de `kb-api` mostraban un segundo warning
+inmediatamente después de la excepción de Jackson: `HttpMessageNotWritableException: No converter for
+[class java.util.LinkedHashMap] with preset Content-Type 'text/event-stream'`. El manejador de
+excepciones por defecto de Spring intenta escribir el cuerpo de error estándar (un `LinkedHashMap`
+serializado a JSON) sobre una respuesta que ya está comprometida como `text/event-stream` -- falla, y
+como la respuesta ya estaba comprometida, Spring solo registra el warning y listo. El resultado visible
+para el cliente (y para quien esté mirando la UI en ese momento) es una conexión que se corta sin
+explicación -- el mismo mensaje `"Se perdió la conexión con el servidor (¿Ollama no responde?)."` que la
+UI ya usa para fallas de infraestructura reales, indistinguible de un truncamiento de JSON del lado del
+servidor. No se corrigió en esta sesión (el hallazgo 92 ya resuelve el problema grave, la fuga del cupo;
+este es un problema de experiencia -- el mensaje de error es engañoso, no una falla funcional) -- la vía
+más simple sería un `.onErrorResume()` en el `Flux` de `SintetizadorEstructuradoOpenAi` que emita un
+mensaje de error legible en vez de dejar que la excepción llegue cruda al controlador.
+
+### Hallazgo 95: `granite4.1:3b`, `phi4-mini:3.8b` y `qwen2.5:3b` -- los tres candidatos originales de
+### "texto pegado" (sesiones 2-9), limpios con síntesis estructurada
+
+Con los fixes de los hallazgos 92-93 desplegados, los tres completaron 10/10 sin ningún error de
+conexión ni truncamiento. Confirma a escala de 10 preguntas lo que la sesión 24 ya había medido en una
+sola pregunta para `SmolLM3-3B`: la vía de salida JSON forzada resuelve el defecto de "pegar el fragmento
+crudo" que estos tres candidatos tenían con `SintetizadorOpenAi` (texto libre). No todas las respuestas
+fueron sustantivas -- ver la tabla comparativa del cierre de esta sesión, `VerificadorGrounding` rechazó
+algunas de más en `phi4-mini:3.8b` y `qwen2.5:3b` -- pero ninguna de las respuestas que sí llegaron a
+síntesis mostró el defecto original.
+
+### Hallazgo 96: `qwen3.5:4b` -- 10/10 sin errores de infraestructura, pero con una respuesta completa en
+### inglés y formato markdown en vez de prosa en español
+
+Nueve de diez respuestas fueron correctas, en español, con citación `[n]` bien formada. La pregunta 2
+("diferencia entre tipo primitivo y de referencia") devolvió una respuesta larga en **inglés**, con
+encabezados markdown (`### 1. Primitive Types...`) y una tabla -- ignorando por completo la instrucción
+del prompt de sistema ("Responde en español latinoamericano neutro") y el formato de citación esperado.
+No se repitió en las otras 9 preguntas del mismo modelo, así que no es un problema sistemático de
+`qwen3.5:4b` con este prompt -- es una falla puntual, pero real, que ningún otro candidato de esta
+sesión reprodujo de esta forma exacta (inglés completo con markdown, no solo alguna palabra suelta).
+
+### Hallazgo 97: `nemotron-mini:4b` -- abortado por el usuario a mitad de la corrida, inglés y citas
+### fuera de rango desde la primera pregunta
+
+Las dos primeras preguntas salieron en **inglés** (`"Primitive values do not share state..."`), y la
+segunda citó `[0]` -- fuera del rango 1-indexado que el prompt de `SintetizadorEstructuradoOpenAi`
+especifica explícitamente. El usuario abortó la corrida antes de completar las 10 (no vale la pena seguir
+gastando tiempo de GPU en un candidato que ya falla los dos primeros casos de forma clara). Es el
+candidato con peor comportamiento medido en esta sesión, empatado con `Bonsai` en no llegar a completar
+el smoke10 -- a diferencia de `Bonsai`, que sí generaba contenido correcto pero muy lento, `nemotron-mini`
+generaba rápido pero mal.
+
+### Hallazgo 98: `Bonsai-8B` -- abortado por timeout estructural, no por un bug: el modelo es
+### simplemente demasiado lento para sostener la síntesis estructurada dentro de 450s
+
+Las dos primeras preguntas tardaron 8-9 minutos cada una y terminaron en `"Se perdió la conexión"` real
+(no el hallazgo 94 -- esta vez `kb-llama-server` mismo reportó `cancel task`). Los logs de
+`kb-llama-server` mostraron la causa exacta: la tarea se canceló a los 175s con el *prompt* todavía al
+57% de ser procesado (13.21 tokens/s de *prompt eval*, antes de generar un solo token de salida) -- sumado
+a la generación de hasta `maxTokens=4000` de JSON a los 4-5 tokens/s medidos en sesiones anteriores para
+este modelo, el total supera con holgura los 450s de `KB_LLM_TIMEOUT` del perfil Bonsai. No es un fallo
+de calidad ni de convergencia (los hallazgos 12 y 14 de la sesión 5 ya habían medido a Bonsai como el
+mejor candidato en citación y en `VerificadorGrounding`) -- es que la síntesis estructurada, al exigir
+generar el JSON completo en una sola llamada bloqueante en vez de transmitir token a token, es
+estructuralmente peor candidata para un modelo tan lento que `SintetizadorOpenAi` (texto libre, que ya
+sostenía respuestas completas dentro del mismo timeout, sesión 5-6). Subir `KB_LLM_TIMEOUT` podría
+resolverlo en teoría, pero no se probó -- dos preguntas fallando igual ya es evidencia suficiente de que
+el problema es estructural, no una racha de mala suerte.
+
+### Hallazgo 99: `SmolLM3-3B` -- 10/10 limpio tras subir `maxTokens` a 4000 (hallazgo 93)
+
+Confirma a escala de 10 preguntas lo que la sesión 24 ya había medido en 2: con presupuesto de tokens
+suficiente, `SmolLM3-3B` sostiene la síntesis estructurada sin ningún defecto de formato ni de conexión.
+Es, junto con `granite4.1:3b`, uno de los dos únicos candidatos de esta sesión sin ningún error medido.
+
+### Hallazgo 100: `Ministral 3B` -- 8/10, dos preguntas truncadas por `maxTokens=1500` (sin remedir con
+### el valor final de 4000)
+
+Probado **antes** de que el hallazgo 93 subiera `maxTokens` a 4000 (el orden real de esta sesión fue
+qwen2.5 → qwen3.5 → nemotron[abortado] → Bonsai[abortado] → Ministral → SmolLM3, y la segunda subida de
+`maxTokens` se disparó recién al ver truncar a `SmolLM3-3B`). Las preguntas 2 y 10 fallaron las 5 veces
+que se reintentaron, siempre con el mismo `UnexpectedEndOfInputException` -- un truncamiento
+determinístico, no una falla de conexión real, aunque la UI lo muestra igual (hallazgo 94). Dado que
+subir `maxTokens` a 4000 sí resolvió el mismo síntoma en `SmolLM3-3B`, es razonable esperar que también
+resuelva estas dos en Ministral, pero **queda sin confirmar** -- el resultado de 8/10 que se reporta en
+la tabla de cierre es con el valor viejo (1500), no el vigente en el código al terminar la sesión.
+
+### Hallazgo 101: `Nanbeige4.1-3B` y `MiniCPM5-1B` -- el fix `reasoning_effort=none` de la sesión 18/20
+### sí resuelve el problema de convergencia de la sesión 2, pero destapa defectos de calidad nuevos
+
+Ambos candidatos habían quedado descartados en la sesión 2 (antes de que existiera el fix) por generar
+razonamiento sin converger en las llamadas de salida JSON forzada -- más de 1800-3600 tokens decodificados
+sin producir nunca una respuesta. Se crearon `compose.nanbeige.yml`/`compose.minicpm5.yml` (nuevos en
+esta sesión) para volver a probarlos con el fix ya cableado de forma genérica en los cuatro componentes
+`*OpenAi`, mismo razonamiento que ya había confirmado la sesión 23 con `SmolLM3-3B` (mismo modo de falla
+original, mismo fix, funcionó).
+
+**`Nanbeige4.1-3B`**: 10/10 sin ningún `error` de conexión -- el fix sí evita el colgado de la sesión 2.
+Pero de esas 10, solo 4 fueron respuestas sustantivas: 3 quedaron completamente **vacías** (`error: null`,
+`respuesta: ""`, el mismo patrón de "sin respuesta silenciosa" ya visto con otros candidatos, indetectable
+para el chequeo de `estadoEsError` de `ejecutar.js` porque no dispara la clase de error en la UI) y 3 más
+fueron rechazos legítimos del gate. De las 4 sustantivas, dos mostraron un defecto nuevo no visto en
+ningún candidato anterior: **fuga de notación de gramática cruda del JLS en inglés** dentro de la
+respuesta (`"PrimitiveType: {Annotation} NumericType {Annotation} boolean..."`, `"double >1 float"`) --
+el modelo copió literalmente fragmentos de la especificación formal de Java (que usa esa notación BNF)
+en vez de redactar prosa, y en inglés pese al prompt en español.
+
+**`MiniCPM5-1B`**: 9/10 sin `error`, pero la pregunta 8 falló las 3 veces reintentadas con
+`"(sin respuesta)"` -- el mismo patrón de vacío silencioso, posiblemente el problema de convergencia
+original de la sesión 2 sobreviviendo parcialmente al fix para preguntas puntuales. De las respuestas que
+sí llegaron, la calidad es la más baja de todos los candidatos de esta sesión: varias en **inglés**, una
+con un error de español que no es una palabra real (`"Pregunjemos las afirmaciones siguientes"`), y otra
+que filtró literalmente la plantilla del prompt del sistema dentro de la respuesta
+(`"Pregunta: ¿Qué significa...? [1]"`, repitiendo el patrón `PREGUNTA:/CONTEXTO:` del mensaje de usuario
+en vez de responderlo).
+
+### Lección operativa: `TaskStop` no mata de forma confiable el árbol de procesos en Windows/Git Bash --
+### causó contención real y datos contaminados dos veces en esta sesión
+
+Varias veces durante esta sesión se usó `TaskStop` para cortar una corrida de smoke10 a mitad de camino
+(cambio de prioridad del usuario, o un modelo con mal comportamiento evidente). En al menos dos
+ocasiones, el proceso bash + `node ejecutar.js` que corría por debajo **sobrevivió** al `TaskStop` --
+Windows/Git Bash no garantiza que matar el proceso que el harness rastrea mate también a sus hijos. La
+manifestación fue seria: hasta **tres copias** del mismo script de orquestación llegaron a correr en
+paralelo al mismo tiempo, todas peleando por el mismo `kb-api`/`kb-llama-server` y escribiendo sobre los
+mismos archivos de resultados -- esto generó picos de contención real en `kb-llama-server` (4 slots
+concurrentes procesando tareas distintas de la misma GPU, con `cancel task` por timeouts cruzados) y
+corrompió el archivo de resultados de `Bonsai-8B` (se descartó y se rehizo desde cero). La forma de
+detectar el problema en vivo: `tasklist //FI "IMAGENAME eq node.exe"` mostraba más procesos
+`ejecutar.js` de los que deberían existir para una corrida en serie, y `Get-CimInstance Win32_Process`
+(PowerShell) permitió trazar el árbol real de padres/hijos hasta encontrar los bash huérfanos y matarlos
+con `taskkill //F //T //PID`. **Regla adoptada para el resto de la sesión**: después de cualquier
+`TaskStop`, verificar explícitamente con `tasklist`/`Get-CimInstance` que no queden procesos `node.exe`
+ni `bash.exe` relacionados antes de lanzar la siguiente corrida -- confiar en el estado "killed" del
+notificador del harness no es suficiente.
+
+### Comparación final: velocidad, efectividad y un proxy de energía (sin medición real de vatios)
+
+Con los ocho candidatos que sí generaron datos completos (`nemotron-mini` y `Bonsai` quedaron sin
+terminar, excluidos de esta tabla), tres cortes distintos sobre las mismas 10 preguntas:
+
+**Por velocidad** (promedio de latencia de las respuestas que sí llegaron, cualquier calidad):
+
+| # | Modelo | Promedio |
+|---|---|---|
+| 1 | MiniCPM5-1B | 79 s |
+| 2 | qwen2.5:3b | 183 s |
+| 3 | SmolLM3-3B | 187 s |
+| 4 | phi4-mini:3.8b | 222 s |
+| 5 | Nanbeige4.1-3B | 248 s |
+| 6 | Ministral 3B | 262 s |
+| 7 | granite4.1:3b | 310 s |
+| 8 | qwen3.5:4b | 394 s |
+
+**Por efectividad** (respuestas sustantivas: ni vacías, ni rechazadas por el gate, ni error de conexión,
+sobre 10 preguntas del corpus de Java que sí tienen respuesta esperada):
+
+| # | Modelo | Sustantivas | Rechazo-gate | Vacías | Error-conexión |
+|---|---|---|---|---|---|
+| 1 | granite4.1:3b | 10/10 | 0 | 0 | 0 |
+| 2 | qwen3.5:4b | 9/10 | 1 | 0 | 0 |
+| 3 | qwen2.5:3b | 7/10 | 3 | 0 | 0 |
+| 4 | MiniCPM5-1B | 6/10 | 2 | 1 | 1 |
+| 4 | SmolLM3-3B | 6/10 | 4 | 0 | 0 |
+| 6 | phi4-mini:3.8b | 5/10 | 5 | 0 | 0 |
+| 6 | Ministral 3B | 5/10 | 3 | 0 | 2 |
+| 8 | Nanbeige4.1-3B | 4/10 | 3 | 3 | 0 |
+
+Un rechazo del gate alto (`phi4-mini:3.8b`, 5/10) no es necesariamente mala síntesis -- es
+`VerificadorGrounding` (el mismo LLM en otro rol) rechazando por precaución; puede ser ese modelo siendo
+demasiado conservador en esa etapa puntual, no un defecto de `SintetizadorEstructuradoOpenAi`. Aun así,
+para el usuario final el resultado es el mismo: no responde.
+
+**Por un proxy de energía** (tamaño del modelo cargado en GB × latencia promedio en segundos -- GB·s,
+menor es mejor; **no es una medición real de vatios**, ver más abajo por qué):
+
+| # | Modelo | GB cargados | Proxy (GB·s) |
+|---|---|---|---|
+| 1 | MiniCPM5-1B | 0.69 | 54 |
+| 2 | qwen2.5:3b | 1.9 | 347 |
+| 3 | SmolLM3-3B | 1.9 | 354 |
+| 4 | phi4-mini:3.8b | 2.5 | 555 |
+| 5 | Nanbeige4.1-3B | 2.4 | 594 |
+| 6 | granite4.1:3b | 2.1 | 650 |
+| 7 | Ministral 3B | 3.0 | 786 |
+| 8 | qwen3.5:4b | 3.4 | 1339 |
+
+**La T600 Laptop de esta máquina no expone telemetría de potencia real**: `nvidia-smi
+--query-gpu=power.draw --format=csv` devuelve `[N/A]`, confirmado también con `nvidia-smi -q -d POWER`
+(todos los campos de potencia, incluidos los de memoria y módulo, en `N/A` -- no es un problema de
+permisos, el sensor no está expuesto para este chip en este driver). Se evaluó medir con la pregunta más
+rápida en promedio del corpus (pregunta 5, "¿qué representa el tipo null...", 179s de promedio y 8/8
+modelos respondiendo bien -- la más rápida y la más consistente a la vez) pero se descartó al confirmar
+que no hay vatios reales que medir en este hardware. El proxy de tamaño×tiempo es la mejor aproximación
+disponible sin instrumentación externa (un medidor de potencia de pared, fuera del alcance de esta
+sesión).
+
+**Velocidad y efectividad al mismo tiempo**: ninguno de los dos cortes de arriba por sí solo dice cuál es
+el mejor candidato -- el más rápido (`MiniCPM5-1B`) es de los menos efectivos, y el más efectivo
+(`granite4.1:3b`) es de los más lentos. Para verlo junto, se calculó el puesto de cada modelo en cada
+ranking por separado (1 = mejor) y se promediaron los dos puestos:
+
+| # | Modelo | Sustantivas /10 | Puesto efectividad | Velocidad prom. | Puesto velocidad | Puesto combinado |
+|---|---|---|---|---|---|---|
+| 1 | `qwen2.5:3b` | 7 | 3º | 183 s | 2º | **2.5** |
+| 2 | `MiniCPM5-1B` | 6 | 5º | 79 s | 1º | 3.0 |
+| 3 | `SmolLM3-3B` | 6 | 4º | 187 s | 3º | 3.5 |
+| 4 | `granite4.1:3b` | 10 | 1º | 310 s | 7º | 4.0 |
+| 5 | `phi4-mini:3.8b` | 5 | 6º | 222 s | 4º | 5.0 |
+| 5 | `qwen3.5:4b` | 9 | 2º | 394 s | 8º | 5.0 |
+| 7 | `Nanbeige4.1-3B` | 4 | 8º | 248 s | 5º | 6.5 |
+| 7 | `Ministral 3B` | 5 | 7º | 262 s | 6º | 6.5 |
+
+`qwen2.5:3b` nunca es el mejor en ningún eje por separado, pero es el único que queda entre los tres
+primeros puestos en los dos a la vez -- el mejor balance objetivo, no solo una preferencia cualitativa.
+
+### Conclusión de la sesión 25
+
+**No hay un ganador único** -- depende de qué eje importa más:
+
+- **Más rápido y de menor proxy de energía**: `MiniCPM5-1B`, por lejos (79s, GB·s de 54 -- 6x mejor que
+  el segundo lugar en ambos ejes). Pero es también el de peor calidad medida: inglés, español roto,
+  filtración de la plantilla del prompt.
+- **Más efectivo**: `granite4.1:3b`, el único que respondió las 10 preguntas de verdad sin ningún defecto
+  de calidad detectado -- ni el más rápido ni el más liviano, pero el único con 10/10 sustantivas.
+- **Mejor balance velocidad+efectividad, con evidencia objetiva (puesto combinado), sin sacrificar
+  calidad conocida**: `qwen2.5:3b` -- puesto combinado 2.5 (el mejor de los ocho), sin ningún defecto de
+  contenido detectado en sus 7 respuestas sustantivas (los 3 rechazos son del gate, no de la síntesis).
+  **Es la recomendación de esta sesión como configuración de síntesis estructurada a seguir probando**,
+  por encima de `granite4.1:3b` (más completo pero 7º en velocidad) y de `MiniCPM5-1B` (más rápido pero
+  con defectos de calidad que ningún otro candidato del puesto combinado top-3 reproduce).
+
+Comparado con las sesiones 2-23 (candidatos con `SintetizadorOpenAi`, texto libre): la síntesis
+estructurada sí resuelve el defecto de "texto pegado" en los tres candidatos que lo tenían
+(`granite4.1:3b`, `phi4-mini:3.8b`, `qwen2.5:3b`, hallazgo 95) y el problema de convergencia en salida
+JSON forzada en los dos candidatos que lo tenían (`Nanbeige4.1-3B`, `MiniCPM5-1B`, hallazgo 101) --
+**pero destapa un problema nuevo, transversal, que ningún candidato de texto libre había mostrado**: al
+exigir que TODA la respuesta llegue como un JSON válido de una sola vez, un presupuesto de `maxTokens`
+insuficiente ya no produce una respuesta incompleta pero legible (como pasaba con `SintetizadorOpenAi`)
+sino una excepción de parseo que, sin los fixes de los hallazgos 92-93, podía dejar el servidor
+inutilizable para *cualquier* modelo. El trade-off documentado desde el javadoc de la sesión 24 (perder
+el streaming palabra-por-palabra) tiene ahora una segunda cara medida en esta sesión: mayor fragilidad
+ante respuestas largas, mitigada pero no eliminada por subir `maxTokens` a ciegas.
+
+Ningún candidato de esta sesión tiene un piloto de 100 preguntas detrás como Ministral (85.3%, sesión
+17) -- estas son muestras de 10, útiles para descartar defectos gruesos y comparar en igualdad de
+condiciones, no para una cifra de precisión definitiva.
+
+Estado del entorno al cierre: `kb-api` real quedó sirviendo el último perfil probado (`minicpm5`) con
+`KB_LLM_SINTESIS_ESTRUCTURADA_HABILITADA=true` -- **no es la configuración de producción**, que sigue
+siendo `compose.ministral.yml` sin esa variable. `SintetizadorEstructuradoOpenAi.java` quedó con
+`maxTokens=4000` y el fix de `Flux.defer` (hallazgo 92) aplicado -- afecta a cualquier perfil que active
+la síntesis estructurada de ahora en más, sin cambiar el comportamiento por defecto
+(`kb.llm.sintesis-estructurada.habilitada=false`). Cinco perfiles compose nuevos quedaron en el repo
+(`compose.granite41.yml`, `compose.phi4mini.yml`, `compose.qwen25.yml`, `compose.nanbeige.yml`,
+`compose.minicpm5.yml`), y `compose.bonsai.yml`/`compose.ministral.yml` quedaron con la variable de
+síntesis estructurada agregada. Diez archivos de resultados nuevos en `eval-100-preguntas/` (uno por
+candidato con datos, `resultados-brutos.smoke10.<modelo>-estructurada.json`). Nada de esto está
+commiteado todavía. Pendiente si se retoma: remedir `Ministral 3B` con `maxTokens=4000` (hallazgo 100),
+corregir el hallazgo 94 (mensaje de error legible en vez de conexión cortada), y decidir si algún
+candidato de esta sesión justifica un piloto de 100 preguntas propio antes de considerarlo para
+producción.
+
+## Sesión 26: el mismo smoke10, pero en texto libre (`SintetizadorOpenAi`) -- comparación directa contra
+## la sesión 25, y una sospecha de "degradación" de Ministral resuelta con evidencia en vez de intuición
+
+A pedido del usuario, se repitió el mismo protocolo de la sesión 25 (10 preguntas, mismos ocho modelos,
+`kb-api` real, puerta de relevancia en producción) pero con `KB_LLM_SINTESIS_ESTRUCTURADA_HABILITADA=false`
+-- el `SintetizadorOpenAi` de texto libre, el que de verdad corre en producción hoy. Objetivo: una
+comparación en igualdad de condiciones entre las dos vías de síntesis, no solo comparar la estructurada
+contra retazos sueltos de sesiones anteriores (1-2 preguntas por modelo, sesiones 2-23).
+
+Los ocho modelos corrieron en una sola corrida en serie (evitando el problema de procesos duplicados de
+la sesión 25) que tardó **más de 20 horas reales**, incluyendo una noche en la que la máquina se durmió.
+
+### Hallazgo 102: artefacto operativo -- el timer de Playwright no sobrevive un sueño de la máquina
+
+Una entrada del resultado de `qwen3.5:4b` quedó con `elapsedMs: 59066730` (~16.4 horas) para una sola
+pregunta -- no es latencia real. El timeout de `page.waitForSelector` (900 000 ms) se venció recién
+cuando la máquina despertó del sueño nocturno; el reloj del proceso quedó pausado durante el sueño, así
+que el `Date.now()` de inicio y fin capturan el sueño completo como si fuera tiempo de espera activo.
+Se excluyó esta entrada de cualquier promedio de velocidad. **Lección**: cualquier corrida larga sin
+supervisión en esta máquina corre el riesgo de que una suspensión del sistema infle artificialmente los
+tiempos medidos -- revisar visualmente cualquier `elapsedMs` que se salga por varios órdenes de magnitud
+del resto antes de promediar.
+
+### Hallazgo 103: `Ministral 3B` y `MiniCPM5-1B` no completaron 10/10 -- pero por motivos distintos, uno
+### ya conocido desde antes de esta investigación y otro nuevo y real
+
+**`MiniCPM5-1B`**: la pregunta 2 falló con un error real y explícito en los logs de `kb-api`:
+`BadRequestException: request (4102 tokens) exceeds the available context size (4096 tokens)` --
+desbordó el contexto por apenas 6 tokens. Es el mismo tipo de problema de borde que la sesión 15 ya había
+documentado para `VerificadorGrounding` con Ministral (hallazgo cercano al límite físico de 4096 tokens
+de este pipeline con el corpus de `jls25.pdf`), aquí afectando a un modelo distinto. Real, reproducible,
+sin relación con nada cambiado en esta sesión.
+
+**`Ministral 3B`**: la pregunta 2 falló con `"Se perdió la conexión con el servidor (¿Ollama no
+responde?)."`, siempre en 14-21 segundos (no una generación lenta que se corta -- un fallo casi
+inmediato). El usuario, con razón, preguntó si esto era una regresión real y pidió revisar qué había
+cambiado en el código. La investigación completa está en los hallazgos 104-105.
+
+### Hallazgo 104: la sospecha de "degradación" de Ministral se descartó con evidencia, no con intuición
+
+Tres verificaciones independientes, en este orden:
+
+1. **`git diff` de los cuatro componentes `*OpenAi` que Ministral usa** (`Planificador`,
+   `VerificadorGrounding`, `Sintetizador`, `Reformulador`): el único cambio sin commitear es
+   `extraBody(reasoning_effort=none)` agregado a los cuatro, documentado desde el propio código como
+   inocuo para modelos sin "thinking" nativo como Ministral -- un campo extra que ese backend ignora,
+   mismo argumento que ya vale para `repeat_penalty`. Si este campo rompiera algo, se vería como un
+   error 400 en los logs (como sí se vio con claridad para el hallazgo 103 de `MiniCPM5-1B`) -- no
+   aparece ninguno.
+2. **Reproducción en un entorno completamente limpio**: se reinició Docker Desktop entero
+   (`wsl --shutdown` + relanzar Docker Desktop, no solo `docker restart kb-api`) para descartar
+   acumulación de 45+ horas de uso continuo, y se corrió `Ministral` **aislado**, sin la maratón de ocho
+   modelos detrás. La pregunta 2 **volvió a fallar, exactamente igual** (20 387 ms, mismo mensaje) --
+   descarta la hipótesis inicial de "fatiga de la sesión larga" que se había manejado en el momento.
+3. **Precedente histórico en el propio repo**: `eval-100-preguntas/resultados-completos.ministral-3-3b-100preguntas.json`
+   -- el primerísimo piloto de 100 preguntas de Ministral, corrido semanas antes de que existiera
+   cualquiera de los componentes o ajustes de esta investigación (`Reformulador`, `reasoning_effort`,
+   `tope-por-documento=20`) -- ya tiene la pregunta 2 fallando con el mismo mensaje exacto y una latencia
+   igual de rápida (26 271 ms). En el piloto posterior de la sesión 17 (con `tope=20` ya aplicado) esa
+   misma pregunta sí respondió bien.
+
+**Conclusión**: es un flake intermitente preexistente, específico de esta pregunta puntual contra
+Ministral, documentado en el repo desde antes de que esta investigación empezara -- no una regresión de
+ningún cambio de código de las sesiones 20-26. Ninguna otra pregunta de ningún otro modelo de las
+sesiones 25-26 mostró este patrón de fallo rápido (14-21s, sin ninguna traza en los logs de `kb-api`) --
+es específico de la combinación (Ministral, esta pregunta), no un problema genérico de "la segunda
+consulta tras cambiar de perfil".
+
+### Hallazgo 105: tres preguntas de Ministral que antes respondían bien ahora caen en la zona AMBIGUO --
+### no es un problema de retrieval, es la inestabilidad ya conocida de `VerificadorGrounding` cerca del
+### umbral
+
+Las preguntas 6, 7 y 8 tenían respuestas correctas y completas en el piloto de la sesión 17 (mismo
+`tope=20`), pero en esta corrida las rechazó la puerta de relevancia. Consultando `query_log` en vivo
+para la pregunta 6 ("¿qué significa que un método tenga tipo de retorno void?"): el fragmento correcto
+de `jls25.pdf` **sí fue recuperado** (candidato top, `rerank=7.18`) -- no es una falla de búsqueda ni de
+embeddings. El problema es que 7.18 queda por debajo del `KB_UMBRAL_RELEVANCIA_TECHO_CONFIANZA=8.0`
+configurado para Ministral, cae en la zona AMBIGUO, y ahí decide `VerificadorGrounding` -- que esta vez
+juzgó que no alcanzaba, pese a que el contenido es claramente relevante.
+
+Esto no es nuevo ni sorprendente a la luz del resto de la investigación: el ADR-0008 y el hallazgo 61
+(sesión 16) ya habían diagnosticado que el juicio binario de `VerificadorGrounding` en la zona ambigua
+(puntajes entre el piso de "insuficiente" y el techo de "suficiente") no es perfectamente estable --
+incluso con `temperature(0.0)`, el muestreo en GPU no garantiza determinismo bit a bit entre ejecuciones
+distintas, y un puntaje cerca del límite (7.18 de 8.0) puede cruzar para un lado u otro entre corridas.
+En la sesión 17 cruzó a "sí"; en esta corrida cruzó a "no". La pregunta 4 (`autoboxing`), en cambio, ya
+fallaba igual en la sesión 17 -- ese rechazo sí es consistente entre corridas, no forma parte de este
+hallazgo.
+
+### Comparación final: velocidad, efectividad y puesto combinado (texto libre)
+
+Mismo cálculo que el cierre de la sesión 25 (puesto 1 = mejor en cada eje, promedio de los dos puestos).
+Para `Ministral 3B` se usa la corrida aislada y limpia del hallazgo 104 (9/10, más comparable
+metodológicamente que la de la maratón, aunque ambas dan el mismo resultado):
+
+| # | Modelo | Sustantivas /10 | Puesto efectividad | Velocidad prom. | Puesto velocidad | Puesto combinado |
+|---|---|---|---|---|---|---|
+| 1 | `MiniCPM5-1B` | 7 | 5º | 94 s | 1º | **3.0** |
+| 1 | `qwen2.5:3b` | 8 | 3º | 187 s | 3º | **3.0** |
+| 3 | `SmolLM3-3B` | 5 | 7º | 179 s | 2º | 4.5 |
+| 3 | `qwen3.5:4b` | 9 | 2º | 286 s | 7º | 4.5 |
+| 3 | `granite4.1:3b` | 10 | 1º | 292 s | 8º | 4.5 |
+| 6 | `Nanbeige4.1-3B` | 7 | 4º | 279 s | 6º | 5.0 |
+| 7 | `phi4-mini:3.8b` | 6 | 6º | 235 s | 5º | 5.5 |
+| 8 | `Ministral 3B` | 5 | 8º | 207 s | 4º | 6.0 |
+
+"Sustantivas" cuenta lo mismo que en la sesión 25: ni vacías, ni rechazadas por el gate, ni error de
+conexión -- no mide si la prosa en sí pega el fragmento crudo (el defecto que motivó la síntesis
+estructurada en la sesión 24) o no; para eso hace falta leer las respuestas, no solo contarlas. `qwen2.5:3b`
+empata con `MiniCPM5-1B` en el mejor puesto combinado, pero con casi el doble de sustantivas (8 vs 7) y
+sin los defectos de calidad que la síntesis estructurada ya le había medido a `MiniCPM5-1B` (inglés,
+español roto) -- en texto libre no se verificó si esos mismos defectos persisten, queda pendiente si se
+retoma.
+
+### Conclusión de la sesión 26
+
+**Comparado con la sesión 25 (síntesis estructurada), el orden de mejores candidatos cambia poco en la
+cima pero el "ganador" por puesto combinado no es el mismo modelo**: en estructurada ganaba
+`qwen2.5:3b` solo (puesto 2.5); en texto libre empata con `MiniCPM5-1B` (puesto 3.0 cada uno). `granite4.1:3b`
+se mantiene como el único con 10/10 sustantivas en ambos modos -- el candidato más consistente de las
+dos sesiones, aunque nunca el más rápido. `Ministral 3B` (el modelo de producción) queda en el último
+puesto combinado de esta tabla, pero por las dos razones diagnosticadas en los hallazgos 104-105 -- un
+flake preexistente sin relación con esta investigación, y la fragilidad ya conocida de la zona
+AMBIGUO -- no por ningún cambio de código real. **No confundir esta muestra de 10 preguntas con el
+85.3% del piloto de 100 preguntas de la sesión 17**: son números que miden cosas distintas (10 preguntas
+elegidas de antemano vs. 100 preguntas con corrección manual), y esta sesión no reemplaza esa cifra.
+
+Estado del entorno al cierre: Docker Desktop se reinició por completo durante esta sesión (`wsl
+--shutdown`, hallazgo 104) -- el stack volvió a levantar solo con `docker compose`, sin pérdida de
+datos. `kb-api` real quedó sirviendo el último perfil probado (`minicpm5`, texto libre) --
+**no es la configuración de producción**, que sigue siendo `compose.ministral.yml` sin la síntesis
+estructurada activa. Nueve archivos de resultados nuevos en `eval-100-preguntas/`
+(`resultados-brutos.smoke10.<modelo>-textolibre.json`, más
+`resultados-brutos.smoke10.ministral-textolibre-limpio.json` de la corrida aislada). Nada de esto está
+commiteado todavía.

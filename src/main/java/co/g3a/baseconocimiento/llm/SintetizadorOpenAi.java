@@ -5,6 +5,7 @@ import java.util.Map;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import reactor.core.publisher.Flux;
@@ -14,6 +15,11 @@ import reactor.core.publisher.Flux;
  * alucinación: responder SOLO con lo que trae el contexto, citar cada
  * afirmación con {@code [n]}, y señalar una contradicción en vez de elegir un
  * lado en silencio cuando dos fuentes no coinciden.
+ *
+ * <p>Es el {@link Sintetizador} activo por defecto
+ * ({@code kb.llm.sintesis-estructurada.habilitada:false}). La alternativa,
+ * {@link SintetizadorEstructuradoOpenAi}, fuerza salida JSON en vez de prosa
+ * libre — ver su javadoc para cuándo conviene probarla.
  *
  * <p>{@code extraBody(repeat_penalty)}: sin este parámetro, la sesión 6 de la
  * investigación (ADR-0009) midió que este mismo binario (Bonsai 8B via
@@ -32,6 +38,8 @@ import reactor.core.publisher.Flux;
  * otros.
  */
 @Component
+@ConditionalOnProperty(
+        prefix = "kb.llm.sintesis-estructurada", name = "habilitada", havingValue = "false", matchIfMissing = true)
 class SintetizadorOpenAi implements Sintetizador {
 
     private static final String SISTEMA = """
@@ -84,6 +92,15 @@ class SintetizadorOpenAi implements Sintetizador {
         // dos backends sin cambiar el efecto practico. No es parte de la API
         // oficial de OpenAI, por eso va en extraBody como repeat_penalty.
         //
+        // reasoning_effort(none): ver PlanificadorOpenAi -- necesario para modelos
+        // con "thinking" nativo (qwen3.5:4b). A diferencia de Planificador/
+        // VerificadorGrounding (salida JSON forzada, donde el pensamiento sin
+        // apagar hace fallar la llamada por completo), aca con texto libre el
+        // sintoma medido fue mas sutil: la sesion 18 (hallazgo 77) midio una
+        // respuesta truncada a mitad de frase y sin ninguna cita [n] en la
+        // pregunta de control, pese a maxTokens(512) -- el presupuesto se gasta
+        // pensando antes de llegar a escribir la respuesta real.
+        //
         // presencePenalty(0.1): repeat_last_n(-1) solo bajo la fuga, no la
         // eliminaba del todo. Combinado con esta penalidad estandar de OpenAI (es
         // parte del contrato, no necesita extraBody) si desaparecio en las
@@ -92,7 +109,7 @@ class SintetizadorOpenAi implements Sintetizador {
         // irrelevantes del contexto en vez de ignorarlos. 0.1 fue el valor mas
         // bajo que ya alcanzaba a suprimir la fuga sin perder las citas.
         var opciones = OpenAiChatOptions.builder()
-                .extraBody(Map.of("repeat_penalty", 1.1, "repeat_last_n", 4096))
+                .extraBody(Map.of("repeat_penalty", 1.1, "repeat_last_n", 4096, "reasoning_effort", "none"))
                 .presencePenalty(0.1)
                 .maxTokens(512);
         this.chatClient = ChatClient.builder(modelo).defaultSystem(SISTEMA).defaultOptions(opciones).build();

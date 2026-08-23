@@ -1,5 +1,7 @@
 package co.g3a.baseconocimiento.llm;
 
+import java.util.Map;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
@@ -11,6 +13,18 @@ import org.springframework.stereotype.Component;
  * {@code maxTokens(120)}: la consulta reformulada debe ser una frase de
  * búsqueda corta, no una respuesta -- mismo espíritu que el tope de
  * {@link PlanificadorOpenAi} para el campo {@code razon}.
+ *
+ * <p>{@code extraBody(reasoning_effort=none)}: ver {@link PlanificadorOpenAi}
+ * -- este componente se sumó en la sesión 17 de la investigación (ver
+ * docs/investigacion-vram-y-modelo-llm.md), después de que la sesión 18
+ * documentara el fix, así que había quedado sin el ajuste. Medido en vivo con
+ * la sesión 20 (perfil {@code qwen3.5:4b}): sin esto, el mismo síntoma de
+ * "thinking" se comía el {@code maxTokens(120)} y el log mostraba "Fallo al
+ * reformular la consulta, se usa la pregunta original" (JSON vacío, mismo
+ * {@code MismatchedInputException} de los hallazgos 74/75) -- benigno porque
+ * el catch de abajo ya usa la pregunta original como respaldo, pero
+ * desperdiciaba la llamada entera. No lleva {@code repeat_penalty} como los
+ * otros tres componentes: sin evidencia propia de que este haga falta aquí.
  *
  * <p>Arma su propio {@link ChatClient.Builder} en vez de un bean compartido,
  * por la misma razón documentada en {@link PlanificadorOpenAi}: un
@@ -51,7 +65,9 @@ class ReformuladorOpenAi implements Reformulador {
     private final ChatClient chatClient;
 
     ReformuladorOpenAi(OpenAiChatModel modelo) {
-        var opciones = OpenAiChatOptions.builder().maxTokens(120);
+        var opciones = OpenAiChatOptions.builder()
+                .extraBody(Map.of("reasoning_effort", "none"))
+                .maxTokens(120);
         this.chatClient = ChatClient.builder(modelo).defaultOptions(opciones).build();
     }
 

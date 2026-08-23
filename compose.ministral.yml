@@ -95,3 +95,4 @@ services:
       # ninguna de las 68 preguntas que ya respondian bien -- no hay evidencia
       # de riesgo real que tope=10 evite y tope=20 no.
       KB_RECUPERACION_TOPE_POR_DOCUMENTO: ${KB_RECUPERACION_TOPE_POR_DOCUMENTO:-20}
+      KB_LLM_SINTESIS_ESTRUCTURADA_HABILITADA: ${KB_LLM_SINTESIS_ESTRUCTURADA_HABILITADA:-false}

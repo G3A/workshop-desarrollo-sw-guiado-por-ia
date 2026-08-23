@@ -1,0 +1,122 @@
+[
+  {
+    "id": 1,
+    "categoria": "tipos",
+    "pregunta": "¿Cuáles son los ocho tipos primitivos definidos en el lenguaje Java?",
+    "esperado": "responde",
+    "respuesta": "PrimitiveType: {Annotation} NumericType {Annotation} boolean NumericType: (one of) byte short int long FloatingPointType: (one of) float double [1] The numeric types are the integral types and the floating-point types. The integral types are byte , short , int , and long , whose values are 8-bit, 16-bit, 32-bit and 64-bit signed two's-complement integers, respectively, and char , whose values are 16-bit unsigned integers representing UTF-16 code units (§3.1). [1] The floating-point types are float , whose values exactly correspond to the 32bit IEEE 754 binary32 floating-point numbers, and double , whose values exactly correspond to the 64bit IEEE 754 binary64 floating-point numbers. [1] The boolean type has exactly two values: true and false. [1] double >1 float [6] float >1 long [6] long >1 int [6] int >1 char [6] int >1 short [6] short >1 byte [6]",
+    "estadoFinal": "Respondido en 6:44",
+    "error": null,
+    "inicio": "2026-08-21T19:05:34.506Z",
+    "fin": "2026-08-21T19:12:19.002Z",
+    "elapsedMs": 404496
+  },
+  {
+    "id": 2,
+    "categoria": "tipos",
+    "pregunta": "¿Qué diferencia hay entre un tipo primitivo y un tipo de referencia en Java?",
+    "esperado": "responde",
+    "respuesta": "",
+    "estadoFinal": "Respondido en 2:02",
+    "error": null,
+    "inicio": "2026-08-21T19:12:19.003Z",
+    "fin": "2026-08-21T19:14:21.533Z",
+    "elapsedMs": 122530
+  },
+  {
+    "id": 3,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es una conversión de ensanchamiento (widening) entre tipos primitivos?",
+    "esperado": "responde",
+    "respuesta": "Una conversión de ensanchamiento (widening) entre tipos primitivos es una conversión donde el valor se expande a un tipo de mayor amplitud, expandiendo los bits disponibles para representar el número. Esto permite mantener la información sobre el rango y el valor numérico, aunque en algunos casos puede perder precisión en el valor numérico. [1] Las conversiones de ensanchamiento primitivos entre tipos primitivos incluyen: byte a short, int, long, float, o double; short a int, long, float, o double; char a int, long, float, o double; int a long, float, o double; long a float o double; float a double. [1] Las conversiones de ensanchamiento primitivos no pierden información sobre el rango del valor numérico en los casos donde se convierten de tipo integral a otro tipo integral, de byte, short o char a un tipo de punto flotante, de int a double, o de float a double. [1] Sin embargo, algunas conversiones de ensanchamiento primitivos pueden perder precisión, como int a float, long a float, int a double o long a double. En estos casos, el resultado es una versión corregida de la información original, siguiendo el polígono de red de redondeo de IEEE 754 según el polígono más cercano. [1] La conversión de ensanchamiento de signed integer a otro tipo integral simplemente signextiende la representación binaria de la entrada para llenar el formato de salida, preservando el rango y la información numérica. [1] La conversión de ensanchamiento de char a otro tipo integral de ensanchamiento es un caso de zero extension, donde se expande la representación binaria de la char para llenar el formato de salida, preservando el rango y la información numérica. [1] Las conversiones de ensanchamiento primitivos de números de punto flotante a otro tipo de punto flotante siguen las reglas de IEEE 754 para la conversión entre formatos binarios de punto flotante. [1] A pesar de que algunas conversiones de ensanchamiento primitivos pueden perder precisión, nunca provocan excepciones en tiempo de ejecución, ya que siempre se pueden realizar sin errores. [1] Un ejemplo práctico de conversión de ensanchamiento primitivo es la conversión de un byte a char. Primero, el byte es convertido a int mediante una conversión de ensanchamiento primitivo, y luego el resultado se convierte a char mediante una conversión de ensanchamiento primitivo. [2] Las conversiones de ensanchamiento primitivos se clasifican en dos tipos: primarios (primitivos) y no primarios. Las conversiones entre tipos primitivos se llaman conversiones de ensanchamiento primitivos. [2] En el contexto de la promoción numérica, las expresiones numéricas no tienen un tipo promovido automáticamente. En lugar de eso, se determina un tipo promovido mediante reglas específicas. Si una expresión es de tipo int y no es una expresión constante, entonces el tipo promovido es int. En los casos de expresiones de tipo short, si todas las demás expresiones tienen tipo short, byte o int representable, entonces el tipo promovido es short, y las expresiones de tipo byte se convierten mediante ensanchamiento primitivo a short. [3] La promoción numérica se divide en unidades unarias y binarias. La unaria se aplica a una sola expresión en un contexto numérico o de array numérico, mientras que la binaria se aplica a una pareja de expresiones en un contexto numérico. [3] Las conversiones de ensanchamiento de referencia existen cuando una clase es una subclase de otra clase. Por ejemplo, la conversión de Integer a Long es una conversión de ensanchamiento de referencia, ya que Integer es una subclase de Long. [4]",
+    "estadoFinal": "Respondido en 5:36",
+    "error": null,
+    "inicio": "2026-08-21T19:14:21.536Z",
+    "fin": "2026-08-21T19:19:58.130Z",
+    "elapsedMs": 336594
+  },
+  {
+    "id": 4,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es el autoboxing y cuándo ocurre de forma automática?",
+    "esperado": "responde",
+    "respuesta": "No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.",
+    "estadoFinal": "Respondido en 3:21",
+    "error": null,
+    "inicio": "2026-08-21T19:19:58.134Z",
+    "fin": "2026-08-21T19:23:19.498Z",
+    "elapsedMs": 201364
+  },
+  {
+    "id": 5,
+    "categoria": "tipos",
+    "pregunta": "¿Qué representa el tipo null y a qué tipos de referencia se puede asignar?",
+    "esperado": "responde",
+    "respuesta": "El tipo null representa el valor especial null, que se representa mediante caracteres ASCII, y se forma mediante la literal null. Este tipo tiene un solo valor, el valor de la referencia null. [1] El tipo null permite que cualquier tipo de referencia pueda recibir el valor null. Es una referencia especial que se asigna a cualquier variable de tipo de referencia, y el valor null se maneja sin requerir una conversión de tipo adicional. [2] El tipo null es una referencia especial en el lenguaje de programación Java, y no es un valor normal de datos. Se representa como un valor de referencia que apunta a nada, o 'sin objeto'. [3] El tipo null se asigna a cualquier tipo de referencia, ya sea de clase, interfaz o array, y el valor null se maneja de manera similar a cualquier otro valor de referencia en el lenguaje de programación Java. [4] El tipo null es especial en el contexto de tipado de Java, ya que no pertenece a ningún tipo de dato primitivo ni a ningún tipo de referencia normal. Es un valor de referencia especial que se maneja de forma particular. [5]",
+    "estadoFinal": "Respondido en 3:36",
+    "error": null,
+    "inicio": "2026-08-21T19:23:19.501Z",
+    "fin": "2026-08-21T19:26:56.225Z",
+    "elapsedMs": 216724
+  },
+  {
+    "id": 6,
+    "categoria": "tipos",
+    "pregunta": "¿Qué significa que un método tenga tipo de retorno void?",
+    "esperado": "responde",
+    "respuesta": "No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.",
+    "estadoFinal": "Respondido en 3:11",
+    "error": null,
+    "inicio": "2026-08-21T19:26:56.226Z",
+    "fin": "2026-08-21T19:30:07.809Z",
+    "elapsedMs": 191583
+  },
+  {
+    "id": 7,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es un tipo genérico parametrizado, por ejemplo List<String>?",
+    "esperado": "responde",
+    "respuesta": "",
+    "estadoFinal": "Respondido en 3:52",
+    "error": null,
+    "inicio": "2026-08-21T19:30:07.811Z",
+    "fin": "2026-08-21T19:34:00.565Z",
+    "elapsedMs": 232754
+  },
+  {
+    "id": 9,
+    "categoria": "variables",
+    "pregunta": "¿Qué diferencia hay entre una variable local declarada con var y una declarada con un tipo explícito?",
+    "esperado": "responde",
+    "respuesta": "",
+    "estadoFinal": "Respondido en 3:55",
+    "error": null,
+    "inicio": "2026-08-21T19:43:40.182Z",
+    "fin": "2026-08-21T19:47:36.109Z",
+    "elapsedMs": 235927
+  },
+  {
+    "id": 10,
+    "categoria": "variables",
+    "pregunta": "¿Qué es el ámbito (scope) de una variable local?",
+    "esperado": "responde",
+    "respuesta": "No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.",
+    "estadoFinal": "Respondido en 3:42",
+    "error": null,
+    "inicio": "2026-08-21T19:47:36.111Z",
+    "fin": "2026-08-21T19:51:18.456Z",
+    "elapsedMs": 222345
+  },
+  {
+    "id": 8,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es un literal de tipo long y cómo se distingue de un literal int en el código fuente?",
+    "esperado": "responde",
+    "respuesta": "An integer literal may be expressed in decimal (base 10), hexadecimal (base 16), octal (base 8), or binary (base 2). IntegerLiteral: DecimalIntegerLiteral HexIntegerLiteral OctalIntegerLiteral BinaryIntegerLiteral DecimalNumeral [IntegerTypeSuffix] HexIntegerLiteral: HexNumeral [IntegerTypeSuffix] OctalIntegerLiteral: OctalNumeral [IntegerTypeSuffix] BinaryIntegerLiteral: BinaryNumeral [IntegerTypeSuffix] IntegerTypeSuffix: (one of) l L [1] The type of an integer literal is determined as follows: The type of an integer literal that ends with L or l (ell) is long (§4.2.1). The type of any other integer literal is int (§4.2.1). [2] The largest decimal literal of type long is 9223372036854775808L (2 63 ). All decimal literals from 0L to 9223372036854775807L may appear anywhere a long literal may appear. The decimal literal 9223372036854775808L may appear only as the operand of the unary minus operator -(§15.15.4). It is a compile-time error if a decimal literal of type long is larger than 9223372036854775808L (2 63 ). [3] Examples of int literals: 0    2    0372    0xDada_Cafe    1996    0x00_FF_00_FF Examples of long literals: 0l    0777L    0x100000000L    2_147_483_648L    0xC0B0L [4] The following rules define the direct supertype relation among the primitive types: double >1 float >1 long >1 int >1 char >1 short >1 byte [5]",
+    "estadoFinal": "Respondido en 5:11",
+    "error": null,
+    "inicio": "2026-08-21T19:51:29.491Z",
+    "fin": "2026-08-21T19:56:41.261Z",
+    "elapsedMs": 311770
+  }
+]
