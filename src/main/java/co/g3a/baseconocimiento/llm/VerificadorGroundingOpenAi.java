@@ -80,6 +80,12 @@ class VerificadorGroundingOpenAi implements VerificadorGrounding {
         // extraBody(repeat_penalty): ver PlanificadorOpenAi -- mitiga un modo de
         // falla de repeticion medido en la sesion 6 de la investigacion (ADR-0009).
         //
+        // extraBody(reasoning_effort=none): ver PlanificadorOpenAi -- sin esto, un
+        // modelo con "thinking" nativo (qwen3.5:4b) se come el maxTokens(40) de
+        // abajo pensando y el veredicto falla el 100% de las veces (sesion 18,
+        // hallazgo 75 de docs/investigacion-vram-y-modelo-llm.md). Con la puerta
+        // de relevancia en su valor de produccion, eso rechazaria cada pregunta.
+        //
         // maxTokens(40): la salida es un solo booleano en JSON
         // ({"respondeLaPregunta": true}), un tope bajo alcanza de sobra y evita
         // gastar tiempo de generacion (~5-6 tok/s en esta GPU) si el modelo
@@ -94,7 +100,7 @@ class VerificadorGroundingOpenAi implements VerificadorGrounding {
         // margen sin costo real (sigue siendo una llamada de clasificacion).
         var opciones = OpenAiChatOptions.builder()
                 .temperature(0.0)
-                .extraBody(Map.of("repeat_penalty", 1.1))
+                .extraBody(Map.of("repeat_penalty", 1.1, "reasoning_effort", "none"))
                 .maxTokens(40);
         this.chatClient = ChatClient.builder(modelo).defaultOptions(opciones).build();
     }

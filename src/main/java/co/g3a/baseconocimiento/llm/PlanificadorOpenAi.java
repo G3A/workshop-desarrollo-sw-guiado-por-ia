@@ -32,6 +32,17 @@ import org.springframework.stereotype.Component;
  * {@code llama-server} — no es parte de la API oficial de OpenAI, por eso va
  * en {@code extraBody} y no en un campo propio de {@link OpenAiChatOptions}.
  *
+ * <p>{@code extraBody(reasoning_effort=none)}: necesario para modelos con
+ * "thinking" nativo activado por defecto (p. ej. {@code qwen3.5:4b}, ver
+ * sesión 18/hallazgos 74-76 de docs/investigacion-vram-y-modelo-llm.md) —
+ * sin esto, el razonamiento se come todo el {@code maxTokens(80)} de abajo y
+ * el plan cae al respaldo el 100% de las veces (el {@code content} llega
+ * vacío). {@code think:false} y {@code chat_template_kwargs.enable_thinking}
+ * NO funcionan contra este endpoint (probado y descartado en esa misma
+ * sesión); solo {@code reasoning_effort:"none"} sí lo apaga de verdad.
+ * Inocuo para modelos sin "thinking" (Ministral, Bonsai): un campo extra que
+ * ese backend ignora, mismo argumento que ya vale para {@code repeat_penalty}.
+ *
  * <p>{@code maxTokens(80)}: sin este tope, se midió en vivo que el campo
  * {@code razon} del plan podía salir como una oración completa (~90 de 110
  * tokens generados) en vez de la frase breve que pide el prompt — a
@@ -55,7 +66,7 @@ class PlanificadorOpenAi implements Planificador {
 
     PlanificadorOpenAi(OpenAiChatModel modelo) {
         var opciones = OpenAiChatOptions.builder()
-                .extraBody(Map.of("repeat_penalty", 1.1))
+                .extraBody(Map.of("repeat_penalty", 1.1, "reasoning_effort", "none"))
                 .maxTokens(80);
         this.chatClient = ChatClient.builder(modelo).defaultOptions(opciones).build();
     }

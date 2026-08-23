@@ -1,0 +1,122 @@
+[
+  {
+    "id": 1,
+    "categoria": "tipos",
+    "pregunta": "¿Cuáles son los ocho tipos primitivos definidos en el lenguaje Java?",
+    "esperado": "responde",
+    "respuesta": "Los ocho tipos primitivos definidos en el lenguaje Java son: byte, short, int, long, char, float, double y boolean. [1]",
+    "estadoFinal": "Respondido en 4:51",
+    "error": null,
+    "inicio": "2026-08-21T02:56:47.911Z",
+    "fin": "2026-08-21T03:01:39.317Z",
+    "elapsedMs": 291406
+  },
+  {
+    "id": 2,
+    "categoria": "tipos",
+    "pregunta": "¿Qué diferencia hay entre un tipo primitivo y un tipo de referencia en Java?",
+    "esperado": "responde",
+    "respuesta": "A variable of a class type T can hold a null reference or a reference to an instance of class T or of any class that is a subclass of T . [6] A variable of an interface type can hold a null reference or a reference to any instance of any class that implements the interface. [6] Primitive types are predefined by the Java programming language and named by their reserved keywords. [4]",
+    "estadoFinal": "Respondido en 3:25",
+    "error": null,
+    "inicio": "2026-08-21T03:02:30.563Z",
+    "fin": "2026-08-21T03:05:56.420Z",
+    "elapsedMs": 205857
+  },
+  {
+    "id": 4,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es el autoboxing y cuándo ocurre de forma automática?",
+    "esperado": "responde",
+    "respuesta": "No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.",
+    "estadoFinal": "Respondido en 28 s",
+    "error": null,
+    "inicio": "2026-08-21T12:03:31.310Z",
+    "fin": "2026-08-21T12:03:59.465Z",
+    "elapsedMs": 28155
+  },
+  {
+    "id": 3,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es una conversión de ensanchamiento (widening) entre tipos primitivos?",
+    "esperado": "responde",
+    "respuesta": "Una conversión de ensanchamiento (widening) entre tipos primitivos se conoce como las conversiones primitivas de ensanchamiento específicas. [19] Estas conversiones primitivas de ensanchamiento incluyen la conversión de byte a short, int, long, float o double; el de short a int, long, float o double; y así sucesivamente. [19] Una conversión de ensanchamiento primitiva no pierde información sobre la magnitud global de un valor numérico en los siguientes casos: desde un tipo integral a otro tipo integral, desde byte, short o char a un tipo de punto flotante; y desde int a double. [19] Una conversión de ensanchamiento primitiva puede resultar en pérdida de precisión cuando se convierte de int a float, o de long a float, o de long a double. En este caso, el resultado será una versión correctamente redondeada del valor entero utilizando la política de redondeo hacia el más cercano (§15.4). [19] Una conversión de ensanchamiento primitiva desde int a float, o de long a float, o de int a double, o de long a double se realiza según las reglas de IEEE 754 para convertir de un formato entero a un punto flotante binario. [19] Una conversión de ensanchamiento primitiva desde float a double se realiza según las reglas de IEEE 754 para convertir entre formatos de punto flotante binarios. [19] A pesar del hecho de que la pérdida de precisión puede ocurrir, una conversión primitiva de ensanchamiento nunca resulta en un error de ejecución (§11.1.1). [19] Una combinación de conversiones primitivas de ensanchamiento y reducción se conoce como la conversión primitiva de ensanchamiento. [2] En un contexto de casting, si cualquier expresión es del tipo int y no es una expresión constante (§15.29), el tipo promovido será int; y las otras expresiones que no son del tipo int se someterán a la conversión primitiva de ensanchamiento hacia int. [3] Si cualquier expresión es del tipo short, y todas las demás expresiones son o del tipo short, o byte, o una constante constante del tipo int que tiene un valor representable en el tipo short, entonces el tipo promovido será short; y las expresiones de byte se someterán a la conversión primitiva de ensanchamiento hacia short, y las expresiones de int se someterán a la conversión primitiva de reducción hacia short. [3] Si cualquier expresión es del tipo byte, y todas las demás expresiones son o del tipo byte, o una constante constante del tipo int que tiene un valor representable en el tipo byte, entonces el tipo promovido será byte; y las expresiones de int se someterán a la conversión primitiva de reducción hacia byte. [3] Si cualquier expresión es del tipo char, y todas las demás expresiones son o del tipo char, o una constante constante del tipo int que tiene un valor representable en el tipo char, entonces el tipo promovido será char; y las expresiones de int se someterán a la conversión primitiva de reducción hacia char. [3] Si ninguna expresión es del tipo char, entonces el tipo promovido será int; y todas las demás expresiones que no son del tipo int se someterán a la conversión primitiva de ensanchamiento hacia int. [3] Una conversión de ensanchamiento de referencia existe desde cualquier tipo de referencia S a cualquier tipo de referencia T, siempre y cuando S sea un subtipo de T (§4.10). [4] Los contextos de casting permiten que el operando de una expresión de casting (§15.16) se convierta al tipo nombrado explícitamente por el operador de casting. Comparado con los contextos de asignación y de invocación, los contextos de casting permiten el uso de más conversiones definidas en §5.1, y permite más combinaciones de esas conversiones. [5] Las conversiones primitivas de ensanchamiento incluyen las conversiones primitivas de ensanchamiento específicas, que son: la conversión de short a byte o el de double a byte, short, char, int, long o float. [6] Una conversión primitiva de ensanchamiento puede perder información sobre la magnitud global de un valor numérico y también puede perder precisión y rango. [6]",
+    "estadoFinal": "Respondido en 2:39",
+    "error": null,
+    "inicio": "2026-08-21T12:31:53.739Z",
+    "fin": "2026-08-21T12:34:33.133Z",
+    "elapsedMs": 159394
+  },
+  {
+    "id": 5,
+    "categoria": "tipos",
+    "pregunta": "¿Qué representa el tipo null y a qué tipos de referencia se puede asignar?",
+    "esperado": "responde",
+    "respuesta": "El tipo null tiene un solo valor, la referencia nula, representada por el literal de caracteres ASCII `null`. [1] `null` es siempre del tipo null (§4.1). [1] Los contextos de asignación permiten que el valor de una expresión se asigne a una variable; la tipo de la expresión debe convertirse al tipo de la variable. [2] La conversión de referencia ampliada (§5.1.1), la conversión primitiva ampliada (§5.1.2), la conversión de referencia ampliada seguida de un desempaquetamiento (§5.1.5) y la conversión de referencia ampliada seguida de una conversión primitiva ampliada (§5.1.8) son los tipos permitidos en los contextos de asignación. [2] El tipo del valor de una expresión puede convertirse a la de una variable por un contexto de asignación, lo que significa que el tipo de la expresión es compatible con la asignación con respecto al tipo de la variable. [2] Los tipos de Java se dividen en dos categorías: los tipos primitivos y los tipos de referencia. Los tipos primitivos incluyen el tipo booleano, los tipos numéricos estrictamente (como byte, short, int, long y char) y los tipos de punto flotante (float y double). Los tipos de referencia incluyen las clases, interfaces y arrays. [3] Una variable de tipo clase T puede contener una referencia nula o una referencia a un objeto de la clase T o cualquier subclase de la misma. [3] Un objeto es una instancia explícita de una clase o un array. [4] Una variable de tipo clase puede contener una referencia nula o una referencia a cualquier instancia de cualquier clase que sea subclase o subinterfaz de la misma. [5]",
+    "estadoFinal": "Respondido en 1:16",
+    "error": null,
+    "inicio": "2026-08-21T12:34:33.135Z",
+    "fin": "2026-08-21T12:35:49.870Z",
+    "elapsedMs": 76735
+  },
+  {
+    "id": 6,
+    "categoria": "tipos",
+    "pregunta": "¿Qué significa que un método tenga tipo de retorno void?",
+    "esperado": "responde",
+    "respuesta": "No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.",
+    "estadoFinal": "Respondido en 2:48",
+    "error": null,
+    "inicio": "2026-08-21T12:35:49.872Z",
+    "fin": "2026-08-21T12:38:37.935Z",
+    "elapsedMs": 168063
+  },
+  {
+    "id": 7,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es un tipo genérico parametrizado, por ejemplo List<String>?",
+    "esperado": "responde",
+    "respuesta": "Un tipo genérico parametrizado es una clase o interfaz que define un conjunto de tipos parametrizados. [1] Los tipos parametrizados se definen del formato C < T1 ,..., Tn >, donde C es el nombre de una clase genérica y < T1 ,..., Tn > son listas de argumentos tipo que denotan un parámetroización particular de la clase o interfaz genérica. [1] Un tipo parametrizado tiene tipos de parámetros F1 ,..., Fn con correspondientes límites Bi . Cada argumento de tipo Ti en un tipo parametrizado rango sobre todos los tipos que son subtipos de todos los tipos listados en el correspondiente límite. [1] Un tipo parametrizado bien formado es verdadero si todas las siguientes son ciertas: C es el nombre de una clase genérica o interfaz, el número de argumentos de tipo es igual al número de parámetros de tipo en la declaración genérica de C , y cuando se somete a conversión de captura (§5.1.10) C es verdadero. [1] Un tipo no raw G puede convertirse a cualquier tipo parametrizado del formato G < T1 ,..., Tn > sin advertencia compilada, siempre que todos los argumentos de tipo Ti (1 ≤ i ≤ n) sean parámetros genéricos no restringidos (§4.5.1). [2]",
+    "estadoFinal": "Respondido en 5:25",
+    "error": null,
+    "inicio": "2026-08-21T12:38:37.937Z",
+    "fin": "2026-08-21T12:44:03.903Z",
+    "elapsedMs": 325966
+  },
+  {
+    "id": 8,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es un literal de tipo long y cómo se distingue de un literal int en el código fuente?",
+    "esperado": "responde",
+    "respuesta": "No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.",
+    "estadoFinal": "Respondido en 3:39",
+    "error": null,
+    "inicio": "2026-08-21T12:44:03.904Z",
+    "fin": "2026-08-21T12:47:43.414Z",
+    "elapsedMs": 219510
+  },
+  {
+    "id": 9,
+    "categoria": "variables",
+    "pregunta": "¿Qué diferencia hay entre una variable local declarada con var y una declarada con un tipo explícito?",
+    "esperado": "responde",
+    "respuesta": "Si la anotación aparece antes de una declaración de método vacío o una declaración de variable que utiliza var (§14.4, §15.27.1), no existe el tipo más cercano. Si la interfaz de la anotación se considera aplicable solo al tipo que está más cerca de la anotación, ocurre un error de compilación. [5] En todos los demás casos, el tipo más cercano es el tipo escrito en código fuente para el entidad declarada; si ese tipo es un tipo de array, entonces se considera que la componente del elemento más cercana a la anotación es el tipo de elementos del array. [5] Las declaraciones de variables locales que no utilizan var son similares a las declaraciones de parámetros formales de expresiones lambda, en que ambos permiten anotaciones de declaración y anotaciones de tipo en código fuente, pero solo las anotaciones de tipo pueden almacenarse en el archivo de clase. [5] Un patrón de tipo declara un único variable local conocida como variable de patrón. Si la declaración incluye un identificador, entonces especifica el nombre de la variable de patrón; de lo contrario, la variable de patrón se llama una variable de patrón sin nombre. [6] Las reglas para una variable local declarada en un patrón de tipo son especificadas en §14.4. Además, todos los siguientes deben ser verdaderos o se produce un error de compilación: [6] - El LocalVariableType en una declaración de patrón top-level denota un tipo de referencia (y además no es var). [6] - La VariableDeclaratorList consta de solo un declarador de variable. [6] - El declarador de variable tiene sin inicializador. [6] - El identificador del declarador no tiene pares de corchetes. [6]",
+    "estadoFinal": "Respondido en 3:01",
+    "error": null,
+    "inicio": "2026-08-21T12:47:43.416Z",
+    "fin": "2026-08-21T12:50:44.813Z",
+    "elapsedMs": 181397
+  },
+  {
+    "id": 10,
+    "categoria": "variables",
+    "pregunta": "¿Qué es el ámbito (scope) de una variable local?",
+    "esperado": "responde",
+    "respuesta": "El ámbito de una variable local declarada en un bloque por una declaración de variables locales (§14.4.2) es el resto del bloque, comenzando con la inicialización del propio declara y incluyendo cualquier declaración adicional a la derecha en la declaración de variables locales. [1] El ámbito de una variable local declarada en la parte ForInit de una declaración básica de bucle (§14.14.1) incluye todo lo siguiente: su propia inicialización, cualquier declaración adicional a la derecha en la parte ForInit del bucle, las partes Expression y ForUpdate del bucle y el bloque contenido. [1] Una variable local tiene como ámbito el resto del bloque en que se declara (§6.3); en este caso es el resto de la inicialización del método main, es decir, su propia inicialización '0' y las invocaciones de System.out.print y System.out.println. [2] El ámbito y la sombra de una variable local declarada en la parte ForInit de una declaración básica de bucle se especifica en §6.3 y §6.4. [3]",
+    "estadoFinal": "Respondido en 2:51",
+    "error": null,
+    "inicio": "2026-08-21T12:50:44.815Z",
+    "fin": "2026-08-21T12:53:36.675Z",
+    "elapsedMs": 171860
+  }
+]

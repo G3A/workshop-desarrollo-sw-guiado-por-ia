@@ -1,0 +1,47 @@
+# Perfil experimental: SmolLM3-3B (Hugging Face, GGUF de ggml-org), servido por
+# el mismo `ollama` que ya levanta compose.yml -- mismo mecanismo que los otros
+# perfiles de Ollama (compose.ministral.yml/compose.qwen35.yml/compose.nemotron.yml).
+#
+# Por que este candidato: sesion 23 de docs/investigacion-vram-y-modelo-llm.md,
+# parte de la misma busqueda de alternativa a Ministral que las sesiones 20-22.
+# A diferencia de nemotron-mini:4b (sin "thinking"), `ollama show` SI declara
+# "thinking" para este modelo (arquitectura dual-mode reasoning/no-reasoning,
+# igual que qwen3.5:4b) -- mismo riesgo estructural que descarto a la mitad de
+# los candidatos de esta investigacion. Se prueba igual porque el fix de
+# reasoning_effort:none (hallazgo 76, sesion 18) ya esta cableado sin condicionar
+# por modelo en los cuatro componentes *OpenAi -- si Ollama no lo respeta para
+# esta familia de modelo en particular, se vera de inmediato como fallback del
+# Planificador en los logs, sin necesidad de codigo nuevo para descartarlo.
+#
+# Uso, junto con el perfil GPU real:
+#   docker compose -f compose.yml -f compose.gpu.yml -f compose.smollm3.yml up -d
+#
+# El modelo NO se baja solo: hace falta `make pull-smollm3` (o
+# `docker compose exec ollama ollama pull hf.co/ggml-org/SmolLM3-3B-GGUF:Q4_K_M`)
+# antes de levantar `api`, una sola vez.
+#
+# ADVERTENCIA: mismo estado experimental que qwen35/nemotron -- sin piloto de
+# evaluacion (eval-100-preguntas/), no usar como reemplazo de produccion sin
+# correrlo primero.
+
+services:
+  api:
+    environment:
+      SPRING_AI_OPENAI_BASE_URL: http://ollama:11434/v1
+      KB_LLM_MODELO: hf.co/ggml-org/SmolLM3-3B-GGUF:Q4_K_M
+      KB_LLM_TIMEOUT: ${KB_LLM_TIMEOUT:-450s}
+      KB_UMBRAL_RELEVANCIA_TECHO_CONFIANZA: ${KB_UMBRAL_RELEVANCIA_TECHO_CONFIANZA:-8.0}
+      # `ollama show` reporta contexto nativo 65536, pero igual que qwen3.5:4b
+      # (sesion 20) no hay medicion propia de que num_ctx real carga Ollama por
+      # defecto para esta arquitectura -- se copian los recortes de Ministral
+      # como punto de partida, a confirmar con `ollama ps` tras la primera
+      # consulta real.
+      KB_EXPANDIR_VECINOS: ${KB_EXPANDIR_VECINOS:-false}
+      KB_MAX_FRAGMENTOS_CONTEXTO: ${KB_MAX_FRAGMENTOS_CONTEXTO:-6}
+      KB_RECUPERACION_TOP_RERANK: ${KB_RECUPERACION_TOP_RERANK:-6}
+      KB_RECUPERACION_TOPE_POR_DOCUMENTO: ${KB_RECUPERACION_TOPE_POR_DOCUMENTO:-20}
+      # false por defecto (misma seguridad que produccion) -- overrideable por
+      # shell para la sesion 24 (docs/investigacion-vram-y-modelo-llm.md):
+      # probar SintetizadorEstructuradoOpenAi contra el defecto de "texto
+      # pegado sin citas" que el hallazgo 88 midio en este mismo modelo.
+      KB_LLM_SINTESIS_ESTRUCTURADA_HABILITADA: ${KB_LLM_SINTESIS_ESTRUCTURADA_HABILITADA:-false}

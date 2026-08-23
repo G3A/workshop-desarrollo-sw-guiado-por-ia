@@ -1,0 +1,122 @@
+[
+  {
+    "id": 1,
+    "categoria": "tipos",
+    "pregunta": "¿Cuáles son los ocho tipos primitivos definidos en el lenguaje Java?",
+    "esperado": "responde",
+    "respuesta": "Los ocho tipos primitivos definidos en el lenguaje Java son:\n\n[1] jls25.pdf (file:///vault/documentos/jls25.pdf)\nNumericType {Annotation} boolean NumericType: IntegralType FloatingPointType IntegralType: (one of) byte short int long char FloatingPointType: (one of) float double\n\nEsto incluye:\n- boolean\n- byte, short, int, long (tipos integrales)\n- char (tipo de carácter)\n\n[2] jls25.pdf (file:///vault/documentos/jls25.pdf)\nAdemás, los tipos primitivos también son:\n- float y double (tipos de punto flotante)",
+    "estadoFinal": "Respondido en 4:59",
+    "error": null,
+    "inicio": "2026-08-22T20:02:55.796Z",
+    "fin": "2026-08-22T20:07:55.051Z",
+    "elapsedMs": 299255
+  },
+  {
+    "id": 2,
+    "categoria": "tipos",
+    "pregunta": "¿Qué diferencia hay entre un tipo primitivo y un tipo de referencia en Java?",
+    "esperado": "responde",
+    "respuesta": "La principal diferencia entre un tipo primitivo y un tipo de referencia en Java es que:\n\n- **Tipo Primitivo**: Son tipos como `int`, `double`, `boolean` o `byte`. No tienen subtipos ni propiedades adicionales. Los tipos primitivos no pueden ser heredados, y sus objetos son instancias del propio tipo.\n\n- **Tipo de Referencia**: Son tipos que se definen a partir de otros tipos (por ejemplo, una clase puede extender otra). Pueden tener métodos adicionales, como `toString()` o `equals()`, además de los métodos definidos por el tipo base. Los objetos de un tipo de referencia pueden heredar propiedades y comportamientos del tipo base.\n\nEn resumen:\n- Un tipo primitivo es una clase abstracta que no permite la creación de subtipos.\n- Un tipo de referencia, en cambio, puede ser extendido para crear nuevos tipos que hereden sus propiedades.",
+    "estadoFinal": "Respondido en 3:33",
+    "error": null,
+    "inicio": "2026-08-22T20:07:55.053Z",
+    "fin": "2026-08-22T20:11:29.024Z",
+    "elapsedMs": 213971
+  },
+  {
+    "id": 3,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es una conversión de ensanchamiento (widening) entre tipos primitivos?",
+    "esperado": "responde",
+    "respuesta": "Una conversión de ensanchamiento entre tipos primitivos, también conocida como \"widening primitive conversion\", es un proceso que permite cambiar el tipo de una variable o expresión de un tipo más pequeño a uno más grande dentro del mismo rango numérico. Por ejemplo:\n\n- De `byte` a `short`, `int`, `long`, `float` o `double`.\n- De `char` a `int`, `long`, `float` o `double`.\n\nEstas conversiones no pierden información sobre la magnitud general del valor, pero pueden perder precisión y rango en algunos casos específicos. Por ejemplo:\n\n- La conversión de un entero (`int`) a una variable de tipo `float` puede resultar en pérdida de precisión si el número tiene más dígitos significativos que los que se pueden representar con la nueva precisión.\n\nLas conversiones de ensanchamiento son útiles cuando necesitas trabajar con tipos de datos más grandes para realizar operaciones matemáticas o comparaciones. Sin embargo, es importante tener en cuenta las limitaciones y posibles pérdidas de información asociadas a estas conversiones.",
+    "estadoFinal": "Respondido en 2:49",
+    "error": null,
+    "inicio": "2026-08-22T20:11:29.027Z",
+    "fin": "2026-08-22T20:14:18.758Z",
+    "elapsedMs": 169731
+  },
+  {
+    "id": 4,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es el autoboxing y cuándo ocurre de forma automática?",
+    "esperado": "responde",
+    "respuesta": "No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.",
+    "estadoFinal": "Respondido en 2:55",
+    "error": null,
+    "inicio": "2026-08-22T20:14:18.761Z",
+    "fin": "2026-08-22T20:17:14.565Z",
+    "elapsedMs": 175804
+  },
+  {
+    "id": 5,
+    "categoria": "tipos",
+    "pregunta": "¿Qué representa el tipo null y a qué tipos de referencia se puede asignar?",
+    "esperado": "responde",
+    "respuesta": "El tipo `null` representa la ausencia de referencia a un objeto. Es el único valor del tipo `null`. Puede asignarse a cualquier tipo de referencia, lo que resulta en una referencia nula de ese tipo.\n\nPor ejemplo:\n```java\nint x = null; // Asignación válida para int (no es común)\nString s = null; // Asignación válida para String\n\n// También se puede usar con tipos de referencia como List o Map.\nList<String> lista = null;\nMap<String, Integer> mapa = null;\n```\n\nSin embargo, asignar `null` a un tipo primitivo no es común ni recomendado. Por ejemplo:\n```java\nint x = (int) null; // Esto generará una excepción NullPointerException en tiempo de ejecución.\n```\nEn resumen, el tipo `null` puede ser utilizado para representar la ausencia de referencia y asignarse a cualquier tipo de referencia, pero no es apropiado para tipos primitivos.",
+    "estadoFinal": "Respondido en 2:36",
+    "error": null,
+    "inicio": "2026-08-22T20:17:14.568Z",
+    "fin": "2026-08-22T20:19:51.019Z",
+    "elapsedMs": 156451
+  },
+  {
+    "id": 6,
+    "categoria": "tipos",
+    "pregunta": "¿Qué significa que un método tenga tipo de retorno void?",
+    "esperado": "responde",
+    "respuesta": "No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.",
+    "estadoFinal": "Respondido en 2:39",
+    "error": null,
+    "inicio": "2026-08-22T20:19:51.022Z",
+    "fin": "2026-08-22T20:22:29.992Z",
+    "elapsedMs": 158970
+  },
+  {
+    "id": 7,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es un tipo genérico parametrizado, por ejemplo List<String>?",
+    "esperado": "responde",
+    "respuesta": "No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.",
+    "estadoFinal": "Respondido en 42 s",
+    "error": null,
+    "inicio": "2026-08-22T20:22:29.994Z",
+    "fin": "2026-08-22T20:23:12.127Z",
+    "elapsedMs": 42133
+  },
+  {
+    "id": 8,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es un literal de tipo long y cómo se distingue de un literal int en el código fuente?",
+    "esperado": "responde",
+    "respuesta": "No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.",
+    "estadoFinal": "Respondido en 3:21",
+    "error": null,
+    "inicio": "2026-08-22T20:23:12.130Z",
+    "fin": "2026-08-22T20:26:33.239Z",
+    "elapsedMs": 201109
+  },
+  {
+    "id": 9,
+    "categoria": "variables",
+    "pregunta": "¿Qué diferencia hay entre una variable local declarada con var y una declarada con un tipo explícito?",
+    "esperado": "responde",
+    "respuesta": "No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.",
+    "estadoFinal": "Respondido en 50 s",
+    "error": null,
+    "inicio": "2026-08-22T20:26:33.241Z",
+    "fin": "2026-08-22T20:27:23.332Z",
+    "elapsedMs": 50091
+  },
+  {
+    "id": 10,
+    "categoria": "variables",
+    "pregunta": "¿Qué es el ámbito (scope) de una variable local?",
+    "esperado": "responde",
+    "respuesta": "El ámbito (scope) de una variable local es el bloque en el que se declara, comenzando desde su inicialización y hasta la finalización del mismo. Esto significa que solo puede ser referida dentro de ese contexto específico donde fue declarada. Por ejemplo, si una variable local se declara dentro de un método main(), solo podrá usarse dentro de las líneas siguientes a esa declaración en el cuerpo del método main().",
+    "estadoFinal": "Respondido en 5:24",
+    "error": null,
+    "inicio": "2026-08-22T20:27:23.335Z",
+    "fin": "2026-08-22T20:32:47.578Z",
+    "elapsedMs": 324243
+  }
+]

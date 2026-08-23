@@ -1,0 +1,122 @@
+[
+  {
+    "id": 1,
+    "categoria": "tipos",
+    "pregunta": "¿Cuáles son los ocho tipos primitivos definidos en el lenguaje Java?",
+    "esperado": "responde",
+    "respuesta": "Los ocho tipos primitivos definidos en el lenguaje Java son booleano, integral (que incluye byte, short, int y long), flotante (con float e int como subtipos) y char. [2] La información sobre los tipos integrales proviene del fragmento que menciona 'integral types are byte , short , int , and long' [1] Los detalles de los tipos flotantes se encuentran en el texto donde dice 'FloatingPointType: (one of) float double' [2] La información sobre booleano proviene del fragmento que menciona 'The boolean type has exactly two values: true and false.' [1] No hay contradicción directa entre las fuentes proporcionadas. [2]",
+    "estadoFinal": "Respondido en 6:21",
+    "error": null,
+    "inicio": "2026-08-21T02:19:30.550Z",
+    "fin": "2026-08-21T02:25:52.520Z",
+    "elapsedMs": 381970
+  },
+  {
+    "id": 2,
+    "categoria": "tipos",
+    "pregunta": "¿Qué diferencia hay entre un tipo primitivo y un tipo de referencia en Java?",
+    "esperado": "responde",
+    "respuesta": "Un tipo primitivo es una variable de un solo valor. [4] Una referencia no puede referirse directamente a un objeto o array; en su lugar, se usa el operador 'new' para crear instancias dynamically. [5]",
+    "estadoFinal": "Respondido en 3:53",
+    "error": null,
+    "inicio": "2026-08-21T02:25:52.522Z",
+    "fin": "2026-08-21T02:29:46.444Z",
+    "elapsedMs": 233922
+  },
+  {
+    "id": 3,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es una conversión de ensanchamiento (widening) entre tipos primitivos?",
+    "esperado": "responde",
+    "respuesta": "Las conversions primarias de ensanchamiento, también conocidas como conversions primitivas de ensanchamiento, incluyen conversiones desde tipos primitivos más grandes a tipos más pequeños. [1] La conversión de ensanchamiento no pierde información sobre la magnitud general del valor numérico en los casos donde el tipo se preserva exactamente, como al convertir un entero a una flotante o viceversa. [2] Una conversión de ensanchamiento primitiva puede resultar en pérdida de precisión cuando la representación exacta del valor no es posible debido a limitaciones de bitaje, pero esto nunca resulta en un error al ejecutar el programa. [3] Las conversions primitivas pueden combinarse tanto para ensanchamiento como para encogimiento primitivo, lo que permite una conversión compleja entre tipos primitivos y referencias. [4]",
+    "estadoFinal": "Respondido en 3:10",
+    "error": null,
+    "inicio": "2026-08-21T02:29:46.445Z",
+    "fin": "2026-08-21T02:32:57.484Z",
+    "elapsedMs": 191039
+  },
+  {
+    "id": 4,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es el autoboxing y cuándo ocurre de forma automática?",
+    "esperado": "responde",
+    "respuesta": "No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.",
+    "estadoFinal": "Respondido en 3:52",
+    "error": null,
+    "inicio": "2026-08-21T02:32:57.486Z",
+    "fin": "2026-08-21T02:36:50.506Z",
+    "elapsedMs": 233020
+  },
+  {
+    "id": 5,
+    "categoria": "tipos",
+    "pregunta": "¿Qué representa el tipo null y a qué tipos de referencia se puede asignar?",
+    "esperado": "responde",
+    "respuesta": "Un objeto es una instancia de clase o un arreglo. [4] Los valores referenciales (a menudo simplemente referencias) son punteros a estos objetos, y hay referencia especial null que se refiere a ningún objeto. [5] Un variable de tipo clase T puede contener una reference null o un reference al instancia del clase T u otro instancias de cualquier clase que sea una subclase de T. [6] Si T es un tipo primitivo, entonces un variable de 'array de T' puede contener una reference null o un reference a cualquier array de tipo 'array de T'. [7] Si T es un referencia type, entonces un variable de tipo 'array de T' puede contener una reference null u otro reference to any array of type 'array of S', con la condición que el tipo S sea una subclase o interfaz de T. [8] Un variable de tipo Object[] puede contener un reference a cualquier arreglo de referencia types. [9] Un variable de tipo Object puede contener una reference null o reference to any object, ya sea que sea instancia de clase u arreglo. [10] Es posible que un variable del tipo genérico pueda referirse a un objeto no es este mismo parámetroized type. Esta situación se conoce como pollution del heap. [11]",
+    "estadoFinal": "Respondido en 3:42",
+    "error": null,
+    "inicio": "2026-08-21T02:36:50.509Z",
+    "fin": "2026-08-21T02:40:33.560Z",
+    "elapsedMs": 223051
+  },
+  {
+    "id": 6,
+    "categoria": "tipos",
+    "pregunta": "¿Qué significa que un método tenga tipo de retorno void?",
+    "esperado": "responde",
+    "respuesta": "No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.",
+    "estadoFinal": "Respondido en 2:26",
+    "error": null,
+    "inicio": "2026-08-21T02:40:33.561Z",
+    "fin": "2026-08-21T02:43:00.223Z",
+    "elapsedMs": 146662
+  },
+  {
+    "id": 7,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es un tipo genérico parametrizado, por ejemplo List<String>?",
+    "esperado": "responde",
+    "respuesta": "[jls25.pdf (file:///vault/documentos/jls25.pdf)] [6]",
+    "estadoFinal": "Respondido en 4:09",
+    "error": null,
+    "inicio": "2026-08-21T02:43:00.227Z",
+    "fin": "2026-08-21T02:47:09.348Z",
+    "elapsedMs": 249121
+  },
+  {
+    "id": 8,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es un literal de tipo long y cómo se distingue de un literal int en el código fuente?",
+    "esperado": "responde",
+    "respuesta": "No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.",
+    "estadoFinal": "Respondido en 3:29",
+    "error": null,
+    "inicio": "2026-08-21T02:47:09.351Z",
+    "fin": "2026-08-21T02:50:38.870Z",
+    "elapsedMs": 209519
+  },
+  {
+    "id": 9,
+    "categoria": "variables",
+    "pregunta": "¿Qué diferencia hay entre una variable local declarada con var y una declarada con un tipo explícito?",
+    "esperado": "responde",
+    "respuesta": "No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.",
+    "estadoFinal": "Respondido en 2:27",
+    "error": null,
+    "inicio": "2026-08-21T02:50:38.872Z",
+    "fin": "2026-08-21T02:53:06.226Z",
+    "elapsedMs": 147354
+  },
+  {
+    "id": 10,
+    "categoria": "variables",
+    "pregunta": "¿Qué es el ámbito (scope) de una variable local?",
+    "esperado": "responde",
+    "respuesta": "No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.",
+    "estadoFinal": "Respondido en 3:23",
+    "error": null,
+    "inicio": "2026-08-21T02:53:06.228Z",
+    "fin": "2026-08-21T02:56:29.555Z",
+    "elapsedMs": 203327
+  }
+]
