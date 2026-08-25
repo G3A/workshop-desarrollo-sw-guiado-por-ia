@@ -1,0 +1,5 @@
+# Huellas (fingerprints) de hallazgos de gitleaks confirmados como falsos positivos, una por
+# linea. NO pongas rutas de archivo aca -- una entrada por ruta ciega el escaneo a todo el
+# archivo, no solo al match puntual. Genera la huella con:
+#   gitleaks detect --source . --report-format json --report-path gitleaks-report.json
+# y copia el campo "Fingerprint" del hallazgo verificado.
