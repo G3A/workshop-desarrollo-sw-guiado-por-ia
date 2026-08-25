@@ -45,9 +45,10 @@ verificadas por ArchUnit y `ApplicationModules.verify()` en cada build (`Arquite
 | `seguridad` | Filtro de token Bearer sobre el API programático |
 | `compartido` | Tipos de dominio: `Cita`, `Fragmento`, `Proyecto`, `Respuesta` |
 
-**La regla que ArchUnit hace cumplir**: `web` y `teams` solo pueden depender de la fachada de
-`orquestacion` y de `compartido`. Nunca de `recuperacion`, `ingesta`, `modelos` ni `llm`. Es el
-límite que hace que "dos adaptadores reemplazables" signifique algo, no solo una intención escrita.
+**La regla que ArchUnit hace cumplir**: `web`, `teams` y `seguridad` solo pueden depender de la
+fachada de `orquestacion` y de `compartido`. Nunca de `recuperacion`, `ingesta`, `modelos` ni
+`llm`. Es el límite que hace que "tres adaptadores reemplazables" signifique algo, no solo una
+intención escrita.
 
 ### Núcleo compartido y adaptadores
 

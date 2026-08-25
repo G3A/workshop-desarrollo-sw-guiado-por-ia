@@ -22,9 +22,8 @@ antes de tocar un módulo:
   de 2023 y el resto del Bot Framework SDK se archivó en enero de 2026.
 - `compartido`: no depende de nadie, sin lógica — solo vocabulario (`Cita`, `Fragmento`,
   `Proyecto`, `Respuesta`).
-- `seguridad`: filtro de token Bearer sobre el API programático. <!-- TODO: su package-info.java
-  no tiene Javadoc ni `@ApplicationModule` explícito — confirmar si participa del grafo Modulith o
-  si queda fuera intencionalmente. -->
+- `seguridad`: filtro de token Bearer sobre el API programático. Adaptador piel, como `web` y
+  `teams` — no depende del núcleo y el núcleo no depende de él.
 
 ## JDK target & nivel de lenguaje
 
@@ -69,18 +68,11 @@ de perfiles de Docker Compose (no de Spring).
 
 ## Fronteras de módulo (Spring Modulith)
 
-Ver la regla completa y sus dos gateways en [architecture.md](architecture.md#módulos-spring-modulith)
-y el archivo `ArquitecturaTest`. Estado real detectado en esta pasada (2026-08-25):
-
-- Las reglas `losAdaptadoresNoConocenElNucleo` y `elNucleoNoConoceALosAdaptadores` tienen
-  `allowEmptyShould(true)` con un comentario que dice *"queda en true porque `web` y `teams` llegan
-  en F4 y F5"* — **pero ambos paquetes ya existen y tienen clases reales** (`ChatController`,
-  `BotController`, etc.). El flag y el comentario están desactualizados; ya no protegen contra un
-  selector vacío, solo quedan como ruido documental. Ver gotcha en §14.
-- El paquete `seguridad` no aparece en ninguna de las 4 reglas — no está protegido por el gate de
-  arquitectura pese a exponer el filtro del API programático.
-- `ApplicationModules.verify()` corre en el mismo ciclo de test que el resto (`make test`), no está
-  deshabilitado.
+Ver la regla completa y sus tres adaptadores en [architecture.md](architecture.md#módulos-spring-modulith)
+y el archivo `ArquitecturaTest`. Las 4 reglas (3 `noClasses()` de ArchUnit + `ApplicationModules.verify()`)
+corren activadas de verdad, sin `allowEmptyShould`, y cubren a `web`, `teams` y `seguridad` por igual.
+`ApplicationModules.verify()` corre en el mismo ciclo de test que el resto (`make test`), no está
+deshabilitado.
 
 ## Persistencia
 
@@ -154,11 +146,6 @@ este documento ya no dependen solo de que alguien las lea:
 
 ## Gotchas / hotspots
 
-- **`allowEmptyShould(true)` obsoleto** en las 2 reglas de adaptadores de `ArquitecturaTest` — el
-  comentario que lo justifica ("hasta que existan web/teams") ya no aplica; queda como riesgo
-  silencioso si esos paquetes alguna vez se vacían de nuevo sin que nadie lo note. Candidato real
-  para un issue de F3 en la validación de `instrumentacion-java-ia`.
-- **`seguridad` sin cobertura de ArchUnit** — ningún test lo incluye en las reglas de frontera.
 - **`spring-boot-flyway` como módulo aparte de `flyway-core`** en Boot 4 — fácil de omitir al
   copiar dependencias de un proyecto Boot 3, y el fallo es silencioso (arranca sin migrar).
 - **Testcontainers 2.0 renombró sus módulos** (`postgresql` → `testcontainers-postgresql`) — un

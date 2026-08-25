@@ -42,7 +42,7 @@ a mano — el `Makefile` ya resuelve flags de perfil y detección de GPU.
 
 ## Reglas no obvias
 
-- **Los adaptadores son piel**: `web` y `teams` solo pueden depender de la fachada
+- **Los adaptadores son piel**: `web`, `teams` y `seguridad` solo pueden depender de la fachada
   `orquestacion.Consultar` y de `compartido`. Nunca de `recuperacion`, `ingesta`, `modelos` ni
   `llm` — lo hace cumplir `ArquitecturaTest` (ArchUnit + `ApplicationModules.verify()`) en cada
   build, no es solo una convención escrita.
