@@ -40,8 +40,8 @@ You install eight controls, prove each one fails when it should, and record them
 - **Fail fast, with a clear message.** A slow pre-commit gets uninstalled within a week.
 - **Everything you write is in English** — config, comments, target descriptions, `fail_text`, CI
   step names — regardless of the conversation language. Exception: prose that already exists in
-  another language (a Spanish `AGENTS.md` or `Makefile` comment) — match the file you edit, write
-  new artifacts in English, and say so if that leaves a file bilingual.
+  another language — match the file you edit, write new artifacts in English, and say so if that
+  leaves a file bilingual.
 - **Never commit.** The only `git` writes are the break-and-restore of Phase 4, undone before it
   ends.
 
@@ -51,13 +51,12 @@ You install eight controls, prove each one fails when it should, and record them
 
 Use Glob, Grep, Read, and read-only Bash. Work through `references/inspection.md` in full: Maven
 (or Gradle), module graph, Java target, BOM-managed vs. inline dependency versions, test setup,
-which of the eight controls already exist and in what state, CI platform, context docs, and
-`git log --oneline -20` for commit-convention evidence. Then classify the architecture shape with
-`references/architecture-discovery.md`.
+which of the eight controls already exist and in what state, CI platform, and context docs. Then
+classify the architecture shape with `references/architecture-discovery.md`.
 
 Report the state as a table (control, `present`/`partial`/`missing`, what you found), plus JDK/Maven
 versions and the detected shape. **A partial control is more dangerous than a missing one** — the
-team believes it is covered.
+team believes it's covered.
 
 ---
 
@@ -72,8 +71,11 @@ Check tooling per OS; install nothing yourself.
 | `make` | `make --version` | ships with Xcode CLT | `winget install ezwinports.make` | ships with the distro |
 | gitleaks (opt-in) | `gitleaks version` | `brew install gitleaks` | `winget install gitleaks` | `apt install gitleaks` on Debian trixie+/Ubuntu 25.04+; older LTS needs the release binary |
 
-`make` does not ship with Windows. If missing, surface the `winget` command as a documented
-prerequisite; do not silently switch task runners.
+`make` does not ship with Windows. If missing, surface the `winget` command as a prerequisite; do
+not silently switch task runners.
+
+If a tool was installed via `winget` this session, open a new terminal before re-checking — user
+`PATH` doesn't refresh in an already-open one.
 
 ---
 
@@ -87,8 +89,8 @@ Ask only what Phase 1 could not answer, in plain language (spell out acronyms, s
 1. **Which controls to install** — default all eight; `present` controls are reported, not
    reinstalled; `partial` ones get both exits (complete it, or remove the dead config).
 2. **Style formatter** — `spotless-maven-plugin` needs one. `google-java-format` is the zero-config
-   default (2-space); `palantir-java-format` suits teams wanting 4-space, closer to IDE defaults.
-   Pick one, say why in the report.
+   default (2-space); `palantir-java-format` suits teams wanting 4-space. Pick one, say why in the
+   report.
 3. **Brownfield reformat** — an existing tree means the first `spotless:apply` reformats everything
    in one commit. Offer `Reformat now` or `ratchetFrom` scoped to a base branch (only files changed
    since `origin/<default>`, needs CI `fetchDepth: 0`, already in the templates). Never reformat
@@ -99,7 +101,7 @@ Ask only what Phase 1 could not answer, in plain language (spell out acronyms, s
    positive). Offer `Yes — pre-commit and CI`, `CI only`, `Skip`.
 6. **`commit-msg` (Conventional Commits)** — **not proposed by default.** Install only when
    `git log --oneline -20` already follows the convention. Descriptive, unprefixed subjects (this
-   monorepo's own log) get no hook — imposing a convention nobody uses is a team decision, not an
+   monorepo's log) get no hook — imposing a convention nobody uses is a team decision, not an
    instrumentation fix, and the report says so.
 
 Then install **in the order given in `references/apply.md`** — each control builds on the previous
