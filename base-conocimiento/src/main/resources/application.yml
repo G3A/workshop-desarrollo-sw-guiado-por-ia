@@ -234,7 +234,7 @@ kb:
     # locales viven en subcarpetas fijas debajo de esta raiz: vault-dir/documentos
     # (ConectorDocumentosLocales) y vault-dir/repos (ConectorReposLocales,
     # tambien usado por kb.orquestacion.codigo-dir mas arriba).
-    vault-dir: ${KB_VAULT_RUTA:../vault}
+    vault-dir: ${KB_VAULT_RUTA:../../vault}
     worker:
       intervalo-ms: ${KB_INGESTA_INTERVALO_MS:2000}
       # false en pruebas de integracion que no levantan Ollama: sin esto, el

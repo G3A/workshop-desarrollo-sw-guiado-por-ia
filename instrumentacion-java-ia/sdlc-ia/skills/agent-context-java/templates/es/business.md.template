@@ -1,0 +1,31 @@
+<!--
+Placeholders:
+  {{PROJECT_NAME}}
+  {{BUSINESS_SUMMARY}}     — respuesta de 1-2 frases de la entrevista
+  {{WHO_PAYS}}             — de la entrevista (si se capturó)
+-->
+
+# Contexto de Negocio
+
+## Qué es {{PROJECT_NAME}}
+
+{{BUSINESS_SUMMARY}}
+
+## Quién paga por esto
+
+{{WHO_PAYS}}
+
+<!-- TODO: ampliar con modelo de ingresos, tipos de contrato o precios si aplica. -->
+
+## Ecosistema
+
+<!-- TODO: listar productos hermanos, fuentes de datos upstream, consumidores downstream. Borra esta sección si el producto es independiente. -->
+
+## Voz de marca / tono
+
+<!-- TODO: 3-5 viñetas describiendo cómo el producto le habla a los usuarios. Borra si no es relevante para las decisiones del agente. -->
+
+## Docs relacionados
+
+- [Usuario objetivo](./target-user.md) — quién usa el producto y qué le importa (si fue generado).
+- [Arquitectura](./architecture.md) — cómo está construido el sistema.

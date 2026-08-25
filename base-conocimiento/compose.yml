@@ -139,7 +139,7 @@ services:
       # Distinta de KB_VAULT_DIR (esa es la ruta del HOST que se monta abajo).
       # Dentro del contenedor el vault siempre queda en /vault, con las
       # subcarpetas documentos/ y repos/ (ver kb.ingesta.vault-dir). Sin esta
-      # linea el default relativo "../vault" resolveria dentro del contenedor
+      # linea el default relativo "../../vault" resolveria dentro del contenedor
       # contra WORKDIR y NO contra el /vault montado abajo -- la ingesta y
       # search_code buscarian en una carpeta vacia, en silencio.
       KB_VAULT_RUTA: /vault
@@ -149,7 +149,7 @@ services:
       # en application.yml), no un flag cosmetico. KB_VAULT_MODO=rw en .env es el
       # unico interruptor: sin eso, KB_INGESTA_CARGA_HABILITADA=true igual falla al
       # escribir, con un error de E/S explicito.
-      - ${KB_VAULT_DIR:-../vault}:/vault:${KB_VAULT_MODO:-ro}
+      - ${KB_VAULT_DIR:-../../vault}:/vault:${KB_VAULT_MODO:-ro}
       - ${KB_DATA_DIR:-./.data}/models:/models
     ports:
       - "${KB_PORT:-8080}:8080"

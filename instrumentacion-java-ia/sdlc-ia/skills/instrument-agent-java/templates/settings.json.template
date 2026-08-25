@@ -1,0 +1,115 @@
+// Placeholders: none in the JSON itself. Every path below is literal.
+//
+// Becomes the "hooks" key of .claude/settings.json — the file that IS committed. Never write to
+// .claude/settings.local.json, and never touch the "permissions" key of either: it is the user's,
+// not the instrumentation's.
+//
+// MERGE, DO NOT REPLACE. If settings.json already exists:
+//   - keep every key you did not add;
+//   - inside "hooks", keep every event you did not add;
+//   - inside an event, APPEND your matcher group to the array. Two groups on the same event both
+//     fire; there is no conflict to resolve. Ask only when a handler already points at a script
+//     with the same name — that is the same hook, not a second one.
+//
+// DELETE THE HANDLERS THE TEAM DID NOT CHOOSE. Hooks 1 and 2 are the default; 3 to 7 are opt-in,
+// and 6 and 7 are only offered when their artifact exists in the repo. A registered hook whose
+// script is absent fails on every matching tool call.
+//
+// SHELL FORM, NOT EXEC FORM. Exec form (`"args": [...]`) needs `command` to resolve to a real
+// executable, and on Windows a .sh is not one. Shell form runs the string through sh on
+// macOS/Linux and Git Bash on Windows, so `bash <script>` works on all three. Invoking `bash`
+// explicitly rather than relying on the script's execute bit also survives a checkout that lost
+// the file mode.
+//
+// "async": true IS CONFIRMED, not assumed. On a `type: "command"` hook, the process starts and
+// Claude continues immediately, and the hook cannot block or decide anything —
+// `permissionDecision` and `continue` are ignored on an async hook. That is exactly right for the
+// audit log, which only writes, and exactly wrong for any guard. Do not add `async` to a hook
+// that denies.
+//
+// TIMEOUTS ARE THE BACKSTOP, NOT THE PLAN. The default is 600 seconds, which for a PreToolUse
+// guard means a bug can hang the session for ten minutes. Each value below is roughly ten times
+// the measured runtime; measure format-on-edit and dependency-sweep on the repo before writing
+// their timeouts, the Maven reactor startup they both pay is not free.
+//
+// JSON DOES NOT ALLOW COMMENTS. Strip every // line before writing.
+// ---8<--- everything above this line is instructions for you; delete it ---8<---
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/agent-hooks/dependency-sweep.sh\"",
+            "statusMessage": "Checking dependencies for advisories",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/agent-hooks/secret-read-guard.sh\"",
+            "statusMessage": "Checking the target for credentials",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/agent-hooks/block-dangerous-bash.sh\"",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/agent-hooks/generated-files-guard.sh\"",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/agent-hooks/audit-log.sh\"",
+            "async": true,
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/agent-hooks/format-on-edit.sh\"",
+            "statusMessage": "Formatting the edited file",
+            "timeout": 120
+          },
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/agent-hooks/version-pin-guard.sh\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

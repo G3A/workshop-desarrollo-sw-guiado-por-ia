@@ -1,0 +1,51 @@
+<!--
+Placeholders:
+  {{PROJECT_NAME}}
+  {{MIGRATION_TOOL}}         — normalmente "migraciones de Flyway" o "de Liquibase"; anota la versión si la leíste
+  {{MIGRATIONS_PATH}}        — ej. "src/main/resources/db/migration/"
+-->
+
+# Modelo de Datos — {{PROJECT_NAME}}
+
+## Visión general
+
+<!-- TODO: un párrafo. ¿Qué almacena esta base de datos? ¿Cuáles son las 3-5 entidades principales y cómo se relacionan? -->
+
+## Herramienta de migraciones
+
+- **Herramienta:** {{MIGRATION_TOOL}}
+- **Ubicación:** `{{MIGRATIONS_PATH}}`
+- **Flujo:** <!-- TODO: cómo se crea y aplica una migración nueva localmente / en CI (¿corre al arrancar la app, o es un paso explícito de `flyway:migrate` / `liquibase:update`?). -->
+
+## Diagrama entidad-relación
+
+```mermaid
+erDiagram
+  ENTIDAD_A ||--o{ ENTIDAD_B : "tiene muchas"
+  ENTIDAD_B }o--|| ENTIDAD_C : "pertenece a"
+```
+
+<!-- TODO: reemplazar con entidades reales. Mantén el diagrama en menos de 12 cajas — delega tablas legacy o poco usadas a un apéndice "Esquema completo". -->
+
+## Tablas
+
+### Core
+
+| Tabla | Propósito | Relaciones clave |
+|---|---|---|
+| <!-- nombre_tabla --> | <!-- una línea --> | <!-- resumen de FKs --> |
+
+### Referencia / lookup
+
+| Tabla | Propósito |
+|---|---|
+| | |
+
+## Seguridad a nivel de fila / control de acceso
+
+<!-- TODO: si la BD usa RLS, filtros por tenant o guards a nivel de aplicación (ej. un `@Where` de Hibernate, un filtro de Spring Data), describe el invariante aquí. Los agentes NO deben agregar queries que lo bypaseen. -->
+
+## Docs relacionados
+
+- [Arquitectura](./architecture.md)
+- [Decisiones](./adrs/)
