@@ -19,8 +19,8 @@ el camino feliz.
 
 ```
 dev
- └─ f0-fundamentos → f1-preparar-maquina → f2-preparar-proyecto
-     └─ f3-planificar → (feature/2-... del skill) → f6-merge-cd → f7-retrospectiva
+ └─ f0 → f1 → f2
+     └─ f3 → feature/2-... → f6 → f7
 ```
 
 **Regla dura de toda la validación: nunca se toca `main`.**
@@ -112,6 +112,10 @@ Esto se convierte en el issue real de F3.
 | `lefthook.yml` | Instalado, verificado rompiendo cada hook |
 | `gitleaks` | Primer run real en CI: 3 hallazgos, los 3 falsos positivos confirmados |
 | CI (GitHub Actions) | `.github/workflows/ci.yml`, versiones reales resueltas con `gh` |
+
+---
+
+### Cada control, verificado rompiéndolo de verdad
 
 ```
 $ make check
@@ -252,6 +256,10 @@ comentario explicando por qué, en vez de mergearlo vacío.
 - La revisión adversarial cazó un hallazgo real que el plan inicial no tenía
 - Los checkpoints preguntaron exactamente lo que hacía falta preguntar, nada más
 - El umbral de "más de 3 archivos → plan mode" se disparó solo, correctamente
+
+---
+
+## F7 — Retrospectiva (cont.)
 
 **Qué ajustaría en `instrumentacion-java-ia`:**
 1. `allowEmptyShould(true)` no caduca solo — ningún mecanismo avisa cuando la condición ya se cumplió
