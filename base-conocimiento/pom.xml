@@ -37,6 +37,10 @@
     <wiremock.version>3.13.2</wiremock.version>
     <!-- Boot 4.1 ya no importa el BOM de Testcontainers: hay que declararlo -->
     <testcontainers.version>2.0.5</testcontainers.version>
+
+    <!-- instrument-project-java: controles 2-3, sin BOM que las gestione -->
+    <spotless-maven-plugin.version>3.9.0</spotless-maven-plugin.version>
+    <maven-checkstyle-plugin.version>3.6.0</maven-checkstyle-plugin.version>
   </properties>
 
   <dependencyManagement>
@@ -256,6 +260,66 @@
             <include>**/*Tests.java</include>
             <include>**/*Properties.java</include>
           </includes>
+        </configuration>
+      </plugin>
+      <!-- Control 2 (instrument-project-java): Werror, no version, already managed by
+           spring-boot-starter-parent. -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <compilerArgs>
+            <!-- -processing excluido: javac marca como "no reclamadas" las anotaciones runtime
+                 de Spring (@Component, @RestController, etc.), que no tienen un annotation
+                 processor propio mas alla del de Spring Modulith (que si corre, ver
+                 target/generated-spring-modulith). Falso positivo conocido de -Xlint:all en
+                 proyectos Spring, no una relajacion real del resto de las categorias. -->
+            <arg>-Xlint:all,-processing</arg>
+            <arg>-Werror</arg>
+          </compilerArgs>
+        </configuration>
+      </plugin>
+      <!-- Control 3 (instrument-project-java): Spotless, formatting, google-java-format.
+           ratchetFrom: solo formatea archivos que cambien desde la referencia, el codigo
+           existente no se toca en este commit. -->
+      <plugin>
+        <groupId>com.diffplug.spotless</groupId>
+        <artifactId>spotless-maven-plugin</artifactId>
+        <version>${spotless-maven-plugin.version}</version>
+        <configuration>
+          <!-- `dev` local, no `origin/dev`: el reorg a monorepo todavia no se empujo cuando se
+               instalo este control (ver validacion-workshop/f2-preparar-proyecto.md). Apuntar a
+               origin/dev hoy compararia contra una estructura de carpetas vieja y forzaria un
+               reformateo masivo. Cambiar a origin/dev una vez que el push este hecho. -->
+          <ratchetFrom>dev</ratchetFrom>
+          <java>
+            <googleJavaFormat/>
+          </java>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>check</goal>
+            </goals>
+            <phase>verify</phase>
+          </execution>
+        </executions>
+      </plugin>
+      <!-- Control 3 (instrument-project-java): Checkstyle, lo que Spotless no cubre
+           (imports no usados, naming, largo de linea). Invocado directo via `checkstyle:check`
+           desde `make lint`, no ligado al ciclo de vida. -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-checkstyle-plugin</artifactId>
+        <version>${maven-checkstyle-plugin.version}</version>
+        <configuration>
+          <configLocation>checkstyle.xml</configLocation>
+          <!-- Brownfield: 35 violaciones preexistentes al instalar este control (mayoria
+               ConstantName sobre "log", mas unos LineLength y un import no usado). Reporte, no
+               bloqueo, hasta que se triage el backlog; ver validacion-workshop/f2-preparar-
+               proyecto.md para el detalle completo. Cambiar a true archivo por archivo a medida
+               que se limpien, nunca aflojar la regla para que pase. -->
+          <failOnViolation>false</failOnViolation>
         </configuration>
       </plugin>
     </plugins>
