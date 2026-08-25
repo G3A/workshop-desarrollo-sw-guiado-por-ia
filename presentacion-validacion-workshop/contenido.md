@@ -145,7 +145,7 @@ leer el código, no de inventar un caso de estudio.
 
 ---
 
-### `/sdlc-ia:github-plan-build 2` — Step A: grillar al usuario
+### `/sdlc-ia:github-plan-build 2` — Step A: preguntar antes de programar
 
 Dos preguntas reales, ninguna con respuesta obvia en el issue:
 
