@@ -55,6 +55,14 @@ TLS terminator). No está en el repo — es conocimiento operativo del equipo. -
   `/sdlc-ia:instrument-project-java` (control 8, CI) — ver la validación de F2 en
   `validacion-workshop/` en la raíz del monorepo.
 
+## Agente de IA (MCP)
+
+`.mcp.json` (raíz del monorepo, committeado): GitHub vía HTTP con `Authorization: Bearer
+${GITHUB_PAT}`; DBHub vía stdio (`npx @bytebase/dbhub@1.2.1`) con `--dsn ${APP_DSN}` apuntando a la
+base Postgres real de este proyecto (`jdbc:postgresql://localhost:5432/baseconocimiento`) — DBHub
+ya no soporta `--readonly`, así que hoy da lectura y escritura sobre esa base. Ambas variables se
+exportan en el entorno de quien use el agente, nunca se escriben literales en el archivo.
+
 ## Observabilidad
 
 `spring-boot-starter-actuator` está en el classpath, pero no hay evidencia en el repo de que sus
