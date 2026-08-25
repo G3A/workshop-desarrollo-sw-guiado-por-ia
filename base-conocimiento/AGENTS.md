@@ -64,7 +64,9 @@ a mano — el `Makefile` ya resuelve flags de perfil y detección de GPU.
 
 ## CI y quality gates
 
-GitHub Actions (`.github/workflows/ci.yml`) corre `make ci` en cada push/PR. `-Werror` (`-Xlint:all,
+GitHub Actions (`.github/workflows/ci.yml` **en la raíz del monorepo**, no aquí — Actions solo lee
+workflows ahí) corre `make ci` (`working-directory: base-conocimiento`) en cada push/PR. `-Werror`
+(`-Xlint:all,
 -processing`) y ArchUnit bloquean de verdad; Checkstyle reporta pero no bloquea todavía
 (`failOnViolation=false`, 35 violaciones preexistentes de brownfield, sobre todo `ConstantName`
 en el logger `log`); el escaneo de secretos (`gitleaks`) corre solo en CI, no en pre-commit local.
