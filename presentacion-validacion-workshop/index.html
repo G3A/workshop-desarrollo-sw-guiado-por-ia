@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>Validación real de instrumentacion-java-ia</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="./dist/reset.css" />
+    <link rel="stylesheet" href="./dist/reveal.css" />
+    <link rel="stylesheet" href="./dist/theme/black.css" id="theme" />
+    <link rel="stylesheet" href="./dist/plugin/highlight/monokai.css" />
+    <style>
+      .reveal pre code {
+        max-height: 480px;
+      }
+      .reveal table {
+        font-size: 0.62em;
+      }
+      .reveal img {
+        max-height: 620px;
+        border: 1px solid #555;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="reveal">
+      <div class="slides">
+        <section
+          data-markdown="contenido.md"
+          data-separator="^\r?\n---\r?\n$"
+          data-separator-vertical="^\r?\n--\r?\n$"
+          data-separator-notes="^Note:"
+          data-charset="utf-8"
+        ></section>
+      </div>
+    </div>
+
+    <script src="./dist/reveal.js"></script>
+    <script src="./dist/plugin/markdown.js"></script>
+    <script src="./dist/plugin/highlight.js"></script>
+    <script src="./dist/plugin/notes.js"></script>
+    <script>
+      Reveal.initialize({
+        hash: true,
+        controls: true,
+        progress: true,
+        center: false,
+        transition: "slide",
+        plugins: [RevealMarkdown, RevealHighlight, RevealNotes],
+      });
+    </script>
+  </body>
+</html>
