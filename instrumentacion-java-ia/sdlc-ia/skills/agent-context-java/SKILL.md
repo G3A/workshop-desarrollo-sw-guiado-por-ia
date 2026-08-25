@@ -143,39 +143,16 @@ Modulith, no message broker) → **delete it**, don't pad with TODOs. **Augment 
 user content** — fill TODO slots or append a clearly marked subsection, leave the rest alone;
 pre-existing docs are read-only, cross-link instead of editing.
 
-What each doc must carry from the Java discovery: `docs/java.md` gets concrete module/package
-names and a small reference graph (cross-link, don't restate, the other docs); `architecture.md`
-names framework + persistence in the stack summary (e.g. "Spring Boot 4.1 + PostgreSQL + Spring
-Data JDBC") and the Modulith boundary gate if in play; `data-model.md` records the migration tool
-(Flyway/Liquibase), location, and workflow (startup vs CI); `infrastructure.md` records the CI
-system, config/profile layering, and deployment shape (layered jar, Docker, or WAR on an app
-server).
-
-ADR seeds — 1–3 decisions **clearly made**, with Status, Context (alternatives), Decision,
-Consequences (favor/against): build tool + JDK target; persistence framework and why; Spring
-Modulith adoption if `@ApplicationModule` is present (no .NET equivalent); deployment target if
-detected. Never fabricate the rationale.
+What each doc must carry from the Java discovery, and the ADR seeds, are in
+`references/doc-content-map.md`.
 
 ---
 
 ## Phase 4 — Wire (AGENTS.md + CLAUDE.md)
 
-Generate `AGENTS.md` strictly as a **table of contents**:
-
-- **Opening:** 2 lines max (project name + one-line purpose).
-- **"Where to find things":** every doc, one line each, including `docs/java.md` ("deep Java
-  context: module graph, JDK target, DI, persistence, Modulith boundaries") and any pre-existing
-  repo docs from Phase 1b.
-- **"Commands":** the 3–6 commands a developer actually runs — wrapper over bare tool, `Makefile`
-  over raw invocations, profile-activation flag if needed locally, unit/integration split
-  (checklist §9).
-- **"Non-obvious rules":** the user's Phase 2 answers with a short rationale, plus the mechanical
-  gotchas the checklist surfaced (BOM-managed versions, Modulith boundaries, ArchUnit-enforced
-  layering — checklist §3, §6, §10) — agents reliably get these wrong.
-- **"Testing"** / **"Code style":** one paragraph each, naming the frameworks/gates from Phase 1.
-- **"Security":** no secrets committed, `.env` not in VCS, don't log PII.
-
-Enforce the ~80-line ceiling — move overflow into `docs/java.md`.
+Generate `AGENTS.md` strictly as a **table of contents** — the section list and what goes in each
+is in `references/doc-content-map.md`. Enforce the ~80-line ceiling — move overflow into
+`docs/java.md`.
 
 `CLAUDE.md` is one line: `@AGENTS.md`, with a comment explaining that it delegates.
 
@@ -186,18 +163,9 @@ Enforce the ~80-line ceiling — move overflow into `docs/java.md`.
 Generated docs hallucinate. Before finishing, surface the load-bearing factual claims you wrote
 and confirm the uncertain ones with the user. Adapted from Microsoft Research's **Claimify** —
 atomic, self-contained, verifiable claims, **flag ambiguity instead of guessing**. Follow
-`references/claim-validation.md` in full; the six steps in short:
-
-1. **Select** load-bearing claims (build tool + version, JDK target, persistence framework, DI
-   framework, commands, key entities, dependency versions, non-obvious rules) — skip TODOs.
-2. **Atomize + tag** — one statement each, with source (`file:line`/`inferred`) and confidence
-   `high`/`medium`/`low`.
-3. **Flag ambiguity** — more than one plausible reading, or no clear source; never silently keep
-   a low-confidence claim.
-4. **Verify with the user** — a compact ledger; `AskUserQuestion` for top binary confirmations,
-   plain chat for the rest.
-5. **Apply** corrections; downgrade unconfirmed `low` claims to `<!-- TODO: verify -->`.
-6. **Persist** the ledger to `docs/claims-ledger.md` (format in the reference).
+`references/claim-validation.md` in full: select the load-bearing claims, atomize and tag each
+with its source/confidence, flag ambiguity, verify with the user, apply corrections, then persist
+the ledger to `docs/claims-ledger.md`.
 
 ---
 
@@ -216,7 +184,10 @@ atomic, self-contained, verifiable claims, **flag ambiguity instead of guessing*
 
 ## Reference
 
-- `references/java-inspection.md` — the full Java discovery checklist (Phase 1c).
+- `references/java-inspection.md` + `references/java-inspection-2.md` — the full Java discovery
+  checklist (Phase 1c).
+- `references/doc-content-map.md` — what each doc carries, and the `AGENTS.md` section list
+  (Phase 3, Phase 4).
 - `references/claim-validation.md` — the Claimify-inspired claim-validation procedure (Phase 5).
 - `templates/es/` — the doc skeletons.
 
