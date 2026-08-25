@@ -142,6 +142,16 @@ Observabilidad: `spring-boot-starter-actuator` en el classpath, exposición real
 `base-conocimiento/` todavía (llega en la etapa F2 de la validación, vía
 `/sdlc-ia:instrument-agent-java`).
 
+## Reglas reforzadas al editar (hooks del agente)
+
+Desde `/sdlc-ia:instrument-agent-java` (ver `AGENTS.md#hooks-del-agente`), dos de las reglas de
+este documento ya no dependen solo de que alguien las lea:
+
+- **Versiones centralizadas** (`dependencyManagement`/BOMs arriba): un hook avisa si una edición
+  a `pom.xml` agrega una `<dependency>` con `<version>` literal en vez de un `${property}`.
+- **Migraciones de Flyway inmutables**: un hook bloquea editar un archivo ya existente bajo
+  `src/main/resources/db/migration/` — crear el siguiente `V<n>__...sql` sigue permitido.
+
 ## Gotchas / hotspots
 
 - **`allowEmptyShould(true)` obsoleto** en las 2 reglas de adaptadores de `ArquitecturaTest` — el

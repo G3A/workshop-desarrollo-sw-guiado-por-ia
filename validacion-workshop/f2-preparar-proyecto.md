@@ -93,6 +93,52 @@ en el `[INFO] Results` de Maven, separados de esa línea) se siguieron tratando 
 decisión explícita, no se cambió la versión de `jqwik` en este ejercicio — queda como hallazgo
 para decidir aparte.
 
+## 3. `/sdlc-ia:instrument-agent-java`
+
+Discovery: sin `.mcp.json` ni `.claude/settings.json` en ningún lugar del monorepo. Como con
+`lefthook.yml`, ambos deben vivir en la **raíz del monorepo** (Claude Code opera desde ahí), no en
+`base-conocimiento/` — se aplicó desde el primer intento, sin el traspié de F2.2. Precondiciones
+confirmadas: `spring-boot-starter-parent`/`dependencyManagement` con 4 BOMs (habilita hook 6),
+Flyway real en `db/migration/` (habilita hook 7a), sin Liquibase (7b no aplica), remoto
+`github.com` (habilita el servidor MCP de GitHub), `spring.datasource.url` real hacia Postgres
+(habilita DBHub).
+
+### Decisiones de alcance
+
+MCP: **GitHub + DBHub** (Context7 quedó fuera por decisión explícita). Hooks: los **7**, ninguno
+descartado — 3 bloqueantes (secret guard, comandos peligrosos, migraciones generadas) y 4 de
+reporte (format on edit, dependency sweep, audit log, version-pin guard). Ramas protegidas contra
+force-push: `main` y `dev`. Audit log confirmado con su alcance completo (`tool_input` entero).
+
+### Verificación real, rompiendo cada hook en la sesión viva (no un test aislado)
+
+| Hook | Cómo se rompió | Resultado real |
+|---|---|---|
+| Secret read-guard | `Read` sobre un `hooktest/.env` real recién creado | Denegado citando la lista de patrones; `hooktest/.env.example` (inexistente) pasó el guard y llegó al error normal "no existe" — el guard no lo bloqueó |
+| Format on edit | `Edit` desindentando `RedireccionIndiceFilter.java` a propósito | El propio hook PostToolUse reformateó el archivo de vuelta a como estaba — la herramienta avisó del cambio automático |
+| Bloqueo de comandos peligrosos | `git reset --hard HEAD` real, vía Bash | Denegado citando `git stash`; `git status` inmediatamente después pasó normal |
+| Dependency sweep | Corrido directo con un payload sintético de `SessionStart` | Reporte real de decenas de dependencias con versión más nueva |
+| Audit log | Cualquier llamada a herramienta ya lo alimentaba | `tail logs/audit.log` mostró líneas reales de 5 columnas; `git check-ignore -v logs/audit.log` confirmó que está ignorado |
+| Version-pin guard | `Edit` agregando `<version>1.2.3</version>` a `spring-boot-starter-web` en `pom.xml` | El hook avisó en vivo, nombrando el archivo y el conteo (1); se restauró con `git checkout --` |
+| Generated-files guard | `Edit` sobre `V1__esquema.sql` (migración ya aplicada) | Denegado citando "add the next V<n>...sql"; un `Write` de `V99__prueba_hook.sql` (nuevo) pasó y se borró después |
+
+MCP no se pudo verificar de la misma forma: `.mcp.json` queda en `⏸ Pending approval` hasta confiar
+el workspace (no probado en esta sesión). Sí se confirmó que el archivo parsea y que
+`npx -y @bytebase/dbhub@1.2.1 --transport stdio --dsn ...` arranca sin rechazar ningún flag.
+
+### Hallazgo real: el dependency sweep es lento en frío
+
+`mvn versions:display-dependency-updates` tardó **~60s** la primera corrida (metadata de cada
+dependencia contra Maven Central) y **~5s** en la segunda (caché tibio de `~/.m2`). El propio
+catálogo de hooks advierte: *"si el sweep tarda seguido más de unos segundos, sacarlo de
+SessionStart"*. Se documenta y se deja el timeout en 90s (por encima del peor caso medido) en vez
+de sacar el hook — la sesión no se ve afectada más que la primera vez del día.
+
+### Caveat de DBHub
+
+DBHub ya no soporta `--readonly` (fue removido). El servidor MCP queda con lectura **y escritura**
+sobre `baseconocimiento` real — decisión aceptada explícitamente al elegir instalarlo.
+
 ## Verificación final
 
 ```

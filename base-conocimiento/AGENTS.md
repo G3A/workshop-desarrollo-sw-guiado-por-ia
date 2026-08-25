@@ -93,3 +93,33 @@ Spotless no formatea (imports no usados, naming, largo de línea); hoy solo repo
 - No commitees `.env` ni archivos con credenciales. Agrega variables nuevas a `.env.example`.
 - No registres secretos, tokens ni información personal en logs.
 - Asume que cualquier cosa en este repo es legible por un agente de IA — nunca pegues secretos aquí.
+
+## Hooks del agente
+
+Instalados por `/sdlc-ia:instrument-agent-java` en `scripts/agent-hooks/` (bash puro), registrados
+en `.claude/settings.json` **en la raíz del monorepo** — esto es exclusivo de Claude Code, ningún
+otro agente de IA los lee hoy. Los 7 verificados en vivo, rompiéndolos de verdad:
+
+| Hook | Bloquea | Qué hace |
+|---|---|---|
+| Secret read-guard | Sí | Deniega leer `.env`, claves privadas, `secrets.json`, etc. No cubre `@`-referencias ni Grep/Glob. |
+| Format on edit | No | Corre Spotless acotado al `.java` que se acaba de editar (`-DspotlessFiles`, ~5s). |
+| Bloqueo de comandos peligrosos | Sí | `rm -rf` fuera del repo, `sudo`, force-push a `main`/`dev`, `git reset --hard`, `mvn deploy`. No es un sandbox: texto, no un parser de shell. |
+| Dependency sweep | No | Al iniciar sesión, `mvn versions:display-dependency-updates` (no hay `make audit` ni dependency-check-maven). **~60s en frío, ~5s con caché tibio** — si esto se vuelve lento seguido, sacarlo de SessionStart. |
+| Audit log | No | Registra `tool_input` completo de cada llamada en `logs/audit.log` (gitignored). Puede contener cualquier cosa que haya pasado por una herramienta. |
+| Version-pin guard | Avisa | Tras editar `pom.xml`, avisa si una dependencia nueva trae `<version>` literal en vez de heredarla de `<dependencyManagement>`. |
+| Generated-files guard | Sí | Deniega editar una migración de Flyway ya existente bajo `db/migration/`; crear la siguiente sigue permitido. Sin rama Liquibase (no se usa aquí). |
+
+## MCP (Model Context Protocol)
+
+`.mcp.json` en la raíz del monorepo, **committeado, escrito, pendiente de aprobación** — correr
+`claude` en este repo y aceptar el diálogo de confianza del workspace, luego `/mcp` para confirmar
+cada servidor.
+
+| Servidor | Da acceso a | Variable de entorno |
+|---|---|---|
+| GitHub | Issues, Pull Requests, runs de Actions | `GITHUB_PAT` |
+| DBHub (`@bytebase/dbhub@1.2.1`) | Lectura **y escritura** (el flag `--readonly` ya no existe en DBHub) sobre la base Postgres real | `APP_DSN` (ej. `postgres://kb:kb@localhost:5432/baseconocimiento?sslmode=disable`) |
+
+Context7 no se instaló (decisión explícita en esta pasada, se puede sumar después con
+`/sdlc-ia:instrument-agent-java`).
