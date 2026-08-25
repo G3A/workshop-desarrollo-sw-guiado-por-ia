@@ -1,0 +1,527 @@
+{
+  "meta": {
+    "version": "1.0.0",
+    "descripcion": "Fuente única de verdad del contenido narrativo de cada paso (el .bpmn solo aporta el flujo y una línea técnica por nodo en su documentation). Versión pública, sin marca de ninguna empresa, centrada en GitHub y GitHub Actions.",
+    "bpmn": "proceso-operacional-con-ia.bpmn",
+    "clases": {
+      "T": "Comando de terminal copiable, listo para pegar tal cual (con los campos del formulario ya interpolados).",
+      "S": "Comando o skill de un agente de código con IA (una instrucción en lenguaje natural o un slash command de ejemplo).",
+      "manual": "No hay un único comando: es una instrucción, una plantilla con campos propios, o una acción que se hace en una interfaz (GitHub, un navegador)."
+    },
+    "semantica": {
+      "idempotent": "Puedes repetirlo sin efectos raros — correrlo dos veces no rompe nada.",
+      "guarded": "Tiene alguna guarda (confirmación, chequeo previo) antes de tener efecto.",
+      "destructive": "Borra o sobrescribe algo que no se recupera solo. Exige escribir CONFIRMAR."
+    },
+    "madurez": {
+      "0": "Fundamentos",
+      "1": "Instrumentación determinista",
+      "2": "Instrumentación no determinista",
+      "3": "Auto-planeación",
+      "transversal": "Transversal"
+    },
+    "madurezDetalle": {
+      "0": "La base antes de sumar un agente: control de versiones, pull requests, revisión de código, documentación mínima. Sin esto, un agente de IA amplifica el desorden en vez de reducirlo.",
+      "1": "El agente ejecuta pasos que tú podrías describir como una receta: generar contexto, correr pruebas, armar un commit. Determinista en el sentido de que el mismo pedido produce el mismo tipo de resultado.",
+      "2": "El agente toma decisiones dentro de un espacio acotado: elige qué herramientas correr, cuándo reintentar, cómo interpretar un fallo de CI. Ya no es una receta fija.",
+      "3": "El agente planea: descompone un issue en tareas, estima el plan, pide aprobación, y ejecuta el plan aprobado con supervisión ligera en vez de paso a paso."
+    },
+    "madurezItems": {
+      "instalacion": "Instalar y autenticar el agente y sus herramientas.",
+      "alfabetizacion": "Entender cómo piensa el agente: contexto, ventana de tokens, cuándo compacta, cómo elegir el modelo según la tarea.",
+      "gobernanza": "Las reglas del juego del repo: qué puede hacer el agente solo, qué necesita aprobación, qué queda prohibido."
+    },
+    "madurezIdea": "Cada fase se apoya en la anterior. No tiene sentido pedirle a un agente que planee un sprint completo (fase 3) si el repo todavía no tiene pull requests obligatorias ni pruebas (fase 0).",
+    "madurezTransversal": "Instalación, alfabetización y gobernanza no son una fase que se cursa una vez: se revisan cada vez que cambia de versión el agente, se suma una persona al equipo, o se detecta un uso indebido."
+  },
+  "perfilSchema": {
+    "GH_OWNER": {
+      "label": "Organización o usuario de GitHub",
+      "type": "text",
+      "pattern": "^[A-Za-z0-9-]+$",
+      "persistencia": "localStorage"
+    },
+    "GH_REPO": {
+      "label": "Nombre del repositorio",
+      "type": "text",
+      "pattern": "^[A-Za-z0-9._-]+$",
+      "persistencia": "localStorage"
+    },
+    "PROJECT_PATH": {
+      "label": "Ruta local del repositorio",
+      "type": "text",
+      "persistencia": "localStorage"
+    },
+    "NPM_REGISTRY": {
+      "label": "Registro de npm",
+      "type": "select",
+      "options": ["https://registry.npmjs.org/", "https://npm.pkg.github.com/"],
+      "default": "https://registry.npmjs.org/",
+      "persistencia": "localStorage"
+    }
+  },
+  "catalogs": {
+    "capasVerificacion": [
+      "Local — el agente corre pruebas y linters antes de avisar que terminó",
+      "CI — la misma verificación, pero en un runner de GitHub Actions",
+      "Seguridad — SCA/SAST sobre lo que cambió",
+      "Checklist humano — una revisión de 2 minutos de lo que el agente asumió"
+    ]
+  },
+  "nodos": {
+    "f0": {
+      "clase": "manual",
+      "semantica": "guarded",
+      "requires": "Ninguno — es el punto de partida.",
+      "porque": "Un agente de IA no arregla un equipo sin estas prácticas: las amplifica. Si nadie revisa código, el agente va a mergear más código sin revisar, más rápido. Estos cuatro fundamentos son del equipo, no del agente — si falta alguno, la conversación es con tu equipo, no un paso que puedas resolver solo/a.",
+      "guiaPasos": "<p>Antes de sumar un agente de código con IA, confirma que tu equipo ya tiene estas cuatro prácticas funcionando <b>sin</b> el agente. Si falta alguna, escálalo con tu equipo antes de seguir — no es algo que se resuelva desde acá.</p>",
+      "checklist": {
+        "titulo": "Fundamentos de colaboración",
+        "nota": "Marca cada uno cuando confirmes que ya funciona en tu equipo, con o sin agente de IA.",
+        "items": [
+          {"id": "vcs", "label": "Control de versiones con Git", "hint": "Todo el código relevante vive en un repositorio Git, con historial real (no un .zip que se reenvía por chat)."},
+          {"id": "pr", "label": "Se trabaja con Pull Requests", "hint": "Nadie pushea directo a la rama principal — todo cambio pasa por una PR, aunque sea de una persona."},
+          {"id": "review", "label": "Hay revisión de código", "hint": "Al menos una persona lee el diff antes del merge. Da igual si es informal — tiene que existir."},
+          {"id": "docs", "label": "Existe documentación base", "hint": "Un README que explica cómo correr el proyecto, aunque sea corto. Sin esto, el agente arranca a ciegas igual que una persona nueva."}
+        ]
+      },
+      "madurez": "0"
+    },
+    "fd1": {
+      "clase": "manual",
+      "semantica": "idempotent",
+      "requires": "Fundamentos de colaboración confirmados (f0).",
+      "porque": "Instalar el agente es el paso de menor riesgo de todo el proceso — no toca tu repo todavía. Elegir un repo piloto chico y ya conocido (no el más crítico del equipo) te deja equivocarte barato mientras aprendes los gestos base.",
+      "guiaPasos": "<ol><li>Instala un agente de código con IA. Este recorrido usa <a href=\"https://claude.com/product/claude-code\" target=\"_blank\" rel=\"noopener\">Claude Code</a> como ejemplo concreto, pero cualquier agente equivalente con soporte de MCP y hooks sirve igual.</li><li>Elige un repositorio piloto: prefiere uno chico, brownfield (con historia real, no un ejemplo de juguete), del que ya conozcas el dominio.</li><li>Abre una terminal en ese repo y arranca el agente ahí — todo lo que sigue se prueba primero en ese repo piloto.</li></ol>",
+      "madurez": "transversal",
+      "madurezSub": "instalacion"
+    },
+    "fd2": {
+      "clase": "manual",
+      "semantica": "idempotent",
+      "requires": "Agente instalado, repo piloto elegido (fd1).",
+      "porque": "La mayoría de la fricción con un agente de código no es del agente — es de no saber los cuatro gestos que controlan qué hace y cuándo. Sin esto, cualquier sesión se siente como una caja negra impredecible.",
+      "guiaPasos": "<ol><li><b>@menciones</b>: referencia archivos o símbolos concretos (<code>@src/app.js</code>) en vez de describirlos en prosa — el agente lee el archivo real, no tu paráfrasis.</li><li><b>Modo plan</b>: para cambios no triviales, pídele al agente que proponga un plan antes de tocar nada, y revísalo antes de aprobar.</li><li><b>Permisos</b>: entiende qué acciones pide aprobar cada vez (ejecutar un comando, escribir un archivo) y cuáles puedes dejar en automático con confianza.</li><li><b>Puntos de control / deshacer</b>: sabe cómo volver atrás una sesión que se fue por mal camino sin tener que descartar todo el trabajo.</li></ol><p class=\"tip\">Estos cuatro gestos son la base sobre la que se apoya todo lo demás — sin ellos, cada paso siguiente de este proceso se siente más riesgoso de lo que es.</p>",
+      "madurez": "transversal",
+      "madurezSub": "alfabetizacion"
+    },
+    "fd3": {
+      "clase": "manual",
+      "semantica": "idempotent",
+      "requires": "Gestos base dominados (fd2).",
+      "porque": "El agente no \"sabe\" tu proyecto por arte de magia: todo lo que puede ver cabe en una ventana de contexto finita, y esa ventana cuesta tokens (y plata, o cuota). Entender esto evita dos errores opuestos: pedirle demasiado en una sola sesión, o desconfiar de más de lo necesario.",
+      "guiaPasos": "<ul><li><b>Contexto</b>: el agente solo ve lo que tú le muestras — archivos abiertos, mencionados, o los que el propio agente decide leer. No es telepatía.</li><li><b>Ventana de tokens</b>: hay un límite de cuánto texto cabe en una conversación. Sesiones muy largas se <i>compactan</i> (se resumen) para seguir cabiendo — pierdes detalle a cambio de seguir andando.</li><li><b>Elegir el modelo según la tarea</b>: un modelo grande y lento para diseño/arquitectura, uno chico y rápido para tareas mecánicas y repetitivas. No siempre el modelo más caro es la mejor elección.</li></ul>",
+      "madurez": "transversal",
+      "madurezSub": "alfabetizacion"
+    },
+    "a1": {
+      "clase": "T",
+      "semantica": "guarded",
+      "requires": "GitHub CLI (gh) instalado.",
+      "cmd": "gh auth login",
+      "porque": "Casi todo lo que sigue —abrir PRs, leer issues, disparar workflows— se puede hacer desde la terminal en vez de saltar al navegador constantemente, siempre que gh esté autenticado.",
+      "guiaPasos": "<p>Es un flujo interactivo: elige <code>GitHub.com</code>, <code>HTTPS</code>, y autentica por navegador. Confirma al final con:</p><pre class=\"mono\">gh auth status</pre>",
+      "madurez": "transversal",
+      "madurezSub": "instalacion"
+    },
+    "a2": {
+      "clase": "S",
+      "semantica": "guarded",
+      "requires": "Agente instalado (fd1), gh autenticado (a1).",
+      "slash": "/sdlc-ia:instrument-agent-java",
+      "porque": "Esta skill hace en un solo paso lo que antes describíamos a mano: registra los servidores MCP que tu equipo necesita (con las versiones fijadas, nunca \"la última\" sin pinear) y activa un catálogo de hooks de Claude Code que limitan lo que el agente puede hacer solo — leer un archivo de secretos, correr un comando peligroso, editar una migración ya aplicada. Es la skill real <code>instrument-agent-java</code> del paquete <code>instrumentacion-java-ia/</code> de este mismo taller: puedes leer su código completo, no es una caja negra.",
+      "guiaPasos": "<p>La skill pregunta qué servidores MCP tiene sentido registrar (por ejemplo, el servidor oficial de GitHub) y qué hooks activar — dos vienen prendidos por defecto (guarda de secretos, formateo automático), el resto se ofrece según lo que detecte en tu repo. Antes de terminar, prueba cada hook disparándolo de verdad, no solo escribe los archivos.</p><p class=\"tip\">Si solo quieres sumar un servidor MCP suelto sin correr la skill completa, el comando de base sigue siendo válido: <code>claude mcp add --transport http github https://api.githubcopilot.com/mcp</code>.</p>",
+      "madurez": "transversal",
+      "madurezSub": "instalacion"
+    },
+    "G1": {
+      "clase": "T",
+      "esGateway": true,
+      "semantica": "idempotent",
+      "cmd": "gh auth status && claude doctor",
+      "ramas": {"si": "G2", "no": "a2"},
+      "porque": "Un chequeo de salud simple evita descubrir a mitad del bloque B que la autenticación nunca terminó de quedar bien configurada.",
+      "guiaPasos": "<p>Si ambos comandos terminan sin error, sigues al bloque B. Si algo falla, vuelve a <b>«Configurar MCP de ejemplo»</b> y revisa el paso que no cerró.</p>",
+      "madurez": "transversal",
+      "madurezSub": "instalacion"
+    },
+    "G2": {
+      "clase": "T",
+      "esGateway": true,
+      "semantica": "idempotent",
+      "cmd": "test -f AGENTS.md && echo \"existe\" || echo \"no existe\"",
+      "ramas": {"no": "b1", "si": "bi"},
+      "porque": "Un archivo de contexto (AGENTS.md o equivalente) es lo que separa a un agente que adivina las convenciones del repo de uno que las lee. Vale la pena chequear si ya existe antes de regenerarlo de cero.",
+      "guiaPasos": "<p>Si no existe, sigues a <b>«Generar contexto del repo»</b>. Si ya existe (por ejemplo, otra persona del equipo ya lo armó), sigues a <b>«Completar solo el andamiaje»</b> — se salta la generación y va directo a lo que falte.</p>",
+      "madurez": "1"
+    },
+    "b1": {
+      "clase": "S",
+      "semantica": "guarded",
+      "requires": "Repo piloto elegido, agente autenticado.",
+      "slash": "/sdlc-ia:agent-context-java",
+      "porque": "Generar el contexto con el agente (en vez de escribirlo a mano) es más rápido y más completo — el agente recorre el repo, detecta el stack, y arma un primer borrador. Pero no puede inventar reglas de negocio que no están en ningún lado: por eso deja marcadores explícitos para que una persona los complete. Esta es la skill real <code>agent-context-java</code> de <code>instrumentacion-java-ia/</code> — genera AGENTS.md, arquitectura, ADRs y un <code>docs/java.md</code> propio del stack, y valida cada afirmación que escribe contra un archivo real antes de darla por buena (nunca inventa una versión o un framework que no leyó).",
+      "guiaPasos": "<p>La skill hace una entrevista corta (unas 10 preguntas, menos si el repo ya se explica solo) antes de escribir nada — no hace falta que le describas el repo tú mismo/a, ella lo lee.</p><p class=\"tip\">El resultado es un borrador con <code>&lt;!-- TODO --&gt;</code> donde hace falta criterio humano, no un documento terminado — el paso siguiente (<b>b2</b>) es justo llenar esos huecos.</p>",
+      "madurez": "1"
+    },
+    "bi": {
+      "clase": "S",
+      "semantica": "guarded",
+      "requires": "AGENTS.md ya existe.",
+      "slash": "/sdlc-ia:agent-context-java",
+      "porque": "Es el mismo comando que b1 — no hace falta una bandera distinta. La skill detecta sola que ya existe contexto (\"modo augment\") y solo completa lo que falta, sin regenerar ni pisar lo que el equipo ya escribió.",
+      "guiaPasos": "<p>Corre <code>/sdlc-ia:agent-context-java</code> igual que en b1. La skill te va a mostrar qué docs ya encontró y va a preguntar si quieres que solo complete huecos (lo normal) o que sobrescriba algo puntual — nunca sobrescribe por default.</p>",
+      "madurez": "1"
+    },
+    "b2": {
+      "clase": "manual",
+      "semantica": "guarded",
+      "requires": "Contexto generado o confirmado (b1/bi).",
+      "manualNote": "Completa cada <!-- TODO --> del archivo de contexto: reglas de negocio que no están en el código, decisiones de arquitectura relevantes, el modelo de datos si no es obvio, convenciones de nombres propias del equipo.",
+      "porque": "Esto es exactamente lo que un agente no puede inventar por sí solo: el porqué detrás de una decisión, no solo el qué. Diez minutos acá ahorran malentendidos en cada sesión futura.",
+      "guiaPasos": "<p>Abre el archivo de contexto generado y busca cada <code>&lt;!-- TODO --&gt;</code>. No hace falta perfección — una frase honesta vale más que dejarlo vacío.</p>",
+      "madurez": "1"
+    },
+    "b3": {
+      "clase": "T",
+      "semantica": "idempotent",
+      "cmd": "ls lefthook.yml .claude/hooks 2>/dev/null",
+      "porque": "Los hooks (locales y del agente) son lo que convierte una convención escrita en una convención aplicada. Confirmar que el andamiaje llegó evita descubrir recién en la primera PR que nadie los activó.",
+      "guiaPasos": "<p>Deberías ver al menos un archivo de configuración de hooks (por ejemplo <a href=\"https://lefthook.dev\" target=\"_blank\" rel=\"noopener\">lefthook</a>, una herramienta pública y liviana para hooks de Git) y, si tu agente los soporta, hooks propios del agente.</p>",
+      "madurez": "1"
+    },
+    "b4": {
+      "clase": "T",
+      "semantica": "idempotent",
+      "requires": "Arnés de hooks presente (b3).",
+      "cwdFrom": "PROJECT_PATH",
+      "cmd": "lefthook install",
+      "porque": "Un hook que existe en el repo pero no está instalado en tu máquina no hace nada — este paso es el que realmente lo activa localmente.",
+      "guiaPasos": "<p>Corre esto una vez por clon del repositorio (no por commit). Si tu equipo usa otro gestor de hooks, el equivalente es su comando de instalación.</p>",
+      "madurez": "1"
+    },
+    "pz": {
+      "clase": "manual",
+      "semantica": "guarded",
+      "actor": "repo-lead",
+      "requires": "Permisos de administración del repositorio en GitHub.",
+      "manualCmd": "/sdlc-ia:instrument-project-java",
+      "manualNote": "Una sola vez por repositorio (no por issue). Primero corre la skill <code>instrument-project-java</code> de <code>instrumentacion-java-ia/</code> — instala 8 controles deterministas (build reproducible, build estricto, estilo, un <code>make check</code> único, hooks de pre-commit/pre-push, escaneo de secretos, pruebas de arquitectura y el workflow de CI) y prueba que cada uno realmente falla antes de darse por terminada. Lo único que la skill NO toca es la configuración de GitHub mismo — eso queda manual: 1) en Settings → Rules → Rulesets, crea un ruleset sobre la rama principal que exija el workflow de CI que la skill instaló como \"required status check\", al menos 1 aprobación, y (opcional) un archivo CODEOWNERS; 2) si el proceso incluye despliegue, configura un Environment de GitHub con reviewers requeridos para el destino de deploy.",
+      "porque": "Esto reemplaza lo que en otras plataformas se arma con \"políticas de rama\": acá el mecanismo es un Ruleset (la forma recomendada actualmente en GitHub, por encima de las reglas de protección de rama clásicas — es a nivel de organización, con lista de excepciones auditable). Se configura una vez y protege cada PR que venga después, no hace falta repetirlo por issue.",
+      "guiaPasos": "<ol><li>Corre <code>/sdlc-ia:instrument-project-java</code> — instala el workflow de CI junto con todo lo demás, en vez de escribirlo a mano.</li><li><b>Settings → Rules → Rulesets</b> → nuevo ruleset sobre <code>main</code>/<code>dev</code>: \"Require status checks to pass\" (elige el workflow que la skill instaló), \"Require a pull request before merging\" con al menos 1 aprobación.</li><li>Opcional: un archivo <code>CODEOWNERS</code> para asignar revisores automáticamente por carpeta.</li><li>Si hay despliegue automático, un <b>Environment</b> (Settings → Environments) con reviewers requeridos antes de que el workflow pueda desplegar.</li></ol>",
+      "madurez": "2"
+    },
+    "pz2": {
+      "clase": "T",
+      "semantica": "idempotent",
+      "requires": "Juez de CI configurado (pz).",
+      "cmd": "git commit --allow-empty -m \"chore: primera corrida del pipeline\" && git push",
+      "porque": "Un pipeline que nunca corrió es un pipeline sin probar. Un commit vacío es la forma más barata de confirmar que el workflow realmente se dispara antes de depender de él para la primera PR real.",
+      "guiaPasos": "<p>Revisa la pestaña <b>Actions</b> del repositorio en GitHub: el workflow debería aparecer corriendo (o ya haber corrido) para este commit.</p>",
+      "madurez": "2"
+    },
+    "ds": {
+      "clase": "S",
+      "semantica": "guarded",
+      "slash": "/revisar-deuda-tecnica",
+      "porque": "Sumar un agente a un repo con deuda técnica sin atender no la resuelve sola — pero un agente sí es bueno para triar deuda existente (análisis estático, código muerto, dependencias vencidas) antes de que empiece a sumarse deuda nueva encima.",
+      "guiaPasos": "<p>Pídele al agente que revise los hallazgos de tu analizador estático (SonarQube, CodeQL, o el que use tu stack) y proponga arreglos con criterio — no que aplique todas las sugerencias a ciegas. Un ejemplo de instrucción:</p><pre class=\"mono\">Revisá los hallazgos abiertos del analizador estático.\nProponé un arreglo por cada uno, o explicá por qué no vale la pena arreglarlo.</pre><p class=\"tip\">A diferencia de otros pasos de este bloque, acá no hay todavía una skill publicada para esto — es un patrón ilustrativo, armalo con una instrucción en lenguaje natural como la de arriba.</p>",
+      "madurez": "2"
+    },
+    "GT": {
+      "clase": "T",
+      "esGateway": true,
+      "semantica": "idempotent",
+      "cmd": "test -d test -o -d tests -o -d __tests__ && echo \"existe\" || echo \"no existe\"",
+      "ramas": {"si": "GT2", "no": "bt"},
+      "porque": "Igual que con el contexto: vale la pena chequear si ya hay una estrategia de pruebas antes de armar una nueva de cero.",
+      "guiaPasos": "<p>\"Existe\" acá no significa solo que haya una carpeta de tests — significa que hay una estrategia real (qué capas se prueban, con qué herramientas). Si tienes dudas, trátalo como \"no existe\".</p>",
+      "madurez": "1"
+    },
+    "bt": {
+      "clase": "S",
+      "semantica": "guarded",
+      "slash": "/generar-pruebas-en-code-legacy",
+      "porque": "Este es un skill real de este mismo repositorio (no un placeholder inventado): acondiciona un repo legacy y genera pruebas reales en varias capas (colaboración, contrato, aceptación, rendimiento, seguridad), mapeando primero las \"costuras\" del código al estilo Feathers antes de tocar nada.",
+      "guiaPasos": "<p>Es el mismo skill que usa este taller para acondicionar repos legacy — puedes verlo en <code>base-conocimiento/</code> como referencia de qué hace y cómo está escrito. La idea general (mapear costuras antes de generar pruebas, capas separadas por tipo de prueba) es reutilizable aunque tu stack sea distinto.</p>",
+      "madurez": "1"
+    },
+    "GT2": {
+      "clase": "T",
+      "esGateway": true,
+      "semantica": "idempotent",
+      "cmd": "echo \"¿el mapeo de costuras encontró algo que exige tocar producción?\"",
+      "ramas": {"si": "bi2", "no": "bo1"},
+      "porque": "A veces preparar las pruebas revela que una costura solo se puede cortar cambiando código de producción (no solo agregando pruebas). Eso ya no es preparación — es trabajo real que merece su propio issue, no colarse sin que nadie lo vea.",
+      "guiaPasos": "<p>Si el mapeo de costuras (paso anterior) encontró algo así, regístralo como issue en vez de arreglarlo de paso. Si no encontró nada, sigues directo al ciclo por issue.</p>",
+      "madurez": "1"
+    },
+    "bi2": {
+      "clase": "T",
+      "semantica": "idempotent",
+      "cmd": "gh issue create --title \"Costura: {RESUMEN}\" --label deuda-tecnica",
+      "inputs": [{"name": "RESUMEN", "label": "Resumen de la costura", "type": "text", "placeholder": "ej. el cliente HTTP no se puede aislar sin tocar el constructor"}],
+      "porque": "Un issue etiquetado es visible para todo el equipo y entra al backlog priorizable — a diferencia de un comentario suelto o un \"ya lo arreglo después\" que nadie vuelve a ver.",
+      "guiaPasos": "<p>Con esto, la preparación del proyecto queda cerrada. El siguiente paso arranca el ciclo por issue (bloque C), que se repite una vez por cada issue del sprint.</p>",
+      "madurez": "1"
+    },
+    "bo1": {
+      "clase": "T",
+      "semantica": "idempotent",
+      "cmd": "gh issue list --assignee @me --state open",
+      "porque": "Arranca acá cada vuelta del ciclo. Tomar un issue concreto (no \"lo que aparezca\") es lo que hace posible medir el ciclo: cuánto tarda de tomado a cerrado, dónde se traba.",
+      "guiaPasos": "<p>Elige un issue del sprint asignado a ti. Anota su número — lo vas a necesitar en varios pasos siguientes (rama, commit, PR).</p>",
+      "madurez": "3"
+    },
+    "c1": {
+      "clase": "S",
+      "semantica": "guarded",
+      "requires": "Un issue elegido (bo1).",
+      "slash": "/sdlc-ia:github-plan-build {ISSUE_ID}",
+      "inputs": [{"name": "ISSUE_ID", "label": "Número del issue", "type": "text", "pattern": "^[0-9]+$"}],
+      "porque": "Pedirle al agente que planifique antes de tocar código separa dos preguntas distintas: \"¿qué hay que hacer?\" de \"¿cómo se hace?\". Revisar el plan es más barato que revisar el código ya escrito. Este comando es la skill real <code>github-plan-build</code> de <code>instrumentacion-java-ia/</code> — y no solo planifica: corre <b>todo</b> el ciclo de este bloque C de punta a punta (explorar el repo, armar el plan, revisión adversarial en 3 lentes distintas, el checkpoint de aprobación, implementar test-first, los gates, commit/push/PR, seguir el CI, atender comentarios de review). Este diagrama muestra cada etapa por separado a propósito, para que entiendas qué hace por dentro — pero en la práctica corres un solo comando.",
+      "guiaPasos": "<p>El agente lee el issue completo (incluidos los comentarios), explora el repo sin asumir una arquitectura que no confirmó, y arma un plan. Se detiene en el checkpoint de aprobación (equivalente al gate <b>G3</b> de este diagrama) antes de tocar código — a partir de ahí sigues el resto del bloque C dentro de la misma sesión.</p><p class=\"tip\">Para un issue chico y rutinario, agrega <code>skip-checkpoint</code> al final del comando para saltar la pausa de aprobación. No lo uses en cambios grandes o irreversibles.</p>",
+      "madurez": "3"
+    },
+    "bo2": {
+      "clase": "manual",
+      "semantica": "idempotent",
+      "requires": "Plan publicado (c1).",
+      "manualNote": "Abre el issue en GitHub y lee la lista de tareas que publicó el agente. Si tu equipo usa GitHub Projects, revisa también que la tarjeta del issue tenga los campos que necesites (estado, iteración, estimación).",
+      "porque": "El plan lo escribió el agente, pero la responsabilidad de que tenga sentido sigue siendo tuya. Este es el único punto del ciclo donde alguien lee el plan completo antes de que se ejecute una sola línea de código.",
+      "guiaPasos": "<p>No hace falta que el plan sea perfecto — el siguiente gate (G3) te da tres salidas distintas según qué tan bien te cierre.</p>",
+      "madurez": "3"
+    },
+    "G3": {
+      "clase": "manual",
+      "esGateway": true,
+      "semantica": "guarded",
+      "ramas": {"seguir": "c4a", "ajustar": "c1", "replanear": "c1"},
+      "porque": "Tres salidas, no dos: \"seguir\" cuando el plan está bien, \"ajustar\" cuando falta un detalle chico (se lo pides al agente sin descartar nada), \"replanear\" cuando el enfoque completo está mal y hay que empezar de cero. Tratarlas igual (como un simple sí/no) pierde la diferencia entre un ajuste barato y un replanteo caro.",
+      "guiaPasos": "<p><b>Seguir</b>: el plan está bien, continúa a crear la rama.</p><p><b>Ajustar</b>: pídele al agente que revise un punto puntual del plan, sin descartar el resto.</p><p><b>Replanear</b>: el enfoque está mal — descartas el plan actual y le pides uno nuevo desde cero. <span class=\"danger-inline\">Esta opción es destructiva: pierdes el plan actual.</span> Úsala solo cuando ajustar no alcanza.</p>",
+      "exigeConfirmacion": true,
+      "madurez": "3"
+    },
+    "c4a": {
+      "clase": "T",
+      "semantica": "guarded",
+      "requires": "Plan aprobado (G3, rama \"seguir\").",
+      "cmd": "git checkout -b feature/{RESUMEN}-{ISSUE_ID}",
+      "inputs": [
+        {"name": "RESUMEN", "label": "Resumen corto en kebab-case", "type": "text", "pattern": "^[a-z0-9-]+$"},
+        {"name": "ISSUE_ID", "label": "Número del issue", "type": "text", "pattern": "^[0-9]+$"}
+      ],
+      "manualShared": ["ISSUE_ID"],
+      "porque": "La rama se crea antes de escribir código, no después. Así, si algo sale mal a mitad de la implementación, el punto de partida (la rama base) sigue intacto y puedes volver a empezar sin arrastrar el intento fallido.",
+      "guiaPasos": "<p>El nombre de rama incluye el número de issue — hace que sea trivial encontrar qué rama corresponde a qué issue meses después.</p>",
+      "madurez": "3"
+    },
+    "c2": {
+      "clase": "manual",
+      "semantica": "guarded",
+      "requires": "Rama creada (c4a).",
+      "manualNote": "Si venís de <b>c1</b> con <code>github-plan-build</code>, esto ya se ejecuta solo — no hace falta un comando aparte. La skill parte el plan en tareas con <code>TaskCreate</code>, agrupa las que tocan archivos disjuntos para correrlas en paralelo, y hace un commit por tarea completada (RED→GREEN, test primero). Si tienes subagentes especializados por stack (ver <code>.claude/agents/</code>), cada tarea puede delegarse al más adecuado.",
+      "porque": "Un commit por tarea (no un commit gigante al final) es lo que hace que el historial sirva para algo — revisar, revertir parcialmente, o entender qué pasó, tarea por tarea, en vez de un diff enorme sin estructura.",
+      "guiaPasos": "<p>Este nodo existe para que veas qué pasa por dentro del mismo comando de <b>c1</b> — no es un paso manual aparte, salvo que estés ejecutando el ciclo sin <code>github-plan-build</code> y se lo estés pidiendo al agente tú mismo/a en lenguaje natural.</p>",
+      "madurez": "3"
+    },
+    "GUI": {
+      "clase": "T",
+      "esGateway": true,
+      "semantica": "idempotent",
+      "cmd": "echo \"¿el cambio toca algo visual?\"",
+      "ramas": {"si": "v0", "no": "c3"},
+      "porque": "Un test automatizado puede confirmar que un componente renderiza — no puede confirmar que se ve bien. Para cambios de interfaz, ese chequeo humano vale la pena antes de pasar a la verificación de 4 capas.",
+      "guiaPasos": "<p>Si el cambio no toca nada visual (una API, un job de fondo), saltas directo a la verificación en 4 capas.</p>",
+      "madurez": "2"
+    },
+    "v0": {
+      "clase": "manual",
+      "semantica": "idempotent",
+      "manualNote": "Levanta una vista previa efímera del cambio — un deploy temporal ligado a la rama (por ejemplo, vía un workflow de GitHub Actions que despliega a un entorno de PR, o un preview de GitHub Pages).",
+      "porque": "Verificar contra una URL real y compartible es más confiable (y más fácil de mostrarle a alguien más) que correrlo solo en tu máquina.",
+      "guiaPasos": "<p>El mecanismo exacto depende de tu stack — la idea es que cada PR con cambios visuales tenga una URL propia y descartable para revisar antes de mergear.</p>",
+      "madurez": "2"
+    },
+    "vw": {
+      "clase": "manual",
+      "semantica": "idempotent",
+      "requires": "Vista previa levantada (v0).",
+      "manualNote": "Abre la vista previa y confirma visualmente que el cambio se ve como esperabas, en al menos un tamaño de pantalla chico y uno grande.",
+      "porque": "Este chequeo es deliberadamente humano — es la parte del proceso donde \"se ve bien\" todavía no tiene una forma barata de automatizarse del todo.",
+      "guiaPasos": "<p>Si algo no se ve bien, vuelve a <b>«Ejecutar tareas»</b> antes de seguir a la verificación en 4 capas.</p>",
+      "madurez": "2"
+    },
+    "c3": {
+      "clase": "manual",
+      "semantica": "guarded",
+      "requires": "Tareas ejecutadas (c2), verificación visual si aplicaba (vw).",
+      "manualNote": "Cuatro capas, ninguna reemplaza a las otras: local (el agente corre pruebas/linters antes de avisar), CI (lo mismo, en un runner de GitHub Actions), seguridad (análisis de dependencias y estático sobre lo que cambió), y un checklist humano corto de 2 minutos sobre lo que el agente asumió.",
+      "porque": "Cada capa cubre el punto ciego de las otras: lo local es rápido pero corre en tu máquina, no en un entorno limpio; CI es el entorno limpio pero no mira seguridad; seguridad no mira si el diseño tiene sentido; el checklist humano es lo único que puede.",
+      "guiaPasos": "<ol><li>Local: el agente corre pruebas y linters antes de decir que terminó.</li><li>CI: el workflow de GitHub Actions corre lo mismo, en limpio.</li><li>Seguridad: SCA/SAST sobre el diff (dependencias nuevas, patrones inseguros).</li><li>Checklist humano: relee el diff completo una vez, buscando specificamente lo que el agente pudo haber asumido mal.</li></ol>",
+      "madurez": "2"
+    },
+    "G4": {
+      "clase": "manual",
+      "esGateway": true,
+      "semantica": "guarded",
+      "ramas": {"si": "c4b", "no": "c4p"},
+      "porque": "Este gate es sobre criterios de aceptación, no sobre \"si el código compila\" — esos ya se verificaron en c3. Acá la pregunta es si lo que se construyó resuelve lo que el issue pedía.",
+      "guiaPasos": "<p>Si no se cumplen, no se reintenta todo el plan — se identifica la tarea puntual que falló y se vuelve a plantear solo esa.</p>",
+      "madurez": "3"
+    },
+    "c4p": {
+      "clase": "manual",
+      "semantica": "guarded",
+      "requires": "Criterios de aceptación no cumplidos (G4, rama \"no\").",
+      "manualNote": "Le pides al agente, dentro de la misma sesión de <code>github-plan-build</code>, que replantee solo la tarea que falló — no hace falta un comando nuevo ni reiniciar el ciclo. Ejemplo: «la tarea 3 no cumplió el criterio de aceptación X, replanteala sin tocar las demás».",
+      "porque": "Replantear solo la tarea que falló (no el issue entero) es más barato y conserva el trabajo de las tareas que sí funcionaron.",
+      "guiaPasos": "<p>Después de replantear, vuelves a <b>«Ejecutar tareas»</b> (c2) para correr la tarea ajustada.</p>",
+      "madurez": "3"
+    },
+    "c4b": {
+      "clase": "manual",
+      "semantica": "guarded",
+      "requires": "Criterios de aceptación cumplidos (G4, rama \"sí\").",
+      "plantillaCommit": "{RESUMEN}\n\nCloses #{ISSUE_ID}",
+      "porque": "El pie <code>Closes #123</code> es la convención nativa de GitHub para enlazar un commit a un issue — cuando el commit llega a la rama principal, GitHub cierra el issue solo. Es lo contrario de lo que pediría una plataforma de work items separada: acá el commit y el issue son parte del mismo grafo.",
+      "guiaPasos": "<p>Además de <code>Closes</code>, GitHub reconoce <code>Fixes</code> y <code>Resolves</code> como sinónimos — cualquiera de los tres cierra el issue automáticamente al mergear a la rama por defecto.</p>",
+      "madurez": "3"
+    },
+    "c4c": {
+      "clase": "T",
+      "semantica": "idempotent",
+      "requires": "Commit hecho (c4b).",
+      "cmd": "git push -u origin HEAD",
+      "porque": "Sin push, todo lo anterior sigue viviendo solo en tu máquina — este es el paso que lo hace visible para el resto del equipo y dispara la maquinaria de GitHub (CI, la posibilidad de abrir la PR).",
+      "guiaPasos": "<p><code>-u</code> deja la rama configurada para que los próximos <code>git push</code> no necesiten repetir el nombre remoto.</p>",
+      "madurez": "3"
+    },
+    "p1": {
+      "clase": "T",
+      "semantica": "guarded",
+      "requires": "Rama pusheada (c4c).",
+      "cmd": "gh pr create --fill --base dev",
+      "porque": "Abrir la PR es lo que dispara el \"juez\" de CI configurado en el bloque B — el Ruleset exige que ese check pase antes de poder mergear, así que a partir de acá el pipeline entra en juego automáticamente.",
+      "guiaPasos": "<p><code>--fill</code> usa el título y cuerpo del último commit para completar la PR — revísalo y ajústalo si hace falta antes de confirmar. <code>--base dev</code> asume que tu rama de integración se llama <code>dev</code>; cámbialo si tu equipo usa otro nombre.</p>",
+      "madurez": "3"
+    },
+    "G5": {
+      "clase": "T",
+      "esGateway": true,
+      "semantica": "idempotent",
+      "requires": "PR abierta (p1).",
+      "cmd": "gh pr checks --watch",
+      "ramas": {"si": "cr", "no": "pf"},
+      "porque": "El juez automático corre antes que cualquier persona lea el código — no tiene sentido pedirle tiempo a un revisor humano sobre un cambio que ni siquiera pasa CI.",
+      "guiaPasos": "<p><code>--watch</code> se queda esperando hasta que todos los checks terminen. Si algo falla, sigues a <b>«Arreglar y repushear»</b> antes de pedir revisión.</p>",
+      "madurez": "3"
+    },
+    "pf": {
+      "clase": "manual",
+      "semantica": "guarded",
+      "requires": "CI en rojo (G5, rama \"no\").",
+      "manualNote": "Puedes arreglarlo tú mismo/a, pedirle al agente en tu sesión local que lea el log y lo arregle, o —si instalaste la GitHub Action oficial de Claude Code (<code>/install-github-app</code> desde tu terminal, con <code>gh auth login</code> ya hecho)— simplemente comentar en la propia PR pidiéndoselo al agente.",
+      "manualRef": "@claude el CI está en rojo, revisa el log del workflow y arréglalo",
+      "porque": "No hace falta volver a tu terminal para esto: un comentario en la PR alcanza si tienes el agente enganchado a GitHub Actions — el mismo mecanismo que revisa PRs (cr) puede arreglar el CI que las rompe.",
+      "guiaPasos": "<p>Después de arreglar, un nuevo push a la misma rama vuelve a disparar los checks — el gate G5 se vuelve a evaluar solo.</p>",
+      "madurez": "3"
+    },
+    "cr": {
+      "clase": "manual",
+      "semantica": "guarded",
+      "requires": "CI en verde (G5, rama \"sí\").",
+      "manualNote": "Dos capas de revisión, no una: 1) una pasada local gratis con un comando de revisión de código antes de pedir revisión humana (evita gastar el tiempo de una persona en cosas que un agente ya detecta), y 2) revisión humana, con CODEOWNERS asignando automáticamente a quien corresponda por carpeta.",
+      "manualCmd": "/code-review",
+      "porque": "La revisión de un agente y la de una persona buscan cosas distintas: el agente es bueno detectando bugs mecánicos, duplicación, simplificaciones obvias; una persona es quien evalúa si el enfoque tiene sentido para el negocio. Ninguna reemplaza a la otra.",
+      "guiaPasos": "<p>Si instalaste la GitHub Action oficial de Claude Code (<code>anthropics/claude-code-action</code>, con <code>/install-github-app</code>), también puedes pedirle una revisión directamente en la PR comentando <code>@claude revisá esta PR</code> — deja comentarios inline en el diff, igual que una persona.</p>",
+      "madurez": "3"
+    },
+    "G6": {
+      "clase": "manual",
+      "esGateway": true,
+      "semantica": "guarded",
+      "ramas": {"si": "mg", "no": "ac"},
+      "porque": "El Ruleset del repo ya exige al menos una aprobación antes de habilitar el botón de merge — este gate es la representación humana de esa misma regla.",
+      "guiaPasos": "<p>Si piden cambios, atiéndelos y vuelves a pedir revisión — no hace falta reabrir la PR, los mismos comentarios sirven de guía.</p>",
+      "madurez": "3"
+    },
+    "ac": {
+      "clase": "manual",
+      "semantica": "guarded",
+      "requires": "Cambios solicitados (G6, rama \"no\").",
+      "manualNote": "Atiende cada comentario de la revisión — con el agente si el cambio es mecánico, tú si requiere una decisión.",
+      "porque": "No todos los comentarios de revisión son iguales: unos son \"cambia esto\" (mecánico, se lo delegas al agente) y otros son \"¿por qué elegiste esto?\" (una conversación, no un comando).",
+      "guiaPasos": "<p>Después de atenderlos, vuelves a <b>«Revisión de código»</b> (cr) para una nueva pasada.</p>",
+      "madurez": "3"
+    },
+    "mg": {
+      "clase": "T",
+      "semantica": "guarded",
+      "requires": "PR aprobada (G6, rama \"sí\").",
+      "cmd": "gh pr merge --squash --delete-branch",
+      "porque": "El Ruleset configurado en el bloque B es lo que realmente bloquea este comando si algún check requerido no pasó — no depende de que nadie se acuerde de chequearlo a mano.",
+      "guiaPasos": "<p><code>--squash</code> deja un commit limpio en la rama principal; <code>--delete-branch</code> limpia la rama de feature ya mergeada. El merge dispara el cierre automático del issue por el <code>Closes #N</code> del commit.</p>",
+      "madurez": "3"
+    },
+    "cd1": {
+      "clase": "manual",
+      "semantica": "guarded",
+      "requires": "Merge hecho (mg).",
+      "manualNote": "El merge a la rama de integración dispara automáticamente un workflow de despliegue a un entorno de staging/dev — no es un paso manual, es la consecuencia directa del merge anterior.",
+      "porque": "Desplegar automáticamente después de cada merge (en vez de acumular cambios para un deploy manual grande) es lo que mantiene el entorno de staging siempre cerca de lo que hay en la rama principal.",
+      "guiaPasos": "<p>Revisa la pestaña <b>Actions</b> del repositorio — debería haber un workflow corriendo (o recién terminado) para el commit que acabas de mergear.</p>",
+      "madurez": "3"
+    },
+    "G8": {
+      "clase": "T",
+      "esGateway": true,
+      "semantica": "idempotent",
+      "cmd": "gh run list --branch dev --limit 1",
+      "ramas": {"si": "c5", "no": "df"},
+      "porque": "Un deploy automático que falla en silencio es peor que no tener deploy automático — este gate obliga a mirar el resultado antes de dar la vuelta del ciclo por cerrada.",
+      "guiaPasos": "<p>Si el último run de la rama de integración terminó en rojo, sigues a <b>«Arreglar hacia adelante»</b>.</p>",
+      "madurez": "3"
+    },
+    "df": {
+      "clase": "manual",
+      "semantica": "guarded",
+      "requires": "CD en rojo (G8, rama \"no\").",
+      "manualNote": "Arreglar hacia adelante: un nuevo commit que corrige el problema, no un revert salvo que el problema sea grave y no tengas un arreglo rápido a mano.",
+      "porque": "Revertir es más seguro pero pierde el trabajo; arreglar hacia adelante es más rápido pero exige confianza en que el arreglo es correcto. La elección depende de qué tan grave es lo que se rompió — no hay una respuesta única.",
+      "guiaPasos": "<p>Después del arreglo, el push a la rama de integración vuelve a disparar el deploy — el gate G8 se re-evalúa solo.</p>",
+      "madurez": "3"
+    },
+    "c5": {
+      "clase": "manual",
+      "semantica": "guarded",
+      "requires": "CD en verde (G8, rama \"sí\").",
+      "manualNote": "Si viniste usando <code>github-plan-build</code> desde c1, esto ya pasó: su último paso (\"wrap-up\") comenta en el issue, actualiza su estado, y te deja un resumen de la sesión. Lo que la skill NO hace sola es promover una regla repetida a <code>AGENTS.md</code> — pídeselo explícitamente si notaste algo que se repite entre issues.",
+      "porque": "Sin este paso, cada vuelta del ciclo aprende lo mismo que la anterior. Guardar qué costó y promover lo que se repite a un documento vivo (AGENTS.md) es lo que hace que el ciclo 20 sea más fluido que el ciclo 1.",
+      "guiaPasos": "<p>Si por algún motivo no usaste <code>github-plan-build</code>, pídele al agente en lenguaje natural que resuma qué costó más de lo esperado y si vale la pena agregar una regla a <code>AGENTS.md</code>.</p>",
+      "madurez": "3"
+    },
+    "G7": {
+      "clase": "manual",
+      "esGateway": true,
+      "semantica": "idempotent",
+      "ramas": {"si": "bo1", "no": "end_ok"},
+      "porque": "Este es el cierre del ciclo PDCA: si quedan issues, el proceso vuelve a su propio comienzo (bo1) — no es una lista que se recorre una vez, es un hábito que se repite issue tras issue.",
+      "guiaPasos": "<p>Si quedan issues del sprint asignados a ti, vuelves a <b>«Tomar issue del sprint»</b>. Si no, el sprint (para ti) está cerrado.</p>",
+      "madurez": "3"
+    }  },
+  "eventos": {
+    "start1": {
+      "porque": "Este proceso completo es un ciclo de mejora continua (Planear-Hacer-Verificar-Actuar, el ciclo de Deming): el bloque C se repite una vez por cada issue del sprint y cierra volviendo a su propio comienzo — no es una lista de pasos que se termina, es un hábito que se repite.",
+      "guiaPasos": "<p>Este proceso asume que ya tienes:</p><ol><li>Un repositorio en GitHub, con al menos permisos de escritura.</li><li>Un editor de código y una terminal.</li><li>Ganas de instalar un agente de código con IA (se usa <a href=\"https://claude.com/product/claude-code\" target=\"_blank\" rel=\"noopener\">Claude Code</a> como ejemplo concreto en este recorrido, pero las ideas aplican a cualquier agente de código equivalente).</li></ol><p>Nada de lo que sigue asume una organización, una empresa o una herramienta interna en particular: cada paso está pensado para que lo repitas en cualquier repositorio público o privado de GitHub.</p>",
+      "madurez": "transversal",
+      "madurezSub": "instalacion"
+    },
+    "end_ok": {
+      "porque": "Llegar acá no es \"terminar\": es cerrar una vuelta del ciclo. La próxima vez que tomes un issue del sprint, el proceso vuelve a bo1 con el repo, el equipo y el agente un poco más maduros que la vuelta anterior — esa es la idea del PDCA aplicado a un equipo de desarrollo.",
+      "guiaPasos": "<p>Si todavía quedan issues del sprint, el diagrama te devuelve a <b>«Tomar issue del sprint»</b> — sigue el ciclo.</p><p>Si el sprint terminó, esto ya no es un proceso individual: es una conversación de equipo sobre qué tan madura está la colaboración con el agente (fundamentos, instrumentación, gobernanza) y qué vale la pena ajustar antes del próximo sprint.</p>",
+      "madurez": "transversal",
+      "madurezSub": "gobernanza"
+    }
+  }
+}

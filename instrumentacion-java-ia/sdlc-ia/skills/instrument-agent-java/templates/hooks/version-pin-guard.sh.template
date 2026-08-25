@@ -1,0 +1,102 @@
+# Placeholders: none.
+#
+# Hook 6 — version-pin guard. PostToolUse, matcher "Edit|Write|MultiEdit".
+# Warns when a write to pom.xml adds a <dependency> that pins its own <version> literally instead
+# of resolving it through the repository's centralised dependency management.
+#
+# BEFORE INSTALLING, CONFIRM THE REPO IS ALREADY CLEAN. This hook re-reads the whole pom.xml on
+# every edit, so a project that already carries a stray literal version fires on every subsequent
+# turn for something the agent did not write. Phase 1 greps for this; if the repo is dirty, report
+# the count and offer to fix those first, or leave the hook out.
+#
+# ONLY INSTALL THIS WHEN THE REPO ALREADY CENTRALISES VERSIONS — a <dependencyManagement> block,
+# a parent BOM import, or both. Without that discipline in place, a literal <version> on a
+# <dependency> is the normal, correct way to declare one, and this hook fires on every dependency
+# a developer adds. That is the fastest way to get the whole catalogue switched off.
+#
+# WHY IT STRIPS <dependencyManagement> FIRST: versions declared there ARE the source of truth —
+# whether spelled as a literal or a property — and are exempt from this check. The strip assumes
+# exactly one such block in the file, the normal shape of a pom.xml; a file with two would need a
+# real XML parser rather than a single greedy sed pass. That trade-off is deliberate, the same
+# "portable bash over a real parser" stance every other hook in this catalogue takes.
+#
+# WHY IT EXTRACTS <dependency> BLOCKS INSTEAD OF STRIPPING <parent> AND <plugin> TOO: a Maven
+# <parent> element never contains a nested <dependency>, so it is naturally excluded by only
+# searching for that tag. A <plugin> CAN declare its own <dependencies> (to extend the plugin's
+# classpath, e.g. a JDBC driver for a migration plugin) — those are a known gap in this heuristic,
+# and PLUGIN dependency versions are often legitimately literal. Say so if this hook ever warns on
+# one.
+#
+# WHY <dependency> BLOCKS DO NOT NEED DEPTH COUNTING: unlike the JSON tool_input extraction in
+# audit-log.sh, a Maven <dependency> element never nests inside another <dependency> element, so a
+# simple "find the next closing tag" is correct — no brace/tag-depth counter required.
+#
+# WHY IT WARNS INSTEAD OF BLOCKING: PostToolUse runs after the write. There is nothing left to
+# stop, and the fix is moving one value — the agent can do it on its next turn once told.
+#
+# ---8<--- everything above this line is instructions for you; delete it ---8<---
+#!/usr/bin/env bash
+# `set -u` only. See the note in secret-read-guard.sh.
+set -u
+
+DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+. "$DIR/_lib.sh"
+
+hook_read_stdin
+
+FILE="$(json_path file_path)"
+[ -z "$FILE" ] && exit 0
+
+case "$FILE" in
+  */pom.xml|pom.xml) ;;
+  *) exit 0 ;;
+esac
+
+[ -f "$FILE" ] || exit 0
+
+# Read the file rather than the payload: an Edit delivers a diff, not the result, so the payload
+# cannot answer "does this dependency now carry a literal version".
+FLAT="$(tr '\n' ' ' < "$FILE")"
+
+# Versions declared inside <dependencyManagement> are the source of truth and are exempt, whether
+# literal or a ${property}. Single greedy pass: see the header note on the one-block assumption.
+FLAT="$(printf '%s' "$FLAT" | sed -E 's#<dependencyManagement>.*</dependencyManagement>##')"
+
+# Pull out each remaining <dependency>...</dependency> entry. They do not nest, so this is a
+# sequential find-next-close, not a depth-counted scan.
+BLOCKS="$(printf '%s' "$FLAT" | awk '
+  {
+    s = $0
+    while ((i = index(s, "<dependency>")) > 0) {
+      rest = substr(s, i + length("<dependency>"))
+      j = index(rest, "</dependency>")
+      if (j == 0) { break }
+      print substr(rest, 1, j - 1)
+      print "===dep-sep==="
+      s = substr(rest, j + length("</dependency>"))
+    }
+  }')"
+
+COUNT=0
+while IFS= read -r block; do
+  [ "$block" = "===dep-sep===" ] && continue
+  case "$block" in
+    *'<version>'*)
+      VER="$(printf '%s' "$block" | sed -E -n 's#.*<version>[[:space:]]*([^<]*)[[:space:]]*</version>.*#\1#p')"
+      case "$VER" in
+        '${'*'}') ;;   # a property reference: exactly what centralised versioning asks for
+        '') ;;         # no readable content; not a decision to guess at
+        *) COUNT=$((COUNT + 1)) ;;
+      esac
+      ;;
+  esac
+done <<EOF
+$BLOCKS
+EOF
+
+[ "$COUNT" -eq 0 ] && exit 0
+
+REASON="$(printf 'This repository keeps dependency versions centrally, so %s <dependency> in %s must not pin its own <version> literally. Move it to a ${property} declared in <properties> and resolved through <dependencyManagement> or an imported BOM.' "$COUNT" "$(basename "$FILE")")"
+
+printf '{"decision":"block","reason":"%s"}' "$(json_escape "$REASON")"
+exit 0

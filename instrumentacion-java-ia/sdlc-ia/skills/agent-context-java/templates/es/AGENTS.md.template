@@ -1,0 +1,46 @@
+<!--
+Placeholders:
+  {{PROJECT_NAME}}         — ej. "Base de Conocimiento"
+  {{ONE_LINE_PURPOSE}}     — qué hace este producto en una frase
+  {{DOC_LINKS}}            — lista de enlaces a los docs del paquete
+  {{COMMANDS_BLOCK}}       — bloque de código con los 3-5 comandos de desarrollo más usados
+  {{NON_OBVIOUS_RULES}}    — reglas no obvias provistas por el usuario en la entrevista
+  {{TESTING_NOTES}}        — un párrafo sobre cómo se corren las pruebas
+  {{CODE_STYLE_NOTES}}     — un párrafo sobre linters/formatters en uso
+-->
+
+# AGENTS.md — {{PROJECT_NAME}}
+
+{{ONE_LINE_PURPOSE}}
+
+Guía para agentes de IA que trabajan en este repositorio. Sigue la convención [agents.md](https://agents.md).
+
+Este archivo solo captura lo que no es obvio leyendo el código. Para arquitectura, modelo de datos, decisiones y contexto más amplio, sigue los enlaces y lee la fuente.
+
+## Dónde encontrar las cosas
+
+{{DOC_LINKS}}
+
+Lee estos docs antes de hacer cambios estructurales.
+
+## Comandos
+
+{{COMMANDS_BLOCK}}
+
+## Reglas no obvias
+
+{{NON_OBVIOUS_RULES}}
+
+## Pruebas
+
+{{TESTING_NOTES}}
+
+## Estilo de código
+
+{{CODE_STYLE_NOTES}}
+
+## Seguridad
+
+- No commitees `.env` ni archivos con credenciales. Agrega variables nuevas a `.env.example`.
+- No registres secretos, tokens ni información personal en logs.
+- Asume que cualquier cosa en este repo es legible por un agente de IA — nunca pegues secretos aquí.

@@ -1,0 +1,39 @@
+<!--
+Placeholders:
+  {{PROJECT_NAME}}
+-->
+
+# Usuario Objetivo — {{PROJECT_NAME}}
+
+<!-- TODO: 2-3 personas, cada una con: quién es, qué intenta lograr, qué le frustra. Luego una tabla de implicaciones: cada rasgo → qué significa para cómo se construye el producto / código. -->
+
+## Personas
+
+### Persona 1 — <!-- nombre -->
+
+- **Rol:**
+- **Objetivo:**
+- **Dolor:**
+
+### Persona 2 — <!-- nombre -->
+
+- **Rol:**
+- **Objetivo:**
+- **Dolor:**
+
+## Rasgos comunes
+
+| Rasgo | ¿Todas las personas? |
+|---|---|
+| | |
+
+## Implicaciones para el desarrollo
+
+| Rasgo | Qué significa para el código |
+|---|---|
+| | |
+
+## Docs relacionados
+
+- [Negocio](./business.md)
+- [Diseño](./design.md) — si existe
