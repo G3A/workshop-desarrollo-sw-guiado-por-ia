@@ -233,12 +233,35 @@ Framework Emulator alcanza con `KB_TEAMS_HABILITADO=true` y apuntarlo a
 ## Desarrollo
 
 ```bash
-./mvnw test      # incluye los gates de arquitectura
-./mvnw verify    # build completo
+make check       # lint + build + test -- la señal de confianza local antes de un commit
+make hooks       # instala los git hooks de Lefthook (correr una vez, desde la raíz del monorepo)
 ```
 
 Los gates viven en `ArquitecturaTest` desde el primer commit: una frontera que solo existe en un
-documento se erosiona en la tercera semana.
+documento se erosiona en la tercera semana. Detalle de los 8 controles y los 7 hooks de agente
+instalados por `instrumentacion-java-ia` en `AGENTS.md` y en
+`validacion-workshop/f2-preparar-proyecto.md` (raíz del monorepo).
+
+**Prerrequisito en Windows**: Git Bash (viene con Git for Windows). Los hooks de agente y de
+Lefthook son scripts bash; sin Git Bash instalado, Claude Code cae a PowerShell y esos scripts
+quedan inertes en silencio.
+
+## Agente de IA (Claude Code)
+
+Este proyecto trae instrumentación para agentes de código con IA (`.claude/settings.json`,
+`.mcp.json`, ambos en la raíz del monorepo — no aquí). Para usar los servidores MCP:
+
+```bash
+export GITHUB_PAT=...      # personal access token de GitHub, para el servidor MCP de GitHub
+export APP_DSN=postgres://kb:kb@localhost:5432/baseconocimiento?sslmode=disable  # servidor MCP DBHub
+```
+
+`.mcp.json` queda en `⏸ Pending approval` hasta que confíes el workspace: corre `claude` en la raíz
+del monorepo, acepta el diálogo de confianza, y usa `/mcp` para confirmar que cada servidor conectó.
+
+El hook de auditoría (si está activo) guarda el `tool_input` completo de cada llamada a
+herramienta en `logs/audit.log` (raíz del monorepo, gitignored) — puede contener cualquier dato
+que haya pasado por una herramienta durante la sesión.
 
 ## Licencia
 

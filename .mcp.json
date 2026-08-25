@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "ark_github": {
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp",
+      "headers": { "Authorization": "Bearer ${GITHUB_PAT}" }
+    },
+    "ark_dbhub": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@bytebase/dbhub@1.2.1", "--transport", "stdio", "--dsn", "${APP_DSN}"]
+    }
+  }
+}

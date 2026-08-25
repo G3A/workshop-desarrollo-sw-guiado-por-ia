@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help up gpu-up up-bonsai down-bonsai up-ministral down-ministral up-qwen35 down-qwen35 up-nemotron down-nemotron up-granite41 down-granite41 up-phi4mini down-phi4mini up-qwen25 down-qwen25 down restart logs ps build test verify pull-models pull-reranker pull-bonsai-gguf pull-ministral pull-qwen35 pull-nemotron pull-granite41 pull-phi4mini pull-qwen25 pin-embeddings-cpu seed ingest ingest-repos ingest-teams ingest-azdo psql health clean
+.PHONY: help up gpu-up up-bonsai down-bonsai up-ministral down-ministral up-qwen35 down-qwen35 up-nemotron down-nemotron up-granite41 down-granite41 up-phi4mini down-phi4mini up-qwen25 down-qwen25 down restart logs ps build test verify pull-models pull-reranker pull-bonsai-gguf pull-ministral pull-qwen35 pull-nemotron pull-granite41 pull-phi4mini pull-qwen25 pin-embeddings-cpu seed ingest ingest-repos ingest-teams ingest-azdo psql health clean format lint secrets check ci hooks
 
 COMPOSE           := docker compose
 COMPOSE_GPU       := docker compose -f compose.yml -f compose.gpu.yml
@@ -217,16 +217,44 @@ ingest-azdo:  ## Ingiere work items y wiki de Azure DevOps (F6, no-op si KB_AZDO
 ## ---------------------------------------------------------------- desarrollo
 
 build:  ## Compila el jar sin correr pruebas
-	./mvnw -B clean package -DskipTests
+	sh ./mvnw -B clean package -DskipTests
 
 test:  ## Corre las pruebas, incluidos los gates de arquitectura
-	./mvnw -B test
+	sh ./mvnw -B test
 
 verify:  ## Build completo con todos los gates
-	./mvnw -B clean verify
+	sh ./mvnw -B clean verify
 
 psql:  ## Abre una sesion psql contra la base
 	$(COMPOSE_ACTIVO) exec db psql -U $${POSTGRES_USER:-kb} -d $${POSTGRES_DB:-baseconocimiento}
 
 clean:  ## Borra artefactos de compilacion (NO toca los modelos ni la base)
-	./mvnw -B clean
+	sh ./mvnw -B clean
+
+## ---------------------------------------------------------------- quality gates
+##
+## Nota Windows (instrument-project-java): el `./mvnw` bare de mas abajo (y el de build/test/
+## verify/clean de arriba) va prefijado con `sh` a proposito. En esta maquina, GNU Make para
+## Windows (ezwinports, el que la propia skill recomienda via winget) ejecuta una receta que
+## empieza con `./algo` en forma directa en vez de pasarla por el shell configurado, y `./` no
+## se resuelve asi -- confirmado con un Makefile minimo. `sh ./mvnw` fuerza el paso por el
+## interprete y funciona. En Linux/macOS o en CI (GitHub Actions, ubuntu-latest) el prefijo no
+## hace falta pero tampoco rompe nada.
+
+format:  ## Apply code formatting (Spotless)
+	sh ./mvnw -q spotless:apply
+
+lint:  ## Verify code style and static rules (gate: Spotless + Checkstyle)
+	sh ./mvnw -q spotless:check checkstyle:check
+
+secrets:  ## Scan the working tree for committed secrets
+	gitleaks detect --no-banner --redact
+
+check: lint build test  ## Single local confidence signal
+	@echo "OK -- the repo is green"
+
+ci: lint build test secrets  ## What the CI pipeline runs
+	@echo "OK -- CI gates passed"
+
+hooks:  ## Install git hooks (Lefthook)
+	lefthook install
