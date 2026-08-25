@@ -65,10 +65,11 @@ exportan en el entorno de quien use el agente, nunca se escriben literales en el
 
 ## Observabilidad
 
-`spring-boot-starter-actuator` está en el classpath, pero no hay evidencia en el repo de que sus
-endpoints estén expuestos con un perfil o de que algo (Prometheus, Grafana) los consuma —
-<!-- TODO: confirmar si Actuator está expuesto en producción y a dónde van sus métricas. --> Logs:
-`make logs` sigue el log del contenedor `api`; no hay agregador centralizado configurado.
+`spring-boot-starter-actuator` está en el classpath y sus endpoints están expuestos
+(`management.endpoints.web.exposure.include: health,info,metrics`, `application.yml:101-108`), sin
+acotar por perfil — el mismo `application.yml` corre en local y en producción. Nada los consume
+todavía: no hay Prometheus, Grafana ni Micrometer configurado en el repo. Logs: `make logs` sigue
+el log del contenedor `api`; no hay agregador centralizado configurado.
 
 ## Docs relacionados
 
