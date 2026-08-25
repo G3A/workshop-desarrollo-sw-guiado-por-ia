@@ -149,6 +149,15 @@ de sacar el hook — la sesión no se ve afectada más que la primera vez del d�
 DBHub ya no soporta `--readonly` (fue removido). El servidor MCP queda con lectura **y escritura**
 sobre `baseconocimiento` real — decisión aceptada explícitamente al elegir instalarlo.
 
+### `ratchetFrom` necesitó `origin/dev`, no `dev`, y `origin/dev` necesitó el push del reorg
+
+El primer run real de CI (PR #1) falló en 29s: `spotless:check` — "No such reference 'dev'". Un
+runner de `actions/checkout` nunca tiene una rama **local** `dev`, solo el remote-tracking
+`origin/dev`. Y `origin/dev` en GitHub todavía tenía la estructura **anterior** al reorg (nunca se
+había empujado `dev`, solo las ramas `validacion/*`) — el mismo problema que motivó usar `dev`
+local en vez de `origin/dev` al instalar este control, ahora resuelto de raíz: se empujó `dev`
+(fast-forward puro, un solo commit, el del reorg) y se cambió `ratchetFrom` a `origin/dev`.
+
 ## Verificación final
 
 ```

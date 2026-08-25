@@ -287,11 +287,11 @@
         <artifactId>spotless-maven-plugin</artifactId>
         <version>${spotless-maven-plugin.version}</version>
         <configuration>
-          <!-- `dev` local, no `origin/dev`: el reorg a monorepo todavia no se empujo cuando se
-               instalo este control (ver validacion-workshop/f2-preparar-proyecto.md). Apuntar a
-               origin/dev hoy compararia contra una estructura de carpetas vieja y forzaria un
-               reformateo masivo. Cambiar a origin/dev una vez que el push este hecho. -->
-          <ratchetFrom>dev</ratchetFrom>
+          <!-- origin/dev, no `dev` a secas: un runner de CI (actions/checkout) nunca tiene una
+               rama local `dev`, solo el remote-tracking origin/dev; `dev` a secas fallo en CI
+               con "No such reference 'dev'" (ver validacion-workshop/f2-preparar-proyecto.md).
+               origin/dev ya tiene el reorg a monorepo empujado. -->
+          <ratchetFrom>origin/dev</ratchetFrom>
           <java>
             <googleJavaFormat/>
           </java>
