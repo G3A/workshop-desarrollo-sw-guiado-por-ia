@@ -149,10 +149,18 @@ leer el código, no de inventar un caso de estudio.
 
 Dos preguntas reales, ninguna con respuesta obvia en el issue:
 
-1. **Frontera de `seguridad`** — ¿adaptador piel como `web`/`teams`? → **Sí**, confirmado por
-   evidencia de código (cero imports cruzados).
+1. **Frontera de `seguridad`** — ¿"adaptador piel" como `web`/`teams` (solo toca la fachada, no
+   conoce el núcleo)? → **Sí**, confirmado por evidencia de código (cero imports cruzados).
 2. **Profundidad de verificación** — ¿alcanza con ArchUnit? → **Sí**, `ApiTokenFilter` ya tiene su
    propio test de comportamiento.
+
+Note:
+"Adaptador piel" es terminología real del propio proyecto, no una metáfora que invento yo para
+esta charla: aparece literal en `ArquitecturaTest.java` ("Los adaptadores son piel: no conocen el
+retrieval, solo la fachada") y en `AGENTS.md`. La idea: el núcleo (recuperación, ingesta, modelos,
+LLM) no sabe que existen `web`, `teams` o `seguridad` — solo pueden tocarlo a través de una única
+puerta, la fachada `Consultar`. Por eso son "reemplazables" sin tocar el núcleo, y por eso ArchUnit
+lo hace cumplir de verdad en cada build, no solo en un documento.
 
 ---
 
