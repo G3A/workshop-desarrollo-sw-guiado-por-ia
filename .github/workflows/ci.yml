@@ -12,6 +12,14 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+defaults:
+  run:
+    # GitHub Actions solo lee workflows en .github/workflows/ de la RAIZ del repo, pero el
+    # proyecto Java (base-conocimiento/) vive en una subcarpeta -- este monorepo tiene tres
+    # ejemplos mas del mismo patron (lefthook.yml, .claude/settings.json, .mcp.json), todos en
+    # la raiz por la misma razon.
+    working-directory: base-conocimiento
+
 jobs:
   check:
     # Sin esto, cada PR dentro de este mismo repo corre dos veces: una por el push a su rama y
@@ -55,6 +63,7 @@ jobs:
           distribution: temurin
           java-version: "21"
           cache: maven
+          cache-dependency-path: base-conocimiento/pom.xml
 
       - name: Run the same gates as local
         run: make ci
@@ -64,7 +73,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: test-results
-          path: "**/target/surefire-reports/**"
+          path: "base-conocimiento/**/target/surefire-reports/**"
           if-no-files-found: ignore
 
 # La proteccion de rama es lo que convierte esto de un reporte en un gate:

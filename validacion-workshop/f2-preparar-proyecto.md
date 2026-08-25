@@ -69,6 +69,16 @@ mínimo: `./mvnw -v` falla, `sh ./mvnw -v` funciona. Con acuerdo explícito, se 
 6 recetas nuevas y en las 4 preexistentes que llaman a `./mvnw`. No afecta a CI (GitHub Actions
 corre en `ubuntu-latest`, Linux).
 
+### `.github/workflows/` también va en la raíz del monorepo, no en `base-conocimiento/`
+
+Tercera repetición del mismo patrón (después de `lefthook.yml` y `.claude/settings.json`/
+`.mcp.json`, ver abajo y la sección de `instrument-agent-java`): GitHub Actions **solo** descubre
+workflows en `.github/workflows/` de la **raíz del repositorio**, nunca en una subcarpeta. El
+`ci.yml` escrito primero en `base-conocimiento/.github/workflows/` nunca se registró — confirmado
+con `gh pr checks`, que devolvió "no checks reported" sobre un PR real ya abierto. Se movió a la
+raíz del monorepo con `defaults.run.working-directory: base-conocimiento` y
+`cache-dependency-path: base-conocimiento/pom.xml` para que el resto del workflow no cambiara.
+
 ### `lefthook.yml` va en la raíz del monorepo, no en `base-conocimiento/`
 
 `lefthook` busca su configuración en la raíz del repositorio **git**, que aquí es un nivel arriba
