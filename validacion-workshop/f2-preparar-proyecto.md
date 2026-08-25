@@ -164,11 +164,11 @@ local en vez de `origin/dev` al instalar este control, ahora resuelto de raíz: 
 instalarlo en la máquina — ver la sección de `instrument-agent-java`). El primer run real de CI
 que llegó hasta el paso de secretos encontró 3:
 
-1. y 2. `AKIA4SFODNN7QWERTZXC` en `instrumentacion-java-ia/sdlc-ia/skills/instrument-project-java/SKILL.md`
-   y `references/verification.md` — es la clave AWS **ficticia** que esa misma referencia pide usar
-   como ejemplo para probar el gate de secretos (elegida a propósito porque
-   `AKIAIOSFODNN7EXAMPLE`, el ejemplo oficial de AWS, ya viene allowlisteado por gitleaks). No es un
-   secreto real.
+1. y 2. Una clave AWS **ficticia** (con el prefijo `AKIA`, no se repite el valor completo aquí —
+   ver la nota abajo) en `instrumentacion-java-ia/sdlc-ia/skills/instrument-project-java/SKILL.md`
+   y `references/verification.md` — es exactamente el ejemplo que esa misma referencia pide usar
+   para probar el gate de secretos (elegida a propósito porque `AKIAIOSFODNN7EXAMPLE`, el ejemplo
+   oficial de AWS, ya viene allowlisteado por gitleaks). No es un secreto real.
 3. `RERANKER_TOKENIZER_SHA256` en el `Makefile` — un checksum SHA-256 para verificar la descarga
    del tokenizer del reranker, no un secreto; la regla `generic-api-key` disparó por el substring
    `TOKEN` en el nombre de la variable.
@@ -177,6 +177,12 @@ Instalado `gitleaks` localmente (winget) solo para diagnosticar, los 3 se agrega
 `.gitleaksignore` por huella exacta (`gitleaks detect --report-format json`), nunca por ruta de
 archivo — exactamente el flujo que `references/apply.md` (control 6) describe para un repo con
 hallazgos preexistentes al momento de instalar el gate.
+
+**Efecto recursivo real, no hipotético**: el primer intento de documentar este mismo hallazgo citó
+la clave ficticia completa en `.gitleaksignore` y en este mismo archivo — y esa cita, al quedar en
+un commit nuevo, generó **2 hallazgos nuevos** de gitleaks (uno por archivo) en el siguiente run de
+CI. La corrección real fue dejar de repetir el valor literal en prosa (arriba, y en el propio
+`.gitleaksignore`) en vez de perseguir una huella nueva cada vez que se lo vuelva a citar.
 
 ## Verificación final
 
