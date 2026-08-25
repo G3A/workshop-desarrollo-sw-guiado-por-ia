@@ -43,6 +43,11 @@ Prioritize the claims that an agent will act on and that are expensive if wrong:
   `<dependencyManagement>` / Gradle platform.
 - **The user-supplied non-obvious rules / invariants** (module-layering rules, Spring Modulith
   boundaries, DI lifetimes).
+- **An obsolete `allowEmptyShould(true)`** (§14 of the Java checklist, in
+  `references/java-inspection-2.md`) — a Modulith boundary
+  flagged empty whose guarded package now holds real classes. Not a claim about the docs, but list
+  it in the ledger anyway: it's an actionable finding, and discovery findings don't get dropped
+  just because they surfaced outside the interview.
 
 Aim for the ~8–15 highest-stakes claims, not an exhaustive list.
 

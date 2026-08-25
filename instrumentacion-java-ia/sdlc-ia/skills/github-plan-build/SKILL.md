@@ -24,16 +24,16 @@ approval — and even that is conditional: routine changes run straight through.
 It is **stack-agnostic** — a Java/Spring repository is one case it handles, not what
 it assumes.
 
-**Read `references/build-loop.md` now.** It is the body of this skill, not optional
-background. This file supplies the GitHub bindings it asks for.
+**Read `references/build-loop.md` now** (Steps A–E; F–J continue in `build-loop-execute.md`,
+read at Step F) — the body of this skill, not optional background. This file supplies the GitHub
+bindings both ask for.
 
 ## The 9 bindings, resolved for GitHub
 
-`references/build-loop.md` never names a tracker; it only asks for these nine
-bindings. GitHub is the simplest of the trackers this method covers — no MCP prefix
-ambiguity to resolve (unlike Linear, which ships under two different tool prefixes)
-and no process-dependent state machine (unlike Azure DevOps' Basic/Agile/Scrum). A
-single CLI, `gh`, covers every binding:
+`references/build-loop.md` never names a tracker; it only asks for these nine bindings. GitHub is
+the simplest tracker this method covers — no MCP prefix ambiguity (Linear) and no
+process-dependent state machine (Azure DevOps' Basic/Agile/Scrum). A single CLI, `gh`, covers
+every binding:
 
 | Binding | GitHub |
 |---|---|
@@ -46,23 +46,19 @@ single CLI, `gh`, covers every binding:
 | `CI` | `gh pr checks <pr> --watch` to wait; `gh run view --log-failed` for logs; `gh run rerun --failed` to retry a flaky job |
 | `PR-COMMENTS` | `gh pr view --comments` for the conversation; `gh api repos/{owner}/{repo}/pulls/{n}/comments` for inline review threads |
 
-No separate `references/github-access.md` exists. Azure DevOps needs one because it
-has a genuine dual path (MCP server vs. `az` CLI) with different tool names to
-discover at runtime. GitHub does not: this skill talks to GitHub exclusively through
-`gh`, and the one official GitHub MCP server (`github/github-mcp-server`) is
-conventionally mounted under a single, unambiguous `mcp__github__*` prefix rather
-than the two competing prefixes Linear's server ships under — so there is no
-discovery step worth documenting separately. If a future session needs an MCP path
-here, add `references/github-access.md` then; don't build it speculatively.
+No separate `references/github-access.md` exists — unlike Azure DevOps or Linear, GitHub has no
+dual access path or ambiguous MCP prefix to discover at runtime; this skill talks to GitHub
+exclusively through `gh`. Add that file if a future session needs an MCP path — don't build it
+speculatively.
 
 ## Autonomy contract
 
 - **Act and self-verify by default.** No option menus, no "should I proceed?" on green.
 - **Issue writes on this issue are pre-authorized** — labels, status, and comments of
-  `TICKET`. Never ask permission for those, and never write anything else in the
-  repo's issue tracker.
-- **This skill pushes branches and opens pull requests without asking.** It never
-  merges a PR, never enables auto-merge, and never deploys.
+  `TICKET`. Never ask permission for those, and never write anything else in the tracker.
+- **This skill pushes branches and opens pull requests without asking.** It never merges a PR,
+  never enables auto-merge, and never deploys. If that is more autonomy than you want on a given
+  issue, run it without `skip-checkpoint` and stop it at the Step E checkpoint.
 - **Escalate only** for the cases listed in **Escalation** below.
 
 ## Arguments
@@ -87,8 +83,8 @@ the exact error — point the user at `gh auth login`. Never guess an issue's co
 from its number.
 
 Confirm the target repository: `gh repo view` from the working tree resolves
-owner/repo from the git remote by default. If the issue URL named a different
-owner/repo than the current checkout, say so and ask which one to operate against —
+owner/repo from the git remote by default. If the issue URL names a different
+owner/repo than the checkout, say so and ask which one to operate against —
 don't silently operate on the wrong repo.
 
 ## Phase 1 — Read the issue and resolve the STATUS binding
@@ -130,15 +126,18 @@ don't silently operate on the wrong repo.
 2. `git fetch origin`.
 3. **If the working tree is dirty, stop and report.** Do not stash, do not discard.
 4. `git checkout <default-branch> && git pull --ff-only origin <default-branch>`.
-5. Create `feature/<n>-<short-slug>`. The branch name **must** contain the issue
+5. Check for an in-flight sibling: `gh pr list --state open --json number,headRefName,files`.
+   If an open PR's files overlap the ticket's area, say so and ask via `AskUserQuestion`
+   whether to branch from it instead — don't block, don't assume.
+6. Create `feature/<n>-<short-slug>`. The branch name **must** contain the issue
    number. If you are already on that branch with prior work on it, stay on it and
    continue rather than recreating it.
 
 ## Phase 3 — Present the issue summary
 
 Print a concise summary: title, state, labels, assignees, milestone, branch name,
-linked/referenced issues, the STATUS mechanism resolved in Phase 1 (or that it was
-skipped and why), and the decisions buried in the comments.
+linked/referenced issues, the STATUS mechanism (or why it was skipped), and the decisions buried
+in the comments.
 
 **Issue state and labels are not authoritative.** Flag every referenced blocker
 that isn't closed, and before treating a dependency as met, confirm it against
@@ -146,7 +145,8 @@ that isn't closed, and before treating a dependency as met, confirm it against
 
 ## Phase 4 — Run the build loop
 
-Follow `references/build-loop.md`, Steps A → J, with the bindings resolved above.
+Follow Steps A → J across `references/build-loop.md` and `references/build-loop-execute.md`, with
+the bindings resolved above.
 
 ## Escalation
 
@@ -168,14 +168,6 @@ failures, and issue writes on `TICKET` itself — decide and proceed. Do not che
 
 ## Notes
 
-- **What this skill is pre-approved to do.** Read and write files in the repo, run
-  the repo's own build/test commands, write to this issue (labels/status/comments),
-  push its branch, and open a PR. It will not merge, deploy, or touch anything else
-  in the repo's issue tracker. If that is more autonomy than you want on a given
-  issue, run it without `skip-checkpoint` and stop it at the Step E checkpoint.
-- **No architecture is assumed.** This skill does not check for, recommend, or plan
-  against Clean Architecture, hexagonal, MVC, or any other named pattern. Step B
-  reads what the repository actually does and the plan follows it.
 - **Keep secrets out of the shell and the commit.** Don't stage `.env` files, keys,
   or tokens, and don't echo secret values into commands, commit messages, or PR
   bodies.
