@@ -158,6 +158,26 @@ había empujado `dev`, solo las ramas `validacion/*`) — el mismo problema que 
 local en vez de `origin/dev` al instalar este control, ahora resuelto de raíz: se empujó `dev`
 (fast-forward puro, un solo commit, el del reorg) y se cambió `ratchetFrom` a `origin/dev`.
 
+### El primer `gitleaks detect` real en CI encontró 3 hallazgos — los 3, falsos positivos confirmados
+
+`gitleaks` nunca se había corrido de verdad contra este repo (se decidió "solo en CI", sin
+instalarlo en la máquina — ver la sección de `instrument-agent-java`). El primer run real de CI
+que llegó hasta el paso de secretos encontró 3:
+
+1. y 2. `AKIA4SFODNN7QWERTZXC` en `instrumentacion-java-ia/sdlc-ia/skills/instrument-project-java/SKILL.md`
+   y `references/verification.md` — es la clave AWS **ficticia** que esa misma referencia pide usar
+   como ejemplo para probar el gate de secretos (elegida a propósito porque
+   `AKIAIOSFODNN7EXAMPLE`, el ejemplo oficial de AWS, ya viene allowlisteado por gitleaks). No es un
+   secreto real.
+3. `RERANKER_TOKENIZER_SHA256` en el `Makefile` — un checksum SHA-256 para verificar la descarga
+   del tokenizer del reranker, no un secreto; la regla `generic-api-key` disparó por el substring
+   `TOKEN` en el nombre de la variable.
+
+Instalado `gitleaks` localmente (winget) solo para diagnosticar, los 3 se agregaron a
+`.gitleaksignore` por huella exacta (`gitleaks detect --report-format json`), nunca por ruta de
+archivo — exactamente el flujo que `references/apply.md` (control 6) describe para un repo con
+hallazgos preexistentes al momento de instalar el gate.
+
 ## Verificación final
 
 ```

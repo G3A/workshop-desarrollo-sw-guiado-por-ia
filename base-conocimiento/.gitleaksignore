@@ -3,3 +3,14 @@
 # archivo, no solo al match puntual. Genera la huella con:
 #   gitleaks detect --source . --report-format json --report-path gitleaks-report.json
 # y copia el campo "Fingerprint" del hallazgo verificado.
+
+# AKIA4SFODNN7QWERTZXC: la clave AWS FICTICIA que instrument-project-java/references/
+# verification.md pide usar como ejemplo real (no AKIAIOSFODNN7EXAMPLE, que gitleaks ya
+# allowlistea por defecto) para probar el propio gate de secretos. No es un secreto real.
+dde0f47e3e776128410255db250804d836478b8e:instrumentacion-java-ia/sdlc-ia/skills/instrument-project-java/SKILL.md:aws-access-token:126
+dde0f47e3e776128410255db250804d836478b8e:instrumentacion-java-ia/sdlc-ia/skills/instrument-project-java/references/verification.md:aws-access-token:130
+
+# RERANKER_TOKENIZER_SHA256 en el Makefile: un checksum SHA-256 para verificar la descarga del
+# tokenizer (make pull-reranker), no un secreto -- "generic-api-key" disparo por el sustring
+# TOKEN en el nombre de la variable.
+50ca6286a6aa537e3383e7cc9020025e5ce3fd90:Makefile:generic-api-key:29
