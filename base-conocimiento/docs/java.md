@@ -61,10 +61,11 @@ Dependencias con versión propia fuera de BOM (todas en `<properties>`, sin rang
 
 ## DI / composición
 
-Constructor injection idiomático en `@Service`/`@Component`/`@Repository`. No se detectó field
-injection en la pasada de discovery de esta skill (confirmar con Grep dirigido si aparece uno
-nuevo). Sin `@Profile` condicionales detectados en el árbol principal más allá de la configuración
-de perfiles de Docker Compose (no de Spring).
+Constructor injection idiomático en `@Service`/`@Component`/`@Repository`. Confirmado con grep
+dirigido (`@Autowired`/`@Inject` → 0 resultados en `src/main`; los 14 usos de `@Value` son todos
+parámetro de constructor): no hay field injection en código de producción. Sin `@Profile`
+condicionales detectados en el árbol principal más allá de la configuración de perfiles de Docker
+Compose (no de Spring).
 
 ## Fronteras de módulo (Spring Modulith)
 
