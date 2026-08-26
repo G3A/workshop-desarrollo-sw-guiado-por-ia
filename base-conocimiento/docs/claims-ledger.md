@@ -14,6 +14,6 @@ ejecutar la skill para actualizarlo.
 | El paquete `seguridad` no está cubierto por ninguna de las 4 reglas de `ArquitecturaTest`. | `ArquitecturaTest.java` (grep de paquetes referenciados) | alta | confirmada |
 | El despliegue es Docker Compose en una VM/máquina propia; el camino a producción es manual, sin CI. | usuario | alta | confirmada |
 | `spring-boot-starter-actuator` está en el classpath y expone `health`/`info`/`metrics`, sin acotar por perfil; nada los consume todavía. | `application.yml:101-108` | alta | corregida → issue #5, TODO resuelto en `infrastructure.md` |
-| No se detectó field injection en la pasada de discovery. | inspección parcial, no exhaustiva | media | TODO: verificar con Grep dirigido si aparece uno nuevo |
+| No se detectó field injection en la pasada de discovery. | `grep -rn "@Autowired\|@Inject" src/main` → 0 resultados; los 14 usos de `@Value` en `src/main` son todos parámetro de constructor | alta | confirmada → issue #7 |
 | El JDK del `Dockerfile` coincide con el JDK 21 declarado en `pom.xml`. | no inspeccionado línea a línea en esta pasada | baja | TODO: verificar |
 | El paquete `seguridad` no tiene `@ApplicationModule` ni Javadoc en su `package-info.java`. | `seguridad/package-info.java` (vacío) | alta | confirmada |
