@@ -146,7 +146,7 @@
       "cmd": "gh auth status && claude doctor",
       "ramas": {"si": "G2", "no": "a2"},
       "porque": "Un chequeo de salud simple evita descubrir a mitad del bloque B que la autenticación nunca terminó de quedar bien configurada.",
-      "guiaPasos": "<p>Si ambos comandos terminan sin error, sigues al bloque B. Si algo falla, vuelve a <b>«Configurar MCP de ejemplo»</b> y revisa el paso que no cerró.</p>",
+      "guiaPasos": "<p>Si ambos comandos terminan sin error, sigues al bloque B. Si algo falla, vuelve a <b>«Configurar MCP y hooks del agente»</b> y revisa el paso que no cerró.</p>",
       "madurez": "transversal",
       "madurezSub": "instalacion"
     },
