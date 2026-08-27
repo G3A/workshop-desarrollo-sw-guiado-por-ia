@@ -22,7 +22,7 @@ clic (`file://`), siempre que esa carpeta hermana siga existiendo en el mismo re
 
 Tres brechas reales quedaron identificadas, no maquilladas: dos servidores MCP registrados sin sus
 variables de entorno (`GITHUB_PAT`, `APP_DSN`), un Ruleset de GitHub sin configurar sobre `dev`, y
-35 violaciones de Checkstyle de brownfield sin una pasada de `/revisar-deuda-tecnica`. Ninguna
+35 violaciones de Checkstyle de brownfield sin una pasada de `/sdlc-ia:debt-triage`. Ninguna
 bloquea el ciclo por issue, pero son la lista concreta de qué atender antes de la próxima vuelta.
 
 ## Estilo

@@ -377,7 +377,7 @@ Makefile parcheado, lefthook, gitleaks solo en CI, y GitHub Actions...
 
     <!-- ESCENA 7 -->
     <h2><span class="escena">escena 7 &middot; nodos ds &middot; GT &middot; bt/GT2/bi2</span>Deuda técnica y pruebas heredadas</h2>
-    <p><code>ds</code> (<code>/revisar-deuda-tecnica</code>) no se ha corrido todavía sobre este
+    <p><code>ds</code> (<code>/sdlc-ia:debt-triage</code>) no se ha corrido todavía sobre este
       repo — no hay un analizador estático tipo SonarQube o CodeQL conectado. Lo más cercano que
       existe es Checkstyle en modo reporte, con <b>35 violaciones de brownfield sin triage</b>
       (mencionadas en <code>AGENTS.md</code> y visibles en cada corrida de CI) — deuda real,
@@ -553,7 +553,7 @@ $ gh issue close 7 --comment "Cerrado a mano: el PR #8 mergeo a dev..."</span>
     <p>Este manual completo, de <code>f0</code> a acá, dejó tres cosas pendientes reales, no
       escondidas: los dos MCP sin variables de entorno (<code>GITHUB_PAT</code>,
       <code>APP_DSN</code>), el Ruleset de GitHub sin configurar, y las 35 violaciones de
-      brownfield de Checkstyle sin triage vía <code>/revisar-deuda-tecnica</code>. Ninguna bloqueó
+      brownfield de Checkstyle sin triage vía <code>/sdlc-ia:debt-triage</code>. Ninguna bloqueó
       el ciclo por issue — el gate <code>c3</code> sigue verde sin ellas — pero son la lista
       concreta de qué atender antes de la próxima vuelta.</p>
     <p>¿Quedan issues del sprint para este agente? No, para este recorrido — con eso,

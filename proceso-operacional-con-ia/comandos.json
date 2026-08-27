@@ -223,9 +223,9 @@
     "ds": {
       "clase": "S",
       "semantica": "guarded",
-      "slash": "/revisar-deuda-tecnica",
+      "slash": "/sdlc-ia:debt-triage",
       "porque": "Sumar un agente a un repo con deuda técnica sin atender no la resuelve sola — pero un agente sí es bueno para triar deuda existente (análisis estático, código muerto, dependencias vencidas) antes de que empiece a sumarse deuda nueva encima.",
-      "guiaPasos": "<p>Pídele al agente que revise los hallazgos de tu analizador estático (SonarQube, CodeQL, o el que use tu stack) y proponga arreglos con criterio — no que aplique todas las sugerencias a ciegas. Un ejemplo de instrucción:</p><pre class=\"mono\">Revisá los hallazgos abiertos del analizador estático.\nProponé un arreglo por cada uno, o explicá por qué no vale la pena arreglarlo.</pre><p class=\"tip\">A diferencia de otros pasos de este bloque, acá no hay todavía una skill publicada para esto — es un patrón ilustrativo, armalo con una instrucción en lenguaje natural como la de arriba.</p>",
+      "guiaPasos": "<p>Corre <code>/sdlc-ia:debt-triage</code> — es la skill real <code>debt-triage</code> del paquete <code>instrumentacion-java-ia/sdlc-ia/</code> de este mismo taller. Detecta el analizador que ya corre en tu repo (SonarQube, CodeQL, ESLint, Checkstyle, o el que uses), agrupa los hallazgos abiertos por regla y le da un veredicto a cada uno — real, falso positivo, o riesgo aceptado — antes de proponer un arreglo o justificar por qué no vale la pena arreglarlo.</p><p class=\"tip\">Nunca aplica las sugerencias del analizador a ciegas: cada hallazgo se lee en su contexto antes de decidir.</p>",
       "madurez": "2"
     },
     "GT": {
@@ -241,9 +241,9 @@
     "bt": {
       "clase": "S",
       "semantica": "guarded",
-      "slash": "/generar-pruebas-en-code-legacy",
-      "porque": "Este es un skill real de este mismo repositorio (no un placeholder inventado): acondiciona un repo legacy y genera pruebas reales en varias capas (colaboración, contrato, aceptación, rendimiento, seguridad), mapeando primero las \"costuras\" del código al estilo Feathers antes de tocar nada.",
-      "guiaPasos": "<p>Es el mismo skill que usa este taller para acondicionar repos legacy — puedes verlo en <code>base-conocimiento/</code> como referencia de qué hace y cómo está escrito. La idea general (mapear costuras antes de generar pruebas, capas separadas por tipo de prueba) es reutilizable aunque tu stack sea distinto.</p>",
+      "slash": "/sdlc-ia:legacy-test-harness",
+      "porque": "Esta es una skill real del paquete <code>instrumentacion-java-ia/sdlc-ia/</code> de este mismo taller (no un placeholder inventado): acondiciona un repo legacy y genera pruebas reales en varias capas (colaboración, contrato, aceptación, rendimiento, seguridad), mapeando primero las \"costuras\" del código al estilo Feathers antes de tocar nada.",
+      "guiaPasos": "<p>Corre <code>/sdlc-ia:legacy-test-harness</code> — detecta tu stack, mapea las costuras del módulo elegido y te pregunta qué capa(s) generar antes de escribir una sola prueba. Nunca toca código de producción: una costura que solo se puede cortar editando producción queda registrada como una propuesta de issue, no como un cambio aplicado.</p>",
       "madurez": "1"
     },
     "GT2": {
