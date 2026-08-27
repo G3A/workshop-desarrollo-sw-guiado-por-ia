@@ -707,9 +707,24 @@ python -m http.server</pre>
     }
 
     // ---- toolbar: repo / issue / perfil ----------------------------------
+    // La posicion del boton dentro de la barra depende del ancho de la
+    // ventana (los botones se van a una fila nueva segun el espacio) --
+    // una alineacion fija (izquierda o derecha) por CSS se corta en algun
+    // ancho de ventana. Por eso se mide en cada apertura, no se fija una
+    // vez con una clase estatica.
     function togglePop(btnId, popId) {
       var btn = $(btnId), pop = $(popId);
-      btn.onclick = function (e) { e.stopPropagation(); $$(".pop").forEach(function (p) { if (p !== pop) p.classList.add("hidden"); }); pop.classList.toggle("hidden"); };
+      btn.onclick = function (e) {
+        e.stopPropagation();
+        $$(".pop").forEach(function (p) { if (p !== pop) p.classList.add("hidden"); });
+        pop.classList.toggle("hidden");
+        if (!pop.classList.contains("hidden")) {
+          pop.classList.remove("right");
+          var btnRect = btn.getBoundingClientRect();
+          var popWidth = pop.offsetWidth || 240;
+          if (btnRect.left + popWidth > window.innerWidth) pop.classList.add("right");
+        }
+      };
       pop.addEventListener("click", function (e) { e.stopPropagation(); });
     }
     document.addEventListener("click", function () { $$(".pop").forEach(function (p) { p.classList.add("hidden"); }); });
