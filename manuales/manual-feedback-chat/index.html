@@ -85,6 +85,12 @@
       border: 1px solid rgba(91,140,255,.4); }
     .tipo-nodet { background: rgba(230,162,60,.15); color: var(--warn);
       border: 1px solid rgba(230,162,60,.4); }
+    .captura { border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
+      background: var(--card); margin: 12px 0; }
+    .captura .tbar { background: var(--panel); border-bottom: 1px solid var(--line);
+      padding: 7px 12px; font-size: .78rem; color: var(--muted); display: flex; gap: 8px;
+      align-items: center; justify-content: space-between; }
+    .captura img { display: block; width: 100%; height: auto; }
 
     .nota { background: rgba(230,162,60,.07); border: 1px solid rgba(230,162,60,.3);
       border-left: 3px solid var(--warn); border-radius: 8px; padding: 10px 14px;
@@ -577,10 +583,34 @@ $ curl /api/admin/feedback
 [{"id":1,"queryLogId":2,"util":false,"comentario":"...","creadoEn":"2026-08-27T18:19:07Z"}]</pre>
       </div>
     </div>
-    <div class="nota">Sin navegador headless disponible en esta sesión, no hay una captura de
-      pantalla de los botones renderizados — la verificación visual real quedó acotada a confirmar
-      que el HTML/CSS/JS es correcto y que el ciclo de datos que alimenta los botones funciona de
-      punta a punta contra el servidor real. Límite honesto, no un "hecho" que no fue tal.</div>
+    <div class="ok-box"><b>Actualizado — prueba visual E2E real, con Playwright/Chromium headless</b>
+      (no había navegador disponible en la primera pasada de este manual; se corrigió). Contra el
+      stack local corriendo de verdad (<code>make up-ministral</code>): pregunta real escrita en el
+      campo de texto, click en "Preguntar", espera del evento <code>queryLogId</code> real, click en
+      el botón de feedback, y verificación de que ambos botones quedan deshabilitados después.</div>
+    <div class="captura">
+      <div class="tbar"><span>captura real &middot; botones de feedback visibles bajo la respuesta</span><span class="real">real</span></div>
+      <img src="assets/shots/feedback-botones-visibles.png" alt="Chat con la respuesta 'No encontré información suficientemente relevante...' y, debajo, los botones 👍/👎 con el texto '¿Te sirvió esta respuesta?'" />
+    </div>
+    <div class="captura">
+      <div class="tbar"><span>captura real &middot; tras el click en 👎</span><span class="real">real</span></div>
+      <img src="assets/shots/feedback-confirmado.png" alt="Los mismos botones, ahora atenuados (deshabilitados) y con el texto '¡Gracias!' a la derecha" />
+    </div>
+    <div class="evidencia">
+      <b class="tag">Evidencia real</b>
+      <div class="term">
+        <div class="tbar"><span>terminal &middot; feedback confirmado en Postgres</span><span class="real">real</span></div>
+        <pre>$ curl /api/admin/feedback
+[{"id":3,"queryLogId":4,"util":false,"comentario":null,"creadoEn":"2026-08-27T21:28:18Z"},
+ {"id":2,"queryLogId":3,"util":false,"comentario":null,"creadoEn":"2026-08-27T21:26:06Z"},
+ ...]</pre>
+      </div>
+      <p>La respuesta de la captura llegó por el camino real de "sin información suficiente"
+        (ADR-0008, <code>MENSAJE_SIN_INFORMACION</code>) — el corpus de prueba solo tenía 1
+        documento ingerido y no cubría la pregunta — y aun así el evento <code>queryLogId</code>
+        llegó y los botones funcionaron, confirmando de nuevo que la señal no depende de que la
+        síntesis haya encontrado algo.</p>
+    </div>
 
     <h2><span class="num">23</span>Verificación en 4 capas<span class="nodo">nodo c3</span></h2>
     <p class="parrafo-original">Cada capa cubre el punto ciego de las otras: lo local es rápido
