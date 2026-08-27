@@ -6,6 +6,10 @@
       <bpmn:text>Replanear exige confirmación explícita — es destructivo, descarta el plan actual.</bpmn:text>
     </bpmn:textAnnotation>
     <bpmn:association id="Anno_3_assoc" associationDirection="None" sourceRef="G3" targetRef="Anno_3" />
+    <bpmn:textAnnotation id="Anno_2">
+      <bpmn:text>Se configura una sola vez por repositorio, no por issue.</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Anno_2_assoc" associationDirection="None" sourceRef="pz" targetRef="Anno_2" />
   </bpmn:collaboration>
   <bpmn:process id="Proc_Onboarding" isExecutable="false">
     <bpmn:laneSet id="LS_1">
@@ -394,10 +398,6 @@
       <bpmn:text>Todo el proceso es un ciclo PDCA (Deming) — Bloque C se repite por cada issue del sprint y cierra en G7.</bpmn:text>
     </bpmn:textAnnotation>
     <bpmn:association id="Anno_1_assoc" associationDirection="None" sourceRef="f0" targetRef="Anno_1" />
-    <bpmn:textAnnotation id="Anno_2">
-      <bpmn:text>Se configura una sola vez por repositorio, no por issue.</bpmn:text>
-    </bpmn:textAnnotation>
-    <bpmn:association id="Anno_2_assoc" associationDirection="None" sourceRef="pz" targetRef="Anno_2" />
   </bpmn:process>
   <bpmndi:BPMNDiagram id="D_1">
     <bpmndi:BPMNPlane id="Pl_1" bpmnElement="Collab_1">
@@ -608,9 +608,6 @@
       <bpmndi:BPMNShape id="Anno_1_di" bpmnElement="Anno_1">
         <dc:Bounds x="560" y="95" width="230" height="95" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Anno_2_di" bpmnElement="Anno_2">
-        <dc:Bounds x="2830" y="1135" width="210" height="48" />
-      </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="e01_di" bpmnElement="e01">
         <di:waypoint x="318" y="230" />
         <di:waypoint x="420" y="230" />
@@ -620,8 +617,8 @@
         <di:waypoint x="620" y="230" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="e03_di" bpmnElement="e03">
-        <di:waypoint x="780" y="230" />
-        <di:waypoint x="780" y="525" />
+        <di:waypoint x="700" y="265" />
+        <di:waypoint x="700" y="525" />
         <di:waypoint x="820" y="525" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="e04_di" bpmnElement="e04">
@@ -629,8 +626,8 @@
         <di:waypoint x="1020" y="525" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="e05_di" bpmnElement="e05">
-        <di:waypoint x="1180" y="525" />
-        <di:waypoint x="1180" y="230" />
+        <di:waypoint x="1100" y="490" />
+        <di:waypoint x="1100" y="230" />
         <di:waypoint x="1220" y="230" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="e06_di" bpmnElement="e06">
@@ -682,8 +679,8 @@
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="e13_di" bpmnElement="e13">
         <di:waypoint x="2180" y="680" />
-        <di:waypoint x="2310" y="680" />
-        <di:waypoint x="2310" y="265" />
+        <di:waypoint x="2300" y="680" />
+        <di:waypoint x="2300" y="265" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="e14_di" bpmnElement="e14">
         <di:waypoint x="2380" y="230" />
@@ -694,8 +691,8 @@
         <di:waypoint x="2620" y="230" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="e16_di" bpmnElement="e16">
-        <di:waypoint x="2690" y="265" />
-        <di:waypoint x="2690" y="1220" />
+        <di:waypoint x="2700" y="265" />
+        <di:waypoint x="2700" y="1220" />
         <di:waypoint x="2820" y="1220" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="e17_di" bpmnElement="e17">
@@ -811,11 +808,12 @@
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="e35_di" bpmnElement="e35">
         <di:waypoint x="5525" y="230" />
-        <di:waypoint x="5525" y="160" />
+        <di:waypoint x="5600" y="230" />
+        <di:waypoint x="5600" y="160" />
         <di:waypoint x="6100" y="160" />
         <di:waypoint x="6100" y="195" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="5602" y="133" width="15" height="14" />
+          <dc:Bounds x="5666" y="133" width="15" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="e36_di" bpmnElement="e36">
@@ -966,14 +964,17 @@
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Anno_2_assoc_di" bpmnElement="Anno_2_assoc">
         <di:waypoint x="2900" y="1185" />
-        <di:waypoint x="2935" y="1183" />
+        <di:waypoint x="2925" y="1171" />
       </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Anno_3_di" bpmnElement="Anno_3">
+        <dc:Bounds x="4910" y="120" width="230" height="78" />
+      </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="Anno_3_assoc_di" bpmnElement="Anno_3_assoc">
         <di:waypoint x="4900" y="205" />
         <di:waypoint x="5025" y="198" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNShape id="Anno_3_di" bpmnElement="Anno_3">
-        <dc:Bounds x="4910" y="120" width="230" height="78" />
+      <bpmndi:BPMNShape id="Anno_2_di" bpmnElement="Anno_2">
+        <dc:Bounds x="2820" y="1123" width="210" height="48" />
       </bpmndi:BPMNShape>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
