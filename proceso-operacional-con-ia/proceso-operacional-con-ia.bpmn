@@ -689,12 +689,12 @@
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="e13_di" bpmnElement="e13">
         <di:waypoint x="2180" y="680" />
-        <di:waypoint x="2300" y="680" />
-        <di:waypoint x="2300" y="265" />
+        <di:waypoint x="2270" y="680" />
+        <di:waypoint x="2270" y="265" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="e14_di" bpmnElement="e14">
-        <di:waypoint x="2300" y="265" />
-        <di:waypoint x="2300" y="1220" />
+        <di:waypoint x="2310" y="265" />
+        <di:waypoint x="2310" y="1220" />
         <di:waypoint x="2420" y="1220" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="e17_di" bpmnElement="e17">
@@ -770,8 +770,8 @@
         <di:waypoint x="4820" y="525" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="e27_di" bpmnElement="e27">
-        <di:waypoint x="4980" y="525" />
-        <di:waypoint x="4980" y="860" />
+        <di:waypoint x="4900" y="560" />
+        <di:waypoint x="4900" y="860" />
         <di:waypoint x="5020" y="860" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="e28_di" bpmnElement="e28">
@@ -977,20 +977,20 @@
         <di:waypoint x="500" y="195" />
         <di:waypoint x="675" y="190" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Anno_2_assoc_di" bpmnElement="Anno_2_assoc">
-        <di:waypoint x="2500" y="1185" />
-        <di:waypoint x="2525" y="1171" />
-      </bpmndi:BPMNEdge>
       <bpmndi:BPMNShape id="Anno_3_di" bpmnElement="Anno_3">
         <dc:Bounds x="5310" y="120" width="230" height="78" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Anno_2_di" bpmnElement="Anno_2">
+        <dc:Bounds x="2420" y="1123" width="210" height="48" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="Anno_3_assoc_di" bpmnElement="Anno_3_assoc">
         <di:waypoint x="5300" y="205" />
         <di:waypoint x="5425" y="198" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNShape id="Anno_2_di" bpmnElement="Anno_2">
-        <dc:Bounds x="2420" y="1123" width="210" height="48" />
-      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Anno_2_assoc_di" bpmnElement="Anno_2_assoc">
+        <di:waypoint x="2500" y="1185" />
+        <di:waypoint x="2525" y="1171" />
+      </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
 </bpmn:definitions>
