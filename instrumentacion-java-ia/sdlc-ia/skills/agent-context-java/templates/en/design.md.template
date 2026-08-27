@@ -1,0 +1,23 @@
+<!--
+Placeholders:
+  {{PROJECT_NAME}}
+-->
+
+# Design — {{PROJECT_NAME}}
+
+## Design system
+
+<!-- TODO: tokens, typography, color scales. Link to Figma / Storybook if they exist. -->
+
+## Component patterns
+
+<!-- TODO: how components are organized, naming conventions, shared primitives. -->
+
+## UX principles
+
+<!-- TODO: 3-5 bullets that guide design decisions (e.g. "prefer defaults over options", "never block on async"). -->
+
+## Related docs
+
+- [Target user](./target-user.md)
+- [Architecture](./architecture.md)

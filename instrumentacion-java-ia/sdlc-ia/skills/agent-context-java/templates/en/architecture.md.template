@@ -1,0 +1,74 @@
+<!--
+Placeholders:
+  {{PROJECT_NAME}}
+  {{STACK_SUMMARY}}         — e.g. "Spring Boot 4.1 + PostgreSQL + Spring Data JDBC, deployed as Docker containers"
+  {{DETECTED_LANGUAGES}}    — primary languages detected in Phase 1 (Java, Kotlin, plus the frontend language if applicable)
+  {{DETECTED_FRAMEWORK}}    — main framework (Spring Boot, Jakarta EE, Quarkus, Micronaut...)
+  {{DETECTED_PERSISTENCE}}  — DB + framework + migration tool (PostgreSQL + JPA/Hibernate + Flyway, PostgreSQL + Spring Data JDBC + Flyway...)
+  {{DETECTED_DEPLOYMENT}}   — Kubernetes, Docker container, WAR on WildFly/Tomcat, etc.
+-->
+
+# Architecture
+
+## Summary
+
+{{STACK_SUMMARY}}
+
+## Quality attributes
+
+| Attribute | Priority | Rationale |
+|---|---|---|
+| <!-- e.g. Simplicity --> | <!-- High/Medium/Low --> | <!-- Why it matters here --> |
+| Deployability | | |
+| Modifiability | | |
+| Reliability | | |
+| Performance | | |
+| Security | | |
+
+Delete rows that don't apply. Keep only the ones that drive real trade-offs.
+
+## Tech stack
+
+- **Languages:** {{DETECTED_LANGUAGES}}
+- **Framework(s):** {{DETECTED_FRAMEWORK}}
+- **Persistence:** {{DETECTED_PERSISTENCE}}
+- **Deployment:** {{DETECTED_DEPLOYMENT}}
+- **CI/CD:** <!-- TODO: confirm the CI tool detected in .github/workflows, Jenkinsfile, etc. -->
+
+## Pattern
+
+<!-- TODO: describe the high-level pattern (layers / hexagonal / Spring Modulith modules / microservices / modular monolith) in 1-2 paragraphs. Include a folder tree so agents know where the code lives. -->
+
+```
+<project-root>/
+├── <main code folder>/
+├── <tests folder>/
+└── <config>
+```
+
+## Component diagram
+
+<!-- TODO: draw a simple C4 (context + containers). Suggested Mermaid:
+
+```mermaid
+flowchart LR
+  user[User] -->|HTTPS| app[{{PROJECT_NAME}}]
+  app -->|SQL| db[(Database)]
+```
+
+-->
+
+## Key rules (enforced by the architecture, not the linter)
+
+<!-- TODO: list the architectural invariants. Example:
+- The `web` module may only cross into the core through its public facade. Rationale: ADR-001.
+- Every write path must validate the tenant scope. Rationale: ADR-002.
+-->
+
+<!-- If the repo uses Spring Modulith (`@ApplicationModule` in some `package-info.java`), name the gate that enforces it here: usually a test that calls `ApplicationModules.of(...).verify()`. That test is why these rules are more than convention. -->
+
+## Related docs
+
+- [Decisions](./adrs/) — why the architecture looks this way.
+- [Data model](./data-model.md) — schema + relationships.
+- [Infrastructure](./infrastructure.md) — deployment topology.

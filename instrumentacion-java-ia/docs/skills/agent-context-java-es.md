@@ -11,16 +11,19 @@ el target de JDK, la inyección de dependencias de Spring, la capa de persistenc
 o Spring Data), los perfiles de configuración, los límites de módulo si usa Spring Modulith, los
 quality gates y el pipeline de CI.
 
-Todos los documentos que genera quedan en español, sin importar el idioma en que se converse con
-el agente.
+Por defecto, los documentos que genera quedan en español, sin importar el idioma en que se
+converse con el agente. Puede generar la documentación en inglés si se lo pide explícitamente.
 
 ## Cómo se invoca
 
 ```
 /sdlc-ia:agent-context-java
+/sdlc-ia:agent-context-java en
 ```
 
-No recibe argumentos: trabaja sobre el repositorio en el que se ejecuta.
+Recibe un único argumento opcional para el idioma de salida: `es` (default) o `en`. En modo
+aumentar, si ya hay documentación previa, prevalece el idioma de esa documentación por sobre el
+argumento. Fuera de eso, trabaja sobre el repositorio en el que se ejecuta.
 
 ## Fases principales
 
@@ -35,7 +38,8 @@ No recibe argumentos: trabaja sobre el repositorio en el que se ejecuta.
    no están en el repositorio (dónde se despliega, cómo se gestionan los secretos, el modelo de
    autenticación, el camino a producción), contexto de negocio en texto libre y reglas no obvias
    que un agente debería conocer.
-3. **Borrador** — redacta cada documento a partir de plantillas en español, sustituyendo los
+3. **Borrador** — redacta cada documento a partir de plantillas en el idioma de salida resuelto
+   (español por defecto, inglés si se pidió), sustituyendo los
    datos reales del repositorio. Si falta información, deja un marcador `<!-- TODO: fill in -->`
    en vez de inventar; si una sección entera no aplica (por ejemplo, no hay UI o no usa Modulith),
    la elimina en lugar de dejarla vacía.
