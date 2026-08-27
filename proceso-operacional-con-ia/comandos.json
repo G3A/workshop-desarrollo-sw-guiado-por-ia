@@ -22,9 +22,13 @@
     },
     "madurezDetalle": {
       "0": "La base antes de sumar un agente: control de versiones, pull requests, revisión de código, documentación mínima. Sin esto, un agente de IA amplifica el desorden en vez de reducirlo.",
-      "1": "El agente ejecuta pasos que tú podrías describir como una receta: generar contexto, correr pruebas, armar un commit. Determinista en el sentido de que el mismo pedido produce el mismo tipo de resultado.",
-      "2": "El agente toma decisiones dentro de un espacio acotado: elige qué herramientas correr, cuándo reintentar, cómo interpretar un fallo de CI. Ya no es una receta fija.",
+      "1": "El agente ejecuta pasos que tú podrías describir como una receta: generar contexto, correr pruebas, armar un commit. Determinista en el sentido de que el mismo pedido produce el mismo tipo de resultado. No por casualidad, es también la fase donde se instala la instrumentación técnicamente determinista (lefthook, Checkstyle, ArchUnit, CI — la skill <code>instrument-project-java</code>): controles que deciden en milisegundos, sin ambigüedad.",
+      "2": "El agente toma decisiones dentro de un espacio acotado: elige qué herramientas correr, cuándo reintentar, cómo interpretar un fallo de CI. Ya no es una receta fija. Es también la fase de deuda técnica y verificación con criterio (<code>debt-triage</code>, la verificación en 4 capas): el agente aplica juicio, no un pass/fail fijo.",
       "3": "El agente planea: descompone un issue en tareas, estima el plan, pide aprobación, y ejecuta el plan aprobado con supervisión ligera en vez de paso a paso."
+    },
+    "instrumentacionTipos": {
+      "determinista": "Controles que deciden en milisegundos, con el mismo resultado siempre que las mismas entradas — sin criterio ni ambigüedad. Los instala <code>instrument-project-java</code>: build reproducible, build estricto, Checkstyle, ArchUnit, CI.",
+      "noDeterminista": "Controles cuyo motor es inferencia, no cómputo — aplican criterio en el momento (¿es esto un secreto real?, ¿este comando es peligroso?). Los instala <code>instrument-agent-java</code>: hooks del agente y servidores MCP."
     },
     "madurezItems": {
       "instalacion": "Instalar y autenticar el agente y sus herramientas.",
@@ -130,6 +134,7 @@
       "requires": "Agente instalado (fd1), gh autenticado (a1).",
       "slash": "/sdlc-ia:instrument-agent-java",
       "porque": "Esta skill hace en un solo paso lo que antes describíamos a mano: registra los servidores MCP que tu equipo necesita (con las versiones fijadas, nunca \"la última\" sin pinear) y activa un catálogo de hooks de Claude Code que limitan lo que el agente puede hacer solo — leer un archivo de secretos, correr un comando peligroso, editar una migración ya aplicada. Es la skill real <code>instrument-agent-java</code> del paquete <code>instrumentacion-java-ia/</code> de este mismo taller: puedes leer su código completo, no es una caja negra.",
+      "tipoInstrumentacion": "noDeterminista",
       "guiaPasos": "<p>La skill pregunta qué servidores MCP tiene sentido registrar (por ejemplo, el servidor oficial de GitHub) y qué hooks activar — dos vienen prendidos por defecto (guarda de secretos, formateo automático), el resto se ofrece según lo que detecte en tu repo. Antes de terminar, prueba cada hook disparándolo de verdad, no solo escribe los archivos.</p><p class=\"tip\">Si solo quieres sumar un servidor MCP suelto sin correr la skill completa, el comando de base sigue siendo válido: <code>claude mcp add --transport http github https://api.githubcopilot.com/mcp</code>.</p>",
       "madurez": "transversal",
       "madurezSub": "instalacion"
@@ -185,9 +190,11 @@
     "b3": {
       "clase": "T",
       "semantica": "idempotent",
-      "cmd": "ls lefthook.yml .claude/hooks 2>/dev/null",
-      "porque": "Los hooks (locales y del agente) son lo que convierte una convención escrita en una convención aplicada. Confirmar que el andamiaje llegó evita descubrir recién en la primera PR que nadie los activó.",
-      "guiaPasos": "<p>Deberías ver al menos un archivo de configuración de hooks (por ejemplo <a href=\"https://lefthook.dev\" target=\"_blank\" rel=\"noopener\">lefthook</a>, una herramienta pública y liviana para hooks de Git) y, si tu agente los soporta, hooks propios del agente.</p>",
+      "requires": "Juez de CI configurado, con lefthook.yml ya creado (pz, pz2) — antes de este paso, ese archivo todavía no existe.",
+      "cmd": "test -f lefthook.yml && echo lefthook-ok; grep -q hooks .claude/settings.json 2>/dev/null && echo agente-hooks-ok",
+      "porque": "Los hooks (locales y del agente) son lo que convierte una convención escrita en una convención aplicada. Confirmar que el andamiaje llegó evita descubrir recién en la primera PR que nadie los activó. Este paso corre después de «Configurar el juez de CI» a propósito: <code>instrument-project-java</code> (pz) es quien escribe <code>lefthook.yml</code> — antes de que corra, no habría nada que verificar.",
+      "guiaPasos": "<p>Son dos arneses distintos, no uno solo: <b>lefthook.yml</b> son los hooks de Git (pre-commit/pre-push — corren aunque el agente no esté abierto) y forman parte de la instrumentación <b>determinista</b> (los instala <code>instrument-project-java</code>, siguiente bloque); la clave <code>\"hooks\"</code> dentro de <code>.claude/settings.json</code> son los hooks del propio agente (Claude Code) — instrumentación <b>no determinista</b> (los instala <code>instrument-agent-java</code>, paso anterior) — y <b>nunca</b> una carpeta <code>.claude/hooks</code> aparte, eso no existe. Si tu agente no es Claude Code, el equivalente es su propio mecanismo de hooks o plugins.</p><p class=\"tip\">Que existan no confirma que funcionen — eso es <b>«Confirmar hooks del agente»</b>, dos pasos más adelante.</p>",
+      "tipoInstrumentacion": "determinista",
       "madurez": "1"
     },
     "b4": {
@@ -196,8 +203,19 @@
       "requires": "Arnés de hooks presente (b3).",
       "cwdFrom": "PROJECT_PATH",
       "cmd": "lefthook install",
-      "porque": "Un hook que existe en el repo pero no está instalado en tu máquina no hace nada — este paso es el que realmente lo activa localmente.",
-      "guiaPasos": "<p>Corre esto una vez por clon del repositorio (no por commit). Si tu equipo usa otro gestor de hooks, el equivalente es su comando de instalación.</p>",
+      "porque": "Un hook de Git que existe en el repo pero no está instalado en tu máquina no hace nada — este paso es el que realmente activa <b>lefthook</b> localmente. Los hooks del agente son otra historia: no se \"instalan\", se confirman (paso siguiente).",
+      "guiaPasos": "<p>Corre esto una vez por clon del repositorio (no por commit). Si tu equipo usa otro gestor de hooks, el equivalente es su comando de instalación.</p><p class=\"tip\">Esto activa solo el arnés de <b>Git</b> — instrumentación determinista. Los hooks del <b>agente</b> (instrumentación no determinista) ya están activos apenas <code>.claude/settings.json</code> los declara, incluso recién clonado el repo — lo que falta es confirmar que disparan de verdad en tu máquina, no instalarlos.</p>",
+      "tipoInstrumentacion": "determinista",
+      "madurez": "1"
+    },
+    "b5": {
+      "clase": "manual",
+      "semantica": "idempotent",
+      "requires": "Hooks del agente configurados (a2), lefthook activado (b4).",
+      "manualNote": "A diferencia de lefthook, los hooks de Claude Code no se \"instalan\" — están activos apenas <code>.claude/settings.json</code> los declara, incluso recién clonado el repo. Lo que hace falta confirmar es que disparan <b>de verdad en esta máquina</b>: la ruta al intérprete de shell, las rutas de archivo, o el propio antivirus pueden variar entre tu computador y el de quien corrió <code>instrument-agent-java</code> originalmente.",
+      "porque": "Un hook que existe en <code>.claude/settings.json</code> pero nunca se vio disparar en esta máquina concreta no es un hook — es una promesa. <code>instrument-agent-java</code> ya lo prueba una vez, al instalarlo (su Fase 5, «verificar rompiendo») — pero eso lo corrió quien configuró el repo, no necesariamente tú. Confirmarlo de nuevo acá evita descubrir en la primera sesión real que el script de guarda usa <code>bash</code> y tu equipo solo tiene PowerShell.",
+      "guiaPasos": "<p>Prueba cada hook disparándolo de verdad, no solo revisando que el archivo existe:</p><ul><li>Si activaste la <b>guarda de secretos</b>: pídele al agente que lea un <code>.env</code> real y confirma que lo bloquea con un mensaje claro.</li><li>Si activaste <b>formateo automático</b>: edita un archivo cualquiera y confirma que corre el formateador.</li><li>Si activaste el <b>bloqueo de comandos peligrosos</b>: pídele al agente un <code>rm -rf</code> fuera del repo y confirma que lo corta.</li></ul><p class=\"tip\">Si algo no dispara, revisa <code>scripts/agent-hooks/</code> y el intérprete configurado para tu sistema operativo — en Windows, la causa más común es un script pensado para <code>bash</code> corriendo bajo PowerShell.</p>",
+      "tipoInstrumentacion": "noDeterminista",
       "madurez": "1"
     },
     "pz": {
@@ -207,9 +225,10 @@
       "requires": "Permisos de administración del repositorio en GitHub.",
       "manualCmd": "/sdlc-ia:instrument-project-java",
       "manualNote": "Una sola vez por repositorio (no por issue). Primero corre la skill <code>instrument-project-java</code> de <code>instrumentacion-java-ia/</code> — instala 8 controles deterministas (build reproducible, build estricto, estilo, un <code>make check</code> único, hooks de pre-commit/pre-push, escaneo de secretos, pruebas de arquitectura y el workflow de CI) y prueba que cada uno realmente falla antes de darse por terminada. Lo único que la skill NO toca es la configuración de GitHub mismo — eso queda manual: 1) en Settings → Rules → Rulesets, crea un ruleset sobre la rama principal que exija el workflow de CI que la skill instaló como \"required status check\", al menos 1 aprobación, y (opcional) un archivo CODEOWNERS; 2) si el proceso incluye despliegue, configura un Environment de GitHub con reviewers requeridos para el destino de deploy.",
-      "porque": "Esto reemplaza lo que en otras plataformas se arma con \"políticas de rama\": acá el mecanismo es un Ruleset (la forma recomendada actualmente en GitHub, por encima de las reglas de protección de rama clásicas — es a nivel de organización, con lista de excepciones auditable). Se configura una vez y protege cada PR que venga después, no hace falta repetirlo por issue.",
-      "guiaPasos": "<ol><li>Corre <code>/sdlc-ia:instrument-project-java</code> — instala el workflow de CI junto con todo lo demás, en vez de escribirlo a mano.</li><li><b>Settings → Rules → Rulesets</b> → nuevo ruleset sobre <code>main</code>/<code>dev</code>: \"Require status checks to pass\" (elige el workflow que la skill instaló), \"Require a pull request before merging\" con al menos 1 aprobación.</li><li>Opcional: un archivo <code>CODEOWNERS</code> para asignar revisores automáticamente por carpeta.</li><li>Si hay despliegue automático, un <b>Environment</b> (Settings → Environments) con reviewers requeridos antes de que el workflow pueda desplegar.</li></ol>",
-      "madurez": "2"
+      "porque": "Esto reemplaza lo que en otras plataformas se arma con \"políticas de rama\": acá el mecanismo es un Ruleset (la forma recomendada actualmente en GitHub, por encima de las reglas de protección de rama clásicas — es a nivel de organización, con lista de excepciones auditable). Se configura una vez y protege cada PR que venga después, no hace falta repetirlo por issue. Corre antes de «Verificar que llegó el arnés»: <code>instrument-project-java</code> es quien escribe <code>lefthook.yml</code> — verificarlo antes de que este paso corra encontraría un archivo que todavía no existe.",
+      "guiaPasos": "<ol><li>Corre <code>/sdlc-ia:instrument-project-java</code> — instala el workflow de CI junto con todo lo demás, en vez de escribirlo a mano. Esta es la instrumentación <b>determinista</b>: build reproducible, build estricto, estilo, ArchUnit, CI — controles que deciden en milisegundos, sin ambigüedad ni criterio de por medio (a diferencia de los hooks del agente de <code>instrument-agent-java</code>, actividad 6, que sí aplican criterio).</li><li><b>Settings → Rules → Rulesets</b> → nuevo ruleset sobre <code>main</code>/<code>dev</code>: \"Require status checks to pass\" (elige el workflow que la skill instaló), \"Require a pull request before merging\" con al menos 1 aprobación.</li><li>Opcional: un archivo <code>CODEOWNERS</code> para asignar revisores automáticamente por carpeta.</li><li>Si hay despliegue automático, un <b>Environment</b> (Settings → Environments) con reviewers requeridos antes de que el workflow pueda desplegar.</li></ol>",
+      "tipoInstrumentacion": "determinista",
+      "madurez": "1"
     },
     "pz2": {
       "clase": "T",
@@ -218,7 +237,8 @@
       "cmd": "git commit --allow-empty -m \"chore: primera corrida del pipeline\" && git push",
       "porque": "Un pipeline que nunca corrió es un pipeline sin probar. Un commit vacío es la forma más barata de confirmar que el workflow realmente se dispara antes de depender de él para la primera PR real.",
       "guiaPasos": "<p>Revisa la pestaña <b>Actions</b> del repositorio en GitHub: el workflow debería aparecer corriendo (o ya haber corrido) para este commit.</p>",
-      "madurez": "2"
+      "tipoInstrumentacion": "determinista",
+      "madurez": "1"
     },
     "ds": {
       "clase": "S",
