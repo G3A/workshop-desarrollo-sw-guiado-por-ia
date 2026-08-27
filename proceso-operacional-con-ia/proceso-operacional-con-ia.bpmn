@@ -103,8 +103,8 @@
       <bpmn:incoming>e05</bpmn:incoming>
       <bpmn:outgoing>e06</bpmn:outgoing>
     </bpmn:task>
-    <bpmn:task id="a2" name="Configurar MCP de ejemplo">
-      <bpmn:documentation>Configura un servidor MCP de ejemplo para extender las capacidades del agente.</bpmn:documentation>
+    <bpmn:task id="a2" name="Configurar MCP y hooks del agente">
+      <bpmn:documentation>Registra los servidores MCP que el repo necesita y activa el catálogo de hooks del agente — instrument-agent-java.</bpmn:documentation>
       <bpmn:incoming>e06</bpmn:incoming>
       <bpmn:incoming>e09</bpmn:incoming>
       <bpmn:outgoing>e07</bpmn:outgoing>
