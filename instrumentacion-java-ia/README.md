@@ -53,9 +53,9 @@ skill `instrument-agent-java` (su fase de "probar antes de reportar éxito").
 
 - Nombre e identidad propios (`sdlc-ia`), no un fork literal — no está pensado para proponerse
   como PR al repo upstream sin un paso de rebautizo.
-- Los `SKILL.md` van en inglés (misma convención upstream, es lo que Claude Code carga), pero los
-  templates que terminan en el repo del usuario (`AGENTS.md`, `architecture.md`, etc.) están solo
-  en español — este monorepo y `base-conocimiento` están en español, y `arkandia-skills` ya
-  resuelve el caso bilingüe si algún día hace falta agregar `templates/en/`.
+- Los `SKILL.md` van en inglés (misma convención upstream, es lo que Claude Code carga). Los
+  templates que terminan en el repo del usuario (`AGENTS.md`, `architecture.md`, etc.) son
+  bilingües como en `arkandia-skills` (`templates/es/` y `templates/en/`), con español como
+  default porque este monorepo y `base-conocimiento` están en español.
 - `github-plan-build` no existe en ningún stack de `arkandia-skills` todavía — es una skill nueva,
   no una adaptación.

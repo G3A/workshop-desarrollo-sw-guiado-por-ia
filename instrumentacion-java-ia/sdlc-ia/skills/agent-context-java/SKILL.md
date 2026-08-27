@@ -1,6 +1,6 @@
 ---
 name: agent-context-java
-description: Generate a documentation pack for a Java/Spring repository so AI coding agents can reason about it — AGENTS.md, architecture, ADRs, data model, infrastructure, plus a `docs/java.md` deep-dive covering the Maven/Gradle module graph, JDK target, Spring DI, JPA/Hibernate or Spring Data persistence, Spring profiles & config, Spring Modulith module boundaries, quality gates, and CI. Output docs are in Spanish. Invoke with `/sdlc-ia:agent-context-java`.
+description: Generate a documentation pack for a Java/Spring repository so AI coding agents can reason about it — AGENTS.md, architecture, ADRs, data model, infrastructure, plus a `docs/java.md` deep-dive covering the Maven/Gradle module graph, JDK target, Spring DI, JPA/Hibernate or Spring Data persistence, Spring profiles & config, Spring Modulith module boundaries, quality gates, and CI. Output docs default to Spanish; pass `en` for English. Invoke with `/sdlc-ia:agent-context-java` (or `/sdlc-ia:agent-context-java en`).
 disable-model-invocation: true
 ---
 
@@ -30,9 +30,24 @@ outputs are Markdown files at the repo root and under `docs/`.
 
 ## Output language
 
-Generated docs are always in Spanish (`templates/es/`) — this skill targets a Spanish-speaking
-codebase and team. The skill's own instructions (this file) stay in English regardless, matching
-the rest of this plugin.
+Parse `$ARGUMENTS` for a language tag:
+
+- `en` (or `english`) → generate docs in English, from `templates/en/`.
+- `es` (or `español`/`spanish`), or empty → generate docs in Spanish, from `templates/es/`. This
+  is the default: this plugin's primary audience is a Spanish-speaking codebase and team.
+- Augment mode overrides the default: if Phase 1b finds existing docs, match *their* language
+  instead of `$ARGUMENTS`'s default — don't hand a Spanish-speaking repo an English `docs/java.md`
+  just because no tag was passed, or vice versa. An explicit `$ARGUMENTS` tag still wins over
+  augment-mode detection.
+
+The skill's own instructions (this file) stay in English regardless, matching the rest of this
+plugin. Whichever language is resolved, use it for every doc, every placeholder value you write,
+the claims ledger (`references/claim-validation.md`), **and every user-facing message during the
+run** — interview questions and `AskUserQuestion` labels/options (Phase 2), the augment-mode
+report, the commit-message suggestion and any other reminder (Phase 6). Question text quoted
+elsewhere in this file is illustrative and written in English for the skill author; phrase it in
+the resolved language when you actually ask the user, don't quote it verbatim in the wrong
+language.
 
 ---
 
@@ -52,8 +67,8 @@ Switch to **augment mode** if any of these exist: `AGENTS.md`/`CLAUDE.md` at rep
 `docs/` with `.md` files, `ARCHITECTURE.md`, `ADR/`/`adrs/`/`decisions/`. Read what exists, report
 it in Phase 2, create only **missing** docs — never overwrite. A pre-existing `docs/` tree isn't
 necessarily yours (many repos ship their own architecture notes, DB dumps) — cross-link it from
-`docs/java.md` and AGENTS.md instead of editing it. If those docs are in one language, match it
-in Phase 2's language question.
+`docs/java.md` and AGENTS.md instead of editing it. If those docs are in one language, that
+overrides the output-language default — see "Output language" above.
 
 ### 1c. Deep Java discovery
 
@@ -128,7 +143,7 @@ Do not proceed to Phase 3 until the interview is complete.
 
 ## Phase 3 — Draft
 
-For each doc, read `templates/es/<doc>.md.template`, substitute placeholders
+For each doc, read `templates/<lang>/<doc>.md.template` (`<lang>` resolved above), substitute placeholders
 (`{{UPPER_SNAKE}}`, declared at the top of each template), write to the target path:
 
 - `AGENTS.md`, `CLAUDE.md` (repo root) — see Phase 4
@@ -171,10 +186,12 @@ the ledger to `docs/claims-ledger.md`.
 
 ## Phase 6 — Verify
 
-1. Print a tree of files written (or augmented).
+1. Print a tree of files written (or augmented) — in the resolved language.
 2. Check every link in `AGENTS.md` and `docs/java.md` resolves to a file that exists (use Read).
-3. Remind the user: commit with
-   `git add AGENTS.md CLAUDE.md docs/ && git commit -m "docs: bootstrap Java context pack for AI coding agents"`;
+3. Remind the user, in the resolved language, to commit — suggest a commit message matching that
+   language (e.g. `docs: bootstrap Java context pack for AI coding agents` in English,
+   `docs: agrega el paquete de contexto Java para agentes de IA` in Spanish):
+   `git add AGENTS.md CLAUDE.md docs/ && git commit -m "<message>"`;
    fill `<!-- TODO -->` markers, review the ADRs, skim `docs/claims-ledger.md` for anything
    unverified; if quality gates were absent, consider Checkstyle/Spotless + an arch-linting test
    (ArchUnit, or `ApplicationModules.verify()` if modules exist); re-run
@@ -189,7 +206,7 @@ the ledger to `docs/claims-ledger.md`.
 - `references/doc-content-map.md` — what each doc carries, and the `AGENTS.md` section list
   (Phase 3, Phase 4).
 - `references/claim-validation.md` — the Claimify-inspired claim-validation procedure (Phase 5).
-- `templates/es/` — the doc skeletons.
+- `templates/es/` / `templates/en/` — the doc skeletons, one set per output language.
 
 ## Rules
 

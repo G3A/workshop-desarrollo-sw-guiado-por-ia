@@ -1,0 +1,51 @@
+<!--
+Placeholders:
+  {{PROJECT_NAME}}
+  {{MIGRATION_TOOL}}         — usually "Flyway migrations" or "Liquibase migrations"; note the version if you read it
+  {{MIGRATIONS_PATH}}        — e.g. "src/main/resources/db/migration/"
+-->
+
+# Data Model — {{PROJECT_NAME}}
+
+## Overview
+
+<!-- TODO: one paragraph. What does this database store? What are the 3-5 main entities and how do they relate? -->
+
+## Migration tool
+
+- **Tool:** {{MIGRATION_TOOL}}
+- **Location:** `{{MIGRATIONS_PATH}}`
+- **Flow:** <!-- TODO: how a new migration is created and applied locally / in CI (does it run at app startup, or is it an explicit `flyway:migrate` / `liquibase:update` step?). -->
+
+## Entity-relationship diagram
+
+```mermaid
+erDiagram
+  ENTITY_A ||--o{ ENTITY_B : "has many"
+  ENTITY_B }o--|| ENTITY_C : "belongs to"
+```
+
+<!-- TODO: replace with real entities. Keep the diagram under 12 boxes — push legacy or rarely-used tables to a "Full schema" appendix. -->
+
+## Tables
+
+### Core
+
+| Table | Purpose | Key relationships |
+|---|---|---|
+| <!-- table_name --> | <!-- one line --> | <!-- FK summary --> |
+
+### Reference / lookup
+
+| Table | Purpose |
+|---|---|
+| | |
+
+## Row-level security / access control
+
+<!-- TODO: if the DB uses RLS, tenant filters, or application-level guards (e.g. a Hibernate `@Where`, a Spring Data filter), describe the invariant here. Agents must NOT add queries that bypass it. -->
+
+## Related docs
+
+- [Architecture](./architecture.md)
+- [Decisions](./adrs/)

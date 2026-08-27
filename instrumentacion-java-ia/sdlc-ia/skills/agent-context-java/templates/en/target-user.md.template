@@ -1,0 +1,39 @@
+<!--
+Placeholders:
+  {{PROJECT_NAME}}
+-->
+
+# Target User — {{PROJECT_NAME}}
+
+<!-- TODO: 2-3 personas, each with: who they are, what they're trying to achieve, what frustrates them. Then a table of implications: each trait → what it means for how the product / code gets built. -->
+
+## Personas
+
+### Persona 1 — <!-- name -->
+
+- **Role:**
+- **Goal:**
+- **Pain:**
+
+### Persona 2 — <!-- name -->
+
+- **Role:**
+- **Goal:**
+- **Pain:**
+
+## Shared traits
+
+| Trait | All personas? |
+|---|---|
+| | |
+
+## Implications for development
+
+| Trait | What it means for the code |
+|---|---|
+| | |
+
+## Related docs
+
+- [Business](./business.md)
+- [Design](./design.md) — if it exists
