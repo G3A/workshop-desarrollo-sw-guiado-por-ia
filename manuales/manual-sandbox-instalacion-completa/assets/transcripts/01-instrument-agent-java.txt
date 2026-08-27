@@ -1,0 +1,448 @@
+ ▐▛███▛█   Claude Code v2.1.247
+▝▜██████▀  Sonnet 5 · Claude Max
+  ▝▝ ▝▝    D:\GitHub_public\base-conocimiento-sandbox
+
+
+❯ /sdlc-ia:instrument-agent-java
+
+  Read 8 files, ran 9 shell commands (ctrl+o to expand)
+
+● Confirmed: no spotless-maven-plugin anywhere. Now let me check the templates
+  directory and remaining discovery items (team OS signal, existing .claude dirs
+  anywhere, Context7/GitHub npm versions) before presenting the discovery table
+  and Phase 3 questions.
+
+  Listed 1 directory, ran 3 shell commands (ctrl+o to expand)
+
+● Fase 1 — Descubrimiento
+
+  Artefacto: pom(s)
+  Estado: OK
+  Que encontre: pom.xml en la raiz (modulo unico). POM_PATH = pom.xml. Spring
+  Boot 4.1, Java 21
+  ----------------------------------------
+  Artefacto: .claude/settings.json
+  Estado: ausente
+  Que encontre: Ningun hook previo -- nada que fusionar
+  ----------------------------------------
+  Artefacto: .mcp.json
+  Estado: ausente
+  Que encontre: Ningun servidor previo
+  ----------------------------------------
+  Artefacto: Makefile
+  Estado: existe, sin format/lint/audit/check
+  Que encontre: Tiene build, test, verify (todos via ./mvnw)
+  ----------------------------------------
+  Artefacto: Formateador
+  Estado: falta
+  Que encontre: No hay spotless-maven-plugin ni en el pom ni en el Makefile
+  ----------------------------------------
+  Artefacto: Hook 6 (versiones centralizadas)
+  Estado: precondicion cumplida
+  Que encontre: <dependencyManagement> con 4 BOMs importados
+  (spring-modulith-bom, spring-ai-bom, testcontainers-bom, arconia-bom)
+  ----------------------------------------
+  Artefacto: Hook 7a (Flyway)
+  Estado: precondicion cumplida
+  Que encontre: src/main/resources/db/migration/ con V1-V4
+  ----------------------------------------
+  Artefacto: Hook 7b (Liquibase)
+  Estado: no aplica
+  Que encontre: No existe db/changelog/
+  ----------------------------------------
+  Artefacto: Git
+  Estado: remoto github.com/G3A/base-conocimiento-sandbox -> candidato a MCP de
+  GitHub. Rama por defecto: main. Ramas de larga vida: main, dev (2 -> relevante
+   si se activa el hook 3)
+  ----------------------------------------
+  Artefacto: Base de datos
+  Estado: Postgres, un solo perfil:
+  jdbc:postgresql://localhost:5432/baseconocimiento (override por
+  SPRING_DATASOURCE_URL) -> candidato a MCP de DBHub
+  ----------------------------------------
+  Artefacto: Documentacion
+  Estado: No hay AGENTS.md. README.md en espanol. docs/ tiene architecture.md,
+  adrs/, plans/, teams/ -- no hay docs/infrastructure.md ni docs/java.md (Fase 6
+   los omitira)
+  ----------------------------------------
+  Artefacto: SO del equipo
+  Estado: Windows con Git Bash real (GNU bash 5.2.26, msys) -- los scripts .sh
+  van a disparar normalmente
+
+  Hallazgo que cambia el menu: sin spotless-maven-plugin, el hook 2 (formatear
+  al editar) no tiene reglas que ejecutar -- lo voy a ocultar y te recomiendo
+  correr /sdlc-ia:instrument-project-java primero (esa skill instala Spotless)
+  si lo quieres disponible despues.
+
+  Fase 2 -- Prerrequisitos
+
+  - OK Maven wrapper: Apache Maven 3.9.11, Java 21.0.11 (Adoptium)
+  - OK Git Bash: 5.2.26(1)-release (x86_64-pc-msys)
+
+  Ahora te pregunto lo que la Fase 1 no pudo resolver sola: que servidores MCP
+  (Protocolo de Contexto de Modelo -- el estandar que permite al agente
+  consultar sistemas externos en vivo, en vez de que se los pegues en el chat)
+  y que hooks quieres instalar.
+
+● User answered Claude's questions:
+  |  Que servidores MCP quieres registrar en .mcp.json? (Context7 da
+     documentacion de librerias siempre actualizada; GitHub da acceso a
+     issues/PRs/Actions; DBHub da lectura del esquema real de Postgres) ->
+     GitHub, DBHub
+     Que hooks que BLOQUEAN una accion quieres instalar? -> Guardia de
+     secretos (recomendado), Comandos peligrosos, Guardia de migraciones
+     aplicadas
+     Que hooks que SOLO REPORTAN (no bloquean) quieres instalar? -> Formatear
+     al editar, Barrido de dependencias, Registro de auditoria, Guardia de
+     version fijada (recomendado)
+
+● Antes de seguir, dos cosas:
+
+  Formatear al editar no se puede instalar. El pom no tiene
+  spotless-maven-plugin configurado -- sin el, mvn spotless:apply no tiene
+  reglas que aplicar. La skill me prohibe instalar un hook cuya precondicion
+  el repo no cumple. Te lo dejo fuera de esta corrida; si corres
+  /sdlc-ia:instrument-project-java primero (instala Spotless) puedo volver a
+  ofrecerlo despues.
+
+● User answered Claude's questions:
+  |  El registro de auditoria va a grabar el tool_input COMPLETO de cada
+     llamada a herramienta en logs/audit.log (sin versionar) -- puede incluir
+     rutas, fragmentos de codigo o datos que pasen por cualquier herramienta.
+     Confirmas que quieres instalarlo asi? -> Si, instalarlo
+     El hook de comandos peligrosos bloquea el force-push a una rama protegida
+     (o a ninguna rama nombrada). Hay dos ramas de larga vida en este repo:
+     main y dev. Cuales protejo? -> main y dev (recomendado)
+
+  Read 3 files, ran 1 shell command (ctrl+o to expand)
+
+● Now let's read the remaining hook templates I need (skipping format-on-edit
+  since it's not installed).
+
+  Read 7 files, ran 4 shell commands (ctrl+o to expand)
+
+● Write(.mcp.json)
+  Wrote 14 lines: ark_github (HTTP, Bearer ${GITHUB_PAT}), ark_dbhub (npx -y
+  @bytebase/dbhub@1.2.1, --dsn ${APP_DSN})
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Now the hook scripts. Starting with _lib.sh, then the guard scripts, adding
+  logs/ to .gitignore before writing the audit log script.
+
+  Write(scripts\agent-hooks\_lib.sh) -- 88 lines, shared helpers (bash 3.2
+  compatible, no jq, Git Bash path normalisation)
+  Write(scripts\agent-hooks\secret-read-guard.sh) -- 67 lines
+  Write(scripts\agent-hooks\block-dangerous-bash.sh) -- 152 lines
+  Write(scripts\agent-hooks\generated-files-guard.sh) -- 26 lines
+  Write(scripts\agent-hooks\dependency-sweep.sh) -- 45 lines
+  Write(scripts\agent-hooks\version-pin-guard.sh) -- 65 lines
+
+● Update(.gitignore) -- agrega logs/ (AI agent audit log, never committed)
+
+● Write(scripts\agent-hooks\audit-log.sh) -- 50 lines
+
+  Ran 1 shell command -- syntax check: all six scripts OK
+
+● Write(.claude\settings.json) -- 73 lines: SessionStart (dependency-sweep),
+  PreToolUse (secret-read-guard, block-dangerous-bash, generated-files-guard,
+  audit-log), PostToolUse (version-pin-guard)
+
+  Ran 2 shell commands -- benign payload test, all scripts exit 0
+
+● Bloqueo en la Fase 5 (verificacion obligatoria)
+
+  Escribi los seis scripts y .claude/settings.json, y cada script pasa su
+  prueba unitaria aislada. Pero al dispararlos con llamadas reales a
+  herramientas en esta sesion:
+
+  - Read sobre hooktest/.env (un archivo probe creado a proposito) se leyo sin
+    bloqueo, dos veces.
+  - logs/audit.log nunca se creo, pese a decenas de llamadas a herramientas
+    despues de escribir settings.json.
+
+  Eso descarta un bug en los scripts: ambos indicios apuntan a lo mismo, los
+  hooks de .claude/settings.json no estan activos todavia en esta sesion. La
+  skill que estoy siguiendo asume que "el file watcher de Claude Code recoge
+  los cambios de settings.json sin reiniciar" -- mi evidencia aqui contradice
+  esa suposicion. Tiene sentido ademas como medida de seguridad: si un cambio
+  a hooks escrito por el propio agente surtiera efecto al instante, el agente
+  podria alterar sus propios guardarrailes a mitad de sesion sin que tu te
+  enteres.
+
+  Ya limpie todo el rastro de la prueba (hooktest/, logs/, la linea de
+  .gitignore) -- el arbol de trabajo queda como estaba, solo con los archivos
+  nuevos de esta instrumentacion.
+
+  Necesito que reinicies Claude Code (o abras una sesion nueva) en este
+  repositorio para que los hooks carguen.
+
+  Done 17:53
+
+❯ ya reinicie claude code
+
+● Hook 4 (dependency sweep) ya se probo solo en el banner de resume -- buena
+  senal de que la recarga funciono. Ahora el resto de los disparadores en
+  vivo de la Fase 5.
+
+  Hook 1 -- Secret read-guard: Read sobre hooktest/.env -> DENEGADO, nombrando
+  la regla de credenciales. Read sobre .gitignore (no-secreto) -> paso.
+  Verdadero negativo confirmado.
+
+  Hook 5 -- Registro de auditoria: verificado -- una linea tab-separated por
+  llamada a herramienta, incluida la denegada. logs/audit.log confirmado
+  ignorado por git.
+
+  Hook 3 -- Comandos peligrosos: git reset --hard HEAD -> DENEGADO, nombrando
+  git stash como alternativa. git status -> paso. Verdadero negativo.
+
+  Hook 6 -- Guardia de version fijada: se agrego <version>42.7.11</version>
+  literal a una <dependency> en pom.xml (ya leido antes) -> PostToolUse:Edit
+  bloqueo, nombrando el pom y el conteo (1). pom.xml restaurado con git
+  checkout --.
+
+  Hook 7 -- Guardia de migraciones aplicadas: Edit sobre V1__esquema.sql (ya
+  aplicado) -> DENEGADO, sugiriendo agregar la siguiente version. Write de un
+  V5__hooktest_probe.sql nuevo -> paso. Verdadero negativo confirmado, archivo
+  de prueba borrado despues.
+
+● Update(README.md) -- nueva seccion "Agentes de IA (Claude Code)": MCP y
+  hooks son exclusivos de Claude Code, requisitos (Git Bash + Maven wrapper),
+  tabla de variables de entorno (GITHUB_PAT, APP_DSN), paso de confianza del
+  workspace (claude -> /mcp), advertencia sobre el contenido del audit log.
+
+● Instrumentacion completa -- reporte final
+
+  Archivos: .mcp.json (creado), .claude/settings.json (creado), 6 scripts +
+  _lib.sh en scripts/agent-hooks/, .gitignore (modificado).
+
+  Versiones resueltas y ancladas: @bytebase/dbhub@1.2.1 (npm view en el
+  momento de escribir el archivo). No se instalo Context7 -- el equipo no lo
+  pidio.
+
+  Hooks -- los seis, disparados de verdad y revertidos:
+  1 Guardia de secretos: denegado + verdadero negativo confirmados
+  3 Comandos peligrosos: denegado (git stash sugerido) + verdadero negativo
+  4 Barrido de dependencias: disparo solo al reiniciar -- 21 actualizaciones
+    directas disponibles (Flyway, Spring Boot 4.2.0-M1, etc.)
+  5 Registro de auditoria: log confirmado + gitignored
+  6 Guardia de version fijada: bloqueo + restaurado con git checkout --
+  7 Guardia de migraciones aplicadas: denegado + verdadero negativo
+
+  Un hallazgo real durante la verificacion: la primera vez que probe estos
+  hooks, en la sesion donde los escribi, no se disparaban -- ni el Read del
+  secreto fue bloqueado ni logs/audit.log se creo pese a decenas de llamadas.
+  Esto contradice lo que la skill asume ("el file watcher recoge
+  settings.json sin reiniciar"). Tras el reinicio, los seis hooks funcionan.
+  Anotalo: un cambio a hooks escrito a mitad de sesion no toma efecto hasta
+  la siguiente sesion, al menos en la version de Claude Code de esta maquina.
+
+  Hook 2 (formatear al editar) no se instalo -- el pom no tiene
+  spotless-maven-plugin. Correr /sdlc-ia:instrument-project-java primero lo
+  habilitaria.
+
+  MCP -- escrito, no conectado (esperado)
+
+  Ambos servidores en Pending approval / fallaron al conectar porque
+  GITHUB_PAT y APP_DSN todavia no estan exportados -- confirme que no es un
+  bug de configuracion: corri dbhub a mano con un DSN vacio y da el mismo
+  error de "conexion requerida" que el intento real. Exporta ambas variables
+  y confirma con /mcp.
+
+  Falsos positivos conocidos, por hook:
+  - Guardia de secretos: cp .env.example .env queda bloqueado a proposito.
+  - Comandos peligrosos: chequeo de texto sobre pom.xml raiz, no ve el cwd
+    real del shell -- un rm con ruta relativa multi-segmento se puede escapar.
+  - Guardia de version fijada: no distingue <dependency> de <plugin>.
+
+  Ninguno de estos hooks es un limite de seguridad. Corren con tu shell y tus
+  permisos, y hacen coincidencia de texto, no interpretan intencion. Son
+  guardarrailes contra errores plausibles, no una caja de arena.
+
+  No hice ningun commit -- queda todo para que lo revises.
+
+  Done 17:58
+
+❯ exporta GITHUB_PAT y APP_DSN
+
+● No puedo ejecutar export por ti -- dos razones: (1) no conozco los valores
+  -- GITHUB_PAT es tu token personal, APP_DSN lleva la contrasena de tu
+  Postgres. (2) Aunque los tuviera, correr export en mi herramienta Bash no
+  serviria de nada -- abre un subproceso aislado, la variable moriria con el.
+  Claude Code hereda el entorno del proceso que lo lanzo, asi que la
+  variable tiene que existir antes de abrir claude, puesta en tu propia
+  terminal, no dentro de esta sesion.
+
+  Ademas, si pego el valor real en el chat y lo paso por Bash, el hook 5
+  (registro de auditoria) lo grabaria en texto plano en logs/audit.log --
+  exactamente el tipo de fuga que ese hook existe para senalar.
+
+  Como hacerlo tu, en tu propia terminal:
+
+  [Environment]::SetEnvironmentVariable("GITHUB_PAT", "<tu-token>", "User")
+  [Environment]::SetEnvironmentVariable("APP_DSN",
+  "postgres://kb:kb@localhost:5432/baseconocimiento?sslmode=disable", "User")
+
+  Despues de exportarlas, cierra y vuelve a abrir Claude Code POR COMPLETO
+  (no alcanza con reiniciar la sesion de chat), y confirma con /mcp.
+
+  Done 18:01
+
+❯ dame el paso a paso para obtener el token de GITHUB_PAT
+
+● [3 busquedas web reales a docs.github.com]
+
+  Paso a paso (token de grano fino, recomendado):
+  1. Foto de perfil -> Settings -> Developer settings
+  2. Personal access tokens -> Fine-grained tokens -> Generate new token
+  3. Nombre descriptivo, Expiration con fecha (no "No expiration")
+  4. Resource owner: tu cuenta. Repository access: Only select repositories
+     -> base-conocimiento-sandbox (nunca "All repositories" para un agente)
+  5. Permissions: Issues (Read and write), Pull requests (Read and write),
+     Actions (Read-only), Metadata (Read-only, obligatorio), Contents
+     (Read-only salvo que quieras commits via API)
+  6. Generate token -- se muestra una sola vez, copialo ahi mismo.
+
+  No lo pegues en este chat. Guardalo con SetEnvironmentVariable en tu propia
+  terminal, cierra y reabre Claude Code por completo, confirma con /mcp.
+
+  Done 18:04
+
+❯ ya setee las variables que me pediste, ahora que sigue?
+
+● Falta un paso mas: cierra Claude Code por completo y vuelve a abrirlo en
+  este repositorio -- el proceso actual ya arranco sin esas variables en su
+  entorno, setearlas no las inyecta en una sesion que ya esta corriendo,
+  igual que paso con los hooks. Al reabrir, corre /mcp.
+
+  Done 18:11
+
+❯ ya reinicie claude code
+
+● Los dos siguen fallando con el mismo error de antes -- senal de que las
+  variables todavia no llegan al proceso. Problema tipico de Windows:
+  SetEnvironmentVariable(..., "User") escribe en el registro, pero no
+  actualiza una terminal que ya estaba abierta. Si cerraste solo la
+  ventana/app de Claude Code y volviste a escribir claude en la MISMA
+  terminal que ya tenias abierta, esa terminal capturo su bloque de entorno
+  al abrirse -- antes de que setearas la variable -- y cualquier proceso
+  hijo (incluido claude) hereda ese entorno viejo.
+
+  Hace falta: cerrar la ventana de la terminal por completo (no solo Claude
+  Code) y abrir una terminal nueva. Antes de relanzar, verificar ahi:
+
+  "GITHUB_PAT length: $($env:GITHUB_PAT.Length)"
+  "APP_DSN length: $($env:APP_DSN.Length)"
+
+  Done 18:11
+
+❯ como copio todo lo que se ha escrito en esta sesion?
+
+● [Agente claude-code-guide consultado en background]
+
+  Tres formas: (1) /export dentro de la sesion -- la mas simple. (2) el
+  .jsonl crudo en ~/.claude/projects/base-conocimiento-sandbox/. (3)
+  claude -p --resume <id> --output-format json (para automatizar).
+
+  Done 18:16
+
+❯ /export
+  Conversation copied to clipboard
+
+❯ ok y con que prompt tengo que retomar este tema en la otra ventana de
+  terminal desde claude code?
+
+● Mejor que armar un prompt nuevo: claude --resume desde la terminal nueva
+  retoma esta misma sesion con toda la memoria intacta. Pasos: (1) verificar
+  las variables visibles sin imprimir el valor completo, (2) si dan >0,
+  entrar a la carpeta y correr claude --resume, (3) elegir esta sesion en el
+  selector, (4) correr /mcp.
+
+  Done 8:20
+
+❯ ya estoy en una nueva terminal
+
+● ark_github ya conecto. ark_dbhub sigue en CONNECTION_CLOSED. APP_DSN si
+  esta seteada (64 caracteres) -- el problema real es otro: no hay ningun
+  contenedor Docker corriendo, Postgres no esta levantado en localhost:5432.
+
+● User answered Claude's questions:
+  |  El DSN de dbhub apunta a localhost:5432, pero no hay contenedores
+     Docker corriendo. Como quieres levantar Postgres? -> Solo el servicio
+     db (recomendado)
+
+● Encontre dos problemas: (1) el puerto en APP_DSN esta mal -- compose.yml
+  mapea Postgres al puerto 55432 del host a proposito ("es normal tener
+  otros Postgres corriendo en la maquina"), no al 5432; como dbhub corre
+  fuera de Docker (via npx), necesita el puerto de host: 55432. (2) Windows
+  esta bloqueando ademas ese puerto especifico para Docker -- "excluded
+  port range" de Hyper-V/WSL2, no de tu configuracion.
+
+  Levantado con un puerto fuera del rango excluido (56432). Postgres listo.
+
+  Corrige APP_DSN en tu terminal:
+  [Environment]::SetEnvironmentVariable("APP_DSN",
+  "postgres://kb:kb@localhost:56432/baseconocimiento?sslmode=disable", "User")
+
+  El contenedor kb-db usa 56432 solo para esta sesion (POSTGRES_PORT=56432 al
+  comando, sin tocar tu .env). Si corres make up sin esa variable, va a
+  intentar 55432 de nuevo y va a fallar por el mismo bloqueo de Windows.
+
+  Done 8:30
+
+❯ qué tengo que decir en la próxima sesión?
+
+● claude --resume de nuevo. En esta sesion actual ark_github se acaba de
+  caer otra vez ("Authorization header is badly formatted") y ark_dbhub
+  sigue en CONNECTION_CLOSED -- toca re-verificar ambos igual.
+
+  Done 8:33
+
+❯ /mcp
+  Failed to reconnect to ark_dbhub: CONNECTION_CLOSED
+
+❯ ya estoy en una nueva terminal
+
+● Ambos reconectaron. Confirmo con una llamada minima a cada uno:
+  - ark_dbhub: consulto Postgres real -- base baseconocimiento, usuario kb,
+    PostgreSQL 18.4.
+  - ark_github: autenticado como G3A (Tavo).
+
+  Con esto queda cerrada toda la instrumentacion de
+  /sdlc-ia:instrument-agent-java: los 6 hooks disparando de verdad y los 2
+  servidores MCP conectados y probados. Nada quedo a medias.
+
+  Pendiente fuera de alcance: el contenedor kb-db esta arriba con
+  POSTGRES_PORT=56432 pasado a mano, sin persistir en .env.
+
+  Done 8:36
+
+❯ ajusta lo que dices como sugerencia
+
+● User answered Claude's questions:
+  |  No me queda claro a que te refieres. Quieres que aplique de una vez la
+     sugerencia (crear/editar .env con POSTGRES_PORT=56432)? -> Aplica la
+     sugerencia
+
+● No puedo hacerlo yo directamente -- y es intencional: el hook 1 (guardia
+  de secretos) bloquea justo cp .env.example .env porque uno de los
+  argumentos es un .env literal. Es el falso positivo conocido que ya
+  documente: "crear el archivo de credenciales es un paso para el humano".
+  Podria rodearlo usando Write en vez de Bash (esa herramienta no esta en
+  el matcher del hook), pero eso violaria el motivo por el que lo pusimos
+  ahi, asi que no lo voy a hacer.
+
+  Corre esto tu, en tu terminal:
+  cp .env.example .env
+  (Get-Content .env) -replace '^POSTGRES_PORT=55432$', 'POSTGRES_PORT=56432' |
+  Set-Content .env
+
+  Done 8:38
+
+❯ ya lo hice
+
+● .env quedo bien -- docker compose up -d db (sin pasar el puerto a mano) ya
+  mapeo 56432->5432 solo, leyendo tu .env. Instrumentacion y setup del
+  puerto, cerrados.
+
+  Done 8:40

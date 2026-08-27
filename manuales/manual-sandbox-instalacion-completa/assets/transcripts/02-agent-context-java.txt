@@ -1,0 +1,234 @@
+ ▐▛███▛█   Claude Code v2.1.247
+▝▜██████▀  Sonnet 5 · Claude Max
+  ▝▝ ▝▝    D:\GitHub_public\base-conocimiento-sandbox
+
+
+❯ /clear
+
+❯ /sdlc-ia:agent-context-java
+
+  Searched for 11 patterns, read 12 files, ran 10 shell commands (ctrl+o to
+  expand)
+
+● Ok, despliegue.md es contenido del corpus de ejemplo, no documentacion del
+  repo. Ya tengo suficiente para el discovery. Ahora la interview -- Batch A
+  primero.
+
+● User answered Claude's questions:
+  |  Este repo ya tiene docs/architecture.md, docs/adrs/ (11 ADRs),
+     docs/plans/ y docs/teams/ -- completos y en buen estado. No hay
+     AGENTS.md/CLAUDE.md/docs/java.md/docs/business.md/docs/data-model.md/docs/i
+     nfrastructure.md todavia. Que hago con lo que ya existe? -> Solo crear lo
+     faltante (recomendado)
+     Genero tambien docs/target-user.md y/o docs/design.md (opcionales, fuera
+     del set base)? -> Ninguno (recomendado)
+     Encontre un desfase real: pom.xml fija java.version=21, pero el
+     Dockerfile compila y corre sobre eclipse-temurin:25 (deps, build y
+     runtime). El comentario del propio pom.xml dice "Java 21 LTS... Subir a
+     25 es cambiar solo esta linea mas los tags del Dockerfile" -- sugiere
+     que el Dockerfile ya se adelanto a JDK 25 pero pom.xml quedo en 21.
+     Cual es el estado real? -> JDK 21 es el target real
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● El resto de la interview estructurada (deployment target, secrets, auth,
+  CI) ya esta resuelto por el propio repo: todo Docker Compose local, sin
+  nube, sin CI/CD, .env con defaults razonables, autenticacion por token
+  Bearer propio. No hace falta preguntarlo.
+
+  Dos preguntas de texto libre antes de escribir los documentos:
+
+  1. Contexto de negocio (1-2 frases): que resuelve este producto y quien lo
+     paga/usa? El README ya dice que es un RAG interno 100% local para
+     documentos/codigo/Teams/work items -- hay algo mas detras (ej. es un
+     proyecto de taller/curso, un prototipo personal, algo que se va a
+     llevar a un equipo real)?
+  2. Reglas no obvias (hasta 3): invariantes que un agente de IA debe
+     conocer y que no estan reforzadas por linters/tests. Ya detecte una
+     candidata fuerte por el codigo -- la regla de ArchUnit "web y teams
+     solo cruzan por Consultar, nunca por recuperacion/ingesta/modelos/llm"
+     -- pero hay otras? Responde "skip" si no hay mas.
+
+  Done 8:48
+
+❯ skip
+
+  Searched for 4 patterns, read 11 files, ran 3 shell commands (ctrl+o to
+  expand)
+
+● Con esto ya tengo todo lo necesario. Ahora escribo los documentos.
+
+  Write(docs\java.md) -- 192 lines: JDK, BOMs, Modulith, persistencia,
+  gates, gotchas
+  Write(docs\data-model.md) -- 89 lines: esquema completo (9 tablas, ERD,
+  indices)
+  Write(docs\infrastructure.md) -- 96 lines: Compose, perfiles, 1 TODO
+  (CI/CD ausente)
+  Write(docs\business.md) -- 29 lines: 2 secciones con TODO (quien paga,
+  ecosistema, tono)
+  Write(AGENTS.md) -- 74 lines: tabla de contenidos
+  Write(CLAUDE.md) -- 5 lines: delega a AGENTS.md
+  Write(docs\claims-ledger.md) -- 30 lines: 13 afirmaciones, 12 confirmadas
+  por fuente directa, 1 TODO
+
+  Ran 1 shell command -- todos los enlaces resuelven a archivos reales
+
+● Paquete de contexto completo. Un hallazgo real quedo documentado en
+  docs/java.md y AGENTS.md: pom.xml fija JDK 21 pero el Dockerfile compila y
+  corre las 3 etapas sobre eclipse-temurin:25 -- confirmaste que 21 es el
+  target real, asi que el Dockerfile queda marcado como desfase pendiente
+  de corregir.
+
+  Para commitear:
+  git add AGENTS.md CLAUDE.md docs/business.md docs/data-model.md
+  docs/infrastructure.md docs/java.md docs/claims-ledger.md
+  git commit -m "docs: agrega el paquete de contexto Java para agentes de IA"
+
+  Antes de eso vale la pena: completar los TODO de docs/business.md (quien
+  paga, ecosistema) cuando tengas esa info a mano, y decidir si corriges el
+  Dockerfile a JDK 21 o subes pom.xml a 25.
+
+  Done 8:54
+
+❯ si el dockerfile compila y corre las 3 etapas en eclipse-temurin:25
+  entonces la versión de jdk 21 del pom.xml está errada, corrígela y corre
+  make up-ministral para que hagas una prueba
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(pom.xml) -- java.version: 21 -> 25 (comentario actualizado: "JDK 25
+  LTS: coincide con los tags eclipse-temurin:25 del Dockerfile")
+
+● Ahora actualizo la documentacion generada para reflejar JDK 25 como target
+  real, y luego corro make up-ministral.
+
+  Update(docs\java.md) -- "JDK objetivo": corregido a 25, alineado con el
+  Dockerfile. Elimina el hallazgo de desfase (ya no aplica).
+  Update(AGENTS.md) -- elimina la nota "JDK 21 vs 25" (ya no aplica)
+  Update(docs\claims-ledger.md) -- "El JDK objetivo es 25, alineado entre
+  pom.xml y el Dockerfile" (confirmada: usuario corrigio pom.xml de 21 a 25)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● make up-ministral no reconstruye la imagen api (no lleva --build), y ya
+  existe una imagen base-conocimiento-api de hace 5 dias -- construida con
+  el pom.xml viejo (JDK 21). Para que la prueba valide de verdad el cambio a
+  JDK 25, la corro con --build.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● El build compilo y arranco el stack completo (db, ollama, docling-serve,
+  api) sin errores bajo JDK 25. Verifico que la API realmente este sana, no
+  solo que el contenedor arranco.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● El build paso: mvnw clean package compilo bajo JDK 25 (el nuevo
+  java.version), la imagen se armo, Flyway aplico las migraciones al
+  arrancar, y /actuator/health responde UP con los 4 contenedores healthy
+  (kb-api, kb-db, kb-ollama, kb-docling-serve). Los modelosFaltantes
+  (bge-m3, gemma3:4b) son esperados -- no corri make pull-models.
+
+  Resumen: pom.xml corregido de 21 a 25, docs actualizados, stack Ministral
+  levantado y validado; queda corriendo.
+
+  Done 8:59
+
+❯ antes de bajar el stack con docker compose down, haz una prueba e2e
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Para un e2e real (ingesta -> embeddings -> retrieval -> sintesis con
+  citas) hacen falta los modelos, que todavia no estan descargados. Bajo
+  bge-m3 (embeddings), el reranker y Ministral (el LLM de este perfil) --
+  me salto gemma3:4b porque solo lo usa el Destilador de Teams, deshabilitado
+  por defecto. Son ~4 GB en total.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Reranker verificado (hash correcto). Ahora el modelo Ministral y confirmo
+  que bge-m3 haya terminado de descargar.
+
+  Read 2 files, listed 1 directory, ran 6 shell commands (ctrl+o to expand)
+
+● Copio este documento de muestra al vault, lo ingesto, y pregunto sobre su
+  contenido para validar el pipeline completo.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Detecto el archivo y creo 1 chunk. Ahora espero que TrabajadorEmbebido lo
+  drene de la cola (corre cada 2s) y confirmo que quedo embebido.
+
+  Read 2 files, ran 12 shell commands (ctrl+o to expand)
+
+● Chunk embebido y con FTS. Ahora la prueba completa: pregunto al pipeline
+  real via /api/ask y confirmo que sintetiza con cita.
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Los campos correctos son q y projectId (no pregunta/proyecto).
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● La primera inferencia real con Ministral esta en curso en background (el
+  timeout configurado para este perfil es 450s en frio). Espero la
+  notificacion de finalizacion antes de seguir.
+
+  [background command bsm7ck6zg -- ~15 min de espera real]
+
+● Background command "Ask a question through the full 7-stage pipeline with
+  correct payload" completed (exit code 0)
+
+  Read 1 file (ctrl+o to expand)
+
+● Prueba e2e completa y exitosa -- el pipeline de 7 etapas funciono de punta
+  a punta:
+
+  - Planificador: eligio search_docs + search_unified para la pregunta.
+  - Retrieval: encontro el chunk ingerido, rerank=9.52 (por encima del
+    umbral de relevancia -- no se descarto).
+  - Sintesis (Ministral): respuesta correcta, en prosa, citando [1] -- el
+    documento real:
+
+    "Para desplegar el servicio necesitas: Docker Desktop con el motor
+    iniciado [1]. En Windows, ademas, debes copiar wslconfig.example a
+    .wslconfig... [1] Si tu maquina tiene una GPU NVIDIA, Docker Compose
+    usara automaticamente compose.gpu.yml... [1]"
+
+  - Auditoria: quedo registrada en query_log (queryLogId: 1).
+  - Latencia total: ~309s (primera inferencia en frio, dentro del timeout
+    de 450s configurado para este perfil).
+
+  Confirma que la ingesta, el embedding, las 4 senales de retrieval, el
+  umbral de relevancia y la sintesis con citas funcionan correctamente bajo
+  JDK 25. Ahora bajo el stack.
+
+  Ran 1 shell command -- stack abajo, todos los contenedores detenidos y
+  removidos limpiamente
+
+  Estado persistente que no se pierde con down (por diseno): .data/ (modelos
+  descargados, reutilizables), el archivo de prueba copiado al vault (fuera
+  del repo), datos en Postgres (chunk, embedding, query_log, en el volumen).
+
+  Resumen de la sesion: pom.xml corregido a JDK 25, docs regeneradas
+  coherentes con eso, y validado con una prueba e2e real que el pipeline
+  completo funciona bajo el nuevo JDK.
+
+  Done 9:17
+
+❯ commitea los cambios
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Diff limpio, solo el cambio de JDK. .gitignore y README.md tienen cambios
+  previos a esta sesion (ya estaban modificados al empezar), asi que los
+  dejo fuera -- hago commit solo de lo que trabajamos juntos.
+
+  Committed 5c8df5c, ran 1 shell command (ctrl+o to expand)
+
+● Commit 5c8df5c creado en dev (1 commit por delante de origin/dev, sin
+  pushear). Quedan sin commitear, sin tocar, los cambios previos a esta
+  sesion: .gitignore/README.md modificados y .claude/, .mcp.json, scripts/
+  sin trackear.
+
+  Done 9:19

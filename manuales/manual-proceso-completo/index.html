@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Manual completo — de Fundamentos a Sprint cerrado, fotograma a fotograma</title>
+  <style>
+    :root {
+      --bg: #0f1320; --panel: #161b2c; --card: #1d2336; --line: #2a3350;
+      --txt: #e6e9f2; --muted: #97a0bd; --accent: #5b8cff; --ok: #36c275;
+      --warn: #e6a23c; --code: #0b0e18; --rojo: #ff6b7a; --resalte: #f43f6b;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--txt); }
+    body {
+      display: flex; flex-direction: column; min-height: 100vh;
+      font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+      font-size: 14px; line-height: 1.5;
+    }
+    a { color: var(--accent); }
+    code, .mono { font-family: ui-monospace, "Cascadia Code", "Consolas", monospace; }
+
+    header { padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5; }
+    .hbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; max-width: 880px; margin: 0 auto; }
+    header .title { font-weight: 700; font-size: 15px; line-height: 1.25; }
+    header .title small { display: block; color: var(--muted); font-weight: 400; font-size: 11px; }
+
+    main { flex: 1 1 auto; width: 100%; max-width: 880px; margin: 0 auto; padding: 32px 16px 64px; }
+    .eyebrow { font-family: ui-monospace, "Cascadia Code", "Consolas", monospace; font-size: 12px;
+      text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 10px; }
+    h1 { font-size: 26px; line-height: 1.25; margin: 0 0 14px; }
+    .lead { color: var(--muted); font-size: 15px; line-height: 1.6; max-width: 68ch; margin: 0 0 20px; }
+    p { line-height: 1.6; }
+
+    h2 { font-size: 19px; margin: 50px 0 10px; }
+    h2 .escena { display: block; font-family: ui-monospace, "Cascadia Code", "Consolas", monospace;
+      font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--accent);
+      font-weight: 600; margin-bottom: 4px; }
+    h3 { font-size: 15px; margin: 24px 0 6px; }
+
+    .bloque { display: inline-block; background: rgba(91,140,255,.12); color: var(--accent);
+      border: 1px solid rgba(91,140,255,.35); border-radius: 999px; padding: 3px 14px;
+      font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+      margin: 56px 0 4px; }
+
+    .nav-links { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px;
+      font-weight: 600; margin: 0 0 22px; }
+    .toc { background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+      padding: 14px 18px; margin: 20px 0 8px; font-size: .88rem; }
+    .toc b { display: block; margin-bottom: 8px; color: var(--muted); text-transform: uppercase;
+      font-size: .74rem; letter-spacing: .06em; }
+    .toc ol { margin: 0; padding-left: 20px; columns: 2; column-gap: 24px; }
+    .toc li { margin: 3px 0; break-inside: avoid; }
+
+    /* FOTOGRAMA */
+    .foto { position: relative; margin: 26px 0 6px; }
+    .foto .fnum { position: absolute; top: -13px; left: -8px; z-index: 2;
+      background: var(--resalte); color: #fff; border-radius: 999px; min-width: 2em;
+      height: 2em; line-height: 2em; text-align: center; font-weight: 700; font-size: .9rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,.5); padding: 0 6px; }
+    .foto .fnum::before { content: "\25b6 "; }
+    .shot { border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
+      box-shadow: 0 2px 12px rgba(0,0,0,.35); background: var(--card); }
+    .shot .barra { background: var(--panel); border-bottom: 1px solid var(--line);
+      padding: 7px 12px; font-size: .78rem; color: var(--muted); display: flex; gap: 8px;
+      align-items: center; }
+    .shot .barra .puntos { display: inline-flex; gap: 5px; flex: 0 0 auto; }
+    .shot .barra .puntos i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .shot .barra .puntos i:nth-child(1) { background: #f87171; }
+    .shot .barra .puntos i:nth-child(2) { background: #fbbf24; }
+    .shot .barra .puntos i:nth-child(3) { background: #34d399; }
+    .shot .barra .url { font-family: ui-monospace, "Cascadia Code", "Consolas", monospace; }
+    .shot .cuerpo { padding: 0; line-height: 0; }
+    .shot .cuerpo img { display: block; width: 100%; height: auto; }
+    .real { display: inline-flex; align-items: center; gap: 5px; font-size: .72rem;
+      font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ok);
+      background: rgba(54,194,117,.1); border: 1px solid rgba(54,194,117,.4);
+      border-radius: 999px; padding: 2px 9px; margin-left: auto; }
+    .real::before { content: "\25cf"; font-size: .6rem; }
+    .accion { background: rgba(91,140,255,.07); border: 1px solid rgba(91,140,255,.25);
+      border-top: none; border-radius: 0 0 10px 10px; padding: 9px 14px; font-size: .9rem;
+      color: var(--txt); }
+    .accion b { color: var(--accent); }
+
+    .term { background: var(--code); color: #cdd6f4; border-radius: 10px 10px 0 0;
+      font-family: ui-monospace, "Cascadia Code", "Consolas", monospace; font-size: .82rem;
+      overflow-x: auto; border: 1px solid var(--line); border-bottom: none; }
+    .term .tbar { background: #070911; color: #8b93b3; padding: 7px 12px; font-size: .75rem;
+      border-radius: 10px 10px 0 0; display: flex; gap: 8px; align-items: center;
+      border-bottom: 1px solid var(--line); }
+    .term pre { margin: 0; padding: 14px 16px; white-space: pre-wrap; word-break: break-word; }
+    .term .ok-line { color: #a6e3a1; }
+    .term .dim { color: #7f849c; }
+    .term .warn-line { color: #f9e2af; }
+    .foto .term + .accion { border-radius: 0 0 10px 10px; }
+
+    .nota { background: rgba(230,162,60,.07); border: 1px solid rgba(230,162,60,.3);
+      border-left: 3px solid var(--warn); border-radius: 8px; padding: 10px 14px;
+      margin: 16px 0; font-size: .92rem; color: var(--txt); }
+    .hallazgo { background: rgba(255,107,122,.07); border: 1px solid rgba(255,107,122,.3);
+      border-left: 3px solid var(--rojo); border-radius: 8px; padding: 10px 14px;
+      margin: 16px 0; font-size: .92rem; color: var(--txt); }
+    .ok-box { background: rgba(54,194,117,.07); border: 1px solid rgba(54,194,117,.3);
+      border-left: 3px solid var(--ok); border-radius: 8px; padding: 10px 14px;
+      margin: 16px 0; font-size: .92rem; color: var(--txt); }
+
+    table { border-collapse: collapse; width: 100%; margin: 16px 0; font-size: .88rem;
+      background: var(--card); }
+    th, td { border: 1px solid var(--line); padding: 8px 10px; text-align: left;
+      vertical-align: top; color: var(--txt); }
+    th { background: var(--panel); color: var(--muted); }
+    main code { background: var(--code); border: 1px solid var(--line); border-radius: 4px;
+      padding: 1px 5px; font-size: .9em; color: var(--txt); }
+    .term code { background: transparent; padding: 0; border: none; }
+    ul.check { list-style: none; padding-left: 0; }
+    ul.check li { padding-left: 1.6em; position: relative; margin: 6px 0; }
+    ul.check li::before { content: "\2610"; position: absolute; left: 0; color: var(--accent); font-size: 1.05em; }
+    ul.check li.hecho::before { content: "\2611"; color: var(--ok); }
+
+    footer { padding: 14px 16px; border-top: 1px solid var(--line); }
+    footer p { max-width: 860px; margin: 0 auto; color: var(--muted); font-size: 11px; }
+
+    @media (prefers-color-scheme: light) {
+      /* Pagina con identidad oscura fija a proposito. */
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="hbar">
+      <div class="title">Metodo Arkandia
+        <small>manual completo — fotograma a fotograma, de f0 a sprint cerrado</small>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <p class="eyebrow">manual completo — sin saltarse nada</p>
+    <h1>De "Fundamentos de colaboración" a "Sprint cerrado": el proceso entero, un fotograma a la vez</h1>
+    <p class="lead">Esta página recorre el <a href="../../proceso-operacional-con-ia/">proceso
+      operacional con IA</a> completo — los 6 carriles, de punta a punta — sobre
+      <code>base-conocimiento</code>, sin asumir que ningún nodo ya está resuelto. Donde algo ya
+      se había hecho antes de esta página, se muestra la evidencia real de cuándo y cómo se hizo,
+      no una simulación; donde algo <b>no</b> se había hecho, se dice tal cual, sin maquillarlo.
+      El bloque C (el ciclo por issue) reutiliza el <a href="../registro-caso-real-field-injection/">caso
+      real ya documentado</a> — issue #7, PR #8 — en vez de tocar GitHub de nuevo sin necesidad.</p>
+    <nav class="nav-links">
+      <a href="../../proceso-operacional-con-ia/">&larr; Ver el diagrama del proceso</a>
+      <a href="../registro-caso-real-actuator/">Caso Actuator &rarr;</a>
+      <a href="../registro-caso-real-field-injection/">Caso field injection &rarr;</a>
+    </nav>
+
+    <div class="toc"><b>De un vistazo</b>
+      <ol>
+        <li>Fundamentos de colaboración</li>
+        <li>Instalar el agente y los gestos base</li>
+        <li>Autenticar GitHub y sumar MCP</li>
+        <li>Generar el contexto del repo</li>
+        <li>Activar los hooks</li>
+        <li>Gobernanza: Ruleset y CI</li>
+        <li>Deuda técnica y pruebas heredadas</li>
+        <li>El ciclo por issue, de punta a punta</li>
+        <li>Cierre del sprint</li>
+      </ol>
+    </div>
+
+    <!-- ═══════════════════════ BLOQUE A ═══════════════════════ -->
+    <p class="bloque">Bloque A &middot; Preparar la máquina</p>
+
+    <h2><span class="escena">escena 1 &middot; nodo f0</span>Fundamentos de colaboración</h2>
+    <p>Antes de sumar cualquier agente, el proceso pide confirmar cuatro prácticas que son del
+      equipo, no del agente — si falta alguna, un agente de IA no la resuelve, la amplifica. Esto
+      es lo que hay realmente en <code>base-conocimiento</code>, verificado, no asumido:</p>
+
+    <ul class="check">
+      <li class="hecho"><b>Control de versiones con Git</b> — real: este mismo repositorio, con
+        historia real desde <code>4cdbb7a Initial commit</code> hasta hoy, sin ningún <code>.zip</code>
+        reenviado por chat.</li>
+      <li class="hecho"><b>Se trabaja con Pull Requests</b> — real: PR
+        <a href="https://github.com/G3A/workshop-desarrollo-sw-guiado-por-ia/pull/6">#6</a> (caso
+        Actuator) y PR <a href="https://github.com/G3A/workshop-desarrollo-sw-guiado-por-ia/pull/8">#8</a>
+        (caso field injection), ambos reales, ambos mergeados — nadie pushea directo a <code>dev</code>.</li>
+      <li><b>Hay revisión de código</b> — <b>parcial, con honestidad:</b> es un repo de un solo
+        colaborador, sin una segunda persona que lea el diff. Lo que sí hay es una pasada de
+        <code>/code-review</code> antes de mergear (revisión asistida por IA) — sustituye el gesto,
+        no la práctica exacta que pide este nodo. Queda anotado como brecha real, no escondida.</li>
+      <li class="hecho"><b>Existe documentación base</b> — real: <code>README.md</code>,
+        <code>AGENTS.md</code> y <code>CLAUDE.md</code> en la raíz de <code>base-conocimiento/</code>.</li>
+    </ul>
+
+    <div class="nota"><b>Lo que este nodo enseña:</b> 3 de 4 fundamentos están sólidos; el de
+      revisión humana es una decisión consciente de un proyecto de un solo dev, no un descuido — y
+      el proceso no lo esconde solo porque el resto esté verde.</div>
+
+    <!-- ESCENA 2 -->
+    <h2><span class="escena">escena 2 &middot; nodos fd1 &middot; fd2 &middot; fd3</span>Instalar el agente y los gestos base</h2>
+    <p>El agente usado en todo este recorrido es <a href="https://claude.com/product/claude-code" target="_blank" rel="noopener">Claude Code</a> —
+      el mismo que escribe esta página. El repo piloto es <code>base-conocimiento</code>: chico,
+      real, con historia genuina, no un ejemplo de juguete.</p>
+
+    <p>Los cuatro gestos base (<code>fd2</code>) no son teoría — los cuatro se usaron de verdad
+      durante la construcción de esta misma página y del caso field injection:</p>
+    <ul>
+      <li><b>@menciones:</b> cada archivo tocado (<code>claims-ledger.md</code>, <code>java.md</code>,
+        los scripts de captura) se referenció por ruta real, nunca por descripción.</li>
+      <li><b>Modo plan:</b> usado explícitamente para replantear la estructura de esta serie de
+        páginas — un plan escrito a archivo, revisado antes de tocar código.</li>
+      <li><b>Permisos:</b> cada comando de red o de escritura (<code>git push</code>, <code>gh pr
+        merge</code>) pidió su propia autorización — nada corrió en automático sin que quedara claro
+        qué iba a hacer.</li>
+      <li><b>Puntos de control / deshacer:</b> ejemplo real, no hipotético — durante el caso field
+        injection, un commit vacío de diagnóstico se deshizo con <code>git reset --soft</code> +
+        <code>push --force-with-lease</code> sobre la propia rama de feature, sin perder el commit
+        real ni tocar <code>dev</code>.</li>
+    </ul>
+    <p><code>fd3</code> (contexto, ventana de tokens, elegir el modelo según la tarea) es
+      alfabetización, no una acción con evidencia propia — se aplicó implícitamente: esta serie de
+      páginas se construyó en una sola sesión larga, sin necesitar <code>/clear</code> a mitad de
+      una tarea que dependiera de memoria de pasos anteriores.</p>
+
+    <!-- ESCENA 3 -->
+    <h2><span class="escena">escena 3 &middot; nodos a1 &middot; a2 &middot; G1</span>Autenticar GitHub y sumar MCP</h2>
+
+    <div class="foto"><span class="fnum">1</span>
+      <div class="term">
+        <div class="tbar">gh auth status &middot; salida real</div>
+        <pre><span class="dim">$ gh auth status</span>
+github.com
+<span class="ok-line">  ✓ Logged in to github.com account G3A (keyring)</span>
+  - Active account: true
+  - Git operations protocol: https
+  - Token scopes: 'gist', 'read:org', 'repo'</pre>
+      </div>
+      <div class="accion"><b>Resultado:</b> autenticado — todo lo que sigue (issues, PRs, checks,
+        merges) puede correr desde la terminal.</div>
+    </div>
+
+    <p>El paso <code>a2</code> (<code>/sdlc-ia:instrument-agent-java</code>) ya se corrió antes de
+      esta sesión — evidencia real, el commit que lo hizo:</p>
+
+    <div class="foto"><span class="fnum">2</span>
+      <div class="term">
+        <div class="tbar">git log &middot; commit real de instrument-agent-java</div>
+        <pre><span class="dim">$ git log --oneline --all | grep instrument-agent</span>
+<span class="ok-line">ca59e26 Instrumenta base-conocimiento con /sdlc-ia:instrument-agent-java</span></pre>
+      </div>
+      <div class="accion"><b>Qué dejó:</b> 7 hooks del agente en <code>scripts/agent-hooks/</code>
+        (guarda de secretos, formateo automático, bloqueo de comandos peligrosos, dependency sweep,
+        audit log, version-pin guard, generated-files guard) y el registro de dos servidores MCP en
+        <code>.mcp.json</code> — GitHub y DBHub.</div>
+    </div>
+
+    <div class="foto"><span class="fnum">3</span>
+      <div class="term">
+        <div class="tbar">claude doctor &middot; salida real</div>
+        <pre><span class="dim">$ claude doctor</span>
+Running: native (2.1.246)
+<span class="warn-line">Last update attempt: failed (install_failed) — 2026-08-26</span>
+
+<span class="warn-line">Invalid settings</span>
+- .mcp.json › mcpServers.ark_github: Missing environment variables: GITHUB_PAT
+- .mcp.json › mcpServers.ark_dbhub: Missing environment variables: APP_DSN
+
+No installation issues found.</pre>
+      </div>
+      <div class="accion"><b>El gate <code>G1</code> real, no idealizado:</b> la instalación en sí
+        está bien ("No installation issues found"), pero los dos servidores MCP registrados en
+        <code>a2</code> están <b>sin variables de entorno</b> — no van a conectar hasta que
+        <code>GITHUB_PAT</code> y <code>APP_DSN</code> se configuren. Es exactamente el tipo de
+        cosa que este gate existe para atrapar antes de seguir, y en este repo sigue pendiente.</div>
+    </div>
+
+    <!-- ═══════════════════════ BLOQUE B ═══════════════════════ -->
+    <p class="bloque">Bloque B &middot; Preparar el proyecto</p>
+
+    <h2><span class="escena">escena 4 &middot; nodos G2 &middot; b1/bi &middot; b2</span>Generar el contexto del repo</h2>
+    <p>Antes de que existiera <code>AGENTS.md</code>, el gate <code>G2</code>
+      (<code>test -f AGENTS.md</code>) habría dicho "no existe" y ruteado a <code>b1</code>
+      (generación fresca). Eso es exactamente lo que pasó — evidencia real del commit que lo creó:</p>
+
+    <div class="foto"><span class="fnum">4</span>
+      <div class="term">
+        <div class="tbar">git show --stat &middot; commit real que genera AGENTS.md</div>
+        <pre><span class="dim">$ git show --stat b5501c1</span>
+docs: bootstrap Java context pack for AI coding agents
+
+Genera el paquete de contexto de base-conocimiento con /sdlc-ia:agent-context-java
+en modo augment: AGENTS.md, CLAUDE.md, docs/{business,data-model,infrastructure,
+java,target-user,design}.md, docs/adrs/{README,adr-template} y la ADR-0012...
+
+<span class="ok-line"> base-conocimiento/AGENTS.md   | 74 ++++++++++
+ base-conocimiento/CLAUDE.md   |  5 +</span></pre>
+      </div>
+      <div class="accion"><b>El matiz real:</b> el propio commit dice "modo augment" — no porque
+        <code>AGENTS.md</code> ya existiera (no existía), sino porque el repo ya tenía 11 ADRs y
+        <code>architecture.md</code> escritos a mano antes de sumar el agente: la skill detectó esos
+        docs parciales y completó alrededor, en vez de regenerar todo desde cero. <code>b1</code> y
+        <code>bi</code> son el mismo comando — la skill decide sola qué falta.</div>
+    </div>
+
+    <div class="foto"><span class="fnum">5</span>
+      <div class="term">
+        <div class="tbar">grep TODO en AGENTS.md &middot; salida real</div>
+        <pre><span class="dim">$ grep -n "TODO" base-conocimiento/AGENTS.md</span>
+<span class="ok-line">(sin resultados)</span></pre>
+      </div>
+      <div class="accion"><b><code>b2</code> resuelto:</b> cero <code>&lt;!-- TODO --&gt;</code>
+        pendientes hoy en <code>AGENTS.md</code> — los huecos que la skill dejó para criterio
+        humano ya se completaron.</div>
+    </div>
+
+    <h2><span class="escena">escena 5 &middot; nodos b3 &middot; b4</span>Activar los hooks</h2>
+    <div class="foto"><span class="fnum">6</span>
+      <div class="term">
+        <div class="tbar">terminal &middot; salida real</div>
+        <pre><span class="dim">$ ls lefthook.yml .claude/hooks</span>
+<span class="ok-line">lefthook.yml</span>
+<span class="warn-line">ls: cannot access '.claude/hooks': No such file or directory</span></pre>
+      </div>
+      <div class="accion"><b>Matiz real:</b> <code>lefthook.yml</code> sí está en la raíz del
+        monorepo. Los hooks del <b>agente</b> (los que instaló <code>a2</code>) no viven en
+        <code>.claude/hooks/</code> como sugiere el chequeo genérico del proceso, sino en
+        <code>scripts/agent-hooks/</code>, registrados desde <code>.claude/settings.json</code> —
+        el gate literal de este nodo no los habría encontrado en la ruta que busca; están, solo que
+        en otra ruta.</div>
+    </div>
+    <p><code>b4</code> (<code>lefthook install</code>) no hace falta demostrarlo por separado: ya
+      se vio <b>corriendo de verdad</b>, dos veces, durante el caso field injection — el hook
+      <code>pre-commit</code> y el <code>pre-push</code> dispararon solos en cada commit y cada
+      push reales, sin que nadie los invocara a mano. Esa es la prueba de que están instalados, no
+      solo presentes en un archivo.</p>
+
+    <!-- ESCENA 6 -->
+    <h2><span class="escena">escena 6 &middot; nodos pz &middot; pz2</span>Gobernanza: Ruleset y CI</h2>
+    <p><code>pz</code> pide dos cosas: instrumentar el proyecto con los controles deterministas
+      (<code>/sdlc-ia:instrument-project-java</code>) y, aparte, configurar un <b>Ruleset</b> de
+      GitHub a mano. La primera mitad sí se hizo — evidencia real:</p>
+
+    <div class="foto"><span class="fnum">7</span>
+      <div class="term">
+        <div class="tbar">git show --stat &middot; commit real de instrument-project-java</div>
+        <pre><span class="dim">$ git show --stat 7ee8ae9</span>
+Instrumenta base-conocimiento con /sdlc-ia:instrument-project-java
+
+Instala/verifica los 8 controles deterministas de verdad: -Werror (con 5 fixes
+reales de warnings preexistentes), Spotless+Checkstyle (ratchet desde dev,
+Checkstyle en modo reporte con 35 violaciones de brownfield sin triage),
+Makefile parcheado, lefthook, gitleaks solo en CI, y GitHub Actions...
+
+<span class="ok-line">make check da 122 tests, 0 fallas, 0 errores -- verde de verdad, con Docker</span></pre>
+      </div>
+      <div class="accion"><b>Qué quedó instalado:</b> build estricto, estilo, un <code>make
+        check</code> único, hooks, escaneo de secretos en CI, ArchUnit, y el workflow de CI mismo —
+        7 de los 8 controles, verificados rompiéndolos de verdad en su momento (no solo instalados).</div>
+    </div>
+
+    <div class="hallazgo"><b>La segunda mitad de <code>pz</code>, sin hacer todavía:</b> se
+      verificó en vivo, no se asumió —</div>
+
+    <div class="foto"><span class="fnum">8</span>
+      <div class="term">
+        <div class="tbar">gh api rulesets &middot; salida real</div>
+        <pre><span class="dim">$ gh api repos/G3A/workshop-desarrollo-sw-guiado-por-ia/rulesets</span>
+<span class="warn-line">[]</span></pre>
+      </div>
+      <div class="accion"><b>Resultado real, sin maquillar:</b> cero Rulesets configurados. El CI
+        corre y en la práctica nadie mergea con checks en rojo, pero no hay ninguna regla de GitHub
+        que lo <i>exija</i> — un reviewer podría saltárselo hoy mismo y GitHub no lo impediría. Es
+        trabajo pendiente real de este nodo, no un "no aplica".</div>
+    </div>
+
+    <p><code>pz2</code> (un commit vacío para confirmar que el pipeline dispara) tampoco se hizo
+      como paso aislado en su momento — pero, sin buscarlo, terminó cumpliéndose de todos modos:
+      durante el caso field injection, un commit vacío real (<code>git commit --allow-empty</code>)
+      se usó para diagnosticar un CI que no arrancaba. Distinto propósito, mismo gesto, misma
+      confirmación de que el workflow sí dispara con un push real.</p>
+
+    <!-- ESCENA 7 -->
+    <h2><span class="escena">escena 7 &middot; nodos ds &middot; GT &middot; bt/GT2/bi2</span>Deuda técnica y pruebas heredadas</h2>
+    <p><code>ds</code> (<code>/revisar-deuda-tecnica</code>) no se ha corrido todavía sobre este
+      repo — no hay un analizador estático tipo SonarQube o CodeQL conectado. Lo más cercano que
+      existe es Checkstyle en modo reporte, con <b>35 violaciones de brownfield sin triage</b>
+      (mencionadas en <code>AGENTS.md</code> y visibles en cada corrida de CI) — deuda real,
+      identificada, pendiente de la pasada que este nodo describe.</p>
+
+    <div class="foto"><span class="fnum">9</span>
+      <div class="term">
+        <div class="tbar">terminal &middot; salida real</div>
+        <pre><span class="dim">$ test -d test -o -d tests -o -d __tests__ && echo "existe" || echo "no existe"</span>
+<span class="warn-line">no existe</span>
+<span class="dim">$ ls base-conocimiento/src/test</span>
+<span class="ok-line">java</span>   <span class="dim">← convencion Maven, no la que busca el gate literal</span></pre>
+      </div>
+      <div class="accion"><b>Un hallazgo real sobre el proceso mismo:</b> el gate <code>GT</code>
+        busca <code>test/</code>, <code>tests/</code> o <code>__tests__/</code> — convenciones de
+        JS/Node. Un proyecto Maven guarda sus pruebas en <code>src/test/java</code>, así que este
+        chequeo literal diría "no existe" y rutearía a <code>bt</code> (generar pruebas desde cero)
+        sobre un proyecto que en realidad ya tiene <b>122 pruebas reales</b>. Falso negativo del
+        propio gate, no del proyecto — vale la pena ajustar la condición para stacks Java/Maven.</div>
+    </div>
+
+    <p>Como el proyecto no es legacy sin pruebas (tiene suite real desde su origen, con
+      Testcontainers y jqwik incluidos), <code>bt</code>, <code>GT2</code> y <code>bi2</code>
+      (generar pruebas, mapear costuras, registrar deuda de costuras) no aplicaron en la práctica —
+      no porque se hayan saltado, sino porque la condición que los dispara nunca se cumplió de
+      verdad, solo por el defecto del gate anotado arriba.</p>
+
+    <!-- ═══════════════════════ BLOQUE C ═══════════════════════ -->
+    <p class="bloque">Bloque C &middot; El ciclo por issue (se repite issue tras issue)</p>
+
+    <h2><span class="escena">escena 8 &middot; nodo bo1</span>Tomar el hallazgo y abrir el issue</h2>
+    <p><code>base-conocimiento/docs/claims-ledger.md:17</code> y <code>docs/java.md:64-65</code>
+      dejaban un TODO pendiente: confirmar con grep dirigido si había field injection en el código.
+      El grep dirigido, corrido de lectura, confirmó que no:</p>
+
+    <div class="foto"><span class="fnum">10</span>
+      <div class="term">
+        <div class="tbar">grep dirigido sobre base-conocimiento/src/main &middot; salida real</div>
+        <pre><span class="dim">$ grep -rn "@Autowired" src/main</span>
+<span class="ok-line">0 resultados</span>
+<span class="dim">$ grep -rn "@Inject" src/main</span>
+<span class="ok-line">0 resultados</span>
+<span class="dim">$ grep -rn "@Value" src/main</span>
+<span class="ok-line">14 resultados, TODOS como parametro de constructor</span></pre>
+      </div>
+    </div>
+
+    <div class="foto"><span class="fnum">11</span>
+      <div class="shot">
+        <div class="barra"><span class="puntos"><i></i><i></i><i></i></span>
+          <span class="url">github.com/G3A/workshop-desarrollo-sw-guiado-por-ia/issues/7</span>
+          <span class="real">captura real</span></div>
+        <div class="cuerpo"><img src="../registro-caso-real-field-injection/assets/shots/01-issue-creado.png" alt="Issue #7 real, recien creado, con el contexto y la evidencia del grep dirigido"></div>
+      </div>
+      <div class="accion"><b>Qué se hizo:</b> <code>gh issue create</code> con el contexto
+        completo. Nace el issue #7.</div>
+    </div>
+
+    <h2><span class="escena">escena 9 &middot; nodos c1 &middot; c4a &middot; c2</span>Planificar, crear la rama y ejecutar el cambio</h2>
+    <p>El cambio (2 docs, misma corrección en ambos) no ameritó el ciclo completo de
+      <code>github-plan-build</code> — el plan quedó en una línea: actualizar el estado del claim
+      de "TODO" a "confirmada", citando el grep. Con eso claro, la rama:</p>
+
+    <div class="foto"><span class="fnum">12</span>
+      <div class="term">
+        <div class="tbar">terminal &middot; salida real</div>
+        <pre><span class="dim">$ git checkout -b feature/7-doc-field-injection-confirmado</span>
+<span class="ok-line">Switched to a new branch 'feature/7-doc-field-injection-confirmado'</span></pre>
+      </div>
+    </div>
+
+    <div class="foto"><span class="fnum">13</span>
+      <div class="shot">
+        <div class="barra"><span class="puntos"><i></i><i></i><i></i></span>
+          Terminal real de la sesión de Claude Code (pwsh) <span class="real">captura real</span></div>
+        <div class="cuerpo"><img src="../registro-caso-real-field-injection/assets/shots/00-sesion-claude-code.png" alt="Captura real de la terminal de la sesion de Claude Code ejecutando el cambio"></div>
+      </div>
+      <div class="accion"><b>Qué se hizo:</b> <code>Edit</code> sobre <code>claims-ledger.md</code>
+        y <code>java.md</code>, citando el grep como fuente del claim corregido.</div>
+    </div>
+
+    <h2><span class="escena">escena 10 &middot; nodo c3</span>El gate antes de subir nada</h2>
+    <p>Sin cambios visuales, así que salta directo a la verificación en 4 capas — corrió igual,
+      aunque fuera "solo documentación":</p>
+
+    <div class="foto"><span class="fnum">14</span>
+      <div class="term">
+        <div class="tbar">git push -- hook pre-push (Lefthook) &middot; salida real, sin editar</div>
+        <pre><span class="dim">[INFO] Tests run: 122, Failures: 0, Errors: 0, Skipped: 2</span>
+<span class="ok-line">[INFO] BUILD SUCCESS</span>
+<span class="dim">[INFO] Total time:  01:11 min</span>
+<span class="ok-line">OK -- the repo is green</span>
+<span class="dim">✔️ base-conocimiento-check (103.86 seconds)</span></pre>
+      </div>
+      <div class="accion"><b>Local:</b> 122 tests, BUILD SUCCESS. <b>CI:</b> ver escena 11.
+        <b>Seguridad:</b> <code>gitleaks</code> dentro de <code>make ci</code>, sin hallazgos.
+        <b>Checklist humano:</b> diff de 2 líneas por archivo, releído antes de commitear.</div>
+    </div>
+
+    <div class="foto"><span class="fnum">15</span>
+      <div class="term">
+        <div class="tbar">terminal &middot; salida real (recortada)</div>
+        <pre><span class="dim">$ git commit -m "docs: confirma que no hay field injection...
+
+Closes #7"</span>
+<span class="ok-line">[feature/7-doc-field-injection-confirmado 0cbb256] docs: confirma...
+ 2 files changed, 6 insertions(+), 5 deletions(-)</span>
+<span class="dim">$ git push -u origin feature/7-doc-field-injection-confirmado</span></pre>
+      </div>
+    </div>
+
+    <h2><span class="escena">escena 11 &middot; nodos p1 &middot; G5</span>Abrir el PR y esperar el CI</h2>
+    <div class="foto"><span class="fnum">16</span>
+      <div class="shot">
+        <div class="barra"><span class="puntos"><i></i><i></i><i></i></span>
+          <span class="url">github.com/.../pull/8</span>
+          <span class="real">captura real</span></div>
+        <div class="cuerpo"><img src="../registro-caso-real-field-injection/assets/shots/02-pr-abierto.png" alt="PR #8 real, hacia dev, con el contexto del grep dirigido en el body"></div>
+      </div>
+      <div class="accion"><b>Qué se hizo:</b> PR #8 abierto hacia <code>dev</code>.</div>
+    </div>
+
+    <p>El webhook de GitHub tardó un par de minutos en disparar el CI esa vez — se confirmó con la
+      API que no era un problema real, se esperó, y terminó en verde:</p>
+
+    <div class="foto"><span class="fnum">17</span>
+      <div class="shot">
+        <div class="barra"><span class="puntos"><i></i><i></i><i></i></span>
+          <span class="url">github.com/.../pull/8/checks</span>
+          <span class="real">captura real</span></div>
+        <div class="cuerpo"><img src="../registro-caso-real-field-injection/assets/shots/03-ci-verde.png" alt="Checks del PR #8 real: check verde sobre el commit real"></div>
+      </div>
+      <div class="accion"><b>Resultado (confirmado con <code>gh run watch</code>):</b> job
+        <code>check</code> completo en 2m18s, con las mismas 10 anotaciones de Checkstyle no
+        bloqueantes de siempre.</div>
+    </div>
+
+    <p>Con el CI en verde, tocaba revisión de código — de nuevo, sin a quién asignarla: un solo
+      colaborador. Directo al merge.</p>
+
+    <h2><span class="escena">escena 12 &middot; nodo mg</span>Merge — y cierre del issue en el mismo paso</h2>
+    <p>Default branch reconfirmado (<code>main</code>, no <code>dev</code>) antes de mergear —
+    así que <code>Closes #7</code> no iba a auto-cerrar el issue. Merge y cierre, en el mismo
+    bloque, decidido de antemano:</p>
+
+    <div class="foto"><span class="fnum">18</span>
+      <div class="term">
+        <div class="tbar">merge + cierre -- un solo bloque, salida real</div>
+        <pre><span class="dim">$ gh pr merge 8 --merge --delete-branch
+$ gh issue close 7 --comment "Cerrado a mano: el PR #8 mergeo a dev..."</span>
+<span class="ok-line">✓ Closed issue G3A/workshop-desarrollo-sw-guiado-por-ia#7</span></pre>
+      </div>
+    </div>
+
+    <div class="foto"><span class="fnum">19</span>
+      <div class="shot">
+        <div class="barra"><span class="puntos"><i></i><i></i><i></i></span>
+          <span class="url">github.com/.../issues/7</span>
+          <span class="real">captura real</span></div>
+        <div class="cuerpo"><img src="../registro-caso-real-field-injection/assets/shots/04-merge-y-cierre.png" alt="Issue #7 real con badge Closed, cerrado en el mismo bloque que el merge del PR #8"></div>
+      </div>
+      <div class="accion"><b>Resultado:</b> <code>merged commit 583ea76 into dev</code>, issue #7
+        cerrado a mano en la misma tanda de comandos.</div>
+    </div>
+
+    <p><code>base-conocimiento</code> no tiene despliegue automático a staging (<code>cd1</code>/
+      <code>G8</code> no aplican, solo CI) — así que ahí terminó lo que deja rastro en GitHub. La
+      página completa de este caso, con más detalle, está en
+      <a href="../registro-caso-real-field-injection/">su propia carpeta</a>.</p>
+
+    <!-- ═══════════════════════ CIERRE ═══════════════════════ -->
+    <h2><span class="escena">nodo c5 &middot; nodo G7</span>Retrospectiva y cierre del sprint</h2>
+    <p>Este manual completo, de <code>f0</code> a acá, dejó tres cosas pendientes reales, no
+      escondidas: los dos MCP sin variables de entorno (<code>GITHUB_PAT</code>,
+      <code>APP_DSN</code>), el Ruleset de GitHub sin configurar, y las 35 violaciones de
+      brownfield de Checkstyle sin triage vía <code>/revisar-deuda-tecnica</code>. Ninguna bloqueó
+      el ciclo por issue — el gate <code>c3</code> sigue verde sin ellas — pero son la lista
+      concreta de qué atender antes de la próxima vuelta.</p>
+    <p>¿Quedan issues del sprint para este agente? No, para este recorrido — con eso,
+      <code>G7</code> cierra hacia <code>end_ok</code>: el sprint (para este caso) está cerrado, no
+      terminado — la próxima vez que se tome un issue, el ciclo vuelve a <code>bo1</code> con el
+      repo un poco más maduro que esta vuelta.</p>
+
+    <h2>El cierre: cada nodo del proceso, en una sola tabla</h2>
+    <table>
+      <tr><th>Carril</th><th>Nodo</th><th>Estado real</th></tr>
+      <tr><td rowspan="4">A · Preparar la máquina</td><td>f0 Fundamentos</td><td>3/4 — sin revisión humana (repo de 1 colaborador)</td></tr>
+      <tr><td>fd1-fd3 Instalación y alfabetización</td><td>Hecho — evidencia en escena 2</td></tr>
+      <tr><td>a1 gh auth · a2 instrument-agent-java</td><td>Hecho — commit <code>ca59e26</code></td></tr>
+      <tr><td>G1 Salud</td><td>Con hallazgo — MCP sin env vars</td></tr>
+      <tr><td rowspan="9">B · Preparar el proyecto</td><td>G2 / b1 / bi Contexto</td><td>Hecho — commit <code>b5501c1</code></td></tr>
+      <tr><td>b2 Completar TODOs</td><td>Hecho — 0 pendientes</td></tr>
+      <tr><td>b3 / b4 Hooks</td><td>Hecho — corriendo en vivo en cada commit/push</td></tr>
+      <tr><td>pz Instrumentar + Ruleset</td><td>Parcial — controles sí, Ruleset <b>no</b></td></tr>
+      <tr><td>pz2 Probar el pipeline</td><td>Cumplido sin querer (retrigger del caso field injection)</td></tr>
+      <tr><td>ds Deuda técnica</td><td>Pendiente — no corrido, 35 violaciones identificadas</td></tr>
+      <tr><td>GT Gate de pruebas</td><td>Falso negativo del gate (convención Maven no reconocida)</td></tr>
+      <tr><td>bt / GT2 / bi2 Pruebas heredadas</td><td>No aplica — ya hay 122 pruebas reales</td></tr>
+      <tr><td>bi2 Issue de costura</td><td>No aplica — GT2 nunca disparó "sí"</td></tr>
+      <tr><td rowspan="13">C · Ciclo por issue</td><td>bo1 Tomar el hallazgo</td><td>Real — issue #7</td></tr>
+      <tr><td>c1 / G3 Planificar</td><td>Real — plan de una línea</td></tr>
+      <tr><td>c4a Crear rama</td><td>Real — terminal</td></tr>
+      <tr><td>c2 Ejecutar tareas</td><td>Real — captura de la sesión</td></tr>
+      <tr><td>GUI / c3 / G4 Verificar</td><td>Real — 122 tests, BUILD SUCCESS</td></tr>
+      <tr><td>c4b / c4c Commit + push</td><td>Real — terminal</td></tr>
+      <tr><td>p1 Abrir PR</td><td>Real — PR #8</td></tr>
+      <tr><td>G5 CI</td><td>Real — verde, con demora de webhook documentada</td></tr>
+      <tr><td>cr / G6 Revisión</td><td>No aplica — 1 colaborador</td></tr>
+      <tr><td>mg Merge</td><td>Real — commit <code>583ea76</code></td></tr>
+      <tr><td>cd1 / G8 CD</td><td>No aplica — sin despliegue automático</td></tr>
+      <tr><td>c5 Retrospectiva</td><td>Esta misma sección</td></tr>
+      <tr><td>G7 / end_ok Cierre</td><td>Cerrado para este recorrido</td></tr>
+    </table>
+
+    <div class="ok-box"><b>Eso es el proceso entero.</b> 6 carriles, ~30 nodos distintos, ninguno
+      saltado — algunos en verde real, algunos con una brecha real anotada en vez de maquillada.
+      Un manual honesto sobre un repo real se ve así: no todo está perfecto, y decirlo es parte del
+      método.</div>
+  </main>
+
+  <footer>
+    <p>Manual construido sobre <code>base-conocimiento</code>, un proyecto real de este monorepo —
+      cada afirmación de este manual tiene su comando o su commit citado, verificable por
+      cualquiera. El bloque C reutiliza evidencia real ya publicada en
+      <a href="../registro-caso-real-field-injection/">el caso field injection</a> (issue
+      <a href="https://github.com/G3A/workshop-desarrollo-sw-guiado-por-ia/issues/7">#7</a>, PR
+      <a href="https://github.com/G3A/workshop-desarrollo-sw-guiado-por-ia/pull/8">#8</a>). Pedagogía
+      "fotograma a fotograma" y estilo heredados del
+      <a href="../registro-caso-real-actuator/">primer caso real</a> de este monorepo.</p>
+  </footer>
+</body>
+</html>
