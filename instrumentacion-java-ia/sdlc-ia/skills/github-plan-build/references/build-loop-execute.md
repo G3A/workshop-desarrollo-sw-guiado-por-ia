@@ -90,8 +90,10 @@ versus real, unclear error, possibly pre-existing — escalate rather than guess
 2. Commit with a message that includes `LINK-TOKEN` so the tracker attaches the commit
    to `TICKET`. **If `TICKET` has sub-issues and this commit finishes one of them**,
    the binding table's `CHILD-LINK` step (where defined) says how that commit
-   references the child instead of the parent, and how the child moves to its
-   completed state as its own work lands — not deferred to Step J. `LINK-TOKEN` on
+   references the child instead of the parent — but does **not** close it here. A
+   child's own code is not proven until Step I says the PR is green with comments
+   addressed; closing on the commit alone would mark a sub-issue done while CI can
+   still fail it or a reviewer can still ask for changes to it. `LINK-TOKEN` on
    `TICKET` itself is still reserved for whichever commit finishes the **last**
    remaining child, or for a ticket with no children at all.
 3. Push `BRANCH`.
@@ -126,6 +128,12 @@ On green, read the review comments via `PR-COMMENTS` and address each one: chang
 code, or reply explaining why not — never silently ignore one. Re-push, resolve the
 threads the platform lets you resolve, and go back to watching CI. A comment that asks
 for a product judgment nobody has answered is an escalation, not a code change.
+
+**Once the loop exits — green, no unaddressed comments — and only then**, if `TICKET`
+has sub-issues, this is where `CHILD-LINK`'s child-completion step runs: close each
+child whose commit already landed. Not earlier, for the same reason Step H's commit
+doesn't close them either — CI and review are what turn "committed" into "actually
+correct," and a sub-issue closed before that point can still be wrong.
 
 ## Step J — Wrap up
 

@@ -67,9 +67,9 @@ already-shipped pattern, not one invented here.
 
 | Step | GitHub |
 |---|---|
-| Read children | Already part of the `TICKET` binding's Phase 1 fetch — not a separate call |
+| Read children | The `TICKET` fetch returns only child numbers/titles/state via `subIssues`, not their bodies — Phase 1 already requires one further `gh issue view <child> --json title,body,state` per child, a real separate call, before Step A |
 | Per-child commit | `Refs #<child>` in the commit message that finishes that child's steps (see `build-loop-execute.md` Step F.1 and Step H.2) |
-| Child completion | `gh issue close <child> --comment "<summary>"` as soon as that child's steps land — not deferred to the final PR merge, which never touches sub-issues |
+| Child completion | `gh issue close <child> --comment "<summary>"` — held until Step I confirms CI green **and** every review comment is addressed, not fired the moment the child's commit lands. This skill's own Phase 3 rule ("issue state and labels are not authoritative") cuts both ways: closing #101 right after its commit, only to have CI fail or a reviewer request changes to that same code in Step I, leaves a sub-issue marked done while its code is still unmerged and possibly still being fixed |
 | Parent | Still resolved with `LINK-TOKEN` (`Closes #<parent>`) on the commit that finishes the **last** child, and `OPEN-PR` still opens exactly one PR against the parent — a decomposed ticket is still one branch, one PR |
 
 A `TICKET` with no sub-issues is unaffected — every step above is conditional on
