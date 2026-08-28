@@ -1,0 +1,61 @@
+<!--
+Placeholders:
+  {{TITULO}}               — the requirement's title, as settled in Phase 3
+  {{ORIGEN}}                — source document name/path, and any attachments that were not read
+  {{CONTEXTO}}              — why this requirement exists, taken from the document, never invented
+  {{ALCANCE_DENTRO}}        — what this round covers
+  {{ALCANCE_FUERA}}         — what was explicitly left out, and why
+  {{DECISIONES}}            — list of Decisions (the document or the user settled them)
+  {{SUPUESTOS}}             — list of Assumptions (nobody settled them — proceeding on a stated
+                               guess, one github-plan-build's own Phase 5 has to be able to catch)
+  {{IMPACTO_CONTRATO}}      — Phase 1's public-contract finding + Phase 3's decision on it
+  {{DOCUMENTACION_AFECTADA}} — concrete citations (file + line) of docs this change invalidates
+  {{CRITERIOS_VALIDACION}}  — in double form: what proves it is done, what would prove it is not
+  {{TASKS_LINK}}            — relative path to tasks.md
+-->
+
+# {{TITULO}}
+
+**Source:** {{ORIGEN}}
+
+## Context
+
+{{CONTEXTO}}
+
+## Scope
+
+**In this round:**
+
+{{ALCANCE_DENTRO}}
+
+**Explicitly out:**
+
+{{ALCANCE_FUERA}}
+
+## Decisions and assumptions
+
+**Decisions** (settled by the document or the user):
+
+{{DECISIONES}}
+
+**Assumptions** (nobody settled these — proceeding on a stated guess, not a silent one):
+
+{{SUPUESTOS}}
+
+## Public contract impact
+
+{{IMPACTO_CONTRATO}}
+
+## Documentation this change leaves out of date
+
+{{DOCUMENTACION_AFECTADA}}
+
+## Validation criteria
+
+**Satisfied when:**
+
+{{CRITERIOS_VALIDACION}}
+
+## Tasks
+
+Full breakdown in [{{TASKS_LINK}}]({{TASKS_LINK}}).

@@ -1,0 +1,30 @@
+<!--
+Placeholders:
+  {{TITULO}}        — mismo título que spec.md
+  {{SPEC_LINK}}      — ruta relativa a spec.md
+  {{TAREAS}}         — lista de tareas, funcionales primero, documentación al final — cada una
+                        con: archivo(s) que toca, qué hace, cómo se verifica. Cada tarea tiene que
+                        ser chica: un solo commit de la Fase C de github-plan-build, no una tarea
+                        que a su vez necesite desglosarse.
+-->
+
+# Tareas — {{TITULO}}
+
+Especificación completa en [{{SPEC_LINK}}]({{SPEC_LINK}}).
+
+Orden: trabajo funcional primero (esquema antes que servicio antes que endpoint), documentación al
+final — nunca antes del trabajo que describe.
+
+{{TAREAS}}
+
+<!--
+Formato sugerido por tarea:
+
+## N. Título corto de la tarea
+
+**Archivo(s):** ruta(s) exacta(s)
+
+**Qué hace:** una o dos frases.
+
+**Verificación:** cómo se confirma que quedó bien — un test, un comando, un chequeo manual.
+-->
