@@ -47,9 +47,10 @@ jesc() {
     | awk 'NR>1 { printf "\\n" } { printf "%s", $0 }'
 }
 
-payload_bash()  { printf '{"tool_name":"Bash","tool_input":{"command":"%s"}}' "$(jesc "$1")"; }
-payload_file()  { printf '{"tool_name":"%s","tool_input":{"file_path":"%s"}}' "$1" "$(jesc "$2")"; }
-payload_raw()   { printf '%s' "$1"; }
+payload_bash()       { printf '{"tool_name":"Bash","tool_input":{"command":"%s"}}' "$(jesc "$1")"; }
+payload_powershell() { printf '{"tool_name":"PowerShell","tool_input":{"command":"%s"}}' "$(jesc "$1")"; }
+payload_file()       { printf '{"tool_name":"%s","tool_input":{"file_path":"%s"}}' "$1" "$(jesc "$2")"; }
+payload_raw()        { printf '%s' "$1"; }
 
 # Run a hook against a payload. Sets OUT, ERR and RC.
 run_hook() {

@@ -50,23 +50,29 @@ And the rule that is easy to get wrong and impossible to notice:
 
 ## ⭐ Hook 1 — Secret read-guard
 
-`PreToolUse`, matcher `Bash|Read`. **Blocks.**
+`PreToolUse`, matcher `Bash|PowerShell|Read`. **Blocks.**
 
 Reads the target out of the tool call — `file_path` for `Read`, the tokenised `command` for
-`Bash` — and denies when it names a credential file: `.env`, `*.pem/pfx/p12/jks/keystore`,
-`id_rsa`/`id_ed25519`, `secrets.json`, `application-secrets*.yml`, `.ssh/`, `.aws/credentials`.
+`Bash` and, separately, for `PowerShell` — and denies when it names a credential file: `.env`,
+`*.pem/pfx/p12/jks/keystore`, `id_rsa`/`id_ed25519`, `secrets.json`, `application-secrets*.yml`,
+`.ssh/`, `.aws/credentials`.
 
 **Why field-based, not a grep over the payload.** The obvious version greps raw stdin for `.env`
-and also denies `git status` and `cat .gitignore`. Match the field, tokenise the Bash command —
+and also denies `git status` and `cat .gitignore`. Match the field, tokenise the command —
 whole-string matching cannot tell `cat .env` from `cat .env.example`.
 
-**Known, intentional false positive.** `cp .env.example .env` is denied: one argument is a bare
-`.env`. Creating a credential file is a step for a human.
+**Known, intentional false positive.** `cp .env.example .env` (or, under PowerShell,
+`Copy-Item .env.example .env`) is denied: one argument is a bare `.env`. Creating a credential
+file is a step for a human.
 
-**Matcher is `Bash|Read`, not `Bash|PowerShell|Read`.** Unlike hook 1 in the .NET sibling skill,
-this catalogue does not add `PowerShell` here either — say so plainly rather than claim coverage
-this skill did not verify. If the team is genuinely on native PowerShell rather than Git Bash,
-widen the matcher and re-verify in Phase 5 before trusting it.
+**Matcher is `Bash|PowerShell|Read`, and both shells get their own tokeniser — PowerShell is not
+routed through the Bash branch.** This is safe where hook 3 (`block-dangerous-bash`) deliberately
+stays `Bash`-only: hook 3 has to know *which* argument is the target across many flag
+combinations, real control-flow semantics that differ per shell. This hook only asks whether a
+credential-shaped token appears anywhere in the command, a question that does not depend on
+control flow — so a dedicated PowerShell tokeniser answers it correctly without needing
+PowerShell's full grammar. Still confirm it fires through a real `PowerShell` tool call in Phase 5
+— do not assume the Bash trigger proves both branches.
 
 **What it does not cover.**
 - **`@`-referenced files** — inlined into the prompt with no tool call, so no `PreToolUse` hook
@@ -123,7 +129,10 @@ startup cost — commonly 1-3 seconds — for a formatter with nothing to say ab
 dropping `VAR=value` prefixes, dispatching on the command word — and none of it describes
 PowerShell. `Remove-Item -Recurse -Force C:\` would reach the end of the loop and exit 0: coverage
 claimed, nothing checked. This is the exact bug the .NET sibling shipped and later fixed by
-narrowing the matcher to `Bash` alone — do not reintroduce it here.
+narrowing the matcher to `Bash` alone — do not reintroduce it here. Hook 1 above covers
+`PowerShell` too, but for a different reason: it only has to spot a token, not parse control flow.
+A genuine PowerShell equivalent of this hook is its own script with its own tokeniser, not this
+one with a wider matcher.
 
 **Six patterns, each unrecoverable or outward-facing:**
 

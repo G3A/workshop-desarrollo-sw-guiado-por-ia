@@ -54,6 +54,44 @@ case "$TOOL" in
       | grep -m1 -E "$SECRET_PATTERNS")"
     [ -z "$HIT" ] && exit 0
     ;;
+  PowerShell)
+    # json_path, not json_raw: PowerShell's `command` routinely carries real Windows paths
+    # (C:\repo\.env), which arrive JSON-escaped as C:\\repo\\.env. json_path's one substitution
+    # (\\\\ -> /) turns every one of those into C:/repo/.env BEFORE this branch does anything else
+    # — PowerShell accepts / in paths natively, so this reuses the same SECRET_PATTERNS anchors
+    # ([/=]) as the Bash branch and Read's file_path, with no PowerShell-specific pattern needed.
+    CMD="$(json_path command)"
+    [ -z "$CMD" ] && exit 0
+    # Strip backslash here too, same as the Bash branch — NOT because PowerShell paths still have
+    # any (json_path already turned every real one into a forward slash above), but because a
+    # JSON-escaped quote inside the command (`Get-Content "src/.env"` arrives as
+    # `Get-Content \"src/.env\"`) leaves a lone backslash sitting next to the quote. json_path's
+    # own substitution only matches a DOUBLE backslash (a real path separator), so it does not
+    # touch this single one — strip it here or it survives quote-stripping as an orphan character
+    # glued onto the token (`\src/.env\`), and that stray character breaks the pattern's `($|\.)`
+    # anchor right after `.env`. Confirmed by a real failing case, not a hypothetical one — see
+    # `tests/cases/secret-read-guard.sh`, "ps: quoted path".
+    #
+    # Separators: PowerShell 7+ (pwsh) accepts ; and | as statement/pipeline separators and && /
+    # || as short-circuit chains (same two characters, same meaning, as Bash) — splitting on the
+    # lone characters ; | & already breaks && and || apart too, the same trick the Bash branch
+    # relies on for its own separator set.
+    #
+    # : IS A SEPARATOR TOO, and this one has no Bash equivalent: PowerShell binds a parameter's
+    # value with a colon as well as a space — `-Path:.env` is standard, documented syntax, works
+    # for cmdlets and aliases alike (`gc -Path:.env`), and without splitting on it the token stays
+    # `-Path:.env`, which SECRET_PATTERNS does not anchor on (it anchors on start-of-token, `/` or
+    # `=`, not `:`). Confirmed as a real bypass, not a hypothetical one — see
+    # `tests/cases/secret-read-guard.sh`, "ps: colon-bound parameter".
+    HIT="$(printf '%s' "$CMD" \
+      | sed -E 's/\\[nrt]/ /g' \
+      | tr ' \t\n;|&()<>,:' '\n' \
+      | tr -d '\042\047\134' \
+      | sed -E 's/[*?]+$//' \
+      | grep -v -E "$TEMPLATE_RE" \
+      | grep -m1 -E "$SECRET_PATTERNS")"
+    [ -z "$HIT" ] && exit 0
+    ;;
   *)
     # Read, and Edit/Write/MultiEdit if the matcher was widened. Always absolute, per the docs.
     TARGET="$(json_path file_path)"
