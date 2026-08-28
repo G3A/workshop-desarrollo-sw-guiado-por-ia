@@ -169,6 +169,12 @@ plan inline for the record and keep going.
 overrides a user who asked for approval. Either way, **say which branch you took and
 why** in one line.
 
+If the tracker's binding table defines a **`PLAN-PERSIST`** step, run it now, once the
+plan is approved — before `STATUS→IN-PROGRESS`. Most trackers define nothing here and
+this is a no-op; where one does, it decides whether the approved plan gets copied
+somewhere durable or stays only the ephemeral record the approval checkpoint already
+produced.
+
 Set `STATUS→IN-PROGRESS` here (pre-authorized — do not ask).
 
 **Steps F–J continue in `references/build-loop-execute.md`.**
