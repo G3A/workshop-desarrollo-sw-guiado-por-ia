@@ -37,7 +37,7 @@ every binding:
 
 | Binding | GitHub |
 |---|---|
-| `TICKET` | `gh issue view <n>` |
+| `TICKET` | `gh issue view <n> --json ...` (full field list in Phase 1) — includes `parent`/`subIssues`/`subIssuesSummary`, the sub-issue relation Step A already asks for generically ("its parent and subissues"); an issue with none just returns empty |
 | `STATUS→IN-PROGRESS` / `STATUS→IN-REVIEW` | GitHub has no native status field. Phase 1 detects whether the repo uses **labels** or **Projects v2** and resolves accordingly — see below. |
 | `COMMENT` | `gh issue comment <n> --body "<text>"` |
 | `BRANCH` | `feature/<n>-<short-slug>` — same pattern as the other delivery skills, branch name **must** contain the issue number |
@@ -50,6 +50,44 @@ No separate `references/github-access.md` exists — unlike Azure DevOps or Line
 dual access path or ambiguous MCP prefix to discover at runtime; this skill talks to GitHub
 exclusively through `gh`. Add that file if a future session needs an MCP path — don't build it
 speculatively.
+
+## `CHILD-LINK` — decomposing a ticket into sub-issues
+
+Not one of `build-loop.md`'s original nine — an addition this plugin makes for a `TICKET` that
+already has GitHub's native sub-issues attached (typically written by
+`requirement-to-spec-java`'s tracker mode, or by hand). Confirmed against `gh` 2.98.0, not a
+speculative convention: `gh issue create --parent <n>` and
+`gh issue view --json subIssues,subIssuesSummary,parent` are both real, current commands.
+
+Resolved for GitHub, mirroring the same "each child commit carries the child's own id; the PR is
+opened with the parent's" split `arkandia-skills` upstream already uses for its own Azure DevOps
+and Linear delivery skills (`ado-plan-build`/`linear-plan-build`, since their 0.5.0) — this plugin
+has no such siblings of its own, GitHub is the only tracker it talks to, but the split is a real,
+already-shipped pattern, not one invented here.
+
+| Step | GitHub |
+|---|---|
+| Read children | The `TICKET` fetch returns only child numbers/titles/state via `subIssues`, not their bodies — Phase 1 already requires one further `gh issue view <child> --json title,body,state` per child, a real separate call, before Step A |
+| Per-child commit | `Refs #<child>` in the commit message that finishes that child's steps (see `build-loop-execute.md` Step F.1 and Step H.2) |
+| Child completion | `gh issue close <child> --comment "<summary>"` — held until Step I confirms CI green **and** every review comment is addressed, not fired the moment the child's commit lands. This skill's own Phase 3 rule ("issue state and labels are not authoritative") cuts both ways: closing #101 right after its commit, only to have CI fail or a reviewer request changes to that same code in Step I, leaves a sub-issue marked done while its code is still unmerged and possibly still being fixed |
+| Parent | Still resolved with `LINK-TOKEN` (`Closes #<parent>`) on the commit that finishes the **last** child, and `OPEN-PR` still opens exactly one PR against the parent — a decomposed ticket is still one branch, one PR |
+
+A `TICKET` with no sub-issues is unaffected — every step above is conditional on
+`subIssuesSummary.total > 0`, checked once in Phase 1 when `TICKET` is first read.
+
+## `PLAN-PERSIST` — where the approved plan lives afterward
+
+Resolved **by repo convention, not by asking**: if `docs/plans/` already exists in the target
+repo, Step E's `PLAN-PERSIST` step copies the vetted plan to `docs/plans/<n>-<short-slug>.md` and
+stages it — commit it together with the first Step H commit, not as a separate one — so the plan
+survives as versioned evidence, the same pattern the manual `manuales/manual-feedback-chat`
+demonstrates for issue #3 (`docs/plans/plan-issue-3-feedback-chat.md`, PR #6).
+
+If `docs/plans/` does **not** exist, `PLAN-PERSIST` is a no-op: the plan already lives in the
+approval checkpoint's own record from `EnterPlanMode`/`ExitPlanMode`, which is not part of the
+repository and needs nothing further written. That is the default for any repo that has not
+opted into the versioned convention — not a gap, a choice this skill respects rather than
+overrides.
 
 ## Autonomy contract
 
@@ -89,11 +127,16 @@ don't silently operate on the wrong repo.
 
 ## Phase 1 — Read the issue and resolve the STATUS binding
 
-1. Fetch the issue: `gh issue view <n> --json title,body,state,labels,assignees,milestone,comments,url`.
+1. Fetch the issue: `gh issue view <n> --json title,body,state,labels,assignees,milestone,comments,url,parent,subIssues,subIssuesSummary`.
    **Requirements are frequently negotiated in comments rather than written in the
    body** — read them before concluding anything is unspecified. Note any linked or
    referenced issues (task-list checkboxes or `#<n>` mentions in the body) and read
    those too if they look like blockers.
+
+   **If `subIssuesSummary.total > 0`, this ticket is decomposed — read every child
+   too** (`gh issue view <child> --json title,body,state`) before Step A. `CHILD-LINK`
+   (below the bindings table) governs how each child gets its own commit and its own
+   completion from here on; a ticket with no sub-issues skips it entirely, unaffected.
 
 2. **Resolve `STATUS→IN-PROGRESS` / `STATUS→IN-REVIEW` before any status write.**
    GitHub has no built-in issue status, so detect which mechanism this repo actually
