@@ -50,6 +50,13 @@ check $H deny 'ps: multiline, secret last'   "$(payload_powershell 'Write-Output
 Get-Content .env')"
 check $H deny 'ps: trailing glob'            "$(payload_powershell 'Get-Content .env*')"
 
+# --- the bypass. ALLOWED before the colon-separator fix (found by /code-review, not by hand) ---
+# PowerShell binds a parameter's value with a colon as well as a space -- `-Path:.env` is
+# standard, documented syntax, and without splitting on `:` the token stayed `-Path:.env`, which
+# SECRET_PATTERNS never anchored on (it anchors on start-of-token, `/` or `=`, not `:`).
+check $H deny 'ps: colon-bound parameter'    "$(payload_powershell 'Get-Content -Path:.env')"
+check $H deny 'ps: colon-bound, alias'       "$(payload_powershell 'gc -Path:.env')"
+
 # --- PowerShell must not fire ------------------------------------------------------------------
 check $H silent 'ps: .env.example alone'     "$(payload_powershell 'Get-Content .env.example')"
 check $H silent 'ps: gitignore'              "$(payload_powershell 'Get-Content .gitignore')"
