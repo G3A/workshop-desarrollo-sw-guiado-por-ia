@@ -369,7 +369,7 @@
       "requires": "Vista previa levantada (v0).",
       "manualNote": "Abre la vista previa y confirma visualmente que el cambio se ve como esperabas, en al menos un tamaño de pantalla chico y uno grande.",
       "porque": "Este chequeo es deliberadamente humano — es la parte del proceso donde \"se ve bien\" todavía no tiene una forma barata de automatizarse del todo.",
-      "guiaPasos": "<p>Si algo no se ve bien, vuelve a <b>«Ejecutar tareas»</b> antes de seguir a la verificación en 4 capas.</p>",
+      "guiaPasos": "<p>Si algo no se ve bien, vuelve a <b>«Ejecutar tareas»</b> antes de seguir a la verificación en 4 capas.</p><p>Si tu repo no tiene un workflow de vista previa efímera por PR (así que <b>v0</b> no aplica tal cual), este chequeo se hace contra el stack corriendo localmente, con un navegador headless en vez de uno con ventana. El prerrequisito que suele faltar la primera vez: instalar los binarios del navegador antes de correr la verificación, por ejemplo <code>npx playwright install chromium</code> si usas Playwright — sin ese paso, la corrida falla al intentar lanzar el navegador, no al verificar el cambio.</p>",
       "madurez": "2"
     },
     "c3": {
