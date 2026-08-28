@@ -99,3 +99,43 @@ Same existence check, same reasoning: a changelog entry is checksummed once run.
 
 **Neither branch depends on the deterministic instrumentation having run.** It depends only on the
 directory existing — a Phase 1 question, nothing more.
+
+## Hook 8 — Dangerous-command blocker, PowerShell
+
+`PreToolUse`, matcher `PowerShell`. **Blocks.** Offered only when discovery item 10 finds the team
+genuinely on Windows — not merely "on Windows without Git Bash," which is hook 3's own concern
+(that condition means the `.sh` scripts cannot run at all, on any matcher).
+
+**A separate script, not hook 3 with a second matcher.** Hook 3's own header explains why it stays
+`Bash`-only: `Remove-Item -Recurse -Force C:\` would reach the end of a Bash-shaped loop and exit
+0, coverage claimed, nothing checked. This hook is the genuine alternative — its own tokeniser,
+built for PowerShell's own syntax, registered under its own matcher, verified against a real
+`PowerShell` tool call in Phase 5.
+
+**Same four categories as hook 3, PowerShell's own spelling of each:** `runas` /
+`Start-Process -Verb RunAs` for privilege escalation; `Remove-Item` (and its aliases `ri`, `rm`,
+`rd`, `del`, `erase`) with `-Recurse` against a target outside the repo, or against the Maven
+wrapper properties or the root `pom.xml`; `git push --force`/`git reset --hard` — identical
+arguments to hook 3's `git` branch, since it is the same `git.exe` either way; `mvn deploy`/
+`mvn release:perform` — same reasoning, same binary.
+
+**The colon-bound parameter is not an edge case.** `-Path:C:\temp` and `-Recurse:$true` are
+standard, documented PowerShell syntax — the same construct that bypassed secret-read-guard's
+first PowerShell branch (`-Path:.env`) until `/code-review` found it. This hook's `-Path:*`/
+`-LiteralPath:*` cases pull the value out of the colon-bound form explicitly, the same fix applied
+here from the start rather than discovered a second time.
+
+**Windows absolute paths get their own cases in `outside_repo()`**, not a reuse of hook 3's Unix
+check: a drive-letter path (`C:/...`, after `json_path` normalises the JSON-escaped backslashes)
+and a UNC share (`//server/share`) are both "outside the repo" unconditionally; a bare `/`-rooted
+path is still checked too, for a Git Bash or WSL interop path that reaches PowerShell's `command`
+field unchanged.
+
+**Deliberately not split on a bare `&`.** In PowerShell that is the call operator — a *prefix* that
+invokes a command held in a variable or string (`& $cmd`) — not a Bash-style background or
+statement terminator. Treating it as a separator would misparse far more command lines than it
+would ever catch.
+
+**Same non-boundary caveat as every hook here.** `Invoke-Expression` (alias `iex`) hides an
+arbitrary command built at runtime and walks straight past every rule above — a guardrail against
+a plausible mistake, not a sandbox.

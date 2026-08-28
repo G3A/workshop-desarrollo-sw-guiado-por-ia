@@ -43,9 +43,16 @@ Work through, and report as a table (artifact, status, what you found):
 9. **Documentation and its language.** `AGENTS.md`, `CLAUDE.md`, `README.md`, `docs/` — note
    whether `AGENTS.md` already has `Agent hooks`/`MCP` sections (Phase 6 updates them, never
    duplicates) and which language the prose is in (Phase 6 must not switch mid-document).
-10. **The team's OS.** Ask only if the repo gives no signal. What actually matters is whether
-    anyone is on Windows without Git Bash, since the hook scripts are bash and Claude Code falls
-    back to PowerShell without it — at which point the `.sh` hooks silently do nothing.
+10. **The team's OS.** Ask only if the repo gives no signal. Two separate questions hide inside
+    "Windows," and each decides something different:
+    - Is anyone on Windows **without** Git Bash? Then Claude Code falls back to PowerShell for
+      its `Bash`-labelled tool, and the `.sh` hooks — which need `bash` to run at all — silently
+      do nothing. This is a reason to warn, not a reason to change what gets offered.
+    - Is anyone on Windows **at all**, Git Bash present or not? A session on Windows can have a
+      separate `PowerShell` tool alongside `Bash`, invoked for commands the agent judges more
+      natural in that shell — and every hook script only sees the tool calls its own matcher
+      names. This is hook 8's precondition: offer it only when the team is genuinely on Windows,
+      the same way hook 7 is offered only when Flyway/Liquibase migrations exist.
 
 Two findings change the menu and must be surfaced in Phase 1, not silently applied: a hook already
 registered on an event you are about to write to, and a failed precondition.

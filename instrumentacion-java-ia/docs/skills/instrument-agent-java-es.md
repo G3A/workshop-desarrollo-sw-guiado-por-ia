@@ -17,20 +17,21 @@ puede decidir sola en milisegundos.
 
 No recibe argumentos.
 
-## El catálogo de siete hooks
+## El catálogo de ocho hooks
 
 Primero amplía las capacidades del agente (MCP), después le pone límites (hooks) — en ese
 orden, porque MCP solo agrega capacidad y los hooks la quitan.
 
 | # | Hook | Qué bloquea | Por defecto |
 |---|------|-------------|-------------|
-| 1 | Guardia de lectura de secretos | Sí — impide leer `.env`, claves privadas, `secrets.json` | Activado |
+| 1 | Guardia de lectura de secretos | Sí — impide leer `.env`, claves privadas, `secrets.json`, bajo Bash, PowerShell o `Read` | Activado |
 | 2 | Formateo al editar | No — corre Spotless sobre el archivo recién editado | Activado |
-| 3 | Bloqueo de comandos peligrosos | Sí — `rm -rf` fuera del repo, `sudo`, force-push a ramas protegidas | Ofrecido |
+| 3 | Bloqueo de comandos peligrosos (Bash) | Sí — `rm -rf` fuera del repo, `sudo`, force-push a ramas protegidas | Ofrecido |
 | 4 | Barrido de dependencias | No — solo reporta desactualizadas o vulnerables al iniciar sesión | Ofrecido |
 | 5 | Registro de auditoría | No — registra cada llamada a herramienta | Ofrecido |
 | 6 | Guardia de versión centralizada | No — advierte si una dependencia nueva fija su propia versión | Ofrecido, solo si el POM ya usa `<dependencyManagement>` o un BOM |
 | 7 | Guardia de migraciones generadas | Sí — impide editar una migración de Flyway/Liquibase ya aplicada | Ofrecido, solo si el repositorio tiene migraciones Flyway o Liquibase |
+| 8 | Bloqueo de comandos peligrosos (PowerShell) | Sí — `Remove-Item -Recurse` fuera del repo, `runas`, force-push, `mvn deploy`, con su propio tokenizador | Ofrecido, solo si el equipo usa Windows |
 
 ## Fases principales
 
