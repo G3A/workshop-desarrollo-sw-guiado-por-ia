@@ -479,7 +479,7 @@
       "clase": "T",
       "semantica": "guarded",
       "requires": "PR aprobada (G6, rama \"sí\").",
-      "cmd": "gh pr merge --squash --delete-branch --body \"$(gh pr view <n> --json body -q .body)\"",
+      "cmd": "gh pr merge --squash --delete-branch --body \"$(gh pr view --json body -q .body)\"",
       "porque": "El Ruleset configurado en el bloque B es lo que realmente bloquea este comando si algún check requerido no pasó — no depende de que nadie se acuerde de chequearlo a mano.",
       "guiaPasos": "<p><code>--squash</code> deja un commit limpio en la rama principal; <code>--delete-branch</code> limpia la rama de feature ya mergeada.</p><p><b>El <code>--body</code> explícito no es opcional:</b> por defecto, <code>gh pr merge --squash</code> arma el mensaje del commit final a partir de los commits individuales, no del cuerpo de la PR — si el <code>Closes #N</code> vive solo ahí (como en la actividad 24) y no en el último commit, el squash lo pierde y el issue no se cierra solo. Pasarle el cuerpo de la PR de forma explícita, como en el comando de arriba, es lo que garantiza que <code>Closes #N</code> llegue al commit real que queda en la rama principal.</p>",
       "madurez": "3"

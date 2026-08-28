@@ -56,9 +56,9 @@ Desde una sesión de Claude Code, agregá este directorio como marketplace local
 /plugin install sdlc-ia
 ```
 
-Las 4 skills quedan disponibles como `/sdlc-ia:agent-context-java`,
-`/sdlc-ia:instrument-project-java`, `/sdlc-ia:instrument-agent-java` y
-`/sdlc-ia:github-plan-build`.
+Las 6 skills quedan disponibles como `/sdlc-ia:agent-context-java`,
+`/sdlc-ia:instrument-project-java`, `/sdlc-ia:instrument-agent-java`,
+`/sdlc-ia:github-plan-build`, `/sdlc-ia:debt-triage` y `/sdlc-ia:legacy-test-harness`.
 
 ## Verificar los hooks
 
