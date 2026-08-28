@@ -26,15 +26,16 @@ ramas y abre PRs, por diseño, una vez que un plan quedó aprobado).
 
 ## Las seis fases
 
-1. **Descubrimiento silencioso** — convierte el documento a Markdown (vía `npx`), lee el contexto
+1. **Descubrimiento silencioso** — convierte el documento a Markdown si hace falta (vía `pandoc`,
+   ya instalado o no — nunca lo instala esta skill), lee el contexto
    del repo (`AGENTS.md`, `docs/architecture.md`, ADRs), detecta contratos públicos que el
    requisito toca (controladores `@RestController`, entidades `@Entity` y su migración,
    OpenAPI/`.proto` si existen), detecta qué documentación el cambio dejaría desactualizada
    (cita archivo y línea, nunca "puede que algún doc necesite actualizarse"), detecta trackers
    disponibles (GitHub, vía la misma señal que usa `github-plan-build`) y si hay un servidor MCP
    de base de datos registrado.
-2. **Prerrequisitos** — reporta qué encontraron los chequeos de la Fase 1 (`npx --version`, `gh
-   auth status`); no instala nada por su cuenta.
+2. **Prerrequisitos** — reporta qué encontraron los chequeos de la Fase 1 (`pandoc --version` o su
+   ausencia, `gh auth status`); no instala nada por su cuenta.
 3. **Acordar el alcance** — máximo 4 preguntas por llamada, sin jerga. Seis categorías siempre
    activas: impacto en contrato público, cruce tabular contra la base de datos (solo si hay
    servidor MCP y datos tabulares adjuntos), documentación desactualizada (se presenta la lista

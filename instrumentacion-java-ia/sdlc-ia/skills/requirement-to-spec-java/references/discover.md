@@ -8,13 +8,18 @@
 Work through in order. Report the whole phase as one table (artifact/signal, status, concrete
 finding) — never a running commentary as you go.
 
-1. **Convert the document to Markdown.** Check `npx --version` first; if absent, record it as a
-   missing prerequisite for Phase 2 and fall back to reading the file directly if the format
-   allows it (plain text, Markdown — not a `.docx`/`.pdf`/`.xlsx` you cannot parse without a
-   converter). When `npx` is present, resolve a converter appropriate to the input
-   (`npx --yes markitdown <path>` covers Word/PDF/Excel/PowerPoint uniformly; note the resolved
-   package and version in the report, same pinning discipline as `instrument-agent-java`'s MCP
-   servers). Set a real timeout — a hung conversion is a Phase 2 finding, not a silent wait.
+1. **Convert the document to Markdown, if it needs converting.** Plain text and Markdown need no
+   conversion — read them directly. For `.docx`, check `command -v pandoc` first; when present,
+   `pandoc <path> -o <tmpfile>.md` converts it directly, no install step, no package to pin (this
+   is a real, already-installed system binary, not an `npx`-resolved package — do not invent one).
+   Record the resolved `pandoc --version` in the report, the same evidence discipline as any other
+   resolved tool version in this plugin. When `pandoc` is absent, record it as a missing
+   prerequisite for Phase 2 and stop for that attachment — list it under "not read" in Phase 6,
+   never guess its content from the filename. `.pdf` and `.xlsx` are the same story with a real,
+   weaker caveat: `pandoc`'s PDF extraction is layout-dependent and its spreadsheet support is
+   thin, so treat a converted `.pdf`/`.xlsx` as reduced-fidelity and say so in the report, rather
+   than reading it with the same confidence as a native Markdown source. Set a real timeout on the
+   conversion — a hung process is a Phase 2 finding, not a silent wait.
 2. **Read repo context.** `AGENTS.md`, `CLAUDE.md`, `docs/architecture.md`, `docs/java.md`, ADRs.
    This is where you learn the domain vocabulary the requirement will use loosely and the repo
    names precisely — carry that mapping into Phase 3's questions instead of asking the user to
@@ -56,8 +61,9 @@ here — Phase 6 repeats this list, it does not invent it fresh.
 
 ## Phase 2 — Prerequisites
 
-Report the result of Phase 1's own tool checks — `npx --version`, and, if tracker mode is even
-possible, whatever the chosen tracker's own CLI needs (for this plugin, `gh auth status`, already
+Report the result of Phase 1's own tool checks — `pandoc --version` (or its absence), and, if
+tracker mode is even possible, whatever the chosen tracker's own CLI needs (for this plugin, `gh
+auth status`, already
 covered by node `a1` of the process this repo documents). **Install nothing yourself.** If a
 prerequisite is missing, say so and say what installing it would look like — the user's call, not
 this skill's.
