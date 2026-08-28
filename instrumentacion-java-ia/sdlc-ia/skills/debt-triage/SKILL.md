@@ -41,6 +41,21 @@ which to triage via `AskUserQuestion` — don't silently pick one.
 Resolve how findings are read back — a report file the CI step already writes, a CLI/API query, or
 a dashboard — per `references/analyzer-detection.md`.
 
+**If none of this discovers an analyzer that reports a triageable backlog, that is a real, reportable
+outcome — not a silent no-op.** Stop here and tell the user, explicitly:
+
+- What was checked and found absent (name the CI steps, config files and build targets actually
+  looked for, not a generic "no analyzer found").
+- What already runs as **prevention** in this repo, if anything — a strict-mode compiler flag or
+  Checkstyle in blocking mode (installed by `instrument-project-java`) stops *new* violations from
+  landing, but produces no backlog of existing findings to triage. Say this distinction plainly:
+  prevention is not triage, and a repo can have one without the other.
+- What connecting a real analyzer (SonarQube, CodeQL, or whichever fits the stack) would take, so
+  the next run has something to work with — but do not install one; that decision and that
+  installation both belong to `instrument-project-java`, invoked separately, not to this skill.
+
+Do not exit silently and do not fabricate findings to have something to report.
+
 ## Phase 2 — Pull and group
 
 Pull the open findings and group by rule id. For each group, record: rule id, severity, count, and
@@ -83,4 +98,6 @@ backlog, not just the list.
 - Do NOT suppress a finding without a reason written next to the suppression.
 - Do NOT expand a fix beyond what the finding flagged — file a follow-up instead.
 - Do NOT run a new analyzer the repo doesn't already have configured.
+- Do NOT exit silently when Phase 1 finds no analyzer — report what was checked, what prevention
+  (if any) already runs, and what connecting a real one would take.
 - Do NOT commit.
