@@ -1,0 +1,61 @@
+<!--
+Placeholders:
+  {{TITULO}}              — título del requisito, tal cual quedó decidido en la Fase 3
+  {{ORIGEN}}               — nombre/ruta del documento fuente, y attachments no leídos si los hubo
+  {{CONTEXTO}}             — por qué existe este requisito, tomado del documento, no inventado
+  {{ALCANCE_DENTRO}}       — qué sí cubre esta vuelta
+  {{ALCANCE_FUERA}}        — qué se dejó afuera explícitamente, y por qué
+  {{DECISIONES}}           — lista de Decisiones (el documento o el usuario las resolvió)
+  {{SUPUESTOS}}            — lista de Supuestos (nadie las resolvió, se avanza con una suposición
+                              declarada — la Fase 5 de github-plan-build tiene que poder detectarlas)
+  {{IMPACTO_CONTRATO}}     — hallazgo de contrato público de la Fase 1 + la decisión de la Fase 3
+  {{DOCUMENTACION_AFECTADA}} — citas concretas (archivo + línea) de docs que este cambio invalida
+  {{CRITERIOS_VALIDACION}} — en forma doble: qué prueba que se cumplió, qué probaría que no
+  {{TASKS_LINK}}           — ruta relativa a tasks.md
+-->
+
+# {{TITULO}}
+
+**Origen:** {{ORIGEN}}
+
+## Contexto
+
+{{CONTEXTO}}
+
+## Alcance
+
+**Dentro de esta vuelta:**
+
+{{ALCANCE_DENTRO}}
+
+**Explícitamente afuera:**
+
+{{ALCANCE_FUERA}}
+
+## Decisiones y supuestos
+
+**Decisiones** (el documento o el usuario las resolvió):
+
+{{DECISIONES}}
+
+**Supuestos** (nadie las resolvió — se avanza con una suposición declarada, no silenciosa):
+
+{{SUPUESTOS}}
+
+## Impacto en contrato público
+
+{{IMPACTO_CONTRATO}}
+
+## Documentación que este cambio deja desactualizada
+
+{{DOCUMENTACION_AFECTADA}}
+
+## Criterios de validación
+
+**Se cumplió si:**
+
+{{CRITERIOS_VALIDACION}}
+
+## Tareas
+
+Desglose completo en [{{TASKS_LINK}}]({{TASKS_LINK}}).
