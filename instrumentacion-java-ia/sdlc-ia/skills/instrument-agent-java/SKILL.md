@@ -30,7 +30,7 @@ reasoning for each — read it before Phase 3.
 
 | # | Hook | Event | Blocks | Default |
 |---|---|---|---|---|
-| 1 | Secret read-guard | `PreToolUse: Bash\|Read` | **yes** | on |
+| 1 | Secret read-guard | `PreToolUse: Bash\|PowerShell\|Read` | **yes** | on |
 | 2 | Format on edit | `PostToolUse: Edit\|Write\|MultiEdit` | no | on |
 | 3 | Dangerous-command blocker | `PreToolUse: Bash` | **yes** | offered |
 | 4 | Dependency sweep | `SessionStart` | no — reports only | offered |
@@ -186,8 +186,10 @@ you touch is untracked). After every trigger, `git status` must look exactly as 
 
 MCP cannot be verified the same way — a freshly written `.mcp.json` leaves its servers at
 `⏸ Pending approval` until the user trusts the workspace. Confirm the file parses, start each
-stdio server once with `< /dev/null` to catch a dead flag early, and say plainly that this half of
-the run was written, not proven, per `references/mcp-servers.md`.
+stdio server once with `< /dev/null` to catch a dead flag early, confirm every `${ENV_VAR}` it
+references actually appears in a real `.env` (not only `.env.example`) per
+`references/mcp-servers.md`'s "Before you finish" section, and say plainly that this half of the
+run was written, not proven.
 
 ---
 
@@ -198,9 +200,10 @@ Update `AGENTS.md`, `README.md`, and (if present) `docs/infrastructure.md`/`docs
 
 Report, in order: files created/modified (config and docs separately); the audit log's contents
 and gitignore status, if installed; hooks **not** installed and why; MCP servers as
-written-pending-approval with their resolved versions; known false positives, hook by hook
-(leading with `cp .env.example .env` being denied); that `.claude/settings.json` is Claude Code's
-alone — no other agent reads it.
+written-pending-approval with their resolved versions, each `${ENV_VAR}` they need flagged as
+confirmed-in-`.env` or missing; known false positives, hook by hook (leading with
+`cp .env.example .env` being denied); that `.claude/settings.json` is Claude Code's alone — no
+other agent reads it.
 
 **Then, last,** walk the **Try it** table in `references/verification-steps.md` §2 with the user —
 one line per installed hook and registered server.

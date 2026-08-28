@@ -118,3 +118,12 @@ servers do not. Say which half of the run was proven and which half was only wri
   that never arrives, and confirm it does not immediately fail on an unsupported flag.
 - Grep your own output for anything that looks like a credential rather than a `${VAR}`.
 - List every environment variable introduced, so Phase 6 can put them in `README.md`.
+- **Check that each `${ENV_VAR}` actually resolves, not just that it is named.** A variable
+  documented in `.env.example` is not the same as one exported in the team's real `.env` — the
+  server fails at connect time either way, but "written pending approval" reads as done and hides
+  that gap until someone actually opens the workspace. For each `${VAR}` (and `${VAR:-}` defaults
+  do not count, they are deliberately optional): if a real `.env` file exists, confirm the name
+  appears there too; if it does not, or the variable is missing from it, report it explicitly —
+  "`GITHUB_PAT` is in `.env.example` but not in `.env` — the GitHub server will fail to connect
+  until it is set" — rather than assuming a name in `.env.example` means the value is live.
+  Never read the value itself, only whether the name is present.
