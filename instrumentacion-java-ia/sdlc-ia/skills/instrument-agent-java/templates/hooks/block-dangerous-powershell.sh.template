@@ -43,6 +43,15 @@
 # runtime and walks straight past every rule below. A guardrail against a plausible mistake, not a
 # sandbox — use permission deny rules for a real boundary.
 #
+# TWO REAL BYPASSES /code-review FOUND, BOTH FIXED, NEITHER HYPOTHETICAL:
+#   - A leading `&` (the call operator, `& git reset --hard`) made CMDWORD the literal character
+#     `&`, which matched no case below and let the real command through unchecked — a routine
+#     PowerShell idiom, not obfuscation. Unwrapped before dispatch now.
+#   - PowerShell dispatches cmdlet names case-insensitively; `remove-item`/`REMOVE-ITEM` bypassed
+#     every case that only matched `Remove-Item`. Every cmdlet-name match below runs against a
+#     lower-cased copy now; git/mvn subcommands stay case-sensitive on purpose (`git PUSH` is not
+#     `git push`).
+#
 # ---8<--- everything above this line is instructions for you; delete it ---8<---
 #!/usr/bin/env bash
 # `set -u` only. See the note in secret-read-guard.sh: pipefail turns a short-circuiting filter
@@ -103,30 +112,44 @@ while IFS= read -r sub; do
   set -- $sub
   [ $# -eq 0 ] && continue
   CMDWORD="$1"; shift
+  # A leading & is the call operator, invoking whatever command word follows it (`& git status`,
+  # `& $cmd`) — not a command word of its own. Without unwrapping it here, CMDWORD becomes the
+  # literal character &, matches none of the cases below, and every rule silently no-ops on any
+  # command spelled with a leading &, which is routine PowerShell, not obfuscation.
+  if [ "$CMDWORD" = '&' ]; then
+    [ $# -eq 0 ] && continue
+    CMDWORD="$1"; shift
+  fi
+  # PowerShell dispatches cmdlet and command names case-insensitively (Remove-Item, remove-item
+  # and REMOVE-ITEM are the same call) — match on a lower-cased copy so casing is never the reason
+  # a rule misses. git/mvn subcommands stay matched on $CMDWORD/"$@" as typed below: those are
+  # real external binaries with case-SENSITIVE subcommands (`git PUSH` is not `git push`).
+  CMDWORD_LC="$(printf '%s' "$CMDWORD" | tr '[:upper:]' '[:lower:]')"
 
   # Privilege escalation, two shapes: the classic standalone tool, and Start-Process asking for
   # elevation via -Verb RunAs (space-separated or colon-bound — RunAs is a fixed enum value here,
   # not free text, so a simple pair scan covers both spellings without a general parameter parser).
-  case "$CMDWORD" in
+  case "$CMDWORD_LC" in
     runas) hook_deny 'Blocked: runas. A change that needs elevation is a change for the user to make deliberately, not for the agent to run.' ;;
   esac
-  case "$CMDWORD" in
-    Start-Process|start|saps)
-      PREV=""
+  case "$CMDWORD_LC" in
+    start-process|start|saps)
+      PREV_LC=""
       for a in "$@"; do
-        case "$a" in
-          -Verb:RunAs|-verb:runas|-Verb:Runas) hook_deny 'Blocked: Start-Process -Verb RunAs requests elevation. A change that needs elevation is a change for the user to make deliberately, not for the agent to run.' ;;
+        a_lc="$(printf '%s' "$a" | tr '[:upper:]' '[:lower:]')"
+        case "$a_lc" in
+          -verb:runas) hook_deny 'Blocked: Start-Process -Verb RunAs requests elevation. A change that needs elevation is a change for the user to make deliberately, not for the agent to run.' ;;
         esac
-        case "$PREV" in
-          -Verb|-verb) case "$a" in RunAs|runas|Runas) hook_deny 'Blocked: Start-Process -Verb RunAs requests elevation. A change that needs elevation is a change for the user to make deliberately, not for the agent to run.' ;; esac ;;
+        case "$PREV_LC" in
+          -verb) case "$a_lc" in runas) hook_deny 'Blocked: Start-Process -Verb RunAs requests elevation. A change that needs elevation is a change for the user to make deliberately, not for the agent to run.' ;; esac ;;
         esac
-        PREV="$a"
+        PREV_LC="$a_lc"
       done
       ;;
   esac
 
-  case "$CMDWORD" in
-    Remove-Item|ri|rm|rd|del|erase)
+  case "$CMDWORD_LC" in
+    remove-item|ri|rm|rd|del|erase)
       RECURSIVE=no; TARGETS_OUTSIDE=no; PINNED=no
       check_target() {
         outside_repo "$1" && TARGETS_OUTSIDE=yes
@@ -135,9 +158,10 @@ while IFS= read -r sub; do
         esac
       }
       for a in "$@"; do
-        case "$a" in
-          -Recurse|-recurse|-Recurse:*|-recurse:*) RECURSIVE=yes ;;
-          -Path:*|-path:*|-LiteralPath:*|-literalpath:*) check_target "${a#*:}" ;;
+        a_lc="$(printf '%s' "$a" | tr '[:upper:]' '[:lower:]')"
+        case "$a_lc" in
+          -recurse|-recurse:*) RECURSIVE=yes ;;
+          -path:*|-literalpath:*) check_target "${a#*:}" ;;
           -*) ;;                                # -Force, -Confirm:$false and friends: not targets
           *) check_target "$a" ;;
         esac

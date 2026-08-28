@@ -32,6 +32,19 @@ check $H deny 'ps: reset --hard'             "$(payload_powershell 'git reset --
 check $H deny 'ps: mvn deploy'               "$(payload_powershell 'mvn deploy')"
 check $H deny 'ps: mvn release:perform'      "$(payload_powershell 'mvn release:perform')"
 
+# --- the bypasses. Both ALLOWED before /code-review found them, neither hypothetical -----------
+# A leading & is the call operator (`& git reset --hard`, `& $cmd`) -- routine PowerShell, not
+# obfuscation -- and made CMDWORD the literal character &, which matched no case below.
+check $H deny 'ps: call operator, reset --hard' "$(payload_powershell '& git reset --hard')"
+check $H deny 'ps: call operator, force-push'   "$(payload_powershell '& git push --force origin main')"
+check $H deny 'ps: call operator, remove-item'  "$(payload_powershell '& Remove-Item -Recurse C:\Windows\Temp\stuff')"
+# PowerShell dispatches cmdlet names case-insensitively; only the one canonical casing was matched.
+check $H deny 'ps: lowercase cmdlet'            "$(payload_powershell 'remove-item -Recurse C:\Windows\Temp\stuff')"
+check $H deny 'ps: uppercase cmdlet'            "$(payload_powershell 'REMOVE-ITEM -Recurse C:\Windows\Temp\stuff')"
+check $H deny 'ps: mixed-case Start-Process'    "$(payload_powershell 'START-PROCESS powershell -Verb RunAs')"
+check $H deny 'ps: mixed-case runas'            "$(payload_powershell 'RunAs /user:Admin cmd')"
+check $H deny 'ps: uppercase -Recurse flag'     "$(payload_powershell 'Remove-Item -RECURSE C:\Windows\Temp\stuff')"
+
 # --- must not fire ---------------------------------------------------------------------------
 check $H silent 'ps: relative recurse'       "$(payload_powershell 'Remove-Item -Recurse bin, obj')"
 check $H silent 'ps: recurse inside repo'    "$(payload_powershell 'Remove-Item -Recurse ./target')"
@@ -39,7 +52,7 @@ check $H silent 'ps: git status'             "$(payload_powershell 'git status')
 check $H silent 'ps: push a feature branch'  "$(payload_powershell 'git push origin feature/foo')"
 check $H silent 'ps: mvn -v'                 "$(payload_powershell 'mvn -v')"
 check $H silent 'ps: the word in a message'  "$(payload_powershell 'Write-Output "never run git reset --hard"')"
-check $H silent 'ps: bare call operator'     "$(payload_powershell '& git status')"
+check $H silent 'ps: bare call operator, benign' "$(payload_powershell '& git status')"
 
 # --- must not fire, Bash-only rules stay Bash-only ----------------------------------------------
 check $H silent 'ps: sudo is not a PowerShell command, no false match'  "$(payload_powershell 'Write-Output sudo')"
