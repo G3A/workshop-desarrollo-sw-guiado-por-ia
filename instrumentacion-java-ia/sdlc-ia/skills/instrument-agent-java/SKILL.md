@@ -24,19 +24,20 @@ MCP first, hooks second. MCP only adds capability; hooks take it away.
 
 ## The catalogue
 
-Seven hooks. **1 and 2 are the default**; 3 to 7 are offered, and 6 and 7 only when the repository
-actually contains the artifact they protect. `references/hook-catalog.md` carries the full
-reasoning for each — read it before Phase 3.
+Eight hooks. **1 and 2 are the default**; 3 to 8 are offered, and 6, 7 and 8 only when the
+repository (or the team's own environment) actually meets their precondition.
+`references/hook-catalog.md` carries the full reasoning for each — read it before Phase 3.
 
 | # | Hook | Event | Blocks | Default |
 |---|---|---|---|---|
 | 1 | Secret read-guard | `PreToolUse: Bash\|PowerShell\|Read` | **yes** | on |
 | 2 | Format on edit | `PostToolUse: Edit\|Write\|MultiEdit` | no | on |
-| 3 | Dangerous-command blocker | `PreToolUse: Bash` | **yes** | offered |
+| 3 | Dangerous-command blocker (Bash) | `PreToolUse: Bash` | **yes** | offered |
 | 4 | Dependency sweep | `SessionStart` | no — reports only | offered |
 | 5 | Audit log | `PreToolUse` (async) | no | offered |
 | 6 | Version-pin guard | `PostToolUse` | no — warns | offered **if** the pom already uses `<dependencyManagement>`/a BOM |
 | 7 | Generated-file guard | `PreToolUse` | **yes** | offered **if** Flyway or Liquibase migrations exist |
+| 8 | Dangerous-command blocker (PowerShell) | `PreToolUse: PowerShell` | **yes** | offered **if** the team is on Windows (discovery item 10) |
 
 ## Philosophy (hold these throughout)
 
@@ -115,7 +116,8 @@ spelling it out. Use `AskUserQuestion` for the closed questions (max 4 options p
    | Option | Description |
    |---|---|
    | Secret guard *(recommended)* | Blocks reading `.env`, private keys, `secrets.json`/`.yml`. |
-   | Dangerous commands | Blocks `rm -rf` outside the repo, `sudo`, force-push to `<branch>`, `mvn deploy`. |
+   | Dangerous commands (Bash) | Blocks `rm -rf` outside the repo, `sudo`, force-push to `<branch>`, `mvn deploy`. |
+   | Dangerous commands (PowerShell) *(hidden unless the team is on Windows — discovery item 10)* | The same four categories, `Remove-Item`/`runas`/force-push/`mvn deploy`, for PowerShell's own syntax — a separate script, not this one with a wider matcher. |
    | Generated migrations *(hidden if no Flyway/Liquibase directory)* | Blocks editing an already-applied migration. |
 
    **"Which reporting hooks?"**
@@ -130,7 +132,8 @@ spelling it out. Use `AskUserQuestion` for the closed questions (max 4 options p
    Pre-check the secret guard and format-on-edit. Measure the format command and the sweep command
    before offering them (Phase 1 already timed the format command; time the sweep command now).
 3. **The audit log, if chosen.** It records full `tool_input` — confirm explicitly.
-4. **Protected branches**, only if hook 3 was chosen and there is more than one long-lived branch.
+4. **Protected branches**, only if hook 3 and/or hook 8 was chosen and there is more than one
+   long-lived branch — both scripts take the same `PROTECTED_BRANCHES` list, resolved once.
 5. **An existing hook on the same event**, only when Phase 1 found one. Default is to append.
 
 ---
@@ -217,7 +220,7 @@ Do not commit. Leave the changes for the user to review.
 | Reference | Used by | What it covers |
 |---|---|---|
 | `references/discovery-checklist.md` | Phase 1 | The 10-item discovery checklist |
-| `references/hook-catalog.md` + `references/hook-catalog-2.md` | Phase 3, Phase 4, Phase 5 | The seven hooks: what each does, why, what it costs, what it misses |
+| `references/hook-catalog.md` + `references/hook-catalog-2.md` | Phase 3, Phase 4, Phase 5 | The eight hooks: what each does, why, what it costs, what it misses |
 | `references/mcp-servers.md` | Phase 1, Phase 3, Phase 4 | Deriving the server menu from the repo, and the config shape of each |
 | `references/verification-steps.md` | Phase 5, Phase 6 | Per-hook trigger/expected table, and the "Try it" walkthrough |
 | `references/report-and-docs.md` | Phase 6 | Which doc gets what, and when to skip one |

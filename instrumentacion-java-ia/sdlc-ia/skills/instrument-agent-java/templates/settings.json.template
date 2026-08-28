@@ -11,9 +11,10 @@
 //     fire; there is no conflict to resolve. Ask only when a handler already points at a script
 //     with the same name — that is the same hook, not a second one.
 //
-// DELETE THE HANDLERS THE TEAM DID NOT CHOOSE. Hooks 1 and 2 are the default; 3 to 7 are opt-in,
-// and 6 and 7 are only offered when their artifact exists in the repo. A registered hook whose
-// script is absent fails on every matching tool call.
+// DELETE THE HANDLERS THE TEAM DID NOT CHOOSE. Hooks 1 and 2 are the default; 3 to 8 are opt-in.
+// 6 and 7 are only offered when their artifact exists in the repo; 8 only when the team is on
+// Windows (discovery item 10). A registered hook whose script is absent fails on every matching
+// tool call.
 //
 // SHELL FORM, NOT EXEC FORM. Exec form (`"args": [...]`) needs `command` to resolve to a real
 // executable, and on Windows a .sh is not one. Shell form runs the string through sh on
@@ -67,6 +68,16 @@
           {
             "type": "command",
             "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/agent-hooks/block-dangerous-bash.sh\"",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/agent-hooks/block-dangerous-powershell.sh\"",
             "timeout": 10
           }
         ]
