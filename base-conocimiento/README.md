@@ -269,25 +269,49 @@ o fija `BONSAI_CUDA_TAG=12.4.1` en tu `.env`.
 El LLM que resuelve planner, verificador de grounding y síntesis se habla por HTTP con una API
 compatible con OpenAI — ver [ADR-0009](docs/adrs/0009-bonsai-8b-integracion-pospuesta.md) y
 [la investigación completa](docs/investigacion-vram-y-modelo-llm.md). Quién sirve esa API varía por
-perfil: Bonsai necesita un `llama-server` aparte (cuantización propia, sin soporte en Ollama);
-Ministral y `gemma3:4b` se sirven los dos desde el mismo `ollama` que ya usas para embeddings
-(`bge-m3`) y, si habilitas Teams, para el destilador (F6) — Ministral vía su endpoint compatible con
-OpenAI (`http://ollama:11434/v1`), sin necesitar ningún contenedor propio. Tres perfiles, cada uno
-con su propio `docker compose` y sus propios comandos:
+perfil: **Bonsai** necesita un `llama-server` aparte (cuantización propia, sin soporte en Ollama);
+**todos los demás** se sirven desde el mismo `ollama` que ya usas para embeddings (`bge-m3`) y, si
+habilitas Teams, para el destilador (F6), vía su endpoint compatible con OpenAI
+(`http://ollama:11434/v1`) y sin necesitar ningún contenedor propio.
 
-| Perfil | Arranque | LLM | GPU |
-|---|---|---|---|
-| **Bonsai-8B** (default de `application.yml`) | `make pull-bonsai-gguf` (~1.16 GB, una vez) + `make up-bonsai` | 1-bit nativo, la mejor citación medida | Obligatoria |
-| **Ministral 3B** (mejor precisión medida en el piloto: 85.3%, en ajuste activo) | `make pull-ministral` (~2 GB, una vez) + `make up-ministral` | GGUF oficial sin fork, servido por Ollama | Opcional |
-| **gemma3:4b vía Ollama** (perfil original) | `make up` | Cuantizado, corre en CPU si no hay GPU | Opcional |
+Cada perfil se levanta con un `make up-<perfil>`, se baja con `make down-<perfil>` (los mismos `-f`
+que su `up`, para no dejar huérfanos) y descarga su modelo una sola vez con `make pull-<perfil>`:
 
-`make down-bonsai` / `make down-ministral` detienen cada perfil con los mismos `-f` que su `up`
-correspondiente; `make down` sigue sirviendo como cierre genérico (limpia contenedores huérfanos
-si vienes de cambiar de perfil). Bonsai reserva la tarjeta completa para su `llama-server`: no
-combines `make pin-embeddings-cpu` con ese perfil. Ministral sí puede combinarse con
-`make pin-embeddings-cpu` — comparte el mismo `ollama` que `bge-m3`, así que es el mismo ajuste que
-ya usas con `gemma3:4b`. `make pull-models` (embeddings + reranker) aplica igual a los tres perfiles.
+| Perfil | Descarga (una vez) | Arranque | Modelo | GPU |
+|---|---|---|---|---|
+| **gemma3:4b** — el base, sin perfil | — (`make pull-models`) | `make up` | `gemma3:4b` | Opcional |
+| **Bonsai-8B** — default de `application.yml`, la mejor citación medida | `make pull-bonsai-gguf` (~1.16 GB) | `make up-bonsai` | `Bonsai-8B-Q1_0.gguf` vía `llama-server` | **Obligatoria** |
+| **Ministral 3B** — mejor precisión del piloto (85.3%) | `make pull-ministral` (~2 GB) | `make up-ministral` | `hf.co/mistralai/Ministral-3-3B-Instruct-2512-GGUF:Q4_K_M` | Opcional |
+| **Qwen3.5 4B** — experimental, con el fix de *thinking* integrado | `make pull-qwen35` (~3.4 GB) | `make up-qwen35` | `qwen3.5:4b` | Opcional |
+| **Nemotron-mini 4B** — experimental, sin *thinking* | `make pull-nemotron` (~2.7 GB) | `make up-nemotron` | `nemotron-mini:4b` | Opcional |
+| **Granite 4.1 3B** — experimental | `make pull-granite41` (~2.1 GB) | `make up-granite41` | `granite4.1:3b` | Opcional |
+| **Phi-4 Mini 3.8B** — experimental | `make pull-phi4mini` (~2.5 GB) | `make up-phi4mini` | `phi4-mini:3.8b` | Opcional |
+| **Qwen2.5 3B** — experimental | `make pull-qwen25` (~1.9 GB) | `make up-qwen25` | `qwen2.5:3b` | Opcional |
 
+`make pull-models` (embeddings + reranker) aplica igual a **todos** los perfiles: descarga lo que no
+depende del LLM elegido. `make down` sirve como cierre genérico y limpia contenedores huérfanos si
+vienes de cambiar de perfil.
+
+Bonsai reserva la tarjeta completa para su `llama-server`, así que **no** combines
+`make pin-embeddings-cpu` con ese perfil. Los demás sí: comparten el mismo `ollama` que `bge-m3`.
+(En la práctica ya no hace falta correrlo a mano — ver [Reparto de la GPU](#reparto-de-la-gpu).)
+
+### Tres perfiles más, sin comando propio
+
+`compose.smollm3.yml`, `compose.minicpm5.yml` y `compose.nanbeige.yml` existen pero **no tienen
+target en el `Makefile`**: quedaron de la investigación, se probaron con overrides sueltos y sus
+modelos fueron descartados. Se levantan a mano, encadenando el compose igual que los demás:
+
+```bash
+docker compose exec ollama ollama pull hf.co/ggml-org/SmolLM3-3B-GGUF:Q4_K_M   # o el que toque
+docker compose -f compose.yml -f compose.gpu.yml -f compose.smollm3.yml up -d  # sin GPU: quita el -f compose.gpu.yml
+```
+
+| Compose | Modelo |
+|---|---|
+| `compose.smollm3.yml` | `hf.co/ggml-org/SmolLM3-3B-GGUF:Q4_K_M` |
+| `compose.minicpm5.yml` | `openbmb/minicpm5` |
+| `compose.nanbeige.yml` | `tomng/nanbeige4.1:3b-q4_K_M` |
 
 ### Los perfiles y tu `.env`
 
@@ -353,7 +377,7 @@ Ejemplo, de Bonsai a Ministral y de vuelta:
 ```bash
 make pull-bonsai-gguf   # una sola vez
 make pull-ministral      # una sola vez
-make pull-models        # una sola vez (embeddings + reranker, comunes a los 3 perfiles)
+make pull-models        # una sola vez (embeddings + reranker, comunes a todos los perfiles)
 make up-bonsai
 
 make down-bonsai        # para TODO el stack de ese perfil (db, ollama, docling, api, llama-server)
