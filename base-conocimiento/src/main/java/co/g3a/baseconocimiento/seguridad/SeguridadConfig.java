@@ -7,11 +7,11 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 class SeguridadConfig {
 
-    @Bean
-    FilterRegistrationBean<ApiTokenFilter> apiTokenFilter(SeguridadPropiedades propiedades) {
-        FilterRegistrationBean<ApiTokenFilter> registro =
-                new FilterRegistrationBean<>(new ApiTokenFilter(propiedades));
-        registro.addUrlPatterns("/api/*");
-        return registro;
-    }
+  @Bean
+  FilterRegistrationBean<ApiTokenFilter> apiTokenFilter(SeguridadPropiedades propiedades) {
+    FilterRegistrationBean<ApiTokenFilter> registro =
+        new FilterRegistrationBean<>(new ApiTokenFilter(propiedades));
+    registro.addUrlPatterns("/api/*");
+    return registro;
+  }
 }

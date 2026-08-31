@@ -279,6 +279,10 @@
     const huboError = estado.estado === "error";
     turno.estado.textContent = huboError ? "La respuesta quedó incompleta." : "Respondido";
     turno.estado.classList.add(huboError ? "error" : "completado");
+    // estado.queryLogId es null en el camino de error (nunca se llego a
+    // escribir en query_log) -- activarFeedback ya maneja ese caso sin hacer
+    // nada.
+    activarFeedback(turno, estado.queryLogId);
     if (conversacionActualId === conversacionId) {
       boton.disabled = false;
     }
@@ -619,6 +623,14 @@
       '<p class="turno-reformulacion"></p>' +
       '<p class="turno-estado"></p>' +
       '<div class="turno-respuesta"></div>' +
+      '<div class="turno-feedback oculto">' +
+      '<span>¿Te sirvió esta respuesta?</span>' +
+      '<button type="button" class="boton-feedback boton-feedback-si" ' +
+      'aria-label="Respuesta útil">👍</button>' +
+      '<button type="button" class="boton-feedback boton-feedback-no" ' +
+      'aria-label="Respuesta no útil">👎</button>' +
+      '<span class="turno-feedback-gracias oculto">¡Gracias!</span>' +
+      "</div>" +
       '<details class="turno-detalle">' +
       '<summary>Resultados rápidos ' +
       `<button type="button" class="boton-info" title="${escaparHtml(TEXTO_INFO_PREVIA)}" ` +
@@ -651,12 +663,57 @@
       previa: turno.querySelector(".turno-previa"),
       respuesta: turno.querySelector(".turno-respuesta"),
       citas: turno.querySelector(".turno-citas"),
+      feedback: turno.querySelector(".turno-feedback"),
+      botonFeedbackSi: turno.querySelector(".boton-feedback-si"),
+      botonFeedbackNo: turno.querySelector(".boton-feedback-no"),
+      feedbackGracias: turno.querySelector(".turno-feedback-gracias"),
       // Datos "crudos" (no el HTML ya armado) para poder guardar el turno en
       // IndexedDB tal cual se ve, sin tener que re-parsear el DOM.
       previaDatos: [],
       citasDatos: [],
       reformulacionTexto: null,
+      queryLogId: null,
     };
+  }
+
+  /**
+   * Se llama una vez que se conoce el queryLogId de esta respuesta (evento SSE
+   * "queryLogId" en vivo, o `estado.queryLogId` tras reconectar por F5) --
+   * revela los botones 👍/👎 y los deja listos para un solo click. Una vez por
+   * respuesta del lado del cliente: sin login de persona el servidor no puede
+   * deduplicar de verdad (ver Consultar.registrarFeedback), asi que esto es la
+   * unica barrera real contra un doble click accidental.
+   */
+  function activarFeedback(turno, queryLogId) {
+    if (!turno.feedback || queryLogId == null) {
+      return;
+    }
+    turno.queryLogId = queryLogId;
+    turno.feedback.classList.remove("oculto");
+    const enviar = async (util) => {
+      turno.botonFeedbackSi.disabled = true;
+      turno.botonFeedbackNo.disabled = true;
+      let registrado = false;
+      try {
+        // fetch() solo rechaza por fallo de red -- un 400 (queryLogId invalido,
+        // payload rechazado) resuelve normal, por eso hay que chequear .ok
+        // antes de dar el feedback por guardado.
+        const respuesta = await fetch("/api/feedback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ queryLogId: turno.queryLogId, util: util }),
+        });
+        registrado = respuesta.ok;
+      } catch (error) {
+        // Sin conexion: los botones quedan deshabilitados igual -- reintentar
+        // en una respuesta que ya se fue no aporta nada.
+      }
+      if (registrado && turno.feedbackGracias) {
+        turno.feedbackGracias.classList.remove("oculto");
+      }
+    };
+    turno.botonFeedbackSi.addEventListener("click", () => enviar(true));
+    turno.botonFeedbackNo.addEventListener("click", () => enviar(false));
   }
 
   // El pipeline completo tarda 2-3 min en CPU (medido en F4): un contador que
@@ -763,6 +820,10 @@
     // el texto se sigue acumulando igual, listo para cuando el usuario vuelva.
     fuente.addEventListener("token", (evento) => {
       turno.respuesta.textContent += JSON.parse(evento.data);
+    });
+
+    fuente.addEventListener("queryLogId", (evento) => {
+      activarFeedback(turno, Number(evento.data));
     });
 
     fuente.addEventListener("fin", () => {

@@ -43,33 +43,226 @@ planificación libre sin límite.
 - Docker Desktop con WSL2
 - ~15 GB libres en disco (5 GB de modelos + base + imágenes)
 - 16 GB de RAM (recomendado 32)
-- **Opcional**: GPU NVIDIA con `nvidia-container-toolkit`
+- **Opcional**: GPU NVIDIA. En Windows con Docker Desktop no hace falta instalar
+  `nvidia-container-toolkit`: la tarjeta se pasa a WSL2 sola. En Linux sí
 
 Java y Maven **no** hacen falta para ejecutarlo: el build ocurre dentro de Docker. Solo los
-necesitas para desarrollar (Java 21 y el wrapper `./mvnw` incluido).
+necesitas para desarrollar (Java 25 y el wrapper `./mvnw` incluido).
+
+### Instalación desde cero (Windows)
+
+Estas son todas las herramientas, en orden. Solo las dos primeras son obligatorias para
+**ejecutar** el sistema; el resto son para desarrollarlo o para comodidad.
+
+| # | Herramienta | Para qué | Instalar | Verificar |
+|---|---|---|---|---|
+| 1 | **Docker Desktop** (con WSL2) | Todo corre en contenedores, incluido el build de la app | `winget install Docker.DockerDesktop` — luego ábrelo una vez y deja que termine de configurar WSL2 | `docker version` y `docker compose version` |
+| 2 | **Git for Windows** | Clonar el repo, y su `sh.exe` es el shell que usa `make` (ver abajo) | `winget install Git.Git` | `git --version` |
+| 3 | **GNU Make** | Los comandos de este README. Si no lo quieres, mira [Sin `make`](#sin-make) | `winget install ezwinports.make` | `make --version` |
+| 4 | **Driver NVIDIA** *(opcional)* | GPU para el LLM y los embeddings. Docker Desktop pasa la tarjeta a WSL2 solo, **no** hace falta instalar `nvidia-container-toolkit` a mano en Windows | [nvidia.com/drivers](https://www.nvidia.com/download/index.aspx) — para el perfil Bonsai hace falta **≥ 560** | `nvidia-smi` |
+| 5 | **JDK 25** *(solo para desarrollar)* | Compilar y correr las pruebas fuera de Docker | `winget install EclipseAdoptium.Temurin.25.JDK` y apunta `JAVA_HOME` ahí | `make jdk-check` |
+| 6 | **gitleaks** *(solo para desarrollar)* | El gate de secretos (`make secrets`) | `winget install Gitleaks.Gitleaks` | `gitleaks version` |
+| 7 | **Node 20+** *(opcional)* | Solo para la evaluación de 100 preguntas (`eval-100-preguntas/`) | `winget install OpenJS.NodeJS.LTS` | `node --version` |
+
+Después de instalar, **cierra y vuelve a abrir la terminal** para que tome el `PATH` nuevo, clona el
+repo y sigue con [Arranque](#arranque).
+
+En Linux o macOS es lo mismo sin los pasos 2 y 3 (`make` y `sh` ya están), y con
+`nvidia-container-toolkit` instalado a mano si quieres GPU.
+
+### `make` en Windows
+
+Funciona igual desde **PowerShell** y desde **Git Bash**. Lo único que hace falta es
+[Git for Windows](https://git-scm.com/download/win) instalado: el `Makefile` busca su `sh.exe` y lo
+usa como shell, porque las recetas son POSIX (pipes, `if [ ... ]`, `command -v`).
+
+Sin eso, Make caería a `cmd.exe` y casi todo fallaría con «no se reconoce como un comando interno o
+externo» — no hace falta abrir Git Bash a propósito, ni agregar nada al `PATH` a mano.
+
+Para compilar (`make build`, `test`, `verify`, `check`) además necesitas **JDK 25** en `JAVA_HOME`.
+`make jdk-check` lo verifica y te dice exactamente qué poner si no cuadra, en vez de dejar que
+Maven falle con `release version 25 not supported` recién después de resolver las dependencias.
+
+```powershell
+$env:JAVA_HOME = 'C:\Program Files\Eclipse Adoptium\jdk-25...'   # PowerShell, para la sesión
+```
+
+
+
+### Sin `make`
+
+`make` no hace magia: encadena archivos de compose y arma unos `curl`. Si no lo puedes instalar,
+esto es cada comando en crudo. La diferencia real es que **el reparto de la GPU deja de ser
+automático**: `make` mira la tarjeta con `nvidia-smi` y elige los `-f` y el modelo de embeddings por
+ti; sin él, esa decisión la tomas tú.
+
+Primero elige tu línea base de compose y reutilízala en todos los comandos:
+
+```bash
+# sin GPU
+docker compose ...
+
+# con GPU (LLM en la tarjeta)
+docker compose -f compose.yml -f compose.gpu.yml ...
+
+# con GPU y suficiente VRAM (≥ 8 GB) para que docling también la use
+docker compose -f compose.yml -f compose.gpu.yml -f compose.docling-gpu.yml ...
+```
+
+| En vez de | Corre |
+|---|---|
+| `make up` | `docker compose <tus -f> up -d --build` |
+| `make down` | `docker compose <tus -f> down --remove-orphans` |
+| `make restart` | `docker compose <tus -f> up -d --build api` |
+| `make logs` | `docker compose <tus -f> logs -f api` |
+| `make ps` | `docker compose <tus -f> ps` |
+| `make psql` | `docker compose <tus -f> exec db psql -U kb -d baseconocimiento` |
+| `make health` | `curl -fsS http://localhost:8080/actuator/health` |
+| `make ingest` / `seed` | `curl -fsS -X POST http://localhost:8080/api/ingest/local-docs` |
+| `make ingest-repos` | `curl -fsS -X POST http://localhost:8080/api/ingest/repos-locales` |
+| `make pull-models` | `docker compose <tus -f> exec ollama ollama pull gemma3:4b` y `... ollama pull bge-m3`, más el reranker (abajo) |
+| `make pin-embeddings-cpu` | `docker compose <tus -f> exec -T ollama sh -c 'printf "FROM bge-m3\nPARAMETER num_gpu 0\n" > /tmp/Modelfile.cpu && ollama create bge-m3-cpu -f /tmp/Modelfile.cpu'` |
+| `make build` | `./mvnw -B clean package -DskipTests` |
+| `make test` | `./mvnw -B test` |
+| `make verify` | `./mvnw -B clean verify` |
+| `make lint` | `./mvnw -q spotless:check checkstyle:check` |
+| `make format` | `./mvnw -q spotless:apply` |
+| `make secrets` | `gitleaks detect --no-banner --redact` |
+
+El reranker (`make pull-reranker`) baja dos archivos y **verifica su SHA-256** — hazlo igual, la
+verificación es parte del punto:
+
+```bash
+mkdir -p .data/models/reranker
+curl -fL -o .data/models/reranker/model.onnx \
+  https://huggingface.co/onnx-community/bge-reranker-v2-m3-ONNX/resolve/main/onnx/model_int8.onnx
+curl -fL -o .data/models/reranker/tokenizer.json \
+  https://huggingface.co/onnx-community/bge-reranker-v2-m3-ONNX/resolve/main/tokenizer.json
+sha256sum .data/models/reranker/model.onnx      # 912fc1215c2dbff6499700534bd8d31253af01573861abbfc43afd1fab6cce5d
+sha256sum .data/models/reranker/tokenizer.json  # 8bf8afbfd11306bd872018c53bfdf2e160a56f8edbcf49933324404791c148d3
+```
+
+Sin `make` también tienes que elegir a mano el modelo de embeddings en tu `.env`:
+`KB_EMBEDDINGS_MODELO=bge-m3` si la tarjeta tiene ≥ 6 GB, `bge-m3-cpu` si tiene menos (y en ese caso
+crea el modelo con el comando de `pin-embeddings-cpu` de la tabla). El porqué está en
+[Reparto de la GPU](#reparto-de-la-gpu).
 
 ## Arranque
 
 ```bash
 cp .env.example .env
-make up                 # levanta db, ollama y api
-make pull-models        # ~5 GB, una sola vez
+make gpu-check          # qué tarjeta ve y cómo va a repartirla
+make up                 # levanta db, ollama, docling-serve y api
+make pull-models        # ~5.5 GB, una sola vez
 make health             # confirma que no falta ningún modelo
+make seed               # ingiere el corpus de ejemplo
 ```
 
-Abre <http://localhost:8080>. Para poblarlo con el corpus de ejemplo: `make seed`.
+Abre <http://localhost:8080>.
 
-Si el host tiene una GPU NVIDIA (con `nvidia-container-toolkit`), `make up` la detecta sola y
-levanta Ollama con la VRAM reservada — no hace falta ningún paso extra. Para dejarle toda la VRAM
-a la síntesis (recomendado con 4 GB o menos):
+## Reparto de la GPU
+
+`make` mira la tarjeta con `nvidia-smi` —VRAM, Compute Capability y versión del driver— y decide
+solo qué corre en ella. **No hay nada que configurar**: el mismo `make up` hace lo correcto en una
+T600 de 4 GB y en una RTX 3060 de 6 GB.
 
 ```bash
-make pin-embeddings-cpu   # deja toda la VRAM para la síntesis
-# y pon en .env:  KB_EMBEDDINGS_MODELO=bge-m3-cpu
+make gpu-check    # qué tarjeta vio, qué le dio a la GPU y por qué
+make up           # levanta con ese reparto, y lo imprime al terminar
 ```
 
-`make gpu-up` sigue disponible para forzar el perfil GPU si por algún motivo la detección
-automática no encuentra `nvidia-smi`. `make help` lista todo lo demás.
+| Etapa | Cuándo va a la GPU |
+|---|---|
+| **LLM** (planner, verificador de grounding, síntesis) | Siempre que haya tarjeta |
+| **Embeddings** (ingesta *y* consultas) | Desde 6 GB de VRAM (`KB_VRAM_EMBEDDINGS_GPU`) |
+| **Extracción de PDF/DOCX** (docling) | Desde 8 GB de VRAM (`KB_VRAM_DOCLING_GPU`) |
+| **Reranker** (cross-encoder) | Nunca — ver abajo |
+
+**Por qué los embeddings no siempre van a la GPU.** No es prudencia: está medido. En una T600 de
+4 GB, `gemma3:4b` **no entra completo ni estando solo** — Ollama offloadea capas hasta que caben y
+queda en 40% GPU / 60% CPU. Ahí, darle VRAM a `bge-m3` solo empeora al LLM, y moverlo a CPU (donde
+el AVX-512 con VNNI lo hace barato) resultó una mejora neta, sin costo de calidad. Con 6 GB o más
+entran los dos y los embeddings se quedan en la tarjeta, que es lo que conviene para la ingesta. El
+detalle está en [`docs/investigacion-vram-y-modelo-llm.md`](docs/investigacion-vram-y-modelo-llm.md).
+
+**Por qué docling tiene un umbral más alto.** Ya no es prudencia: está medido (sesión 27 de
+[`docs/investigacion-vram-y-modelo-llm.md`](docs/investigacion-vram-y-modelo-llm.md)). Sumando las
+tres etapas en la tarjeta a la vez:
+
+| Componente | VRAM |
+|---|---|
+| `gemma3:4b` a contexto 4096 | 4.0 GB |
+| `bge-m3` en GPU | ~1.2 GB |
+| docling, pico con un documento grande | 2.2 GB |
+| **Total** | **~7.4 GB** |
+
+Por eso 8 GB: en 6 GB los tres no entran. Una RTX 3060 puede tener LLM y embeddings en la tarjeta
+(5.2 GB), pero no docling encima. Durante la ingesta el LLM está ocioso, pero sigue residente por
+`OLLAMA_KEEP_ALIVE`, así que la suma es real y no un peor caso teórico.
+
+**La fuga de VRAM, y qué se puede hacer.** `docling-serve` no libera la VRAM entre conversiones
+([#233](https://github.com/docling-project/docling-serve/issues/233), abierta desde junio de 2025
+sin PR ni asignar), y no existe variable nativa para acotarla
+([#440](https://github.com/docling-project/docling-serve/issues/440) la pide y sigue abierta). Lo
+que se midió:
+
+- **No es ilimitada por conversión.** Cinco conversiones seguidas del mismo documento dejaron la
+  VRAM clavada en 799 MiB. Lo que se retiene es el pico del documento más pesado, no un delta por
+  llamada — 2053 MiB en reposo tras procesar un PDF de 800 páginas, contra 629 al arrancar.
+- **`GET /v1/clear/converters` no sirve**: existe, responde 200 y no libera un solo MiB. El caching
+  allocator de PyTorch no devuelve la memoria al driver.
+- **Reiniciar el proceso es la única vía**, y `compose.docling-gpu.yml` acota la huella base con
+  `NUM_WORKERS=1`, `SHARE_MODELS=true` y `OPTIONS_CACHE_SIZE=1`: medido A/B con 4 conversiones
+  concurrentes del mismo PDF, **2019 MiB con los defaults contra 799 MiB con esto**.
+
+```bash
+make docling-reciclar    # reinicia docling-serve e imprime la VRAM antes y después
+```
+
+Y ten presente que **docling solo interviene en la ingesta, nunca en las consultas**: no tiene por
+qué estar residente compitiendo con el LLM si no estás ingiriendo documentos.
+
+**Por qué el reranker se queda en CPU.** El proyecto usa la build **CPU** de ONNX Runtime
+(`com.microsoft.onnxruntime`). Ponerlo en GPU no es una variable de entorno: exige cambiar la
+dependencia por `onnxruntime_gpu` y meter CUDA en la imagen de la app. Ninguna opción de este README
+lo cambia — mejor decirlo que insinuar lo contrario.
+
+Todo el reparto se puede forzar, sin tocar código:
+
+```bash
+KB_GPU=1 make up                  # fuerza el perfil GPU (o KB_GPU=0 para apagarlo)
+KB_DOCLING_GPU=1 make up          # docling a la GPU sin esperar al umbral
+KB_VRAM_EMBEDDINGS_GPU=5120 make up   # mueve el umbral si mediste otra cosa
+```
+
+Y si fijas `KB_EMBEDDINGS_MODELO` en tu `.env`, manda eso y la detección deja de aplicar —
+`make gpu-check` te lo avisa.
+
+### Si dice «Perfil activo: CPU» y tu equipo sí tiene GPU
+
+Corre `make gpu-check`: muestra qué shell usó Make, si encontró `nvidia-smi`, qué tarjetas y qué
+driver hay. Si la tarjeta aparece ahí pero el perfil dice CPU, falló la detección y no el hardware:
+
+```bash
+KB_GPU=1 make up
+```
+
+### Perfil Bonsai y la versión de CUDA
+
+`make up-bonsai` compila llama.cpp con CUDA. Las dos cosas que dependen de tu equipo también salen
+de `nvidia-smi`, así que normalmente no tienes que tocarlas:
+
+| Variable | Qué es | De dónde sale |
+|---|---|---|
+| `BONSAI_CUDA_ARCH` | Compute Capability: 75 Turing (T600, RTX 20xx), 86 Ampere (RTX 30xx), 89 Ada (RTX 40xx), 120 Blackwell (RTX 50xx) | `nvidia-smi --query-gpu=compute_cap` |
+| `BONSAI_CUDA_TAG` | Imagen base `nvidia/cuda`. Cada versión exige un driver mínimo y lo verifica al arrancar: 12.6.0 pide ≥ 560, 12.4.1 ≥ 550, 12.2.2 ≥ 535 | La versión del driver instalado |
+
+`up-bonsai` imprime las dos **antes** de compilar, junto con el driver mínimo. Si aun así falla con
+`unsatisfied condition: cuda>=12.6`, el driver es más viejo de lo que dice `nvidia-smi`: actualízalo,
+o fija `BONSAI_CUDA_TAG=12.4.1` en tu `.env`.
+
+`make gpu-up` fuerza el perfil GPU para un arranque suelto. `make help` lista todo lo demás.
+
 
 ## Perfiles de modelo
 
@@ -192,7 +385,7 @@ wsl --shutdown
 
 | Pieza | Elección |
 |---|---|
-| Núcleo | Java 21 · Spring Boot 4.1 · Spring Modulith 2.1 |
+| Núcleo | Java 25 · Spring Boot 4.1 · Spring Modulith 2.1 |
 | Datos | PostgreSQL 18 · pgvector 0.8.6 · Flyway |
 | Generación | API compatible con OpenAI — planner, verificador de grounding y síntesis; `llama-server` (Bonsai) u Ollama (Ministral, `gemma3:4b`) según el perfil, ver [Perfiles de modelo](#perfiles-de-modelo) |
 | Destilación (Teams, F6) | Ollama con `gemma3:4b` |

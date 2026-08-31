@@ -7,7 +7,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -21,73 +20,76 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * La otra mitad de {@link AdminControllerTest}: con
- * {@code kb.ingesta.carga-habilitada=true} apuntando a un vault temporal real
- * (no al del repo), para verificar que el archivo queda escrito de verdad y
- * que un nombre fuera de la lista blanca se rechaza.
+ * La otra mitad de {@link AdminControllerTest}: con {@code kb.ingesta.carga-habilitada=true}
+ * apuntando a un vault temporal real (no al del repo), para verificar que el archivo queda escrito
+ * de verdad y que un nombre fuera de la lista blanca se rechaza.
  */
 @WebMvcTest(AdminController.class)
 class AdminControllerCargaHabilitadaTest {
 
-    @TempDir
-    static Path vaultTemporal;
+  @TempDir static Path vaultTemporal;
 
-    static Path documentosTemporal;
+  static Path documentosTemporal;
 
-    @BeforeAll
-    static void crearCarpetaDocumentos() throws IOException {
-        documentosTemporal = vaultTemporal.resolve("documentos");
-        Files.createDirectories(documentosTemporal);
-    }
+  @BeforeAll
+  static void crearCarpetaDocumentos() throws IOException {
+    documentosTemporal = vaultTemporal.resolve("documentos");
+    Files.createDirectories(documentosTemporal);
+  }
 
-    @DynamicPropertySource
-    static void propiedades(DynamicPropertyRegistry registry) {
-        registry.add("kb.ingesta.carga-habilitada", () -> "true");
-        registry.add("kb.ingesta.vault-dir", () -> vaultTemporal.toString());
-    }
+  @DynamicPropertySource
+  static void propiedades(DynamicPropertyRegistry registry) {
+    registry.add("kb.ingesta.carga-habilitada", () -> "true");
+    registry.add("kb.ingesta.vault-dir", () -> vaultTemporal.toString());
+  }
 
-    @Autowired
-    MockMvc mockMvc;
+  @Autowired MockMvc mockMvc;
 
-    @MockitoBean
-    IngestaRepositorio repo;
+  @MockitoBean IngestaRepositorio repo;
 
-    @MockitoBean
-    RelevadorDeFuentes relevador;
+  @MockitoBean RelevadorDeFuentes relevador;
 
-    @Test
-    @DisplayName("Con la carga habilitada, el archivo queda escrito en vault/documentos")
-    void subirArchivoEscribeEnElVault() throws Exception {
-        var archivo = new MockMultipartFile("archivo", "nuevo.md", "text/markdown", "contenido de prueba".getBytes());
+  @Test
+  @DisplayName("Con la carga habilitada, el archivo queda escrito en vault/documentos")
+  void subirArchivoEscribeEnElVault() throws Exception {
+    var archivo =
+        new MockMultipartFile(
+            "archivo", "nuevo.md", "text/markdown", "contenido de prueba".getBytes());
 
-        mockMvc.perform(multipart("/api/admin/vault/documentos").file(archivo))
-                .andExpect(status().isOk());
+    mockMvc
+        .perform(multipart("/api/admin/vault/documentos").file(archivo))
+        .andExpect(status().isOk());
 
-        assertThat(Files.readString(documentosTemporal.resolve("nuevo.md"))).isEqualTo("contenido de prueba");
-    }
+    assertThat(Files.readString(documentosTemporal.resolve("nuevo.md")))
+        .isEqualTo("contenido de prueba");
+  }
 
-    @Test
-    @DisplayName("Rechaza una extension que no esta en la lista blanca")
-    void subirArchivoRechazaExtensionNoPermitida() throws Exception {
-        var archivo = new MockMultipartFile("archivo", "script.exe", "application/octet-stream", "x".getBytes());
+  @Test
+  @DisplayName("Rechaza una extension que no esta en la lista blanca")
+  void subirArchivoRechazaExtensionNoPermitida() throws Exception {
+    var archivo =
+        new MockMultipartFile("archivo", "script.exe", "application/octet-stream", "x".getBytes());
 
-        mockMvc.perform(multipart("/api/admin/vault/documentos").file(archivo))
-                .andExpect(status().isBadRequest());
+    mockMvc
+        .perform(multipart("/api/admin/vault/documentos").file(archivo))
+        .andExpect(status().isBadRequest());
 
-        assertThat(Files.exists(documentosTemporal.resolve("script.exe"))).isFalse();
-    }
+    assertThat(Files.exists(documentosTemporal.resolve("script.exe"))).isFalse();
+  }
 
-    @Test
-    @DisplayName("Un nombre con recorrido de directorio no escapa de vault/documentos")
-    void subirArchivoRechazaRecorridoDeDirectorio() throws Exception {
-        var archivo = new MockMultipartFile("archivo", "../../etc/nuevo.md", "text/markdown", "x".getBytes());
+  @Test
+  @DisplayName("Un nombre con recorrido de directorio no escapa de vault/documentos")
+  void subirArchivoRechazaRecorridoDeDirectorio() throws Exception {
+    var archivo =
+        new MockMultipartFile("archivo", "../../etc/nuevo.md", "text/markdown", "x".getBytes());
 
-        mockMvc.perform(multipart("/api/admin/vault/documentos").file(archivo))
-                .andExpect(status().isOk());
+    mockMvc
+        .perform(multipart("/api/admin/vault/documentos").file(archivo))
+        .andExpect(status().isOk());
 
-        // Path.of(...).getFileName() ya descarta cualquier segmento de directorio:
-        // el archivo queda dentro de vault/documentos con el nombre final, no fuera de el.
-        assertThat(Files.exists(documentosTemporal.resolve("nuevo.md"))).isTrue();
-        assertThat(Files.exists(documentosTemporal.getParent().resolve("etc"))).isFalse();
-    }
+    // Path.of(...).getFileName() ya descarta cualquier segmento de directorio:
+    // el archivo queda dentro de vault/documentos con el nombre final, no fuera de el.
+    assertThat(Files.exists(documentosTemporal.resolve("nuevo.md"))).isTrue();
+    assertThat(Files.exists(documentosTemporal.getParent().resolve("etc"))).isFalse();
+  }
 }
