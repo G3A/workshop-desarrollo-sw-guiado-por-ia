@@ -26,8 +26,14 @@ services:
       context: .
       dockerfile: Dockerfile.bonsai
       args:
-        # 75 = Turing (T600). Cambiar si tu GPU es otra generacion.
+        # 75 = Turing (T600). Cambiar si tu GPU es otra generacion:
+        #   75 = Turing (T600, RTX 20xx)   86 = Ampere (RTX 30xx)
+        #   89 = Ada (RTX 40xx)            120 = Blackwell (RTX 50xx)
         CUDA_ARCH: ${BONSAI_CUDA_ARCH:-75}
+        # La imagen base de CUDA verifica el driver del host al arrancar: 12.6.0
+        # exige >= 560. Bajarlo (12.4.1 pide >= 550) es la salida si no se puede
+        # actualizar el driver -- ver el comentario en Dockerfile.bonsai.
+        CUDA_TAG: ${BONSAI_CUDA_TAG:-12.6.0}
     container_name: kb-llama-server
     environment:
       # 4096 se quedaba corto: la sesion 15 (docs/investigacion-vram-y-modelo-llm.md,

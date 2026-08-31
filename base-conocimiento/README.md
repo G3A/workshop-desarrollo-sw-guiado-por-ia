@@ -68,8 +68,36 @@ make pin-embeddings-cpu   # deja toda la VRAM para la síntesis
 # y pon en .env:  KB_EMBEDDINGS_MODELO=bge-m3-cpu
 ```
 
-`make gpu-up` sigue disponible para forzar el perfil GPU si por algún motivo la detección
-automática no encuentra `nvidia-smi`. `make help` lista todo lo demás.
+### Si dice «Perfil activo: CPU» y tu equipo sí tiene GPU
+
+La detección corre `nvidia-smi` desde el shell con el que Make evalúa `$(shell ...)`, y ese shell
+no siempre es el de tu terminal: en Windows, si Make no encuentra un `sh` POSIX o `nvidia-smi` no
+está en el PATH de ese shell, la detección da vacío y `make up` cae a CPU en una máquina que sí
+tiene tarjeta.
+
+```bash
+make gpu-check      # qué vio Make: shell, ruta de nvidia-smi, tarjetas, driver
+KB_GPU=1 make up    # salida manual: fuerza el perfil GPU sin depender de la detección
+```
+
+`make gpu-up` sigue disponible y hace lo mismo para un arranque suelto. `KB_GPU` además se puede
+dejar fija en tu `.env`.
+
+### Perfil Bonsai y la versión de CUDA
+
+`make up-bonsai` compila llama.cpp con CUDA, y ahí hay dos cosas que dependen de tu equipo:
+
+| Variable | Qué es | Default |
+|---|---|---|
+| `BONSAI_CUDA_ARCH` | Compute Capability de tu GPU: 75 Turing (T600, RTX 20xx), 86 Ampere (RTX 30xx), 89 Ada (RTX 40xx), 120 Blackwell (RTX 50xx) | `75` |
+| `BONSAI_CUDA_TAG` | Imagen base `nvidia/cuda`. Cada versión exige un driver mínimo y lo verifica al arrancar: 12.6.0 pide driver ≥ 560 | `12.6.0` |
+
+Si el contenedor falla con `unsatisfied condition: cuda>=12.6, please update your driver`, el
+driver del host es anterior a 560. Lo preferible es actualizarlo; si no se puede, baja el tag
+(`BONSAI_CUDA_TAG=12.4.1` pide ≥ 550). El error aparece **después** de compilar, así que vale la
+pena revisarlo antes con `make gpu-check`.
+
+`make help` lista todo lo demás.
 
 ## Perfiles de modelo
 

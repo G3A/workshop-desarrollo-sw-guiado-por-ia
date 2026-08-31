@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help up gpu-up up-bonsai down-bonsai up-ministral down-ministral up-qwen35 down-qwen35 up-nemotron down-nemotron up-granite41 down-granite41 up-phi4mini down-phi4mini up-qwen25 down-qwen25 down restart logs ps build test verify pull-models pull-reranker pull-bonsai-gguf pull-ministral pull-qwen35 pull-nemotron pull-granite41 pull-phi4mini pull-qwen25 pin-embeddings-cpu seed ingest ingest-repos ingest-teams ingest-azdo psql health clean format lint secrets check ci hooks
+.PHONY: help up gpu-up gpu-check up-bonsai down-bonsai up-ministral down-ministral up-qwen35 down-qwen35 up-nemotron down-nemotron up-granite41 down-granite41 up-phi4mini down-phi4mini up-qwen25 down-qwen25 down restart logs ps build test verify pull-models pull-reranker pull-bonsai-gguf pull-ministral pull-qwen35 pull-nemotron pull-granite41 pull-phi4mini pull-qwen25 pin-embeddings-cpu seed ingest ingest-repos ingest-teams ingest-azdo psql health clean format lint secrets check ci hooks
 
 COMPOSE           := docker compose
 COMPOSE_GPU       := docker compose -f compose.yml -f compose.gpu.yml
@@ -31,11 +31,49 @@ EMBEDDINGS  ?= bge-m3
 KB_DATA_DIR ?= ./.data
 KB_PORT     ?= 8080
 
+# Imagen base de CUDA y Compute Capability con las que se compila llama.cpp en
+# Dockerfile.bonsai. Los defaults son los de la GPU de referencia del ADR-0009
+# (T600, Turing) -- si tu tarjeta es otra, esto NO es opcional:
+#
+#   BONSAI_CUDA_ARCH: 75 = Turing (T600, RTX 20xx) | 86 = Ampere (RTX 30xx)
+#                     89 = Ada (RTX 40xx)          | 120 = Blackwell (RTX 50xx)
+#
+#   BONSAI_CUDA_TAG:  la imagen nvidia/cuda exige un driver minimo y lo verifica
+#                     en runtime. 12.6.0 pide driver >= 560; con uno anterior el
+#                     contenedor ni arranca ("unsatisfied condition: cuda>=12.6"),
+#                     despues de haber compilado ~20 minutos. Bajar este tag es la
+#                     salida si no puedes actualizar el driver del equipo.
+#
+# Se exportan para que docker compose las vea: compose.bonsai.yml las lee como
+# ${BONSAI_CUDA_ARCH} / ${BONSAI_CUDA_TAG}, y una variable de Make no llega al
+# entorno del proceso hijo si no se exporta.
+BONSAI_CUDA_ARCH     ?= 75
+BONSAI_CUDA_TAG      ?= 12.6.0
+BONSAI_DRIVER_MINIMO := 560
+export BONSAI_CUDA_ARCH
+export BONSAI_CUDA_TAG
+
 # Deteccion automatica de GPU NVIDIA: nvidia-smi solo existe y responde si hay
 # tarjeta y el driver esta instalado (con nvidia-container-toolkit, Docker ya
 # puede reservarla). Si el resultado es "1", todos los targets de infra usan
 # compose.gpu.yml sin que haga falta pedirlo a mano.
-HAY_GPU := $(shell command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi -L >/dev/null 2>&1 && echo 1)
+#
+# La deteccion depende del shell con el que Make evalua $(shell ...): `command -v`
+# es de sh, no de cmd. En un Windows donde Make no encuentra un sh POSIX -- o donde
+# nvidia-smi no esta en el PATH de ESE shell, aunque si lo este en la terminal --
+# esto da vacio y `make up` cae a CPU en una maquina que si tiene tarjeta, sin decir
+# por que. `make gpu-check` muestra que vio Make; KB_GPU es la salida manual:
+#   KB_GPU=1 make up   fuerza el perfil GPU
+#   KB_GPU=0 make up   lo apaga aunque haya tarjeta
+DETECCION_GPU := $(shell command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi -L >/dev/null 2>&1 && echo 1)
+
+ifeq ($(KB_GPU),1)
+HAY_GPU := 1
+else ifeq ($(KB_GPU),0)
+HAY_GPU :=
+else
+HAY_GPU := $(DETECCION_GPU)
+endif
 
 ifeq ($(HAY_GPU),1)
 COMPOSE_ACTIVO := $(COMPOSE_GPU)
@@ -73,12 +111,34 @@ help:  ## Muestra esta ayuda
 
 up:  ## Levanta los 4 servicios; usa la GPU NVIDIA automaticamente si el host tiene una
 	$(COMPOSE_ACTIVO) up -d --build
-	@echo "Perfil activo: $(if $(HAY_GPU),GPU (compose.gpu.yml) -- Ollama con VRAM reservada,CPU (compose.yml) -- no se detecto GPU NVIDIA)"
+	@echo "Perfil activo: $(if $(HAY_GPU),GPU (compose.gpu.yml) -- Ollama con VRAM reservada,CPU (compose.yml) -- sin GPU NVIDIA activa; si esta maquina tiene una corre make gpu-check)"
 
 gpu-up:  ## Fuerza el perfil GPU aunque la deteccion automatica no encuentre nvidia-smi
 	$(COMPOSE_GPU) up -d --build
 
+gpu-check:  ## Diagnostica la deteccion de GPU: por que dio lo que dio y como forzarla
+	@echo "Shell que usa Make    : $(SHELL)"
+	@echo "KB_GPU (override)     : $(if $(KB_GPU),$(KB_GPU),sin definir)"
+	@echo "Deteccion automatica  : $(if $(DETECCION_GPU),ok -- nvidia-smi existe y respondio,vacia -- no se pudo ejecutar nvidia-smi desde Make)"
+	@echo "Perfil que usaria up  : $(if $(HAY_GPU),GPU (compose.gpu.yml),CPU (compose.yml))"
+	@echo ""
+	@echo "-- ruta de nvidia-smi --"
+	-@command -v nvidia-smi || echo "   no esta en el PATH de este shell"
+	@echo "-- tarjetas --"
+	-@nvidia-smi -L || echo "   nvidia-smi no respondio"
+	@echo "-- driver --"
+	-@nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv || echo "   nvidia-smi no respondio"
+	@echo ""
+	@echo "Si la tarjeta aparece arriba pero el perfil dice CPU, la deteccion es lo que"
+	@echo "fallo, no el hardware: levanta con  KB_GPU=1 make up"
+	@echo ""
+	@echo "Para el perfil Bonsai (make up-bonsai) ademas hace falta driver >= $(BONSAI_DRIVER_MINIMO),"
+	@echo "que es lo que exige la imagen base nvidia/cuda:$(BONSAI_CUDA_TAG), y BONSAI_CUDA_ARCH"
+	@echo "igual a la Compute Capability de tu tarjeta (hoy: $(BONSAI_CUDA_ARCH))."
+
 up-bonsai:  ## Levanta el perfil Bonsai-8B (LLM 1-bit via llama-server); requiere GPU NVIDIA y el GGUF de pull-bonsai-gguf
+	@echo "Bonsai: imagen base nvidia/cuda:$(BONSAI_CUDA_TAG) (requiere driver NVIDIA >= $(BONSAI_DRIVER_MINIMO)) compilando para sm_$(BONSAI_CUDA_ARCH)."
+	@echo "Si falla con \"unsatisfied condition: cuda>=12.6\" o el modelo no corre en la GPU corre: make gpu-check"
 	$(COMPOSE_BONSAI) up -d --build
 
 down-bonsai:  ## Detiene el perfil Bonsai (mismos -f que up-bonsai, para no dejar contenedores huerfanos)

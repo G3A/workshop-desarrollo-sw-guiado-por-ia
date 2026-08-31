@@ -108,9 +108,14 @@ class AdminControllerTest {
     var archivo =
         new MockMultipartFile("archivo", "nuevo.md", "text/markdown", "contenido".getBytes());
 
+    // El 403 nombraba un solo interruptor. Quien lo leia ponia esa variable en true, volvia a
+    // intentar y chocaba con el vault montado de solo lectura -- el segundo muro, invisible desde
+    // el navegador. El mensaje tiene que nombrar los dos.
     mockMvc
         .perform(multipart("/api/admin/vault/documentos").file(archivo))
-        .andExpect(status().isForbidden());
+        .andExpect(status().isForbidden())
+        .andExpect(content().string(containsString("KB_INGESTA_CARGA_HABILITADA=true")))
+        .andExpect(content().string(containsString("KB_VAULT_MODO=rw")));
   }
 
   @Test

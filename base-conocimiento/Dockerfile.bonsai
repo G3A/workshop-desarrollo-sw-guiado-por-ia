@@ -8,8 +8,16 @@
 # contenedor levanta y responde. Se levanta aparte con compose.bonsai.yml.
 
 # ---------- etapa 1: build del fork con soporte CUDA ----------
-# Misma version de CUDA en build y runtime (12.6.0) para que el ABI coincida.
-FROM nvidia/cuda:12.6.0-devel-ubuntu22.04 AS build
+# Misma version de CUDA en build y runtime para que el ABI coincida.
+#
+# El tag es un ARG y no una constante porque no es una decision libre: la imagen
+# nvidia/cuda declara un driver minimo y lo VERIFICA al arrancar el contenedor.
+# 12.6.0 exige driver NVIDIA >= 560; con uno anterior el contenedor ni arranca
+# ("unsatisfied condition: cuda>=12.6"), y recien se descubre despues de haber
+# compilado llama.cpp entero. Bajar el tag (12.4.1 pide >= 550, 12.2.2 pide >= 535)
+# es la salida cuando no se puede actualizar el driver del equipo.
+ARG CUDA_TAG=12.6.0
+FROM nvidia/cuda:${CUDA_TAG}-devel-ubuntu22.04 AS build
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends git cmake build-essential ca-certificates \
@@ -21,7 +29,10 @@ WORKDIR /src
 RUN git clone --depth 1 --branch prism https://github.com/PrismML-Eng/llama.cpp.git .
 
 # CMAKE_CUDA_ARCHITECTURES=75 es Turing (T600, la GPU de referencia del ADR).
-# Si tu GPU es de otra generacion, cambia este numero por su Compute Capability.
+# Si tu GPU es de otra generacion, cambia este numero por su Compute Capability:
+#   75 = Turing (T600, RTX 20xx)   86 = Ampere (RTX 30xx)
+#   89 = Ada (RTX 40xx)            120 = Blackwell (RTX 50xx)
+# Se pasa desde compose.bonsai.yml via BONSAI_CUDA_ARCH.
 # LLAMA_CURL=OFF: no hace falta el downloader integrado, el GGUF se monta como
 # volumen (ver compose.bonsai.yml) en vez de bajarlo con `-hf` en runtime.
 ARG CUDA_ARCH=75
@@ -48,7 +59,7 @@ RUN --mount=type=cache,target=/src/build \
 
 # ---------- etapa 2: runtime ----------
 # runtime, no devel: no hace falta el toolchain de compilacion para servir.
-FROM nvidia/cuda:12.6.0-runtime-ubuntu22.04 AS runtime
+FROM nvidia/cuda:${CUDA_TAG}-runtime-ubuntu22.04 AS runtime
 
 # libgomp1: runtime de OpenMP que usan las operaciones CPU de ggml -- sin el,
 # llama-server falla al arrancar con "error while loading shared libraries".
