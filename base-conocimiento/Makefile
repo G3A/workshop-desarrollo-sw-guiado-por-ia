@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help up gpu-up gpu-check gpu-resumen jdk-check up-bonsai down-bonsai up-ministral down-ministral up-qwen35 down-qwen35 up-nemotron down-nemotron up-granite41 down-granite41 up-phi4mini down-phi4mini up-qwen25 down-qwen25 down restart logs ps build test verify pull-models pull-reranker pull-bonsai-gguf pull-ministral pull-qwen35 pull-nemotron pull-granite41 pull-phi4mini pull-qwen25 pin-embeddings-cpu seed ingest ingest-repos ingest-teams ingest-azdo psql health clean format lint secrets check ci hooks
+.PHONY: help up gpu-up gpu-check gpu-resumen docling-reciclar jdk-check up-bonsai down-bonsai up-ministral down-ministral up-qwen35 down-qwen35 up-nemotron down-nemotron up-granite41 down-granite41 up-phi4mini down-phi4mini up-qwen25 down-qwen25 down restart logs ps build test verify pull-models pull-reranker pull-bonsai-gguf pull-ministral pull-qwen35 pull-nemotron pull-granite41 pull-phi4mini pull-qwen25 pin-embeddings-cpu seed ingest ingest-repos ingest-teams ingest-azdo psql health clean format lint secrets check ci hooks
 
 
 
@@ -340,6 +340,18 @@ ps:  ## Estado de los contenedores
 health:  ## Reporte de salud detallado: db, ollama y modelos faltantes
 	@curl -fsS http://localhost:$${KB_PORT:-8080}/actuator/health | python -m json.tool 2>/dev/null \
 	  || curl -fsS http://localhost:$${KB_PORT:-8080}/actuator/health
+
+docling-reciclar:  ## Reinicia docling-serve para liberar la VRAM que retiene entre conversiones
+	@# docling-serve no libera la VRAM al terminar una conversion (docling-serve#233,
+	@# abierta desde junio 2025 sin PR; #440, que pide un limite configurable, tambien
+	@# sigue abierta). Reiniciar el proceso es la unica forma de recuperarla: no hay
+	@# manera de liberarla en caliente. Solo tiene sentido con docling en GPU; en CPU
+	@# no hace dano pero tampoco sirve de nada.
+	@echo "VRAM antes:"
+	-@nvidia-smi --query-gpu=memory.used,memory.total --format=csv || echo "   nvidia-smi no respondio"
+	$(COMPOSE_ACTIVO) restart docling-serve
+	@echo "VRAM despues:"
+	-@nvidia-smi --query-gpu=memory.used,memory.total --format=csv || echo "   nvidia-smi no respondio"
 
 ## ---------------------------------------------------------------- modelos
 

@@ -33,6 +33,29 @@
 services:
   docling-serve:
     image: quay.io/docling-project/docling-serve-cu130:v1.29.0
+    environment:
+      # Los tres defaults de docling-serve estan pensados para una GPU dedicada, no
+      # para una compartida con un LLM. Leidos juntos son peores de lo que parecen:
+      #
+      #   DOCLING_SERVE_ENG_LOC_NUM_WORKERS   default 2
+      #   DOCLING_SERVE_ENG_LOC_SHARE_MODELS  default False -- "one instance of the
+      #                                       models is allocated for each worker thread"
+      #   DOCLING_SERVE_OPTIONS_CACHE_SIZE    default 2 -- "how many DocumentConverter
+      #                                       objects (including their loaded models)"
+      #
+      # O sea: 2 workers que NO comparten modelos, por una cache de 2 converters que
+      # tambien retienen los suyos. Hasta 4 juegos de modelos residentes en VRAM, en
+      # una tarjeta donde el LLM ya compite. Eso, y no la fuga, es lo que mas duele en
+      # 4-6 GB. Con 1/true/1 queda UN solo juego residente.
+      #
+      # No resuelve la fuga (docling-serve#233, abierta desde junio 2025 sin PR ni
+      # asignar; docling-serve#440 pide un limite de VRAM configurable y tambien sigue
+      # abierta, asi que NO existe variable nativa para acotarla). Acota la huella
+      # base; para recuperar la VRAM que igual se retiene entre conversiones esta
+      # `make docling-reciclar`.
+      DOCLING_SERVE_ENG_LOC_NUM_WORKERS: "1"
+      DOCLING_SERVE_ENG_LOC_SHARE_MODELS: "true"
+      DOCLING_SERVE_OPTIONS_CACHE_SIZE: "1"
     deploy:
       resources:
         reservations:
