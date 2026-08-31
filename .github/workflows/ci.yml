@@ -61,7 +61,10 @@ jobs:
         uses: actions/setup-java@v6
         with:
           distribution: temurin
-          java-version: "21"
+          # 25, no 21: el pom compila a release 25 desde que base-conocimiento se
+          # sincronizo con el sandbox. Con 21 el build falla con "release version 25
+          # not supported".
+          java-version: "25"
           cache: maven
           cache-dependency-path: base-conocimiento/pom.xml
 
