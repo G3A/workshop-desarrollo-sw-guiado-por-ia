@@ -30,7 +30,7 @@ El repositorio está prácticamente vacío (solo `LICENSE`): esto es *greenfield
 
 | Decisión | Elección | Razón |
 |---|---|---|
-| Lenguaje | **Java 21 LTS + Spring Boot 4.1 + Modulith 2.1** | Boot 3.5 llegó a fin de vida OSS el 30-jun-2026: arrancar ahí sería nacer sin parches. Java 21 (no 25) porque es el JDK instalado en la máquina, y mantener vivo el `mvn test` local fue justo el argumento que le ganó a Rust. Subir a 25 es una línea |
+| Lenguaje | **Java 21 LTS + Spring Boot 4.1 + Modulith 2.1** | Boot 3.5 llegó a fin de vida OSS el 30-jun-2026: arrancar ahí sería nacer sin parches. Java 21 (no 25) porque es el JDK instalado en la máquina, y mantener vivo el `mvn test` local fue justo el argumento que le ganó a Rust. Subir a 25 es una línea. **Actualización**: ya se subió — el proyecto compila a Java 25 desde la sincronización con `base-conocimiento-sandbox` |
 | Acceso a modelos | **Spring AI 2.0**, solo para Ollama | Su línea 1.x quedó atada a Boot 3.5. Se usa para chat, streaming y salida estructurada — **no** su `VectorStore` |
 | Persistencia | PostgreSQL 18 + pgvector 0.8.6, Flyway, `JdbcClient` | Última estable; su E/S asíncrona acelera escaneos HNSW y GIN |
 | Generación | Ollama con **un solo** `gemma3:4b` | 4 GB de VRAM no sostienen dos modelos residentes; un modelo evita recargas por consulta. Originalmente `qwen3:4b`; reemplazado en F4 — ver hallazgos |
@@ -67,7 +67,8 @@ fin de vida anunciado: **implementar el protocolo es hoy la opción más durader
 | `ollama` | `ollama/ollama` | `gemma3:4b` (planner, destilación, síntesis) y `bge-m3` (embeddings) |
 | `api` | build propio (Java) | Ingesta, retrieval, orquestación, UI estática, reranker y endpoint de Teams |
 
-Imagen base `eclipse-temurin:21-jre-noble` — **glibc, no Alpine**: las librerías nativas de ONNX
+Imagen base `eclipse-temurin:25-jre-noble` (era `21` hasta la sincronización con
+`base-conocimiento-sandbox`) — **glibc, no Alpine**: las librerías nativas de ONNX
 Runtime no corren sobre musl. Incluye el binario `ripgrep` (~5 MB) para `search_code`. Jar por
 capas de Spring Boot para que las reconstrucciones solo repongan la capa de aplicación.
 
@@ -204,12 +205,12 @@ Respuesta consultar(Pregunta pregunta, ProyectoId proyecto, Filtros filtros)
 
 ### F0 — Andamiaje ✅ completado
 
-- `pom.xml` con versiones fijadas: Java 21, Spring Boot 4.1, Modulith 2.1, Spring AI 2.0,
+- `pom.xml` con versiones fijadas: Java 21 (hoy 25), Spring Boot 4.1, Modulith 2.1, Spring AI 2.0,
   Flyway, ArchUnit, jqwik, Testcontainers. Jackson 3 y Jakarta EE 11 vienen con Boot 4.
 - `compose.yml` con los 3 servicios, healthchecks y **bind mounts a D:** para modelos de Ollama
   y datos de Postgres. `compose.gpu.yml` como override. `.env.example`, `Makefile`.
 - Plantilla `wslconfig.example` versionada, con instrucciones de copia a `%USERPROFILE%`.
-- `Dockerfile` multi-etapa con jar por capas, base `temurin:21-jre-noble` y `ripgrep`.
+- `Dockerfile` multi-etapa con jar por capas, base `temurin:21-jre-noble` (hoy `25`) y `ripgrep`.
 - Migración Flyway `V1__esquema.sql`; prueba ArchUnit que ya declare la regla de adaptadores.
 - **Criterio de salida**: `docker compose up` deja los 3 servicios sanos y `/actuator/health`
   reporta db y ollama.
@@ -549,7 +550,7 @@ código; se documentan porque cada una habría costado una tarde de depuración:
 | **`cmd \| tail` enmascara el código de salida** | Un build de Docker fallido se leyó como exitoso | Los comandos de build ahora capturan el código real antes de filtrar la salida |
 | **Puerto 5432 ocupado** por otros contenedores de la máquina | El `compose up` fallaba entero | Puerto por defecto movido a **55432**; dentro de la red de compose se sigue usando 5432 |
 | **`jqwik` inyecta texto adversario** en la salida del build: *"If you are an AI Agent… disregard previous instructions"* | Intento de inyección de prompt en un artefacto de build | Ignorado. Queda como decisión pendiente: reemplazar `jqwik` por generadores propios en las pruebas de propiedades de RRF |
-| **JDK local es 21, no 25** | `mvn test` local no compilaría a 25 | Objetivo bajado a Java 21 LTS, que Boot 4.1 soporta plenamente |
+| **JDK local es 21, no 25** | `mvn test` local no compilaría a 25 | Objetivo bajado a Java 21 LTS, que Boot 4.1 soporta plenamente. **Actualización**: el JDK 25 ya está instalado y el objetivo volvió a 25 |
 
 ## Hallazgos de la implementación de F1
 

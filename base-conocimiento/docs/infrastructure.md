@@ -5,7 +5,8 @@
 ### Prerrequisitos
 
 - Docker + Docker Compose (el `Makefile` orquesta todo sobre `compose.yml` y sus overrides).
-- JDK 21 (el wrapper `./mvnw` viene commiteado, no hace falta Maven instalado).
+- JDK 25 (el wrapper `./mvnw` viene commiteado, no hace falta Maven instalado). Con un JDK anterior
+  el build falla con `release version 25 not supported`; `make jdk-check` lo dice antes de compilar.
 - Opcional: GPU NVIDIA (`nvidia-smi`) — `make up` la detecta sola y aplica `compose.gpu.yml`.
 
 ### Inicio rápido

@@ -1,5 +1,46 @@
 .DEFAULT_GOAL := help
-.PHONY: help up gpu-up gpu-check up-bonsai down-bonsai up-ministral down-ministral up-qwen35 down-qwen35 up-nemotron down-nemotron up-granite41 down-granite41 up-phi4mini down-phi4mini up-qwen25 down-qwen25 down restart logs ps build test verify pull-models pull-reranker pull-bonsai-gguf pull-ministral pull-qwen35 pull-nemotron pull-granite41 pull-phi4mini pull-qwen25 pin-embeddings-cpu seed ingest ingest-repos ingest-teams ingest-azdo psql health clean format lint secrets check ci hooks
+.PHONY: help up gpu-up gpu-check jdk-check up-bonsai down-bonsai up-ministral down-ministral up-qwen35 down-qwen35 up-nemotron down-nemotron up-granite41 down-granite41 up-phi4mini down-phi4mini up-qwen25 down-qwen25 down restart logs ps build test verify pull-models pull-reranker pull-bonsai-gguf pull-ministral pull-qwen35 pull-nemotron pull-granite41 pull-phi4mini pull-qwen25 pin-embeddings-cpu seed ingest ingest-repos ingest-teams ingest-azdo psql health clean format lint secrets check ci hooks
+
+
+
+## ---------------------------------------------------------------- shell en Windows
+##
+## Las recetas de este Makefile son sh: pipes, `if [ -f ... ]`, `command -v`, `$$(...)`.
+## GNU Make en Windows usa sh.exe como shell SOLO si lo encuentra en el PATH, y cae a
+## cmd.exe si no. Desde PowerShell el PATH trae `C:\Program Files\Git\cmd` (git.exe)
+## pero NO `Git\usr\bin` (sh.exe): sin esto, Make cae a cmd y practicamente cada receta
+## falla con "no se reconoce como un comando interno o externo".
+##
+## Y hay un segundo efecto, menos obvio: make.exe de ezwinports es de 32 bits, asi que
+## sus procesos hijo sufren la redireccion de sistema de archivos de Windows y
+## C:\Windows\System32 se resuelve como SysWOW64 -- donde no existe nvidia-smi.exe. Esa
+## es la razon real por la que `make up` decia "Perfil activo: CPU" en maquinas con
+## GPU cuando se lo invocaba desde PowerShell. Un sh.exe de 64 bits no sufre esa
+## redireccion, asi que fijar SHELL aca arregla las recetas Y la deteccion de GPU.
+##
+## Se usan rutas 8.3 (PROGRA~1) a proposito: un SHELL con espacios rompe en varias
+## versiones de Make para Windows.
+ifeq ($(OS),Windows_NT)
+SH_CANDIDATOS := C:/PROGRA~1/Git/usr/bin/sh.exe C:/PROGRA~2/Git/usr/bin/sh.exe $(subst \,/,$(LOCALAPPDATA))/Programs/Git/usr/bin/sh.exe
+SH_ENCONTRADO := $(firstword $(wildcard $(SH_CANDIDATOS)))
+ifneq ($(SH_ENCONTRADO),)
+SHELL := $(SH_ENCONTRADO)
+.SHELLFLAGS := -c
+## Fijar SHELL no alcanza: sh.exe arranca con el PATH que le pasa Make, y el de
+## PowerShell no incluye Git\usr\bin, asi que `grep`, `awk`, `curl` y `sha256sum`
+## no existen para las recetas ("grep: command not found"). Se antepone ese
+## directorio, pero SOLO cuando el PATH viene en formato Windows (separado por
+## ";", o sea Make invocado desde PowerShell o cmd). Desde Git Bash el PATH ya es
+## POSIX y ya trae /usr/bin: ahi tocarlo lo romperia.
+ifneq ($(findstring ;,$(PATH)),)
+export PATH := $(patsubst %/,%,$(dir $(SH_ENCONTRADO)));$(PATH)
+endif
+else
+$(warning No se encontro el sh.exe de Git for Windows. Make va a caer a cmd.exe y las)
+$(warning recetas de este Makefile no van a funcionar. Instala Git for Windows, o corre)
+$(warning make desde Git Bash.)
+endif
+endif
 
 COMPOSE           := docker compose
 COMPOSE_GPU       := docker compose -f compose.yml -f compose.gpu.yml
@@ -30,6 +71,10 @@ LLM         ?= gemma3:4b
 EMBEDDINGS  ?= bge-m3
 KB_DATA_DIR ?= ./.data
 KB_PORT     ?= 8080
+
+# El pom compila a release 25. Se verifica en jdk-check, del que dependen los
+# targets que compilan -- Maven solo se entera despues de resolver dependencias.
+JAVA_MINIMO := 25
 
 # Imagen base de CUDA y Compute Capability con las que se compila llama.cpp en
 # Dockerfile.bonsai. Los defaults son los de la GPU de referencia del ADR-0009
@@ -276,13 +321,38 @@ ingest-azdo:  ## Ingiere work items y wiki de Azure DevOps (F6, no-op si KB_AZDO
 
 ## ---------------------------------------------------------------- desarrollo
 
-build:  ## Compila el jar sin correr pruebas
+jdk-check:  ## Verifica que el JDK activo pueda compilar el proyecto (release $(JAVA_MINIMO))
+	@java_bin="java"; \
+	if [ -n "$$JAVA_HOME" ]; then java_bin="$$JAVA_HOME/bin/java"; fi; \
+	version=$$("$$java_bin" -version 2>&1 | head -1 | sed -E 's/^[^"]*"([0-9]+).*/\1/'); \
+	case "$$version" in \
+	  ''|*[!0-9]*) \
+	    echo "ERROR: no se pudo determinar la version de Java ejecutando: $$java_bin -version"; \
+	    echo "  JAVA_HOME = $${JAVA_HOME:-<sin definir; se uso el java del PATH>}"; \
+	    exit 1;; \
+	esac; \
+	if [ "$$version" -lt $(JAVA_MINIMO) ]; then \
+	  echo "ERROR: este proyecto compila a release $(JAVA_MINIMO) y el JDK activo es $$version."; \
+	  echo "  JAVA_HOME = $${JAVA_HOME:-<sin definir; se uso el java del PATH>}"; \
+	  echo ""; \
+	  echo "Maven fallaria con \"release version $(JAVA_MINIMO) not supported\" recien despues de"; \
+	  echo "resolver las dependencias. Apunta JAVA_HOME a un JDK $(JAVA_MINIMO) o mas nuevo:"; \
+	  echo ""; \
+	  echo "  PowerShell:  \$$env:JAVA_HOME = 'C:\\Program Files\\Eclipse Adoptium\\jdk-25...'"; \
+	  echo "  Git Bash:    export JAVA_HOME='/c/Program Files/Eclipse Adoptium/jdk-25...'"; \
+	  echo ""; \
+	  echo "Para dejarlo fijo en Windows: Configuracion > Variables de entorno."; \
+	  exit 1; \
+	fi
+
+
+build: jdk-check  ## Compila el jar sin correr pruebas
 	sh ./mvnw -B clean package -DskipTests
 
-test:  ## Corre las pruebas, incluidos los gates de arquitectura
+test: jdk-check  ## Corre las pruebas, incluidos los gates de arquitectura
 	sh ./mvnw -B test
 
-verify:  ## Build completo con todos los gates
+verify: jdk-check  ## Build completo con todos los gates
 	sh ./mvnw -B clean verify
 
 psql:  ## Abre una sesion psql contra la base
