@@ -43,6 +43,16 @@ class AdminController {
   private final boolean relevoHabilitado;
   private final boolean cargaHabilitada;
 
+  /**
+   * Los dos interruptores que la carga necesita, no uno. Nombrar solo el flag de la aplicación (lo
+   * que hacía el mensaje anterior) manda a quien lo lee a buscar una sola variable, la pone en
+   * {@code true} y se encuentra con el siguiente muro: el vault sigue montado de solo lectura y la
+   * escritura falla con un error de E/S dentro del contenedor.
+   */
+  private static final String COMO_HABILITAR_LA_CARGA =
+      "Pon KB_INGESTA_CARGA_HABILITADA=true y KB_VAULT_MODO=rw en tu archivo .env"
+          + " y vuelve a levantar (make down && make up).";
+
   AdminController(
       IngestaRepositorio repo,
       RelevadorDeFuentes relevador,
@@ -174,16 +184,19 @@ class AdminController {
   }
 
   /**
-   * Carga desde el navegador, apagada por defecto. Habilitarla ({@code
-   * KB_INGESTA_CARGA_HABILITADA=true}) exige además quitar el {@code :ro} del bind mount del vault
-   * en {@code compose.yml}: sin eso, el contenedor no puede escribir ahí y esta llamada falla con
-   * un error de E/S explícito, no en silencio.
+   * Carga desde el navegador, apagada por defecto. Habilitarla exige los dos interruptores: {@code
+   * KB_INGESTA_CARGA_HABILITADA=true} y {@code KB_VAULT_MODO=rw}, este último porque el vault se
+   * monta con {@code ${KB_VAULT_MODO:-ro}} en {@code compose.yml} — no hace falta editar el compose
+   * a mano. Con solo el primero, el contenedor no puede escribir ahí y esta llamada falla con un
+   * error de E/S explícito, no en silencio.
    */
   @PostMapping("/api/admin/vault/documentos")
   ResponseEntity<String> subirArchivo(@RequestParam("archivo") MultipartFile archivo) {
     if (!cargaHabilitada) {
       return ResponseEntity.status(HttpStatus.FORBIDDEN)
-          .body("Carga deshabilitada (kb.ingesta.carga-habilitada=false)");
+          .body(
+              "Carga deshabilitada (kb.ingesta.carga-habilitada=false). "
+                  + COMO_HABILITAR_LA_CARGA);
     }
     Optional<String> nombreValido = validarNombre(archivo.getOriginalFilename());
     if (nombreValido.isEmpty()) {
@@ -215,7 +228,8 @@ class AdminController {
       return ResponseEntity.status(HttpStatus.FORBIDDEN)
           .body(
               "Borrado deshabilitado (kb.ingesta.carga-habilitada=false): el vault esta montado de solo lectura, "
-                  + "asi que un borrado que solo tocara el indice reaparaceria en el proximo relevo.");
+                  + "asi que un borrado que solo tocara el indice reaparaceria en el proximo relevo. "
+                  + COMO_HABILITAR_LA_CARGA);
     }
     Optional<IngestaRepositorio.ArchivoVaultParaEliminar> archivo =
         repo.buscarArchivoVaultParaEliminar(id);
