@@ -50,7 +50,8 @@ llevar su propio `<version>` — es uno de los errores más comunes de un agente
 
 Dependencias con versión propia fuera de BOM (todas en `<properties>`, sin rangos):
 `onnxruntime` 1.28.0, `djl-tokenizers` 0.36.0, `pgvector` 0.1.6, `jgit` 7.7.1, `archunit` 1.4.2,
-`jqwik` 1.10.1, `wiremock` 3.13.2.
+`jqwik` **1.9.3** (fijado a proposito: 1.10.x imprime una inyección de prompt contra agentes en
+cada corrida, ver `pom.xml` y https://lwn.net/Articles/1075317/), `wiremock` 3.13.2.
 
 `./mvnw`/`mvnw.cmd` están commiteados — preferirlos sobre un `mvn` bare.
 
@@ -69,8 +70,11 @@ Compose (no de Spring).
 ## Fronteras de módulo (Spring Modulith)
 
 Ver la regla completa y sus tres adaptadores en [architecture.md](architecture.md#módulos-spring-modulith)
-y el archivo `ArquitecturaTest`. Las 4 reglas (3 `noClasses()` de ArchUnit + `ApplicationModules.verify()`)
-corren activadas de verdad, sin `allowEmptyShould`, y cubren a `web`, `teams` y `seguridad` por igual.
+y el archivo `ArquitecturaTest`. Son 5 pruebas: 4 de ArchUnit (5 `noClasses()` en total, con
+`allowEmptyShould(false)` explícito en las que cubren adaptadores y núcleo, para que no nazcan
+verdes por vacías) más `ApplicationModules.verify()`. Cubren a `web`, `teams` y `seguridad` por
+igual, en las dos direcciones, e incluyen la frontera lateral entre `seguridad` y los otros dos
+adaptadores.
 `ApplicationModules.verify()` corre en el mismo ciclo de test que el resto (`make test`), no está
 deshabilitado.
 
@@ -103,16 +107,17 @@ JWKS de Bot Framework).
 
 | Gate | Estado |
 |---|---|
-| ArchUnit | **Presente** — 4 reglas, `ArquitecturaTest`, corre en `make test` |
-| Checkstyle | Ausente |
-| Spotless | Ausente |
+| ArchUnit | **Presente y bloquea** — 5 pruebas en `ArquitecturaTest`, corre en `make test` |
+| Checkstyle | **Presente y bloquea** — `failOnViolation=true`, `violationSeverity=error`, incluye las fuentes de test, ligado a `verify`, con `checkstyle-suppressions.xml` |
+| Spotless | **Presente y bloquea** — `google-java-format` sobre todo el código, sin `ratchetFrom`; `spotless:check` en `make lint` |
 | SpotBugs / PMD | Ausente |
 | SonarQube | Ausente |
-| CI (`.github/workflows`) | Ausente |
+| CI (`.github/workflows`) | **Presente** — corre `make ci` en cada push/PR, con JDK 25 |
 
-Solo ArchUnit está en su lugar hoy — no asumas cobertura de formato/estilo. Cerrar esta tabla es
-justo lo que corre `/sdlc-ia:instrument-project-java` (validado en la etapa F2 de
-`validacion-workshop/` en la raíz del monorepo).
+Formato, estilo, arquitectura y CI bloquean de verdad; lo que sigue sin cubrirse es análisis
+estático de bugs (SpotBugs/PMD) y métricas de calidad (SonarQube). Esta tabla la cerró
+`/sdlc-ia:instrument-project-java` (etapa F2 de `validacion-workshop/`, en la raíz del monorepo) y
+la terminó de endurecer la sincronización con `base-conocimiento-sandbox`.
 
 ## Web / API
 
