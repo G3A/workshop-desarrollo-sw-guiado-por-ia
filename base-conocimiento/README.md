@@ -46,7 +46,25 @@ planificación libre sin límite.
 - **Opcional**: GPU NVIDIA con `nvidia-container-toolkit`
 
 Java y Maven **no** hacen falta para ejecutarlo: el build ocurre dentro de Docker. Solo los
-necesitas para desarrollar (Java 21 y el wrapper `./mvnw` incluido).
+necesitas para desarrollar (Java 25 y el wrapper `./mvnw` incluido).
+
+### `make` en Windows
+
+Funciona igual desde **PowerShell** y desde **Git Bash**. Lo único que hace falta es
+[Git for Windows](https://git-scm.com/download/win) instalado: el `Makefile` busca su `sh.exe` y lo
+usa como shell, porque las recetas son POSIX (pipes, `if [ ... ]`, `command -v`).
+
+Sin eso, Make caería a `cmd.exe` y casi todo fallaría con «no se reconoce como un comando interno o
+externo» — no hace falta abrir Git Bash a propósito, ni agregar nada al `PATH` a mano.
+
+Para compilar (`make build`, `test`, `verify`, `check`) además necesitas **JDK 25** en `JAVA_HOME`.
+`make jdk-check` lo verifica y te dice exactamente qué poner si no cuadra, en vez de dejar que
+Maven falle con `release version 25 not supported` recién después de resolver las dependencias.
+
+```powershell
+$env:JAVA_HOME = 'C:\Program Files\Eclipse Adoptium\jdk-25...'   # PowerShell, para la sesión
+```
+
 
 ## Arranque
 
@@ -220,7 +238,7 @@ wsl --shutdown
 
 | Pieza | Elección |
 |---|---|
-| Núcleo | Java 21 · Spring Boot 4.1 · Spring Modulith 2.1 |
+| Núcleo | Java 25 · Spring Boot 4.1 · Spring Modulith 2.1 |
 | Datos | PostgreSQL 18 · pgvector 0.8.6 · Flyway |
 | Generación | API compatible con OpenAI — planner, verificador de grounding y síntesis; `llama-server` (Bonsai) u Ollama (Ministral, `gemma3:4b`) según el perfil, ver [Perfiles de modelo](#perfiles-de-modelo) |
 | Destilación (Teams, F6) | Ollama con `gemma3:4b` |
