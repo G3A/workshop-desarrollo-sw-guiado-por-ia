@@ -186,9 +186,25 @@ entran los dos y los embeddings se quedan en la tarjeta, que es lo que conviene 
 detalle está en [`docs/investigacion-vram-y-modelo-llm.md`](docs/investigacion-vram-y-modelo-llm.md).
 
 **Por qué docling tiene un umbral más alto.** `docling-serve` no libera la VRAM entre conversiones
-(bug conocido y sin fix, ver [ADR-0010](docs/adrs/0010-docling-reemplaza-pdfbox.md)), así que solo
-se le da la tarjeta cuando sobra margen. Si te quedas sin VRAM,
-`docker compose restart docling-serve` la libera.
+([docling-serve#233](https://github.com/docling-project/docling-serve/issues/233), abierta desde
+junio de 2025 sin PR ni asignar), y tampoco existe una variable nativa para acotarla
+([#440](https://github.com/docling-project/docling-serve/issues/440) la pide y sigue abierta). Ver
+[ADR-0010](docs/adrs/0010-docling-reemplaza-pdfbox.md).
+
+Lo que sí se puede es acotar la huella base, y `compose.docling-gpu.yml` lo hace: sus defaults son
+2 workers que **no** comparten modelos (`SHARE_MODELS=False` significa *«one instance of the models
+is allocated for each worker thread»*) más una caché de 2 converters que también retienen los suyos
+— hasta cuatro juegos de modelos residentes en una tarjeta donde el LLM ya compite. Con
+`NUM_WORKERS=1`, `SHARE_MODELS=true` y `OPTIONS_CACHE_SIZE=1` queda **un solo juego**.
+
+Para recuperar la VRAM que igual se retiene entre conversiones:
+
+```bash
+make docling-reciclar    # reinicia docling-serve e imprime la VRAM antes y después
+```
+
+Y ten presente que **docling solo interviene en la ingesta, nunca en las consultas**: no tiene por
+qué estar residente compitiendo con el LLM si no estás ingiriendo documentos.
 
 **Por qué el reranker se queda en CPU.** El proyecto usa la build **CPU** de ONNX Runtime
 (`com.microsoft.onnxruntime`). Ponerlo en GPU no es una variable de entorno: exige cambiar la
