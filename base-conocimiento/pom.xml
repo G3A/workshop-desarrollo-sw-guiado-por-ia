@@ -18,10 +18,9 @@
   <description>Base de conocimiento interna con recuperacion hibrida, 100% local</description>
 
   <properties>
-    <!-- Java 21 LTS: es lo instalado en la maquina de desarrollo y Boot 4.1 lo soporta
-         plenamente (linea base 17). Subir a 25 es cambiar solo esta linea mas los
-         tags del Dockerfile. -->
-    <java.version>21</java.version>
+    <!-- JDK 25 LTS: coincide con los tags eclipse-temurin:25 del Dockerfile (deps,
+         build y runtime). Boot 4.1 lo soporta plenamente (linea base 17). -->
+    <java.version>25</java.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
     <!-- Versiones fijadas, sin rangos: ver plan, riesgo "Spring AI 2.0 y Modulith 2.1 son recientes" -->
@@ -33,15 +32,22 @@
     <arconia.version>0.29.0</arconia.version>
     <jgit.version>7.7.1.202607240634-r</jgit.version>
     <archunit.version>1.4.2</archunit.version>
-    <!-- Fijado, no "última": 1.10.x imprime una inyección de prompt real en la salida de mvn
-         test (incidente cubierto por https://lwn.net/Articles/1075317/). Ver AGENTS.md. -->
+    <!-- Fijado en 1.9.3 a proposito, NO en la ultima: 1.10.0 traia una inyeccion de
+         prompt oculta (ANSI) contra agentes de IA que le pedia borrar los tests de
+         jqwik; 1.10.1 la reemplazo por una version visible que sigue imprimiendo
+         "Disregard previous instructions..." en cada corrida (ver
+         https://lwn.net/Articles/1075317/). jqwik.hideAntiAiClause solo oculta el
+         mensaje en una terminal interactiva (escape ANSI), no lo saca de stdout ni
+         de los logs de CI, asi que no resuelve nada por si solo. No subir de 1.9.x
+         sin revisar antes las release notes de esa version en concreto. -->
     <jqwik.version>1.9.3</jqwik.version>
     <wiremock.version>3.13.2</wiremock.version>
     <!-- Boot 4.1 ya no importa el BOM de Testcontainers: hay que declararlo -->
     <testcontainers.version>2.0.5</testcontainers.version>
 
-    <!-- instrument-project-java: controles 2-3, sin BOM que las gestione -->
-    <spotless-maven-plugin.version>3.9.0</spotless-maven-plugin.version>
+    <!-- Sin BOM propio: versiones resueltas contra Maven Central al instrumentar (control 3) -->
+    <spotless.version>3.9.0</spotless.version>
+    <google-java-format.version>1.35.0</google-java-format.version>
     <maven-checkstyle-plugin.version>3.6.0</maven-checkstyle-plugin.version>
   </properties>
 
@@ -255,47 +261,29 @@
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-surefire-plugin</artifactId>
-        <configuration>
-          <includes>
-            <include>**/*Test.java</include>
-            <include>**/*Tests.java</include>
-            <include>**/*Properties.java</include>
-          </includes>
-        </configuration>
-      </plugin>
-      <!-- Control 2 (instrument-project-java): Werror, no version, already managed by
-           spring-boot-starter-parent. -->
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
         <configuration>
           <compilerArgs>
-            <!-- -processing excluido: javac marca como "no reclamadas" las anotaciones runtime
-                 de Spring (@Component, @RestController, etc.), que no tienen un annotation
-                 processor propio mas alla del de Spring Modulith (que si corre, ver
-                 target/generated-spring-modulith). Falso positivo conocido de -Xlint:all en
-                 proyectos Spring, no una relajacion real del resto de las categorias. -->
-            <arg>-Xlint:all,-processing</arg>
+            <arg>-Xlint:all</arg>
             <arg>-Werror</arg>
           </compilerArgs>
         </configuration>
       </plugin>
-      <!-- Control 3 (instrument-project-java): Spotless, formatting, google-java-format.
-           ratchetFrom: solo formatea archivos que cambien desde la referencia, el codigo
-           existente no se toca en este commit. -->
       <plugin>
         <groupId>com.diffplug.spotless</groupId>
         <artifactId>spotless-maven-plugin</artifactId>
-        <version>${spotless-maven-plugin.version}</version>
+        <version>${spotless.version}</version>
         <configuration>
-          <!-- origin/dev, no `dev` a secas: un runner de CI (actions/checkout) nunca tiene una
-               rama local `dev`, solo el remote-tracking origin/dev; `dev` a secas fallo en CI
-               con "No such reference 'dev'" (ver validacion-workshop/f2-preparar-proyecto.md).
-               origin/dev ya tiene el reorg a monorepo empujado. -->
-          <ratchetFrom>origin/dev</ratchetFrom>
           <java>
-            <googleJavaFormat/>
+            <includes>
+              <include>src/main/java/**/*.java</include>
+              <include>src/test/java/**/*.java</include>
+            </includes>
+            <googleJavaFormat>
+              <version>${google-java-format.version}</version>
+            </googleJavaFormat>
+            <removeUnusedImports/>
+            <importOrder/>
           </java>
         </configuration>
         <executions>
@@ -307,21 +295,35 @@
           </execution>
         </executions>
       </plugin>
-      <!-- Control 3 (instrument-project-java): Checkstyle, lo que Spotless no cubre
-           (imports no usados, naming, largo de linea). Invocado directo via `checkstyle:check`
-           desde `make lint`, no ligado al ciclo de vida. -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-checkstyle-plugin</artifactId>
         <version>${maven-checkstyle-plugin.version}</version>
         <configuration>
-          <configLocation>checkstyle.xml</configLocation>
-          <!-- Brownfield: 35 violaciones preexistentes al instalar este control (mayoria
-               ConstantName sobre "log", mas unos LineLength y un import no usado). Reporte, no
-               bloqueo, hasta que se triage el backlog; ver validacion-workshop/f2-preparar-
-               proyecto.md para el detalle completo. Cambiar a true archivo por archivo a medida
-               que se limpien, nunca aflojar la regla para que pase. -->
-          <failOnViolation>false</failOnViolation>
+          <configLocation>${maven.multiModuleProjectDirectory}/checkstyle.xml</configLocation>
+          <suppressionsLocation>${maven.multiModuleProjectDirectory}/checkstyle-suppressions.xml</suppressionsLocation>
+          <failOnViolation>true</failOnViolation>
+          <violationSeverity>error</violationSeverity>
+          <includeTestSourceDirectory>true</includeTestSourceDirectory>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>check</goal>
+            </goals>
+            <phase>verify</phase>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <includes>
+            <include>**/*Test.java</include>
+            <include>**/*Tests.java</include>
+            <include>**/*Properties.java</include>
+          </includes>
         </configuration>
       </plugin>
     </plugins>
