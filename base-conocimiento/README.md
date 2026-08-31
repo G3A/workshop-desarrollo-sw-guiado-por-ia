@@ -270,8 +270,8 @@ El LLM que resuelve planner, verificador de grounding y síntesis se habla por H
 compatible con OpenAI — ver [ADR-0009](docs/adrs/0009-bonsai-8b-integracion-pospuesta.md) y
 [la investigación completa](docs/investigacion-vram-y-modelo-llm.md). Quién sirve esa API varía por
 perfil: Bonsai necesita un `llama-server` aparte (cuantización propia, sin soporte en Ollama);
-Ministral y `gemma3:4b` se sirven los dos desde el mismo `ollama` que ya usás para embeddings
-(`bge-m3`) y, si habilitás Teams, para el destilador (F6) — Ministral vía su endpoint compatible con
+Ministral y `gemma3:4b` se sirven los dos desde el mismo `ollama` que ya usas para embeddings
+(`bge-m3`) y, si habilitas Teams, para el destilador (F6) — Ministral vía su endpoint compatible con
 OpenAI (`http://ollama:11434/v1`), sin necesitar ningún contenedor propio. Tres perfiles, cada uno
 con su propio `docker compose` y sus propios comandos:
 
@@ -286,7 +286,42 @@ correspondiente; `make down` sigue sirviendo como cierre genérico (limpia conte
 si vienes de cambiar de perfil). Bonsai reserva la tarjeta completa para su `llama-server`: no
 combines `make pin-embeddings-cpu` con ese perfil. Ministral sí puede combinarse con
 `make pin-embeddings-cpu` — comparte el mismo `ollama` que `bge-m3`, así que es el mismo ajuste que
-ya usás con `gemma3:4b`. `make pull-models` (embeddings + reranker) aplica igual a los tres perfiles.
+ya usas con `gemma3:4b`. `make pull-models` (embeddings + reranker) aplica igual a los tres perfiles.
+
+
+### Los perfiles y tu `.env`
+
+La regla que hay que tener presente: **Docker Compose le da precedencia al entorno sobre el archivo
+`.env`**, así que una variable activa ahí *pisa* el valor que trae el perfil. Es la causa de un
+síntoma desconcertante — copiar `.env.example` a `.env` y que `make up-bonsai` deje de responder,
+porque el `.env` fijaba `KB_LLM_MODELO=gemma3:4b` y la API terminaba pidiéndole ese modelo al
+`llama-server` que estaba sirviendo Bonsai.
+
+Por eso, en `.env.example` van **comentadas** las dos variables que eligen modelo:
+
+| Variable | Comentada significa | Descoméntala solo si |
+|---|---|---|
+| `KB_LLM_MODELO` | Manda el perfil que elijas (`up`, `up-ministral`, `up-bonsai`, …) | Quieres otro modelo en el perfil **base** (`make up`) — y vuelve a comentarla antes de usar otro perfil |
+| `KB_EMBEDDINGS_MODELO` | `make` elige `bge-m3` o `bge-m3-cpu` según la VRAM que detecte | Quieres fijarlo a mano; `make gpu-check` te avisa cuando está fijado |
+
+Con eso, **el `.env` recién copiado del ejemplo funciona con cualquiera de los perfiles**, sin
+editar nada:
+
+```bash
+cp .env.example .env
+make up              # gemma3:4b
+make up-ministral    # Ministral 3B
+make up-bonsai       # Bonsai-8B   (antes: make pull-bonsai-gguf)
+```
+
+El resto de variables del ejemplo (puertos, credenciales de Postgres, flags de Teams/Azure DevOps)
+coinciden con los valores por defecto de `compose.yml`, así que no pisan nada.
+
+Los perfiles servidos por Ollama (`up-ministral`, `up-qwen35`, `up-nemotron`, `up-granite41`,
+`up-phi4mini`, `up-qwen25`) encadenan `compose.gpu.yml` **solo si hay tarjeta**: sin ella, la
+reserva de dispositivo NVIDIA haría fallar el arranque entero aunque Ollama sepa caer a CPU
+perfectamente. `up-bonsai` es la excepción y siempre la exige — su `llama-server` se compila con
+CUDA y reserva la tarjeta completa.
 
 ### Por qué Ministral no usa `llama-server` (y Bonsai sí)
 
@@ -310,7 +345,7 @@ reranker sobreviven a cualquier cambio de perfil sin volver a descargarse. Eso s
 comandos que este Makefile nunca ejecuta: `docker compose down -v`, `down --rmi all` o
 `docker system prune`; no los uses para alternar perfiles. Ojo aparte con `docker image prune -a`:
 libera espacio real, pero también se lleva imágenes que no estén en uso por ningún contenedor en ese
-momento — si la corrés estando abajo el perfil Bonsai, la próxima `make up-bonsai` puede tener que
+momento — si la corres estando abajo el perfil Bonsai, la próxima `make up-bonsai` puede tener que
 volver a bajar la imagen base de compilación.
 
 Ejemplo, de Bonsai a Ministral y de vuelta:
