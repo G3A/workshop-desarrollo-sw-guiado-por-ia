@@ -30,7 +30,8 @@ archivo, incluido un bug conocido de fuga de VRAM en docling-serve sin resolver 
 
 ## Módulos (Spring Modulith)
 
-Paquete base `co.g3a.baseconocimiento`. Cada módulo con su `internal/` oculto y las fronteras
+Paquete base `co.g3a.baseconocimiento`. Un paquete por módulo, sin subpaquetes `internal/` (Spring
+Modulith los trata como API pública por defecto), con las fronteras
 verificadas por ArchUnit y `ApplicationModules.verify()` en cada build (`ArquitecturaTest`):
 
 | Módulo | Responsabilidad |
