@@ -2,7 +2,7 @@
 
 ## Visión general
 
-Postgres 18 + pgvector. Seis tablas, todas creadas en la migración inicial (`V1__esquema.sql`):
+Postgres 18 + pgvector. Seis tablas en la migración inicial (`V1__esquema.sql`):
 `sources` (una fila por fuente configurada: documentos locales, repos Git, canal de Teams, Azure
 DevOps), `documents` (la unidad que el usuario reconoce: un archivo, un hilo, un work item),
 `chunks` (**la tabla única de embeddings** — documentos, código, hilos y work items comparten
@@ -10,12 +10,14 @@ columna de embedding, columna FTS e índices), `term_stats` (frecuencia document
 supresión por IDF), `ingest_jobs` (la cola de ingesta, vive en Postgres vía `SELECT ... FOR UPDATE
 SKIP LOCKED`, sin Redis) y `query_log` (auditoría de cada consulta: plan, herramientas corridas,
 candidatos, respuesta y citas).
+Las migraciones posteriores suman `docling_tareas_en_curso` (V2), `vault_archivos` (V3),
+`streams_en_curso` (V4) y `query_feedback` (V5).
 
 ## Herramienta de migraciones
 
 - **Herramienta:** Flyway (`flyway-core` + `flyway-database-postgresql`; el autoconfig lo trae el
   módulo aparte `spring-boot-flyway` — sin él la app arranca contra una base vacía sin protestar).
-- **Ubicación:** `src/main/resources/db/migration/` (`V1__esquema.sql` … `V4__streams_en_curso.sql`).
+- **Ubicación:** `src/main/resources/db/migration/` (`V1__esquema.sql` … `V6__streams_en_curso_query_log_id.sql`).
 - **Flujo:** corre al arrancar la app (autoconfig de Spring Boot), no es un paso explícito de CI —
   no hay CI todavía (ver [infraestructura](infrastructure.md)).
 
@@ -53,6 +55,13 @@ agregada y auditoría), no participan del grafo documento → chunk.
 |---|---|
 | `term_stats` | IDF por término, recalculado por lote; alimenta la señal de supresión y el gate de bursting (IDF ≥ 4.0) en ingesta |
 | `query_log` | Auditoría de cada consulta: plan, herramientas ejecutadas, candidatos, respuesta, citas, latencia |
+| `query_feedback` | La otra mitad de esa auditoría: si la respuesta sirvió o no, con comentario opcional. Append-only, varias filas por `query_log_id` — sin login de persona en el MVP no hay identidad real contra la cual deduplicar, ver `V5__query_feedback.sql` |
+| `streams_en_curso` | Estado de la última pregunta en curso por conversación (upsert, no bitácora) — permite retomar una respuesta en streaming tras un F5, ver comentario de `V4__streams_en_curso.sql`. Desde `V6`, guarda también `query_log_id` para que los botones de feedback sobrevivan a una reconexión |
+
+## Índices relevantes
+
+- `query_feedback_query_log_id_idx` — para `GET /api/admin/feedback` y para saber si una respuesta
+  ya tiene feedback
 
 ## Seguridad a nivel de fila / control de acceso
 

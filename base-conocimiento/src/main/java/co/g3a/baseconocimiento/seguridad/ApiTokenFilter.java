@@ -41,12 +41,15 @@ import org.springframework.http.HttpStatus;
  *       que {@code /api/chat}: sin sesión ni token. Acotado igual a solo lectura sobre archivos
  *       indexados de verdad (no cualquier archivo físicamente presente bajo el vault) — ver el
  *       chequeo contra {@code documents.uri} en {@code ContenidoVaultController}.
+ *   <li>{@code /api/feedback} — los botones 👍/👎 bajo cada respuesta, mismo motivo que {@code
+ *       /api/chat}: la página no maneja el token, así que si esta ruta lo exigiera el botón nunca
+ *       podría llamarla. Riesgo aceptado y documentado en {@code Consultar.registrarFeedback}: sin
+ *       sesión de persona, nada valida que quien manda el feedback vio realmente esa respuesta.
  * </ul>
  */
 class ApiTokenFilter extends HttpFilter {
 
   private static final long serialVersionUID = 1L;
-
   private static final Logger log = LoggerFactory.getLogger(ApiTokenFilter.class);
   private static final Set<String> RUTAS_SIN_TOKEN =
       Set.of(
@@ -57,11 +60,9 @@ class ApiTokenFilter extends HttpFilter {
           "/api/admin/ayuda",
           "/api/admin/proyectos",
           "/api/admin/documentos",
-          "/api/vault/contenido");
+          "/api/vault/contenido",
+          "/api/feedback");
 
-  // HttpFilter es Serializable por herencia, pero un filtro nunca se serializa de verdad
-  // (vive en el contenedor servlet, no en sesion). transient documenta que SeguridadPropiedades
-  // no necesita implementar Serializable solo para satisfacer este lint.
   private final transient SeguridadPropiedades propiedades;
 
   ApiTokenFilter(SeguridadPropiedades propiedades) {

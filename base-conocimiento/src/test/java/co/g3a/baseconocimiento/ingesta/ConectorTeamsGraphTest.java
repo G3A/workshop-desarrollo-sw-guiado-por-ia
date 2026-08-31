@@ -9,10 +9,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
-import java.util.List;
-
+import co.g3a.baseconocimiento.llm.Destilador;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
-
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -28,75 +27,83 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
-import co.g3a.baseconocimiento.llm.Destilador;
-
 /**
- * {@link ConectorTeamsGraph} contra Microsoft Graph doblado con WireMock y un
- * PostgreSQL real: token de aplicación, delta query, respuestas del hilo,
- * limpieza de HTML y el gate de bursting (IDF >= 4.0, >= 200 caracteres).
- * {@link Destilador} queda doblado — no hay Ollama en esta prueba, igual que
- * el resto de la ingesta no llama al LLM real.
+ * {@link ConectorTeamsGraph} contra Microsoft Graph doblado con WireMock y un PostgreSQL real:
+ * token de aplicación, delta query, respuestas del hilo, limpieza de HTML y el gate de bursting
+ * (IDF >= 4.0, >= 200 caracteres). {@link Destilador} queda doblado — no hay Ollama en esta prueba,
+ * igual que el resto de la ingesta no llama al LLM real.
  */
 @SpringBootTest(
-        webEnvironment = SpringBootTest.WebEnvironment.NONE,
-        properties = {
-                "kb.ingesta.worker.habilitado=false",
-                "kb.recuperacion.terminos.habilitado=false",
-                "kb.graph.habilitado=true",
-                "kb.graph.tenant-id=test-tenant",
-                "kb.graph.client-id=client-de-prueba",
-                "kb.graph.client-secret=secreto",
-                "kb.graph.team-id=team1",
-                "kb.graph.channel-id=chan1"
-        })
+    webEnvironment = SpringBootTest.WebEnvironment.NONE,
+    properties = {
+      "kb.ingesta.worker.habilitado=false",
+      "kb.recuperacion.terminos.habilitado=false",
+      "kb.graph.habilitado=true",
+      "kb.graph.tenant-id=test-tenant",
+      "kb.graph.client-id=client-de-prueba",
+      "kb.graph.client-secret=secreto",
+      "kb.graph.team-id=team1",
+      "kb.graph.channel-id=chan1"
+    })
 @Testcontainers
 class ConectorTeamsGraphTest {
 
-    @Container
-    @ServiceConnection
-    static PostgreSQLContainer postgres = new PostgreSQLContainer(
-            DockerImageName.parse("pgvector/pgvector:pg18-trixie")
-                    .asCompatibleSubstituteFor("postgres"));
+  @Container @ServiceConnection
+  static PostgreSQLContainer postgres =
+      new PostgreSQLContainer(
+          DockerImageName.parse("pgvector/pgvector:pg18-trixie")
+              .asCompatibleSubstituteFor("postgres"));
 
-    @RegisterExtension
-    static WireMockExtension wireMock = WireMockExtension.newInstance().options(wireMockConfig().dynamicPort()).build();
+  @RegisterExtension
+  static WireMockExtension wireMock =
+      WireMockExtension.newInstance().options(wireMockConfig().dynamicPort()).build();
 
-    @DynamicPropertySource
-    static void propiedades(DynamicPropertyRegistry registry) {
-        registry.add("kb.graph.graph-base-url", wireMock::baseUrl);
-        registry.add("kb.graph.login-base-url", wireMock::baseUrl);
-    }
+  @DynamicPropertySource
+  static void propiedades(DynamicPropertyRegistry registry) {
+    registry.add("kb.graph.graph-base-url", wireMock::baseUrl);
+    registry.add("kb.graph.login-base-url", wireMock::baseUrl);
+  }
 
-    @Autowired
-    ConectorTeamsGraph conector;
+  @Autowired ConectorTeamsGraph conector;
 
-    @Autowired
-    JdbcClient jdbc;
+  @Autowired JdbcClient jdbc;
 
-    @MockitoBean
-    Destilador destilador;
+  @MockitoBean Destilador destilador;
 
-    // Debe superar los 200 caracteres del gate de bursting; se verifico contando: mas de 250.
-    private static final String TEXTO_BURST =
-            "desincronizacion del cluster de kubernetes durante el ultimo despliegue de la version nueva, "
-                    + "afecto a varios pods y hubo que reiniciar manualmente los nodos afectados para recuperar el "
-                    + "servicio, y quedo documentado en el runbook interno del equipo de plataforma para la proxima vez";
+  // Debe superar los 200 caracteres del gate de bursting; se verifico contando: mas de 250.
+  private static final String TEXTO_BURST =
+      "desincronizacion del cluster de kubernetes durante el ultimo despliegue de la version nueva, "
+          + "afecto a varios pods y hubo que reiniciar manualmente los nodos afectados para recuperar el "
+          + "servicio, y quedo documentado en el runbook interno del equipo de plataforma para la proxima vez";
 
-    @Test
-    @DisplayName("Delta + respuestas: arma el hilo, destila y aplica el gate de bursting")
-    void ingiereElHiloYAplicaBursting() {
-        insertarTermStatAltoPara(TEXTO_BURST);
+  @Test
+  @DisplayName("Delta + respuestas: arma el hilo, destila y aplica el gate de bursting")
+  void ingiereElHiloYAplicaBursting() {
+    insertarTermStatAltoPara(TEXTO_BURST);
 
-        when(destilador.destilar(any())).thenReturn(new Destilador.Destilado(
-                "como se despliega el servicio", "resumen del hilo", "reiniciar los nodos",
-                List.of("kubernetes"), List.of()));
+    when(destilador.destilar(any()))
+        .thenReturn(
+            new Destilador.Destilado(
+                "como se despliega el servicio",
+                "resumen del hilo",
+                "reiniciar los nodos",
+                List.of("kubernetes"),
+                List.of()));
 
-        wireMock.stubFor(post(urlEqualTo("/test-tenant/oauth2/v2.0/token"))
-                .willReturn(aResponse().withHeader("Content-Type", "application/json")
-                        .withBody("{\"access_token\":\"tok\",\"expires_in\":3600}")));
+    wireMock.stubFor(
+        post(urlEqualTo("/test-tenant/oauth2/v2.0/token"))
+            .willReturn(
+                aResponse()
+                    .withHeader("Content-Type", "application/json")
+                    .withBody("{\"access_token\":\"tok\",\"expires_in\":3600}")));
 
-        wireMock.stubFor(get(urlEqualTo("/teams/team1/channels/chan1/messages/delta"))
-                .willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""
+    wireMock.stubFor(
+        get(urlEqualTo("/teams/team1/channels/chan1/messages/delta"))
+            .willReturn(
+                aResponse()
+                    .withHeader("Content-Type", "application/json")
+                    .withBody(
+                        """
                         {
                           "value": [
                             {
@@ -108,10 +115,16 @@ class ConectorTeamsGraphTest {
                           ],
                           "@odata.deltaLink": "%s/deltaLinkGuardado"
                         }
-                        """.formatted(wireMock.baseUrl()))));
+                        """
+                            .formatted(wireMock.baseUrl()))));
 
-        wireMock.stubFor(get(urlEqualTo("/teams/team1/channels/chan1/messages/msg1/replies"))
-                .willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""
+    wireMock.stubFor(
+        get(urlEqualTo("/teams/team1/channels/chan1/messages/msg1/replies"))
+            .willReturn(
+                aResponse()
+                    .withHeader("Content-Type", "application/json")
+                    .withBody(
+                        """
                         {
                           "value": [
                             {
@@ -130,41 +143,52 @@ class ConectorTeamsGraphTest {
                             }
                           ]
                         }
-                        """.formatted(TEXTO_BURST))));
+                        """
+                            .formatted(TEXTO_BURST))));
 
-        var resumen = conector.ingerir();
+    var resumen = conector.ingerir();
 
-        assertThat(resumen.hilosVistos()).isEqualTo(1);
-        assertThat(resumen.hilosActualizados()).isEqualTo(1);
-        // 1 chunk 'thread' (el hilo completo destilado) + 1 'thread_burst' (solo reply2, que
-        // supera el umbral de longitud y de IDF; reply1 es demasiado corto para el gate).
-        assertThat(resumen.chunksCreados()).isEqualTo(2);
+    assertThat(resumen.hilosVistos()).isEqualTo(1);
+    assertThat(resumen.hilosActualizados()).isEqualTo(1);
+    // 1 chunk 'thread' (el hilo completo destilado) + 1 'thread_burst' (solo reply2, que
+    // supera el umbral de longitud y de IDF; reply1 es demasiado corto para el gate).
+    assertThat(resumen.chunksCreados()).isEqualTo(2);
 
-        List<String> tipos = jdbc.sql("""
+    List<String> tipos =
+        jdbc.sql(
+                """
                         SELECT c.kind FROM chunks c
                         JOIN sources s ON s.id = c.source_id
                         WHERE s.kind = 'teams_channel' ORDER BY c.ord
                         """)
-                .query(String.class).list();
-        assertThat(tipos).containsExactly("thread", "thread_burst");
+            .query(String.class)
+            .list();
+    assertThat(tipos).containsExactly("thread", "thread_burst");
 
-        String syncState = jdbc.sql("SELECT sync_state::text FROM sources WHERE kind = 'teams_channel'")
-                .query(String.class).single();
-        assertThat(syncState).contains("deltaLinkGuardado");
-    }
+    String syncState =
+        jdbc.sql("SELECT sync_state::text FROM sources WHERE kind = 'teams_channel'")
+            .query(String.class)
+            .single();
+    assertThat(syncState).contains("deltaLinkGuardado");
+  }
 
-    private void insertarTermStatAltoPara(String texto) {
-        String lexema = jdbc.sql("""
+  private void insertarTermStatAltoPara(String texto) {
+    String lexema =
+        jdbc.sql(
+                """
                         SELECT word FROM ts_stat(
                             'SELECT to_tsvector(''spanish'', ' || quote_literal(:texto) || ')'
                         ) ORDER BY word LIMIT 1
                         """)
-                .param("texto", texto)
-                .query(String.class).single();
-        jdbc.sql("""
+            .param("texto", texto)
+            .query(String.class)
+            .single();
+    jdbc.sql(
+            """
                         INSERT INTO term_stats (term, df, idf) VALUES (:t, 1, 10.0)
                         ON CONFLICT (term) DO UPDATE SET idf = 10.0
                         """)
-                .param("t", lexema).update();
-    }
+        .param("t", lexema)
+        .update();
+  }
 }

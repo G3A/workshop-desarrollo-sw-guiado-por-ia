@@ -19,6 +19,42 @@
   const formularioCarga = document.getElementById("formulario-carga");
   const campoArchivo = document.getElementById("campo-archivo");
   const estadoCarga = document.getElementById("estado-carga");
+  const botonCarga = formularioCarga.querySelector('button[type="submit"]');
+
+  // Los DOS interruptores, no uno: el flag de la app y el modo del bind mount del vault.
+  // Con solo el primero, el contenedor no puede escribir y la carga falla con un error de
+  // E/S que desde aca se ve igual de opaco que un 403 sin explicacion.
+  const COMO_HABILITAR_LA_CARGA =
+    "Pon KB_INGESTA_CARGA_HABILITADA=true y KB_VAULT_MODO=rw en tu archivo .env y vuelve " +
+    "a levantar (make down && make up).";
+
+  // null hasta que /api/admin/ayuda responda: mientras tanto no se asume nada, para no
+  // deshabilitar los controles por un error de red pasajero.
+  let cargaHabilitada = null;
+
+  function aplicarEstadoDeCarga() {
+    const apagada = cargaHabilitada === false;
+    campoArchivo.disabled = apagada;
+    botonCarga.disabled = apagada;
+    if (apagada) {
+      estadoCarga.textContent = "Carga deshabilitada en el servidor. " + COMO_HABILITAR_LA_CARGA;
+    }
+  }
+
+  // El servidor ya publicaba este estado (ayuda.js lo usa para el texto del boton `?`),
+  // pero la consola ofrecia el formulario igual: el usuario elegia un archivo, apretaba
+  // Subir y recien ahi se enteraba, con un 403 que ademas nombraba un solo interruptor.
+  async function cargarAyuda() {
+    try {
+      const respuesta = await pedir("/api/admin/ayuda");
+      const ayuda = await respuesta.json();
+      cargaHabilitada = ayuda.cargaHabilitada === true;
+    } catch (error) {
+      cargaHabilitada = null;
+    }
+    aplicarEstadoDeCarga();
+    await cargarArchivosVault();
+  }
 
   campoToken.value = sessionStorage.getItem(TOKEN_KEY) || "";
   campoToken.addEventListener("change", () => {
@@ -169,7 +205,7 @@
     // Reindexar es "reingesta toda la fuente"; eliminar es puntual y solo tiene
     // sentido para local_docs, donde hay un archivo real que borrar del vault
     // (ver el javadoc de AdminController.eliminarArchivo sobre por que).
-    const botonEliminar = a.kind === "local_docs"
+    const botonEliminar = a.kind === "local_docs" && cargaHabilitada !== false
       ? '<button type="button" class="boton-eliminar-archivo" data-id="' + a.id + '">Eliminar</button>'
       : "";
     const detalleError = enError && a.lastError
@@ -254,9 +290,11 @@
     }
   });
 
+  // cargarAyuda() encadena cargarArchivosVault(): la tabla depende de si el borrado esta
+  // habilitado, asi que no se pinta antes de saberlo.
+  cargarAyuda();
   cargarFuentes();
   cargarCola();
-  cargarArchivosVault();
   // Estilo Job Runner: la tabla se refresca sola mientras la ingesta avanza,
   // sin que el usuario tenga que recargar la página a mano.
   setInterval(() => {

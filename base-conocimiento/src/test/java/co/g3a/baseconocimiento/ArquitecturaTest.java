@@ -36,6 +36,9 @@ class ArquitecturaTest {
     // Este es EL contrato del proyecto. La UI web, el bot de Teams y el filtro de
     // seguridad deben poder reemplazarse sin tocar una linea de recuperacion, y para
     // eso no pueden saber que existen cuatro senales, un RRF, un cross-encoder ni un LLM.
+    //
+    // allowEmptyShould en false: los tres paquetes ya existen, asi que la regla debe
+    // morder de verdad, no nacer verde por vacia.
     noClasses()
         .that()
         .resideInAnyPackage(RAIZ + ".web..", RAIZ + ".teams..", RAIZ + ".seguridad..")
@@ -44,6 +47,7 @@ class ArquitecturaTest {
         .resideInAnyPackage(
             RAIZ + ".recuperacion..", RAIZ + ".ingesta..", RAIZ + ".modelos..", RAIZ + ".llm..")
         .because("los adaptadores solo pueden cruzar la fachada Consultar")
+        .allowEmptyShould(false)
         .check(clases);
   }
 
@@ -65,6 +69,35 @@ class ArquitecturaTest {
         .dependOnClassesThat()
         .resideInAnyPackage(RAIZ + ".web..", RAIZ + ".teams..", RAIZ + ".seguridad..")
         .because("el nucleo no sabe por que puerta entro la pregunta")
+        .allowEmptyShould(false)
+        .check(clases);
+  }
+
+  @Test
+  @DisplayName("Seguridad no se mezcla con los otros adaptadores")
+  void seguridadNoSeMezclaConLosOtrosAdaptadores() {
+    // `seguridad` es el noveno modulo del sistema y durante un tiempo no aparecio en
+    // ninguna regla. Las dos de arriba ya lo cubren frente al nucleo; falta la
+    // frontera lateral: el filtro de token no sabe si la peticion venia de la UI web
+    // o del bot, y ni la UI ni el bot lo instancian a mano para saltearselo.
+    noClasses()
+        .that()
+        .resideInAnyPackage(RAIZ + ".web..", RAIZ + ".teams..")
+        .should()
+        .dependOnClassesThat()
+        .resideInAnyPackage(RAIZ + ".seguridad..")
+        .because("seguridad se configura sola por filtro, no se llama desde un adaptador")
+        .allowEmptyShould(false)
+        .check(clases);
+
+    noClasses()
+        .that()
+        .resideInAPackage(RAIZ + ".seguridad..")
+        .should()
+        .dependOnClassesThat()
+        .resideInAnyPackage(RAIZ + ".web..", RAIZ + ".teams..")
+        .because("seguridad no sabe por que puerta entro la peticion")
+        .allowEmptyShould(false)
         .check(clases);
   }
 
@@ -86,6 +119,7 @@ class ArquitecturaTest {
             RAIZ + ".teams..",
             RAIZ + ".seguridad..")
         .because("es solo vocabulario: si depende de algo, deja de ser compartido")
+        .allowEmptyShould(true)
         .check(clases);
   }
 

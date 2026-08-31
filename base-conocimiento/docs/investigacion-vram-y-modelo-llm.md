@@ -3543,3 +3543,77 @@ estructurada activa. Nueve archivos de resultados nuevos en `eval-100-preguntas/
 (`resultados-brutos.smoke10.<modelo>-textolibre.json`, más
 `resultados-brutos.smoke10.ministral-textolibre-limpio.json` de la corrida aislada). Nada de esto está
 commiteado todavía.
+
+## Sesión 27: cuánta VRAM cuesta realmente docling en GPU, y por qué sus defaults son malos para una tarjeta compartida
+
+El umbral `KB_VRAM_DOCLING_GPU` se había fijado en 8192 MiB **por criterio, no por medición** — el
+único de los tres umbrales del `Makefile` sin evidencia detrás. Esta sesión lo mide.
+
+Montaje: `docling-serve-cu130:v1.29.0` aislado (sin Postgres ni Ollama, para no mezclar consumos),
+T600 de 4 GB, driver 596.52. Documentos del corpus: `muestra-docling.pdf` (26 KB) y `jls25.pdf`
+(5.3 MB, ~800 páginas). VRAM leída con `nvidia-smi --query-gpu=memory.used`.
+
+### Hallazgo 106: la huella de docling en GPU es de 0.6 a 2.2 GB, muy por debajo de lo que sugería el umbral
+
+Con la configuración acotada (`NUM_WORKERS=1`, `SHARE_MODELS=true`, `OPTIONS_CACHE_SIZE=1`):
+
+| Momento | VRAM |
+|---|---|
+| Arranque, modelos cargados (`LOAD_MODELS_AT_BOOT=True`) | **629 MiB** |
+| Tras convertir el PDF chico (26 KB) | **799 MiB** |
+| Conversiones 2ª a 5ª del mismo PDF chico | 799 MiB — **sin crecer** |
+| Con el PDF grande en curso | meseta en **2181 MiB** |
+| En reposo, tras terminar el PDF grande | **2053 MiB** |
+
+Dos cosas que el ADR-0010 no distinguía. Primera: la fuga **no es ilimitada por conversión**. Cinco
+conversiones seguidas del mismo documento dejaron la VRAM clavada en 799 MiB. Lo que se retiene es
+el pico del documento más pesado procesado, no un delta por cada llamada. Segunda: ese pico sí se
+queda — 2053 MiB en reposo contra 629 al arrancar.
+
+### Hallazgo 107: `/v1/clear/converters` existe, responde 200 y no libera un solo MiB
+
+La API expone `GET /v1/clear/converters`, que suena exactamente a la solución. Medido: VRAM antes
+2053 MiB, respuesta HTTP 200, VRAM después 2053 MiB, y sigue en 2053 MiB 25 s más tarde. Limpia los
+objetos `DocumentConverter` del lado de Python, pero el caching allocator de PyTorch no devuelve la
+memoria al driver.
+
+Confirma con evidencia de primera mano lo que ADR-0010 afirmaba sin probar: reiniciar el proceso es
+la única vía. `make docling-reciclar` lo hace y lo demuestra — 2053 MiB antes, 0 MiB después, y 629
+MiB de nuevo cuando el contenedor vuelve a cargar los modelos.
+
+### Hallazgo 108: los defaults de docling-serve cuestan 2.5x más VRAM bajo concurrencia
+
+Comparación A/B, mismo documento chico, **4 conversiones concurrentes** en los dos casos:
+
+| Configuración | VRAM al arrancar | VRAM bajo 4 conversiones concurrentes |
+|---|---|---|
+| Defaults (`NUM_WORKERS=2`, `SHARE_MODELS=False`, `CACHE_SIZE=2`) | 629 MiB | **2019 MiB** |
+| Acotada (`1` / `true` / `1`) | 629 MiB | **799 MiB** |
+
+Al arrancar son idénticas: los modelos **no** se duplican de entrada, se asignan por hilo cuando el
+hilo los necesita (`SHARE_MODELS=False`: *«one instance of the models is allocated for each worker
+thread»*). Bajo carga concurrente, la diferencia es 2.5x sobre un documento de 26 KB — el mismo
+trabajo, 1.2 GB de más.
+
+Esto corrige una afirmación que se había escrito en `compose.docling-gpu.yml` sin medirla («hasta
+cuatro juegos de modelos residentes»): el factor real medido en esta tarjeta es ~2.5x, no 4x, y no
+aplica en reposo.
+
+### Hallazgo 109: por qué el umbral se queda en 8192 MiB, ahora con la aritmética a la vista
+
+Sumando lo medido en esta investigación, con las tres etapas en la tarjeta a la vez:
+
+| Componente | VRAM |
+|---|---|
+| `gemma3:4b` a contexto 4096 (hallazgo 1) | 4.0 GB |
+| `bge-m3` en GPU | ~1.2 GB |
+| docling, pico con documento grande (hallazgo 106) | 2.2 GB |
+| **Total** | **~7.4 GB** |
+
+De ahí que 8192 MiB siga siendo el umbral correcto, pero ahora por una razón auditable y no por
+prudencia: en 6 GB los tres no entran. Una RTX 3060 de 6 GB puede tener LLM y embeddings en la
+tarjeta (5.2 GB) pero no docling encima. El criterio original resultó acertado; lo que le faltaba
+era el número.
+
+Nota: durante la ingesta el LLM está ocioso (la ingesta es heurística, no pasa por él), pero sigue
+residente por `OLLAMA_KEEP_ALIVE=1h`, así que la suma es real y no un peor caso teórico.
