@@ -7,7 +7,16 @@
 - Docker + Docker Compose (el `Makefile` orquesta todo sobre `compose.yml` y sus overrides).
 - JDK 25 (el wrapper `./mvnw` viene commiteado, no hace falta Maven instalado). Con un JDK anterior
   el build falla con `release version 25 not supported`; `make jdk-check` lo dice antes de compilar.
-- Opcional: GPU NVIDIA (`nvidia-smi`) — `make up` la detecta sola y aplica `compose.gpu.yml`.
+- Opcional: GPU NVIDIA (`nvidia-smi`). `make up` no solo la detecta: lee VRAM, Compute Capability y
+  versión del driver, y reparte en consecuencia — LLM siempre en la tarjeta, embeddings desde 6 GB,
+  docling desde 8 GB. `make gpu-check` explica qué decidió y por qué; `KB_GPU`, `KB_DOCLING_GPU` y
+  los dos umbrales lo fuerzan. Detalle en el [README](../README.md#reparto-de-la-gpu).
+- En Windows, `make` necesita Git for Windows instalado: el `Makefile` usa su `sh.exe` como shell
+  porque las recetas son POSIX. Funciona igual desde PowerShell y desde Git Bash.
+
+El LLM es intercambiable por perfil (`make up-bonsai`, `up-ministral`, `up-qwen35`, …): son
+overrides de compose encadenados sobre `compose.yml`. La tabla completa de los siete perfiles, con
+su descarga y su modelo, está en el [README](../README.md#perfiles-de-modelo).
 
 ### Inicio rápido
 
