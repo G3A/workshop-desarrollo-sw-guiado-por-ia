@@ -78,7 +78,14 @@ services:
         condition: service_healthy
     environment:
       SPRING_AI_OPENAI_BASE_URL: http://llama-server:8080
-      KB_LLM_MODELO: ${KB_LLM_MODELO:-Bonsai-8B-Q1_0.gguf}
+      # Fijo, no ${KB_LLM_MODELO:-...}: los otros nueve perfiles ya lo hacen asi, y
+      # la sustitucion aca era un agujero real. docker compose le da precedencia al
+      # entorno sobre el archivo de variables, asi que un KB_LLM_MODELO=gemma3:4b
+      # heredado de ahi (venia activo en .env.example) pisaba este default y la api
+      # terminaba pidiendole "gemma3:4b" al llama-server que sirve Bonsai. El nombre
+      # no es libre de todas formas: tiene que ser el del GGUF que monta
+      # pull-bonsai-gguf.
+      KB_LLM_MODELO: Bonsai-8B-Q1_0.gguf
       # BONSAI_CTX_SIZE de arriba ERA 4096 (sesion 8). El default de kb.orquestacion.max-
       # fragmentos-contexto/kb.recuperacion.top-rerank (10 cada uno) arma un
       # prompt de sintesis de ~5070 tokens con los fragmentos de jls25.pdf del

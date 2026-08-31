@@ -2302,7 +2302,7 @@ Evidencia concreta de la contención: una llamada a `POST /api/search` con una c
 sin LLM, debería resolver en menos de 1 segundo con la GPU libre) tardó **20.1 segundos**; los logs del
 propio `llama-server` mostraban una sola llamada de prompt-eval tardando **261 segundos para 4932
 tokens** — consistente con varios clientes simultáneos turnándose el único slot disponible. La pregunta
-36 no era intrínsecamente lenta: cada "reintento" era en realidad una sexta sesión más sumándose a la
+36 no era intrínsecamente lenta: cada "reintento" era en realidad una sexta sesión más sumandose a la
 pila, nunca alcanzaba a terminar antes de que llegara el siguiente aviso de "killed" (que tampoco mataba
 nada).
 

@@ -44,29 +44,6 @@ endif
 
 COMPOSE           := docker compose
 COMPOSE_GPU       := docker compose -f compose.yml -f compose.gpu.yml
-# Bonsai sirve el LLM desde un llama-server aparte (ver ADR-0009), que reserva
-# la GPU completa para si mismo -- no tiene sentido levantarlo sin GPU, a
-# diferencia de `up`, que si detecta su ausencia y usa CPU. Ministral en cambio
-# se sirve desde el mismo `ollama` de siempre (ver compose.ministral.yml sobre
-# por que se dejo de usar llama-server) -- sigue encadenando compose.gpu.yml
-# aca por consistencia con el resto de los perfiles GPU, pero a diferencia de
-# Bonsai no es un requisito duro: Ollama cae a CPU solo si no hay tarjeta.
-COMPOSE_BONSAI    := docker compose -f compose.yml -f compose.gpu.yml -f compose.bonsai.yml
-COMPOSE_MINISTRAL := docker compose -f compose.yml -f compose.gpu.yml -f compose.ministral.yml
-# Mismo caso que Ministral: se sirve desde el `ollama` de siempre, no de un
-# llama-server aparte -- ver compose.qwen35.yml sobre el estado experimental
-# de este perfil (fix de "thinking" integrado, sin piloto de evaluacion propio
-# todavia).
-COMPOSE_QWEN35    := docker compose -f compose.yml -f compose.gpu.yml -f compose.qwen35.yml
-# Mismo caso: se sirve desde el `ollama` de siempre -- ver compose.nemotron.yml.
-COMPOSE_NEMOTRON  := docker compose -f compose.yml -f compose.gpu.yml -f compose.nemotron.yml
-# Mismo caso, los tres: se sirven desde el `ollama` de siempre. Perfiles nuevos
-# de la sesion 25 para el piloto de 100 preguntas con sintesis estructurada
-# contra los candidatos descartados por "texto pegado" que no tenian compose
-# dedicado todavia (probados originalmente con overrides sueltos, sesiones 2-9).
-COMPOSE_GRANITE41 := docker compose -f compose.yml -f compose.gpu.yml -f compose.granite41.yml
-COMPOSE_PHI4MINI  := docker compose -f compose.yml -f compose.gpu.yml -f compose.phi4mini.yml
-COMPOSE_QWEN25    := docker compose -f compose.yml -f compose.gpu.yml -f compose.qwen25.yml
 LLM         ?= gemma3:4b
 EMBEDDINGS  ?= bge-m3
 KB_DATA_DIR ?= ./.data
@@ -191,6 +168,35 @@ COMPOSE_ACTIVO := $(COMPOSE_GPU)
 else
 COMPOSE_ACTIVO := $(COMPOSE)
 endif
+
+## ---------------------------------------------------------------- perfiles de modelo
+##
+## Van despues del bloque de GPU a proposito: encadenan compose.gpu.yml SOLO si hay
+## tarjeta. Antes lo hacian siempre, y en un equipo sin GPU eso hace fallar el `up`
+## entero -- la reserva de dispositivo nvidia no es negociable para docker, aunque
+## Ollama sepa caer a CPU perfectamente. Con esto, `make up-ministral` se adapta al
+## hardware igual que `make up`.
+##
+## Bonsai es la excepcion y sigue exigiendo GPU siempre: su llama-server se compila
+## con CUDA y reserva la tarjeta completa para si mismo (ver ADR-0009), no tiene
+## sentido levantarlo sin ella.
+##
+## Ninguno encadena compose.docling-gpu.yml: son perfiles de LLM, y el reparto de
+## docling se decide aparte en `up`.
+PERFIL_GPU := $(if $(HAY_GPU),-f compose.gpu.yml,)
+
+COMPOSE_BONSAI    := docker compose -f compose.yml -f compose.gpu.yml -f compose.bonsai.yml
+# Los que siguen se sirven desde el `ollama` de siempre, no de un llama-server
+# aparte -- ver compose.ministral.yml sobre por que se dejo de usar llama-server, y
+# compose.qwen35.yml sobre el estado experimental de ese perfil. Granite, Phi-4 y
+# Qwen2.5 son de la sesion 25 (piloto de 100 preguntas con sintesis estructurada
+# contra los candidatos descartados por "texto pegado").
+COMPOSE_MINISTRAL := docker compose -f compose.yml $(PERFIL_GPU) -f compose.ministral.yml
+COMPOSE_QWEN35    := docker compose -f compose.yml $(PERFIL_GPU) -f compose.qwen35.yml
+COMPOSE_NEMOTRON  := docker compose -f compose.yml $(PERFIL_GPU) -f compose.nemotron.yml
+COMPOSE_GRANITE41 := docker compose -f compose.yml $(PERFIL_GPU) -f compose.granite41.yml
+COMPOSE_PHI4MINI  := docker compose -f compose.yml $(PERFIL_GPU) -f compose.phi4mini.yml
+COMPOSE_QWEN25    := docker compose -f compose.yml $(PERFIL_GPU) -f compose.qwen25.yml
 
 # Re-subida ONNX de la comunidad, no del repo oficial de BAAI: el hash fijado
 # es lo que hace que "confiar en esta descarga" sea una decision verificable
