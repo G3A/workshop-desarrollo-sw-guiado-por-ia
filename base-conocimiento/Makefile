@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help up gpu-up gpu-check jdk-check up-bonsai down-bonsai up-ministral down-ministral up-qwen35 down-qwen35 up-nemotron down-nemotron up-granite41 down-granite41 up-phi4mini down-phi4mini up-qwen25 down-qwen25 down restart logs ps build test verify pull-models pull-reranker pull-bonsai-gguf pull-ministral pull-qwen35 pull-nemotron pull-granite41 pull-phi4mini pull-qwen25 pin-embeddings-cpu seed ingest ingest-repos ingest-teams ingest-azdo psql health clean format lint secrets check ci hooks
+.PHONY: help up gpu-up gpu-check gpu-resumen jdk-check up-bonsai down-bonsai up-ministral down-ministral up-qwen35 down-qwen35 up-nemotron down-nemotron up-granite41 down-granite41 up-phi4mini down-phi4mini up-qwen25 down-qwen25 down restart logs ps build test verify pull-models pull-reranker pull-bonsai-gguf pull-ministral pull-qwen35 pull-nemotron pull-granite41 pull-phi4mini pull-qwen25 pin-embeddings-cpu seed ingest ingest-repos ingest-teams ingest-azdo psql health clean format lint secrets check ci hooks
 
 
 
@@ -74,50 +74,112 @@ KB_PORT     ?= 8080
 
 # El pom compila a release 25. Se verifica en jdk-check, del que dependen los
 # targets que compilan -- Maven solo se entera despues de resolver dependencias.
+
 JAVA_MINIMO := 25
+## ---------------------------------------------------------------- GPU: hardware y reparto
+##
+## Una sola llamada a nvidia-smi por invocacion de make, de la que sale TODO lo que
+## depende de la tarjeta: si hay GPU, con que Compute Capability se compila Bonsai,
+## que imagen de CUDA tolera el driver, si los embeddings van a la GPU o a la CPU y
+## si docling entra tambien. La idea es que el mismo `make up` haga lo correcto en
+## una T600 de 4 GB y en una RTX 3060 de 6 GB sin que nadie edite nada.
+##
+## Los umbrales no son gustos, salen de lo medido en
+## docs/investigacion-vram-y-modelo-llm.md:
+##
+## - KB_VRAM_EMBEDDINGS_GPU. En la T600 de 4 GB, `gemma3:4b` NO entra completo ni
+##   estando solo: Ollama offloadea capas hasta que caben y queda en 40% GPU /
+##   60% CPU (hallazgo 1). Ahi darle VRAM a bge-m3 solo empeora al LLM, y moverlo
+##   a CPU es una mejora neta medida (hallazgo 2). Con 6 GB o mas entran los dos
+##   y los embeddings se quedan en la tarjeta, que es lo que se quiere para la
+##   ingesta.
+## - KB_VRAM_DOCLING_GPU. docling-serve NO libera la VRAM entre conversiones (bug
+##   conocido sin fix, ver ADR-0010 y compose.docling-gpu.yml), asi que solo se le
+##   da la tarjeta cuando sobra margen despues del LLM y los embeddings. Con
+##   KB_DOCLING_GPU=1 se fuerza igual, y con 0 se apaga.
+##
+## Los dos umbrales son variables: si mides otra cosa en tu equipo, cambialos.
+KB_VRAM_EMBEDDINGS_GPU ?= 6144
+KB_VRAM_DOCLING_GPU    ?= 8192
 
-# Imagen base de CUDA y Compute Capability con las que se compila llama.cpp en
-# Dockerfile.bonsai. Los defaults son los de la GPU de referencia del ADR-0009
-# (T600, Turing) -- si tu tarjeta es otra, esto NO es opcional:
-#
-#   BONSAI_CUDA_ARCH: 75 = Turing (T600, RTX 20xx) | 86 = Ampere (RTX 30xx)
-#                     89 = Ada (RTX 40xx)          | 120 = Blackwell (RTX 50xx)
-#
-#   BONSAI_CUDA_TAG:  la imagen nvidia/cuda exige un driver minimo y lo verifica
-#                     en runtime. 12.6.0 pide driver >= 560; con uno anterior el
-#                     contenedor ni arranca ("unsatisfied condition: cuda>=12.6"),
-#                     despues de haber compilado ~20 minutos. Bajar este tag es la
-#                     salida si no puedes actualizar el driver del equipo.
-#
-# Se exportan para que docker compose las vea: compose.bonsai.yml las lee como
-# ${BONSAI_CUDA_ARCH} / ${BONSAI_CUDA_TAG}, y una variable de Make no llega al
-# entorno del proceso hijo si no se exporta.
-BONSAI_CUDA_ARCH     ?= 75
-BONSAI_CUDA_TAG      ?= 12.6.0
-BONSAI_DRIVER_MINIMO := 560
-export BONSAI_CUDA_ARCH
-export BONSAI_CUDA_TAG
+## Devuelve, en una sola linea: vram_mib cc driver_major embeddings docling cuda_tag emb_en_env
+## Sin GPU (o sin nvidia-smi) devuelve la fila neutra "0 75 0 cpu no 12.6.0 ...".
+GPU_PLAN := $(shell \
+  info=$$(nvidia-smi --query-gpu=memory.total,compute_cap,driver_version --format=csv,noheader,nounits 2>/dev/null | head -1); \
+  if grep -sqE '^[[:space:]]*KB_EMBEDDINGS_MODELO=' ".env"; then fijo=si; else fijo=no; fi; \
+  if [ -z "$$info" ]; then echo "0 75 0 cpu no 12.6.0 $$fijo"; exit 0; fi; \
+  vram=$$(echo "$$info" | cut -d, -f1 | tr -cd '0-9'); \
+  cc=$$(echo   "$$info" | cut -d, -f2 | tr -cd '0-9'); \
+  drv=$$(echo  "$$info" | cut -d, -f3 | cut -d. -f1 | tr -cd '0-9'); \
+  [ -n "$$vram" ] || vram=0; [ -n "$$cc" ] || cc=75; [ -n "$$drv" ] || drv=0; \
+  if [ "$$vram" -ge $(KB_VRAM_EMBEDDINGS_GPU) ]; then emb=gpu; else emb=cpu; fi; \
+  if [ "$$vram" -ge $(KB_VRAM_DOCLING_GPU) ];    then doc=si; else doc=no; fi; \
+  if   [ "$$drv" -ge 560 ]; then tag=12.6.0; \
+  elif [ "$$drv" -ge 550 ]; then tag=12.4.1; \
+  elif [ "$$drv" -ge 535 ]; then tag=12.2.2; \
+  else tag=12.6.0; fi; \
+  echo "$$vram $$cc $$drv $$emb $$doc $$tag $$fijo")
 
-# Deteccion automatica de GPU NVIDIA: nvidia-smi solo existe y responde si hay
-# tarjeta y el driver esta instalado (con nvidia-container-toolkit, Docker ya
-# puede reservarla). Si el resultado es "1", todos los targets de infra usan
-# compose.gpu.yml sin que haga falta pedirlo a mano.
-#
-# La deteccion depende del shell con el que Make evalua $(shell ...): `command -v`
-# es de sh, no de cmd. En un Windows donde Make no encuentra un sh POSIX -- o donde
-# nvidia-smi no esta en el PATH de ESE shell, aunque si lo este en la terminal --
-# esto da vacio y `make up` cae a CPU en una maquina que si tiene tarjeta, sin decir
-# por que. `make gpu-check` muestra que vio Make; KB_GPU es la salida manual:
-#   KB_GPU=1 make up   fuerza el perfil GPU
-#   KB_GPU=0 make up   lo apaga aunque haya tarjeta
-DETECCION_GPU := $(shell command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi -L >/dev/null 2>&1 && echo 1)
+GPU_VRAM_MIB   := $(word 1,$(GPU_PLAN))
+GPU_CC         := $(word 2,$(GPU_PLAN))
+GPU_DRIVER_MAJ := $(word 3,$(GPU_PLAN))
+GPU_EMBEDDINGS := $(word 4,$(GPU_PLAN))
+GPU_DOCLING    := $(word 5,$(GPU_PLAN))
+GPU_CUDA_TAG   := $(word 6,$(GPU_PLAN))
+GPU_EMB_FIJADO := $(word 7,$(GPU_PLAN))
 
+## KB_GPU manda sobre la deteccion: KB_GPU=1 fuerza el perfil GPU, KB_GPU=0 lo apaga.
+## Sigue existiendo como salida de emergencia, pero desde que el Makefile fija su
+## propio SHELL (ver arriba) la deteccion ya no depende de desde donde se invoque.
 ifeq ($(KB_GPU),1)
 HAY_GPU := 1
 else ifeq ($(KB_GPU),0)
 HAY_GPU :=
 else
-HAY_GPU := $(DETECCION_GPU)
+HAY_GPU := $(if $(filter-out 0,$(GPU_VRAM_MIB)),1,)
+endif
+
+ifeq ($(KB_DOCLING_GPU),1)
+GPU_DOCLING := si
+endif
+ifeq ($(KB_DOCLING_GPU),0)
+GPU_DOCLING := no
+endif
+
+## Sin GPU no hay nada que repartir: los embeddings van a CPU igual, pero por la via
+## normal de Ollama, no con el modelo -cpu fijado.
+ifndef HAY_GPU
+GPU_EMBEDDINGS := cpu-sin-gpu
+GPU_DOCLING := no
+endif
+
+## docling en GPU es un override mas encadenado al perfil GPU, no un compose aparte.
+ifeq ($(GPU_DOCLING),si)
+COMPOSE_GPU := $(COMPOSE_GPU) -f compose.docling-gpu.yml
+endif
+
+## Compute Capability y tag de CUDA para el perfil Bonsai, derivados del hardware
+## real en vez de fijados a la T600 del ADR-0009. `?=` para que un valor puesto a
+## mano (o en .env) siga ganando.
+##   cc:  75 = Turing (T600, RTX 20xx)  86 = Ampere (RTX 30xx)
+##        89 = Ada (RTX 40xx)           120 = Blackwell (RTX 50xx)
+##   tag: cada imagen nvidia/cuda exige un driver minimo y lo verifica al arrancar
+##        el contenedor. 12.6.0 pide >= 560, 12.4.1 >= 550, 12.2.2 >= 535.
+BONSAI_CUDA_ARCH     ?= $(GPU_CC)
+BONSAI_CUDA_TAG      ?= $(GPU_CUDA_TAG)
+BONSAI_DRIVER_MINIMO := 560
+export BONSAI_CUDA_ARCH
+export BONSAI_CUDA_TAG
+
+## Embeddings: se exporta el modelo elegido SOLO si no esta fijado en .env. docker
+## compose le da precedencia al entorno sobre .env, asi que exportarlo siempre
+## pisaria una eleccion explicita del usuario. Con .env callado, manda el hardware.
+ifeq ($(GPU_EMB_FIJADO),no)
+ifeq ($(GPU_EMBEDDINGS),cpu)
+export KB_EMBEDDINGS_MODELO := $(EMBEDDINGS)-cpu
+else ifeq ($(GPU_EMBEDDINGS),gpu)
+export KB_EMBEDDINGS_MODELO := $(EMBEDDINGS)
+endif
 endif
 
 ifeq ($(HAY_GPU),1)
@@ -154,32 +216,70 @@ help:  ## Muestra esta ayuda
 
 ## ---------------------------------------------------------------- infraestructura
 
-up:  ## Levanta los 4 servicios; usa la GPU NVIDIA automaticamente si el host tiene una
+up:  ## Levanta los 4 servicios y reparte la GPU segun la tarjeta que detecte
 	$(COMPOSE_ACTIVO) up -d --build
-	@echo "Perfil activo: $(if $(HAY_GPU),GPU (compose.gpu.yml) -- Ollama con VRAM reservada,CPU (compose.yml) -- sin GPU NVIDIA activa; si esta maquina tiene una corre make gpu-check)"
+	@$(MAKE) --no-print-directory gpu-resumen
 
 gpu-up:  ## Fuerza el perfil GPU aunque la deteccion automatica no encuentre nvidia-smi
 	$(COMPOSE_GPU) up -d --build
+	@$(MAKE) --no-print-directory gpu-resumen
 
-gpu-check:  ## Diagnostica la deteccion de GPU: por que dio lo que dio y como forzarla
-	@echo "Shell que usa Make    : $(SHELL)"
-	@echo "KB_GPU (override)     : $(if $(KB_GPU),$(KB_GPU),sin definir)"
-	@echo "Deteccion automatica  : $(if $(DETECCION_GPU),ok -- nvidia-smi existe y respondio,vacia -- no se pudo ejecutar nvidia-smi desde Make)"
-	@echo "Perfil que usaria up  : $(if $(HAY_GPU),GPU (compose.gpu.yml),CPU (compose.yml))"
+gpu-resumen:  ## Muestra en una pantalla que se llevo la GPU y que quedo en CPU
+ifeq ($(HAY_GPU),1)
+	@echo "Perfil activo: GPU (compose.gpu.yml) -- $$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -1), $(GPU_VRAM_MIB) MiB"
+	@echo "  LLM (consultas)          : GPU"
+	@echo "  Embeddings (ingesta y consultas): $(if $(filter gpu,$(GPU_EMBEDDINGS)),GPU,CPU con $(EMBEDDINGS)-cpu -- la VRAM no alcanza para el LLM y los embeddings a la vez)"
+	@echo "  Extraccion PDF (docling) : $(if $(filter si,$(GPU_DOCLING)),GPU,CPU)"
+	@echo "  Reranker (cross-encoder) : CPU siempre -- el proyecto usa la build CPU de ONNX Runtime"
+ifeq ($(GPU_EMB_FIJADO),si)
 	@echo ""
-	@echo "-- ruta de nvidia-smi --"
-	-@command -v nvidia-smi || echo "   no esta en el PATH de este shell"
-	@echo "-- tarjetas --"
-	-@nvidia-smi -L || echo "   nvidia-smi no respondio"
-	@echo "-- driver --"
-	-@nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv || echo "   nvidia-smi no respondio"
+	@echo "  Nota: KB_EMBEDDINGS_MODELO esta fijado en tu .env, asi que manda eso y no la"
+	@echo "        deteccion. Comentalo para que make elija segun el hardware."
+endif
 	@echo ""
-	@echo "Si la tarjeta aparece arriba pero el perfil dice CPU, la deteccion es lo que"
-	@echo "fallo, no el hardware: levanta con  KB_GPU=1 make up"
+	@echo "  Detalle y umbrales: make gpu-check"
+else
+	@echo "Perfil activo: CPU (compose.yml) -- sin GPU NVIDIA activa"
+	@echo "  Si esta maquina tiene una, corre: make gpu-check"
+endif
+
+gpu-check:  ## Diagnostica que hardware vio make y como repartio la GPU
+	@echo "== Como esta corriendo make =="
+	@echo "  Shell            : $(SHELL)"
+	@echo "  KB_GPU           : $(if $(KB_GPU),$(KB_GPU),sin definir)"
+	@echo "  KB_DOCLING_GPU   : $(if $(KB_DOCLING_GPU),$(KB_DOCLING_GPU),sin definir)"
 	@echo ""
-	@echo "Para el perfil Bonsai (make up-bonsai) ademas hace falta driver >= $(BONSAI_DRIVER_MINIMO),"
-	@echo "que es lo que exige la imagen base nvidia/cuda:$(BONSAI_CUDA_TAG), y BONSAI_CUDA_ARCH"
-	@echo "igual a la Compute Capability de tu tarjeta (hoy: $(BONSAI_CUDA_ARCH))."
+	@echo "== Hardware detectado =="
+	-@nvidia-smi --query-gpu=name,memory.total,compute_cap,driver_version --format=csv || echo "   nvidia-smi no respondio"
+	-@command -v nvidia-smi || echo "   nvidia-smi no esta en el PATH de este shell"
+	@echo ""
+	@echo "== Lo que make dedujo =="
+	@echo "  VRAM             : $(GPU_VRAM_MIB) MiB"
+	@echo "  Compute Cap      : $(GPU_CC)   -> BONSAI_CUDA_ARCH=$(BONSAI_CUDA_ARCH)"
+	@echo "  Driver (mayor)   : $(GPU_DRIVER_MAJ) -> BONSAI_CUDA_TAG=$(BONSAI_CUDA_TAG)"
+	@echo "  Perfil de compose: $(if $(HAY_GPU),GPU,CPU)"
+	@echo ""
+	@echo "== Reparto de la tarjeta =="
+	@echo "  LLM                      : $(if $(HAY_GPU),GPU,CPU)"
+	@echo "  Embeddings               : $(if $(filter gpu,$(GPU_EMBEDDINGS)),GPU,CPU)   (umbral KB_VRAM_EMBEDDINGS_GPU=$(KB_VRAM_EMBEDDINGS_GPU) MiB)"
+	@echo "  Extraccion PDF (docling) : $(if $(filter si,$(GPU_DOCLING)),GPU,CPU)   (umbral KB_VRAM_DOCLING_GPU=$(KB_VRAM_DOCLING_GPU) MiB)"
+	@echo "  Reranker                 : CPU   (build CPU de ONNX Runtime, no lo cambia ninguna variable)"
+	@echo "  KB_EMBEDDINGS_MODELO     : $(if $(filter si,$(GPU_EMB_FIJADO)),fijado en tu .env -- manda eso,$(KB_EMBEDDINGS_MODELO) (elegido por make))"
+	@echo ""
+	@echo "== Por que =="
+	@echo "  Con menos de $(KB_VRAM_EMBEDDINGS_GPU) MiB, gemma3:4b no entra completo ni estando solo"
+	@echo "  (medido en la T600 de 4 GB: 40% GPU / 60% CPU), asi que darle VRAM a los"
+	@echo "  embeddings solo empeora al LLM: se los manda a CPU, que es una mejora neta"
+	@echo "  medida. Con $(KB_VRAM_EMBEDDINGS_GPU) MiB o mas entran los dos y los embeddings se quedan en la"
+	@echo "  tarjeta. docling entra recien con $(KB_VRAM_DOCLING_GPU) MiB porque no libera su VRAM entre"
+	@echo "  conversiones (bug conocido, ver ADR-0010). Ver docs/investigacion-vram-y-modelo-llm.md."
+	@echo ""
+	@echo "  Todo eso se puede forzar:  KB_GPU=1|0   KB_DOCLING_GPU=1|0"
+	@echo "                             KB_VRAM_EMBEDDINGS_GPU=...   KB_VRAM_DOCLING_GPU=..."
+	@echo ""
+	@echo "  Si la tarjeta aparece arriba pero el perfil dice CPU, fallo la deteccion, no"
+	@echo "  el hardware: levanta con  KB_GPU=1 make up"
+
 
 up-bonsai:  ## Levanta el perfil Bonsai-8B (LLM 1-bit via llama-server); requiere GPU NVIDIA y el GGUF de pull-bonsai-gguf
 	@echo "Bonsai: imagen base nvidia/cuda:$(BONSAI_CUDA_TAG) (requiere driver NVIDIA >= $(BONSAI_DRIVER_MINIMO)) compilando para sm_$(BONSAI_CUDA_ARCH)."
@@ -247,8 +347,14 @@ pull-models:  ## Descarga LLM, embeddings y reranker a KB_DATA_DIR (~5.5 GB, una
 	$(COMPOSE_ACTIVO) exec ollama ollama pull $(LLM)
 	$(COMPOSE_ACTIVO) exec ollama ollama pull $(EMBEDDINGS)
 	$(MAKE) pull-reranker
+ifeq ($(GPU_EMBEDDINGS),cpu)
 	@echo ""
-	@echo "Listo. Si vas a usar la GPU, corre tambien: make pin-embeddings-cpu"
+	@echo "Esta tarjeta ($(GPU_VRAM_MIB) MiB) no da para el LLM y los embeddings a la vez, asi que"
+	@echo "make va a pedir $(EMBEDDINGS)-cpu. Se crea ahora, para que no falte al arrancar:"
+	@$(MAKE) --no-print-directory pin-embeddings-cpu
+endif
+	@echo ""
+	@echo "Listo. 'make gpu-check' muestra como quedo repartida la tarjeta."
 
 pull-reranker:  ## Descarga y verifica el ONNX del cross-encoder (~545 MB)
 	@mkdir -p "$(RERANKER_DIR)"
@@ -294,12 +400,15 @@ pull-qwen25:  ## Descarga Qwen2.5 3B a Ollama (~1.9 GB), una sola vez (perfil up
 	$(COMPOSE_ACTIVO) exec ollama ollama pull qwen2.5:3b
 
 pin-embeddings-cpu:  ## Crea bge-m3-cpu, fijado a CPU, para dejarle toda la VRAM al LLM
-	@# La T600 tiene 4 GB: gemma3:4b mas bge-m3 no caben juntos con holgura.
-	@# Los embeddings van a CPU, donde el AVX-512 de este equipo los hace baratos,
-	@# y la GPU queda integra para la sintesis, que es la etapa que se espera.
+	@# Por debajo de KB_VRAM_EMBEDDINGS_GPU el LLM no entra completo ni estando solo
+	@# (medido en la T600 de 4 GB: 40% GPU / 60% CPU), asi que quitarle memoria para
+	@# los embeddings solo lo empeora. Van a CPU, donde el AVX-512 con VNNI los hace
+	@# baratos, y la GPU queda para la sintesis, que es la etapa que se espera.
+	@# Ya no hace falta correrlo a mano: pull-models lo hace cuando la tarjeta lo pide.
 	$(COMPOSE_ACTIVO) exec -T ollama sh -c 'printf "FROM $(EMBEDDINGS)\nPARAMETER num_gpu 0\n" > /tmp/Modelfile.cpu && ollama create $(EMBEDDINGS)-cpu -f /tmp/Modelfile.cpu'
 	@echo ""
-	@echo "Ahora pon en tu .env:  KB_EMBEDDINGS_MODELO=$(EMBEDDINGS)-cpu"
+	@echo "Listo: $(EMBEDDINGS)-cpu creado. No hace falta tocar nada mas -- make lo selecciona"
+	@echo "solo mientras no fijes KB_EMBEDDINGS_MODELO a mano en tu archivo de entorno."
 
 seed: ingest  ## Alias de ingest: nombre usado en la seccion Verificacion del plan (corpus de ejemplo)
 
