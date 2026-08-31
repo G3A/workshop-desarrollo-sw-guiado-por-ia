@@ -12,9 +12,23 @@ Monorepo del taller de desarrollo de software guiado por IA.
   (`sdlc-ia`) con 4 skills que instrumentan un repo Java/Spring para desarrollo guiado por IA:
   contexto, controles deterministas, hooks del agente, y el ciclo ticket→PR sobre GitHub.
 
-## Las ramas `validacion/*` no se borran
+## Ramas: qué no tocar
 
-> **Aviso para cualquier persona o agente que limpie ramas en este repositorio.**
+> **Aviso para cualquier persona o agente que limpie ramas o integre este repositorio.**
+>
+> Aquí hay ramas que *parecen* atrasadas o abandonadas y son material didáctico. Ninguna tiene
+> protección de rama, así que borrarlas o mergearlas sale sin ninguna fricción. Lee esto antes.
+
+### `main` no se mergea desde `dev`
+
+`main` apunta al **commit inicial** y lleva decenas de commits sin integrar, con cero commits
+propios. No es un descuido: es el punto de partida limpio del taller. El trabajo termina en `dev`.
+
+Lo mismo vale, y con más razón, en el repositorio hermano
+[`base-conocimiento-sandbox`](https://github.com/G3A/base-conocimiento-sandbox), donde `main` es el
+snapshot «antes de instrumentar con IA» que los manuales muestran en capturas.
+
+### Las ramas `validacion/*` no se borran
 
 Las ramas `validacion/f0-fundamentos`, `f1-preparar-maquina`, `f2-preparar-proyecto`,
 `f3-planificar`, `f6-merge-cd` y `f7-retrospectiva` **son material didáctico**: muestran en acción,
