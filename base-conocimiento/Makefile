@@ -93,10 +93,14 @@ JAVA_MINIMO := 25
 ##   a CPU es una mejora neta medida (hallazgo 2). Con 6 GB o mas entran los dos
 ##   y los embeddings se quedan en la tarjeta, que es lo que se quiere para la
 ##   ingesta.
-## - KB_VRAM_DOCLING_GPU. docling-serve NO libera la VRAM entre conversiones (bug
-##   conocido sin fix, ver ADR-0010 y compose.docling-gpu.yml), asi que solo se le
-##   da la tarjeta cuando sobra margen despues del LLM y los embeddings. Con
-##   KB_DOCLING_GPU=1 se fuerza igual, y con 0 se apaga.
+## - KB_VRAM_DOCLING_GPU. Medido en la sesion 27 (hallazgos 106 y 109): docling
+##   pica en 2.2 GB con un documento grande. Sumado a los 4.0 GB de gemma3:4b a
+##   contexto 4096 y los ~1.2 GB de bge-m3 en GPU, son ~7.4 GB con las tres etapas
+##   en la tarjeta -- por eso 8192 y no 6144: en 6 GB los tres no entran. El LLM
+##   esta ocioso durante la ingesta pero sigue residente (OLLAMA_KEEP_ALIVE), asi
+##   que la suma es real. Ademas docling no libera la VRAM entre conversiones (bug
+##   conocido sin fix, ver ADR-0010 y compose.docling-gpu.yml). Con KB_DOCLING_GPU=1
+##   se fuerza igual, y con 0 se apaga.
 ##
 ## Los dos umbrales son variables: si mides otra cosa en tu equipo, cambialos.
 KB_VRAM_EMBEDDINGS_GPU ?= 6144

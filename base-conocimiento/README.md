@@ -185,19 +185,35 @@ el AVX-512 con VNNI lo hace barato) resultó una mejora neta, sin costo de calid
 entran los dos y los embeddings se quedan en la tarjeta, que es lo que conviene para la ingesta. El
 detalle está en [`docs/investigacion-vram-y-modelo-llm.md`](docs/investigacion-vram-y-modelo-llm.md).
 
-**Por qué docling tiene un umbral más alto.** `docling-serve` no libera la VRAM entre conversiones
-([docling-serve#233](https://github.com/docling-project/docling-serve/issues/233), abierta desde
-junio de 2025 sin PR ni asignar), y tampoco existe una variable nativa para acotarla
-([#440](https://github.com/docling-project/docling-serve/issues/440) la pide y sigue abierta). Ver
-[ADR-0010](docs/adrs/0010-docling-reemplaza-pdfbox.md).
+**Por qué docling tiene un umbral más alto.** Ya no es prudencia: está medido (sesión 27 de
+[`docs/investigacion-vram-y-modelo-llm.md`](docs/investigacion-vram-y-modelo-llm.md)). Sumando las
+tres etapas en la tarjeta a la vez:
 
-Lo que sí se puede es acotar la huella base, y `compose.docling-gpu.yml` lo hace: sus defaults son
-2 workers que **no** comparten modelos (`SHARE_MODELS=False` significa *«one instance of the models
-is allocated for each worker thread»*) más una caché de 2 converters que también retienen los suyos
-— hasta cuatro juegos de modelos residentes en una tarjeta donde el LLM ya compite. Con
-`NUM_WORKERS=1`, `SHARE_MODELS=true` y `OPTIONS_CACHE_SIZE=1` queda **un solo juego**.
+| Componente | VRAM |
+|---|---|
+| `gemma3:4b` a contexto 4096 | 4.0 GB |
+| `bge-m3` en GPU | ~1.2 GB |
+| docling, pico con un documento grande | 2.2 GB |
+| **Total** | **~7.4 GB** |
 
-Para recuperar la VRAM que igual se retiene entre conversiones:
+Por eso 8 GB: en 6 GB los tres no entran. Una RTX 3060 puede tener LLM y embeddings en la tarjeta
+(5.2 GB), pero no docling encima. Durante la ingesta el LLM está ocioso, pero sigue residente por
+`OLLAMA_KEEP_ALIVE`, así que la suma es real y no un peor caso teórico.
+
+**La fuga de VRAM, y qué se puede hacer.** `docling-serve` no libera la VRAM entre conversiones
+([#233](https://github.com/docling-project/docling-serve/issues/233), abierta desde junio de 2025
+sin PR ni asignar), y no existe variable nativa para acotarla
+([#440](https://github.com/docling-project/docling-serve/issues/440) la pide y sigue abierta). Lo
+que se midió:
+
+- **No es ilimitada por conversión.** Cinco conversiones seguidas del mismo documento dejaron la
+  VRAM clavada en 799 MiB. Lo que se retiene es el pico del documento más pesado, no un delta por
+  llamada — 2053 MiB en reposo tras procesar un PDF de 800 páginas, contra 629 al arrancar.
+- **`GET /v1/clear/converters` no sirve**: existe, responde 200 y no libera un solo MiB. El caching
+  allocator de PyTorch no devuelve la memoria al driver.
+- **Reiniciar el proceso es la única vía**, y `compose.docling-gpu.yml` acota la huella base con
+  `NUM_WORKERS=1`, `SHARE_MODELS=true` y `OPTIONS_CACHE_SIZE=1`: medido A/B con 4 conversiones
+  concurrentes del mismo PDF, **2019 MiB con los defaults contra 799 MiB con esto**.
 
 ```bash
 make docling-reciclar    # reinicia docling-serve e imprime la VRAM antes y después
