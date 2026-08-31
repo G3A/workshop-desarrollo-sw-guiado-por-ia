@@ -116,6 +116,13 @@ Vive en el módulo `ingesta` (`AdminController`), no en `web` — ver
 `/api/admin/ayuda` y `/api/admin/proyectos` quedan fuera de `ApiTokenFilter`, igual que
 `/api/chat`/`/api/preview`, porque los usa también la página de chat sin sesión de persona.
 
+`/api/admin/*` ya no vive en un solo controller: `GET /api/admin/feedback` (issue #3) está en
+`FeedbackAdminController`, dentro de `orquestacion` — mismo precedente que `OrquestacionController`
+para `/api/ask` (un endpoint operativo dentro de su propio módulo, la regla de ArchUnit que aísla a
+los adaptadores no le aplica a código intra-módulo), y evita que `ingesta` dependa de algo interno
+de `orquestacion` solo para exponerlo. `ApiTokenFilter` sigue cubriendo la ruta igual: empareja por
+prefijo de URI, no por el módulo que la expone.
+
 ## Pipeline de 7 etapas (`/api/ask`, `/api/chat`)
 
 1. **Planificador** elige herramientas con salida estructurada forzada por Ollama.
@@ -168,6 +175,10 @@ Quedan **fuera** de este filtro, a propósito:
   exponen contenido del corpus; el resto de `/api/admin/*` (fuentes, reindexar, subir archivos)
   sí exige el token — la consola de administración (`admin.html`) lo pide una vez y lo guarda en
   `sessionStorage`, porque a diferencia del chat usa `fetch`, no `EventSource`.
+- `/api/feedback` (issue #3) — los botones 👍/👎 de la página de chat, mismo motivo que
+  `/api/chat`: sin sesión de persona, no hay token que mandar. Riesgo aceptado y documentado en
+  `Consultar.registrarFeedback`: nada valida que quien manda el feedback vio realmente esa
+  respuesta. `GET /api/admin/feedback` sí exige el token, igual que el resto de `/api/admin/*`.
 
 La segmentación multi-tenant real es `ProyectoId`, no el token: cada consulta acota el corpus por
 `project_id` antes de que el planner corra. La ACL por fuente (`documents.acl`) existe como columna

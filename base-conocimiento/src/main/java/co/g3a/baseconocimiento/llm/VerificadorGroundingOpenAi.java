@@ -1,7 +1,6 @@
 package co.g3a.baseconocimiento.llm;
 
 import java.util.Map;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
@@ -10,22 +9,22 @@ import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.stereotype.Component;
 
 /**
- * Clasificación binaria con salida estructurada forzada, igual que
- * {@link PlanificadorOpenAi} — no redacción libre, por eso es más confiable
- * que pedirle al {@link Sintetizador} que se autocensure sobre la marcha.
+ * Clasificación binaria con salida estructurada forzada, igual que {@link PlanificadorOpenAi} — no
+ * redacción libre, por eso es más confiable que pedirle al {@link Sintetizador} que se autocensure
+ * sobre la marcha.
  *
- * <p>Arma su propio {@link ChatClient.Builder} a partir de {@link OpenAiChatModel}
- * en vez de un {@code ChatClient.Builder} inyectado — ver el comentario de
- * {@link PlanificadorOpenAi} sobre por que compartir un builder-bean entre
- * componentes de este paquete pisaba el {@code maxTokens} de unos con el de
- * otros.
+ * <p>Arma su propio {@link ChatClient.Builder} a partir de {@link OpenAiChatModel} en vez de un
+ * {@code ChatClient.Builder} inyectado — ver el comentario de {@link PlanificadorOpenAi} sobre por
+ * que compartir un builder-bean entre componentes de este paquete pisaba el {@code maxTokens} de
+ * unos con el de otros.
  */
 @Component
 class VerificadorGroundingOpenAi implements VerificadorGrounding {
 
-    private static final Logger log = LoggerFactory.getLogger(VerificadorGroundingOpenAi.class);
+  private static final Logger log = LoggerFactory.getLogger(VerificadorGroundingOpenAi.class);
 
-    private static final String SISTEMA = """
+  private static final String SISTEMA =
+      """
             Evaluas si un CONTEXTO recuperado de una base de conocimiento alcanza para
             responder una PREGUNTA puntual. No respondes la pregunta: solo emites un
             veredicto sobre si el contexto la responde de verdad.
@@ -69,97 +68,98 @@ class VerificadorGroundingOpenAi implements VerificadorGrounding {
             primero) no responde la pregunta si otro fragmento distinto si lo hace.
             """;
 
-    private final ChatClient chatClient;
+  private final ChatClient chatClient;
 
-    VerificadorGroundingOpenAi(OpenAiChatModel modelo) {
-        // temperature(0.0): un veredicto sobre si arriesgar una alucinacion no debe
-        // variar entre corridas identicas. Se verifico en vivo (con gemma3:4b, antes
-        // de ADR-0009) que con 0.2 la MISMA pregunta contra el MISMO contexto daba
-        // true en 1 de 3 intentos y false en los otros dos -- ver ADR-0008.
-        //
-        // extraBody(repeat_penalty): ver PlanificadorOpenAi -- mitiga un modo de
-        // falla de repeticion medido en la sesion 6 de la investigacion (ADR-0009).
-        //
-        // extraBody(reasoning_effort=none): ver PlanificadorOpenAi -- sin esto, un
-        // modelo con "thinking" nativo (qwen3.5:4b) se come el maxTokens(40) de
-        // abajo pensando y el veredicto falla el 100% de las veces (sesion 18,
-        // hallazgo 75 de docs/investigacion-vram-y-modelo-llm.md). Con la puerta
-        // de relevancia en su valor de produccion, eso rechazaria cada pregunta.
-        //
-        // maxTokens(40): la salida es un solo booleano en JSON
-        // ({"respondeLaPregunta": true}), un tope bajo alcanza de sobra y evita
-        // gastar tiempo de generacion (~5-6 tok/s en esta GPU) si el modelo
-        // alguna vez se pone a divagar en vez de responder directo. Era 20 --
-        // subido en la sesion 15 (docs/investigacion-vram-y-modelo-llm.md):
-        // probado aislado contra Ministral con los contextos reales del piloto
-        // de la sesion 14, 3 de 17 llamadas truncaron a mitad de un JSON valido
-        // ("{ \"respondeLaPregunta\": true" sin cerrar) porque el formato de
-        // salida de Ministral agrega espacios/saltos de linea que Bonsai no usa
-        // -- el catch de mas abajo interpreta ese JSON incompleto como fallo y
-        // rechaza por precaucion, indistinguible de un rechazo real. 40 da
-        // margen sin costo real (sigue siendo una llamada de clasificacion).
-        var opciones = OpenAiChatOptions.builder()
-                .temperature(0.0)
-                .extraBody(Map.of("repeat_penalty", 1.1, "reasoning_effort", "none"))
-                .maxTokens(40);
-        this.chatClient = ChatClient.builder(modelo).defaultOptions(opciones).build();
-    }
+  VerificadorGroundingOpenAi(OpenAiChatModel modelo) {
+    // temperature(0.0): un veredicto sobre si arriesgar una alucinacion no debe
+    // variar entre corridas identicas. Se verifico en vivo (con gemma3:4b, antes
+    // de ADR-0009) que con 0.2 la MISMA pregunta contra el MISMO contexto daba
+    // true en 1 de 3 intentos y false en los otros dos -- ver ADR-0008.
+    //
+    // extraBody(repeat_penalty): ver PlanificadorOpenAi -- mitiga un modo de
+    // falla de repeticion medido en la sesion 6 de la investigacion (ADR-0009).
+    //
+    // extraBody(reasoning_effort=none): ver PlanificadorOpenAi -- sin esto, un
+    // modelo con "thinking" nativo (qwen3.5:4b) se come el maxTokens(40) de
+    // abajo pensando y el veredicto falla el 100% de las veces (sesion 18,
+    // hallazgo 75 de docs/investigacion-vram-y-modelo-llm.md). Con la puerta
+    // de relevancia en su valor de produccion, eso rechazaria cada pregunta.
+    //
+    // maxTokens(40): la salida es un solo booleano en JSON
+    // ({"respondeLaPregunta": true}), un tope bajo alcanza de sobra y evita
+    // gastar tiempo de generacion (~5-6 tok/s en esta GPU) si el modelo
+    // alguna vez se pone a divagar en vez de responder directo. Era 20 --
+    // subido en la sesion 15 (docs/investigacion-vram-y-modelo-llm.md):
+    // probado aislado contra Ministral con los contextos reales del piloto
+    // de la sesion 14, 3 de 17 llamadas truncaron a mitad de un JSON valido
+    // ("{ \"respondeLaPregunta\": true" sin cerrar) porque el formato de
+    // salida de Ministral agrega espacios/saltos de linea que Bonsai no usa
+    // -- el catch de mas abajo interpreta ese JSON incompleto como fallo y
+    // rechaza por precaucion, indistinguible de un rechazo real. 40 da
+    // margen sin costo real (sigue siendo una llamada de clasificacion).
+    var opciones =
+        OpenAiChatOptions.builder()
+            .temperature(0.0)
+            .extraBody(Map.of("repeat_penalty", 1.1, "reasoning_effort", "none"))
+            .maxTokens(40);
+    this.chatClient = ChatClient.builder(modelo).defaultOptions(opciones).build();
+  }
 
-    @Override
-    public Veredicto verificar(String pregunta, String contexto) {
-        String usuario = "PREGUNTA: %s\n\nCONTEXTO:\n%s".formatted(pregunta, contexto);
-        try {
-            return chatClient.prompt()
-                    .system(SISTEMA)
-                    .user(usuario)
-                    .call()
-                    .entity(Veredicto.class, spec -> spec.useProviderStructuredOutput());
-        } catch (Exception e) {
-            // A diferencia del planificador (que se cae a search_unified), aca el
-            // respaldo ante una falla de llama-server es rechazar: este verificador es
-            // la ultima defensa contra una respuesta sin respaldo real, y arriesgar una
-            // alucinacion es peor que negarse cuando no se pudo verificar.
-            if (esDesbordeDeContexto(e)) {
-                // Sesion 15 (docs/investigacion-vram-y-modelo-llm.md, hallazgo 51): medido
-                // en vivo que 6 de 17 preguntas AMBIGUO del piloto de Ministral desbordaban
-                // los 4096 tokens de ctx-size en ESTA llamada (sistema + contexto, sin haber
-                // generado nada) -- llama-server responde 400 "exceeds the available context
-                // size", y sin este chequeo caia en el catch generico de abajo, quedando
-                // indistinguible de un rechazo real por juicio del modelo. El veredicto sigue
-                // siendo false (no cambia el comportamiento, sigue siendo la opcion segura),
-                // pero el log ahora dice la causa real -- necesario para no seguir
-                // atribuyendole a "el modelo rechazo de mas" lo que en realidad es un limite
-                // de presupuesto de contexto.
-                log.warn("VerificadorGrounding no pudo evaluar: el contexto (sistema+pregunta+"
-                        + "fragmentos) desborda el ctx-size del modelo. Se rechaza por "
-                        + "precaucion, pero esto NO es un juicio del modelo sobre el contenido: {}",
-                        e.toString());
-            } else {
-                log.warn("Fallo al verificar grounding, se rechaza por precaucion: {}", e.toString());
-            }
-            return new Veredicto(false);
-        }
+  @Override
+  public Veredicto verificar(String pregunta, String contexto) {
+    String usuario = "PREGUNTA: %s\n\nCONTEXTO:\n%s".formatted(pregunta, contexto);
+    try {
+      return chatClient
+          .prompt()
+          .system(SISTEMA)
+          .user(usuario)
+          .call()
+          .entity(Veredicto.class, spec -> spec.useProviderStructuredOutput());
+    } catch (Exception e) {
+      // A diferencia del planificador (que se cae a search_unified), aca el
+      // respaldo ante una falla de llama-server es rechazar: este verificador es
+      // la ultima defensa contra una respuesta sin respaldo real, y arriesgar una
+      // alucinacion es peor que negarse cuando no se pudo verificar.
+      if (esDesbordeDeContexto(e)) {
+        // Sesion 15 (docs/investigacion-vram-y-modelo-llm.md, hallazgo 51): medido
+        // en vivo que 6 de 17 preguntas AMBIGUO del piloto de Ministral desbordaban
+        // los 4096 tokens de ctx-size en ESTA llamada (sistema + contexto, sin haber
+        // generado nada) -- llama-server responde 400 "exceeds the available context
+        // size", y sin este chequeo caia en el catch generico de abajo, quedando
+        // indistinguible de un rechazo real por juicio del modelo. El veredicto sigue
+        // siendo false (no cambia el comportamiento, sigue siendo la opcion segura),
+        // pero el log ahora dice la causa real -- necesario para no seguir
+        // atribuyendole a "el modelo rechazo de mas" lo que en realidad es un limite
+        // de presupuesto de contexto.
+        log.warn(
+            "VerificadorGrounding no pudo evaluar: el contexto (sistema+pregunta+"
+                + "fragmentos) desborda el ctx-size del modelo. Se rechaza por "
+                + "precaucion, pero esto NO es un juicio del modelo sobre el contenido: {}",
+            e.toString());
+      } else {
+        log.warn("Fallo al verificar grounding, se rechaza por precaucion: {}", e.toString());
+      }
+      return new Veredicto(false);
     }
+  }
 
-    /**
-     * Busca en la cadena de causas (la excepcion real de llama-server suele llegar
-     * envuelta -- en esta version del cliente, a veces como
-     * {@code com.openai.errors.BadRequestException} con el 400 ya parseado, otras
-     * como {@code com.openai.errors.OpenAIIoException} generico si el cuerpo del
-     * error no calza con el esquema estricto que espera el cliente -- medido en
-     * vivo con ambos casos contra el mismo error real de llama-server) un mensaje
-     * que coincida con el desborde de contexto, en vez de asumir un solo tipo de
-     * excepcion o una sola forma del mensaje.
-     */
-    private static boolean esDesbordeDeContexto(Throwable e) {
-        for (Throwable actual = e; actual != null; actual = actual.getCause()) {
-            String mensaje = actual.getMessage();
-            if (mensaje != null
-                    && (mensaje.toLowerCase().contains("context size")
-                            || mensaje.toLowerCase().contains("exceed_context_size_error"))) {
-                return true;
-            }
-        }
-        return false;
+  /**
+   * Busca en la cadena de causas (la excepcion real de llama-server suele llegar envuelta -- en
+   * esta version del cliente, a veces como {@code com.openai.errors.BadRequestException} con el 400
+   * ya parseado, otras como {@code com.openai.errors.OpenAIIoException} generico si el cuerpo del
+   * error no calza con el esquema estricto que espera el cliente -- medido en vivo con ambos casos
+   * contra el mismo error real de llama-server) un mensaje que coincida con el desborde de
+   * contexto, en vez de asumir un solo tipo de excepcion o una sola forma del mensaje.
+   */
+  private static boolean esDesbordeDeContexto(Throwable e) {
+    for (Throwable actual = e; actual != null; actual = actual.getCause()) {
+      String mensaje = actual.getMessage();
+      if (mensaje != null
+          && (mensaje.toLowerCase().contains("context size")
+              || mensaje.toLowerCase().contains("exceed_context_size_error"))) {
+        return true;
+      }
     }
+    return false;
+  }
 }

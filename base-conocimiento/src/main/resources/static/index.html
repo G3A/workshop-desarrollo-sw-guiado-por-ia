@@ -374,6 +374,33 @@
   }
   .turno-respuesta:empty { display: none; }
 
+  .turno-feedback {
+    margin-top: 0.6rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.78rem;
+    color: var(--texto-atenuado);
+  }
+  .turno-feedback.oculto { display: none; }
+  .boton-feedback {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.6rem;
+    height: 1.6rem;
+    border: 1px solid var(--texto-atenuado);
+    border-radius: 50%;
+    background: transparent;
+    font-size: 0.85rem;
+    line-height: 1;
+    padding: 0;
+    cursor: pointer;
+  }
+  .boton-feedback:hover, .boton-feedback:focus-visible { border-color: var(--texto); }
+  .boton-feedback:disabled { opacity: 0.5; cursor: default; }
+  .turno-feedback-gracias.oculto { display: none; }
+
   .turno-detalle { margin-top: 0.6rem; }
   .turno-detalle summary {
     font-size: 0.78rem;
