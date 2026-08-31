@@ -26,19 +26,23 @@ Lee estos docs antes de hacer cambios estructurales.
 ## Comandos
 
 ```bash
-make up            # levanta los 4 servicios (db, ollama, docling-serve, api); detecta GPU sola
+make up            # levanta los 4 servicios (db, ollama, docling-serve, api); reparte la GPU sola
+make gpu-check     # qué tarjeta ve, qué le dio a la GPU y por qué (y cómo forzarlo)
 make health        # reporte de salud: db, ollama, modelos faltantes
 make ingest        # ingiere vault/documentos (corpus de ejemplo)
 make check         # lint + build + test -- la señal de confianza local antes de un commit
 make ci            # lo mismo que corre CI (suma el escaneo de secretos)
-make format         # aplica Spotless (google-java-format) a lo que cambió desde `dev`
-make hooks          # instala los git hooks de Lefthook (correr una vez, desde la raíz del monorepo)
+make format        # aplica Spotless (google-java-format) a todo el código
+make jdk-check     # verifica que el JDK activo pueda compilar (release 25)
+make hooks         # instala los git hooks de Lefthook (correr una vez, desde la raíz del monorepo)
 make psql          # abre una sesión psql contra la base
 ```
 
-`make help` lista los ~25 targets restantes (perfiles por modelo LLM, ingesta de repos/Teams/Azure
-DevOps, descarga de modelos). Preferí siempre estos targets sobre invocar `./mvnw`/`docker compose`
-a mano — el `Makefile` ya resuelve flags de perfil y detección de GPU.
+`make help` lista los ~40 targets restantes: los siete perfiles por modelo LLM (`up-bonsai`,
+`up-ministral`, `up-qwen35`, `up-nemotron`, `up-granite41`, `up-phi4mini`, `up-qwen25`, cada uno con
+su `down-` y su `pull-`), ingesta de repos/Teams/Azure DevOps, descarga de modelos y
+`docling-reciclar`. Prefiere siempre estos targets sobre invocar `./mvnw`/`docker compose` a mano —
+el `Makefile` ya resuelve flags de perfil y el reparto de GPU según el hardware que detecte.
 
 ## Reglas no obvias
 
@@ -55,22 +59,30 @@ a mano — el `Makefile` ya resuelve flags de perfil y detección de GPU.
   config en la raíz del repositorio git, que aquí es un nivel arriba. Sus comandos usan `root:
   "base-conocimiento/"` para acotarse a este proyecto. `make hooks` debe correrse desde la raíz del
   monorepo, no desde acá.
-- **Las recetas del `Makefile` que llaman a Maven usan `sh ./mvnw`, no `./mvnw` a secas** — en esta
-  máquina, `make` (el `ezwinports.make` que se instala vía winget en Windows) ejecuta una receta
-  que empieza con `./algo` en forma directa, sin pasar por el shell configurado, y `./` no se
-  resuelve así. `sh ./mvnw` fuerza el paso por el intérprete correcto.
-- `spotless-maven-plugin` usa `ratchetFrom dev` (rama local), no `origin/dev`, mientras el reorg a
-  monorepo no se haya empujado — actualizar la referencia una vez que `dev` esté en el remoto.
+- **El `Makefile` fija su propio `SHELL` en Windows** — busca el `sh.exe` de Git for Windows y le
+  antepone su directorio al `PATH` cuando el `PATH` viene en formato Windows. Sin eso, `make`
+  invocado desde PowerShell cae a `cmd.exe` y casi ninguna receta funciona (son POSIX: pipes,
+  `if [ -f ... ]`, `command -v`). Las recetas que llaman a Maven además usan `sh ./mvnw`, no
+  `./mvnw` a secas: GNU Make para Windows ejecuta una receta que empieza con `./algo` de forma
+  directa, sin pasar por el shell, y `./` no se resuelve así.
+- **Compilar exige JDK 25** (`<java.version>25</java.version>`, el mismo tag que usa el
+  `Dockerfile`). Con un JDK anterior Maven falla con `release version 25 not supported` recién
+  después de resolver dependencias; `make jdk-check` lo detecta antes y dice cómo apuntar
+  `JAVA_HOME`. De él dependen `build`, `test` y `verify`.
 
 ## CI y quality gates
 
 GitHub Actions (`.github/workflows/ci.yml` **en la raíz del monorepo**, no aquí — Actions solo lee
-workflows ahí) corre `make ci` (`working-directory: base-conocimiento`) en cada push/PR. `-Werror`
-(`-Xlint:all,
--processing`) y ArchUnit bloquean de verdad; Checkstyle reporta pero no bloquea todavía
-(`failOnViolation=false`, 35 violaciones preexistentes de brownfield, sobre todo `ConstantName`
-en el logger `log`); el escaneo de secretos (`gitleaks`) corre solo en CI, no en pre-commit local.
-Detalle completo de qué se instaló, qué se rompió para verificar, y qué se dejó pendiente en
+workflows ahí) corre `make ci` (`working-directory: base-conocimiento`) en cada push/PR, con JDK 25
+(el mismo `release` que declara el `pom`). Bloquean de verdad, todos: `-Werror` (`-Xlint:all`),
+ArchUnit, Spotless (`spotless:check`) y **Checkstyle** (`failOnViolation=true`,
+`violationSeverity=error`, `includeTestSourceDirectory=true`, ligado a la fase `verify`, con
+`checkstyle-suppressions.xml`). El escaneo de secretos (`gitleaks`) corre solo en CI, no en
+pre-commit local.
+
+Las 35 violaciones de brownfield que había cuando se instaló el control ya no existen: la
+sincronización con `base-conocimiento-sandbox` aplicó Spotless sobre todo el código y endureció
+Checkstyle. El detalle histórico de qué se instaló y qué se dejó pendiente sigue en
 `validacion-workshop/f2-preparar-proyecto.md`, en la raíz del monorepo.
 
 ## Pruebas
@@ -84,11 +96,11 @@ falla el build si se cruza una frontera de módulo.
 
 ## Estilo de código
 
-Spotless con `google-java-format` (2 espacios), acotado con `ratchetFrom` a lo que cambió desde
-`dev` — el código preexistente no se reformatea solo. Checkstyle (`checkstyle.xml`) cubre lo que
-Spotless no formatea (imports no usados, naming, largo de línea); hoy solo reporta
-(`make lint`), no bloquea — hay 35 violaciones de brownfield sin triage, ver
-`validacion-workshop/f2-preparar-proyecto.md`.
+Spotless con `google-java-format` (2 espacios) sobre **todo** el código, sin `ratchetFrom`: el
+formato es uniforme en el repositorio entero, no solo en lo que cambió. `make format` lo aplica,
+`make lint` lo verifica junto con Checkstyle (`checkstyle.xml` + `checkstyle-suppressions.xml`), que
+cubre lo que Spotless no formatea (imports no usados, naming, largo de línea) y **bloquea**
+(`failOnViolation=true`, `violationSeverity=error`), incluidas las fuentes de test.
 
 ## Seguridad
 
