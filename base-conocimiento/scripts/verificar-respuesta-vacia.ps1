@@ -59,6 +59,13 @@ if ([string]::IsNullOrWhiteSpace($Pregunta)) {
     $Pregunta = "cuales son los tipos primitivos en Java"
 }
 
+# psql emite UTF-8, pero la consola de Windows suele estar en cp437/cp850 y las
+# tildes salen mal en el paso 4 (mojibake). Solo afecta a como se ve, no a los
+# datos, pero un diagnostico ilegible se lee mal justo cuando importa. Se
+# restaura al terminar para no dejar la sesion tocada.
+$codificacionPrevia = [Console]::OutputEncoding
+try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch { }
+
 $ErrorActionPreference = "Continue"
 $puerto = if ($null -eq $env:KB_PORT -or $env:KB_PORT -eq "") { "8080" } else { $env:KB_PORT }
 
@@ -145,21 +152,99 @@ try {
 } catch {
     $errorHttp = $_
 }
-
 if ($null -ne $errorHttp) {
+    $codigo = $null
+    if ($null -ne $errorHttp.Exception.Response) {
+        $codigo = [int]$errorHttp.Exception.Response.StatusCode
+    }
     Write-Host "  SIN RESPUESTA util de /api/search:"
     Write-Host "    $($errorHttp.Exception.Message)"
-    Write-Host "  Ojo: que /actuator/health responda NO descarta esto -- /api/search"
-    Write-Host "  embebe la consulta, y si el modelo de embeddings no esta, se cuelga."
-    Write-Host "  Modelos que reporta la api:"
+    Write-Host ""
+
+    # Un 5xx NO es lo mismo que un timeout, y confundirlos costo una vuelta
+    # entera de diagnostico: la primera version de este bloque solo listaba los
+    # modelos de Ollama y decia "si el modelo de embeddings no esta, se cuelga".
+    # Ante un 500 con todos los modelos presentes, ese mensaje mandaba a mirar
+    # donde no era. La causa de un 5xx esta en la excepcion del servidor, y solo
+    # se ve en los logs del contenedor.
+    if ($null -ne $codigo -and $codigo -ge 500) {
+        Write-Host "  HTTP $codigo -- la api RECIBIO la consulta y fallo procesandola."
+        Write-Host "  No es un timeout ni un modelo ausente: es una excepcion del"
+        Write-Host "  servidor. La traza esta en los logs, no en /actuator/health."
+        Write-Host ""
+        Write-Host "  Ultimas lineas de kb-api con pinta de excepcion:"
+        # 2>$null: docker logs manda a stderr el ruido de arranque de la JVM
+        # (JAVA_TOOL_OPTIONS, los WARNING de native-access), que se colaba sin
+        # sangrar entre las lineas utiles. La traza que interesa va por stdout.
+        $logs = docker logs kb-api --tail 200 2>$null
+        # Se EXCLUYEN los marcos "\tat ...": una traza de Spring sobre Netty son
+        # decenas de lineas de framework que ahogan la unica que dice algo. Nos
+        # quedamos con el mensaje de ERROR y los "Caused by", que es donde esta
+        # la causa raiz.
+        $traza = $logs |
+            Select-String -Pattern "ERROR|Caused by|Exception" |
+            Where-Object { $_ -notmatch "^\s*at " } |
+            Select-Object -Last 8
+        if ($traza.Count -eq 0) {
+            Write-Host "    (nada evidente; mira el log completo: docker logs kb-api --tail 200)"
+        } else {
+            $traza | ForEach-Object { Write-Host "    $_" }
+        }
+        Write-Host ""
+    } else {
+        Write-Host "  Ojo: que /actuator/health responda NO descarta esto -- /api/search"
+        Write-Host "  embebe la consulta, y si el modelo de embeddings no esta, se cuelga."
+    }
+
+    # Se imprimen TODOS los componentes, no solo ollama. /api/search depende
+    # ademas del reranker (cross-encoder ONNX en /models/reranker) y de la base:
+    # con los modelos de Ollama completos, un reranker a medio descargar es
+    # justo el tipo de causa que la version anterior no mostraba.
+    Write-Host "  Estado de los componentes de la api:"
+    # Cuando un componente esta DOWN, /actuator/health responde 503 -- e
+    # Invoke-RestMethod trata cualquier no-2xx como excepcion. La version
+    # anterior caia al catch y decia "tampoco respondio", perdiendo justo el
+    # detalle que hacia falta: el cuerpo del 503 SI trae el JSON con el
+    # componente caido. Se lee del stream de la respuesta.
+    $salud = $null
     try {
         $salud = Invoke-RestMethod -TimeoutSec 15 -Uri "http://localhost:$puerto/actuator/health"
-        $ollama = $salud.components.ollama.details
-        Write-Host "    disponibles: $($ollama.modelosDisponibles -join ', ')"
-        Write-Host "    faltantes  : $($ollama.modelosFaltantes -join ', ')"
-        if ($null -ne $ollama.accion) { Write-Host "    accion     : $($ollama.accion)" }
     } catch {
-        Write-Host "    (tampoco respondio /actuator/health)"
+        $cuerpoSalud = $null
+        if ($null -ne $_.ErrorDetails -and $null -ne $_.ErrorDetails.Message) {
+            # PowerShell 7 deja el cuerpo aqui.
+            $cuerpoSalud = $_.ErrorDetails.Message
+        } elseif ($null -ne $_.Exception.Response) {
+            # PowerShell 5.1: hay que leer el stream a mano.
+            try {
+                $flujo = $_.Exception.Response.GetResponseStream()
+                $lector = New-Object System.IO.StreamReader($flujo)
+                $cuerpoSalud = $lector.ReadToEnd()
+                $lector.Close()
+            } catch { }
+        }
+        if (-not [string]::IsNullOrWhiteSpace($cuerpoSalud)) {
+            try { $salud = $cuerpoSalud | ConvertFrom-Json } catch { }
+        }
+    }
+
+    if ($null -eq $salud) {
+        Write-Host "    (no se pudo leer /actuator/health)"
+    } else {
+        Write-Host "    estado global: $($salud.status)"
+        foreach ($nombre in $salud.components.PSObject.Properties.Name) {
+            $comp = $salud.components.$nombre
+            Write-Host ("    {0,-14} {1}" -f $nombre, $comp.status)
+        }
+        $ollama = $salud.components.ollama.details
+        if ($null -ne $ollama) {
+            Write-Host "    ollama disponibles: $($ollama.modelosDisponibles -join ', ')"
+            Write-Host "    ollama faltantes  : $($ollama.modelosFaltantes -join ', ')"
+        }
+        $rr = $salud.components.reranker.details
+        if ($null -ne $rr) {
+            Write-Host "    reranker: ruta=$($rr.ruta) modelo=$($rr.modeloPresente) tokenizador=$($rr.tokenizadorPresente) accion=$($rr.accion)"
+        }
     }
 } elseif ($null -eq $resultados -or @($resultados).Count -eq 0) {
     Write-Host "  fragmentos devueltos: 0"
@@ -209,3 +294,5 @@ Write-Host "==================================================================="
 Write-Host "Si el paso 3 devuelve el documento correcto y el 4 muestra candidatos"
 Write-Host "con 0 citas, NO toques la recuperacion: el problema es el umbral."
 Write-Host "==================================================================="
+
+try { [Console]::OutputEncoding = $codificacionPrevia } catch { }
