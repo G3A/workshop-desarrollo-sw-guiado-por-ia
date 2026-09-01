@@ -1,0 +1,122 @@
+[
+  {
+    "id": 1,
+    "categoria": "tipos",
+    "pregunta": "¿Cuáles son los ocho tipos primitivos definidos en el lenguaje Java?",
+    "esperado": "responde",
+    "respuesta": "Primitive values do not share state with other primitive values. [3] Every variable and every expression has a type that can be determined at compile time. [4] The direct supertype relation among array types is defined as follows: [5] The direct supertype relation among the primitive types is defined as follows: [6]",
+    "estadoFinal": "Respondido en 6:09",
+    "error": null,
+    "inicio": "2026-08-21T13:06:59.260Z",
+    "fin": "2026-08-21T13:13:09.401Z",
+    "elapsedMs": 370141
+  },
+  {
+    "id": 2,
+    "categoria": "tipos",
+    "pregunta": "¿Qué diferencia hay entre un tipo primitivo y un tipo de referencia en Java?",
+    "esperado": "responde",
+    "respuesta": "The boolean type has exactly two values: true and false. [0] A variable of a class type T can hold a null reference or a reference to an instance of class T or any class that is a subclass of T. [1]",
+    "estadoFinal": "Respondido en 2:01",
+    "error": null,
+    "inicio": "2026-08-21T13:13:09.406Z",
+    "fin": "2026-08-21T13:15:11.182Z",
+    "elapsedMs": 121776
+  },
+  {
+    "id": 3,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es una conversión de ensanchamiento (widening) entre tipos primitivos?",
+    "esperado": "responde",
+    "respuesta": "Una conversión de ensanchamiento (widening) entre tipos primitivos es una transformación específica que ocurre cuando se pasa de un tipo numérico a otro con mayor rango o precisión, sin perder la magnitud general del valor en ciertos casos. Estas conversiones incluyen: byte a short, int, long, float o double; short a int, long, float o double; char a int, long, float o double; int a long, float o double; long a float o double; y float a double [1].\n\nEn estos casos específicos, la conversión de ensanchamiento no pierde información sobre la magnitud general del valor numérico, preservando el valor exacto. Esto ocurre cuando se pasa de un tipo integral a otro tipo integral, de byte/short/char a un tipo de punto flotante, de int a double o de float a double [1]. Sin embargo, conversiones como int a float, long a float o long a double pueden resultar en una pérdida de precisión (pierdiéndose los bits menos significativos), aunque el resultado será una versión redondeada correctamente según la política de redondeo al valor más cercano [1].\n\nA diferencia de las conversiones de estrechamiento (narrowing), que pueden perder información, rango y signo, las conversiones de ensanchamiento nunca resultan en una excepción de tiempo de ejecución [1]. Además, para valores enteros firmados, la conversión a un tipo integral más amplio simplemente extiende el complemento de dos mediante signextension, mientras que para char se realiza mediante zero-extension [1].",
+    "estadoFinal": "Respondido en 7:46",
+    "error": null,
+    "inicio": "2026-08-21T13:19:03.858Z",
+    "fin": "2026-08-21T13:26:50.657Z",
+    "elapsedMs": 466799
+  },
+  {
+    "id": 4,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es el autoboxing y cuándo ocurre de forma automática?",
+    "esperado": "responde",
+    "respuesta": "El autoboxing es la conversión de expresiones de un tipo primitivo a expresiones del tipo de referencia correspondiente [1]. Ocurre automáticamente en situaciones específicas como: cuando se aplica el operador condicional (§15.25) [1]; durante la evaluación de operaciones que causan una conversión de empaquetado (como el uso implícito de tipos de caja primitiva) [5]; al evaluar expresiones de decremento posfijo o prefijo si es necesario convertir a un tipo de variable [3, 4]; en fórmulas de restricción donde uno de los lados es un tipo primitivo y se requiere compatibilidad con otro tipo [6]; y durante la ejecución del operador de concatenación de cadenas (+) si no forma parte de una expresión constante [5].",
+    "estadoFinal": "Respondido en 9:30",
+    "error": null,
+    "inicio": "2026-08-21T13:26:50.659Z",
+    "fin": "2026-08-21T13:36:21.284Z",
+    "elapsedMs": 570625
+  },
+  {
+    "id": 5,
+    "categoria": "tipos",
+    "pregunta": "¿Qué representa el tipo null y a qué tipos de referencia se puede asignar?",
+    "esperado": "responde",
+    "respuesta": "El tipo `null` tiene un único valor, que es la referencia nula (`null literal`), formada por caracteres ASCII [1]. Esta referencia se describe como una referencia especial que no apunta a ningún objeto [4]. Se puede asignar a cualquier tipo de referencia (clases, interfaces o arrays) [5], ya que el compilador permite convertir el valor del tipo `null` en una referencia nula de ese tipo específico mediante conversión de referencia ampliada [2].",
+    "estadoFinal": "Respondido en 5:32",
+    "error": null,
+    "inicio": "2026-08-21T13:36:21.286Z",
+    "fin": "2026-08-21T13:41:53.602Z",
+    "elapsedMs": 332316
+  },
+  {
+    "id": 6,
+    "categoria": "tipos",
+    "pregunta": "¿Qué significa que un método tenga tipo de retorno void?",
+    "esperado": "responde",
+    "respuesta": "Que un método tenga tipo de retorno `void` significa que el método no devuelve ningún valor [1].",
+    "estadoFinal": "Respondido en 6:40",
+    "error": null,
+    "inicio": "2026-08-21T13:41:53.606Z",
+    "fin": "2026-08-21T13:48:33.964Z",
+    "elapsedMs": 400358
+  },
+  {
+    "id": 7,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es un tipo genérico parametrizado, por ejemplo List<String>?",
+    "esperado": "responde",
+    "respuesta": "Un tipo genérico parametrizado es una clase o interfaz del formato `C < T1 ,..., Tn >`, donde `C` es el nombre de una clase o interfaz genérica y `< T1 ,..., Tn >` es una lista de argumentos de tipo que denotan una parametrización particular de la clase o interfaz genérica [1].\n\nPara ser bien formado, un tipo parametrizado debe cumplir tres condiciones:\n- `C` es el nombre de una clase o interfaz genérica [1].\n- El número de argumentos de tipo es igual al número de parámetros de tipo en la declaración genérica de `C` [1].\n- Cada argumento de tipo `Xi` es un subtipo de cada tipo de límite `S` correspondiente, donde los parámetros de tipo se sustituyen por los argumentos de tipo [1].\n\nUn ejemplo bien formado es `Seq<String>`, mientras que ejemplos incorrectos incluyen `Seq<int>` (porque los tipos primitivos no pueden ser argumentos de tipo) o `Pair<String,String,String>` si la clase solo acepta dos argumentos [1].\n\nEn el contexto de las clases, una declaración genérica define un conjunto de tipos parametrizados, uno para cada posible parametrización de la sección de parámetros de tipo por argumentos de tipo; todos estos tipos parametrizados comparten la misma clase en tiempo de ejecución [3].",
+    "estadoFinal": "Respondido en 6:48",
+    "error": null,
+    "inicio": "2026-08-21T13:48:33.967Z",
+    "fin": "2026-08-21T13:55:22.232Z",
+    "elapsedMs": 408265
+  },
+  {
+    "id": 8,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es un literal de tipo long y cómo se distingue de un literal int en el código fuente?",
+    "esperado": "responde",
+    "respuesta": "Un literal de tipo `long` es un literal entero que termina con la letra ASCII `L` o `l` (ell) [2]. Se distingue del literal de tipo `int`, que no tiene ese sufijo, por este carácter final [2]. La preferencia para usar `L` en lugar de `l` se debe a que la letra `l` puede confundirse fácilmente con el dígito `1` [1].\n\nAdemás, existe una diferencia en los límites de valor máximo permitido:\n- El literal entero de tipo `int` tiene un límite superior decimal de 2.147.483.647 (2³¹ - 1) y un límite inferior de -2.147.483.648 (-2³¹) [3].\n- El literal entero de tipo `long` tiene un límite superior decimal de 9.223.372.036.854.775.807 (2⁶³ - 1) y un límite inferior de -9.223.372.036.854.775.808 (-2⁶³) [3].\n\nEn el código fuente, si un literal decimal excede estos límites sin el sufijo `L`, se produce un error de compilación [3].",
+    "estadoFinal": "Respondido en 14:25",
+    "error": null,
+    "inicio": "2026-08-21T13:55:22.236Z",
+    "fin": "2026-08-21T14:09:47.813Z",
+    "elapsedMs": 865577
+  },
+  {
+    "id": 9,
+    "categoria": "variables",
+    "pregunta": "¿Qué diferencia hay entre una variable local declarada con var y una declarada con un tipo explícito?",
+    "esperado": "responde",
+    "respuesta": "La principal diferencia radica en cómo se determina el tipo de la variable:\n\n- Si se usa un tipo explícito, este es el tipo escrito directamente en la declaración [4].\n- Si se usa `var`, el tipo del local variable se determina como la proyección ascendente del tipo de la expresión inicializadora tratada como una expresión independiente (§15.2) [3], [5].\n\nAdemás, existen restricciones específicas para `var`: es un error de compilación si no hay inicializador, si hay más de uno declarador, si el identificador tiene paréntesis corchetes o si la inicialización es un array [4].",
+    "estadoFinal": "Respondido en 6:11",
+    "error": null,
+    "inicio": "2026-08-21T14:09:47.816Z",
+    "fin": "2026-08-21T14:15:59.072Z",
+    "elapsedMs": 371256
+  },
+  {
+    "id": 10,
+    "categoria": "variables",
+    "pregunta": "¿Qué es el ámbito (scope) de una variable local?",
+    "esperado": "responde",
+    "respuesta": "El ámbito (scope) de una variable local declarada en un bloque por una declaración de declaración de variable local es el resto del bloque, comenzando con la propia inicializadora de la declaración e incluyendo cualquier otro declarador más a la derecha en la declaración de variables locales [1]. El ámbito de una variable local declarada en la parte ForInit de una sentencia for básica incluye su propia inicializadora, cualquier otro declarador más a la derecha en la parte ForInit, las partes Expression y ForUpdate de la sentencia for y la Sentencia contenida [1]. El ámbito de una variable local declarada en el encabezado de una sentencia for mejorada es la Sentencia contenida [1]. El ámbito de una variable local declarada en la especificación de recursos de una sentencia try-with-resources va desde la declaración hacia la derecha sobre el resto de la especificación de recursos y todo el bloque try asociado con la sentencia try-with-resources [1]. La regla para las variables locales declaradas en la parte ForInit se traduce a la regla anterior para las sentencias try-with-resources [1]. El ámbito de un parámetro de una manejadora de excepción declarado en una cláusula catch de una sentencia try es todo el bloque asociado con la catch [1]. Una variable local tiene como su ámbito el resto del bloque en el que se declara, lo cual incluye su inicializadora y las invocaciones de métodos dentro de ese bloque [2].",
+    "estadoFinal": "Respondido en 5:28",
+    "error": null,
+    "inicio": "2026-08-21T14:15:59.073Z",
+    "fin": "2026-08-21T14:21:27.766Z",
+    "elapsedMs": 328693
+  }
+]

@@ -1,0 +1,98 @@
+# Perfil de modelo: Ministral 3 3B Instruct-2512 (Mistral AI), servido por el
+# `ollama` que ya levanta compose.yml -- ver sesion 10 de
+# docs/investigacion-vram-y-modelo-llm.md para el porque de este modelo.
+#
+# Hasta esta version, este perfil agregaba un servicio `llama-server-ministral`
+# aparte (imagen ghcr.io/ggml-org/llama.cpp:server-cuda), siguiendo el mismo
+# patron que compose.bonsai.yml. Se cambio a Ollama por un bug real, no por
+# preferencia: la imagen server-cuda publicada el 17/08/2026 (build 10454,
+# commit 4df29be4f) no puede cargar el GGUF oficial de este modelo -- falla con
+# "error loading model vocabulary: invalid gguf type for tokenizer.ggml.scores"
+# (arquitectura Ministral3ForCausalLM, muy nueva: el soporte de conversion en
+# llama.cpp mainline recien se mergeo el 21/01/2026, PR #18972 sobre el issue
+# #17987 -- el GGUF oficial de mistralai probablemente se genero con otra
+# herramienta, no con ese conversor). Ollama SI carga el mismo GGUF sin
+# problema -- probado en vivo con `ollama pull hf.co/mistralai/...` seguido de
+# una consulta real, que respondio correcto. A diferencia de Bonsai, Ministral
+# nunca necesito el fork de PrismML ni una cuantizacion exotica -- no hay
+# ninguna razon tecnica para que dependa de un `llama-server` aparte, y sacarlo
+# de encima evita el bug de arriba, un contenedor menos, y un pull de imagen
+# de ~2.5 GB que ya no hace falta.
+#
+# Uso, junto con el perfil GPU real:
+#   docker compose -f compose.yml -f compose.gpu.yml -f compose.ministral.yml up -d
+#
+# El modelo NO se baja solo: a diferencia del `-hf` de llama-server, la API de
+# Ollama no descarga bajo demanda -- hace falta `make pull-ministral` (o
+# `docker compose exec ollama ollama pull hf.co/mistralai/Ministral-3-3B-Instruct-2512-GGUF:Q4_K_M`)
+# antes de levantar `api`, una sola vez. Queda en el volumen de Ollama que ya
+# monta compose.yml (${KB_DATA_DIR}/ollama), el mismo que bge-m3/gemma3:4b --
+# sin volumen ni ruta de cache propios que mantener aparte.
+
+services:
+  api:
+    environment:
+      # http://ollama:11434/v1: el endpoint compatible con OpenAI que ya expone
+      # el `ollama` de compose.yml -- no hace falta otro cliente ni tocar
+      # PlanificadorOpenAi/VerificadorGroundingOpenAi/SintetizadorOpenAi, que ya
+      # hablan esa API (el mismo mecanismo que usa compose.bonsai.yml contra
+      # `llama-server`).
+      SPRING_AI_OPENAI_BASE_URL: http://ollama:11434/v1
+      KB_LLM_MODELO: hf.co/mistralai/Ministral-3-3B-Instruct-2512-GGUF:Q4_K_M
+      # Ministral genera mas rapido que Bonsai (9.2 tok/s vs 5.8-6.9, sesion 10)
+      # pero el prefill es igual de lento que la generacion (hallazgo 33) -- con
+      # contextos largos (jls25.pdf domina el corpus) el total no es tan distinto.
+      # 450s (igual que Bonsai) hasta tener una medicion propia que diga lo
+      # contrario -- no asumir que "mas rapido generando" es "mas rapido en total".
+      KB_LLM_TIMEOUT: ${KB_LLM_TIMEOUT:-450s}
+      # Punto de partida: el default de ADR-0008 (calibrado con gemma3:4b, corpus
+      # de referencia chico), NO el 6.0 que la sesion 9 tuneo para Bonsai -- ese
+      # numero no tiene evidencia propia con Ministral. La sesion 15 (ver
+      # docs/investigacion-vram-y-modelo-llm.md) reviso las 17 preguntas AMBIGUO
+      # que el piloto de la sesion 14 rechazo de mas: bajar el techo a ~3.0
+      # recupera con seguridad SOLO 1 de esas 17 (ninguna pregunta de control
+      # cruza 2.63, y la siguiente que si respondia bien llegaba a rerank=5.05) --
+      # las otras dos que parecian candidatas por su rerank alto (4.34, 4.35) son
+      # en realidad las mismas que desbordan el contexto (ver mas abajo): saltarse
+      # la verificacion no las arregla, solo cambia un rechazo prolijo por un
+      # crash de sintesis sin manejar. No asumir que "score alto" = "candidata
+      # segura" sin cruzarlo primero contra el limite de contexto.
+      KB_UMBRAL_RELEVANCIA_TECHO_CONFIANZA: ${KB_UMBRAL_RELEVANCIA_TECHO_CONFIANZA:-8.0}
+      # Estos tres SI se copian del perfil Bonsai, a proposito y por una razon
+      # distinta a la de arriba: no son un ajuste de calidad/confianza de un
+      # modelo puntual, son consecuencia directa de compartir el mismo limite
+      # fisico -- confirmado en vivo (`ollama ps`) que Ollama carga este modelo
+      # con num_ctx=4096, igual que el ctx-size que usaba llama-server -- y el
+      # corpus (jls25.pdf, ~900 paginas) es el mismo para cualquier modelo que se
+      # pruebe. Sin este recorte, la sesion 14 midio 3 de 100 preguntas de
+      # Ministral cayendo con "exceeds the available context size" bajo
+      # llama-server; no re-medido todavia bajo Ollama, pero el limite de
+      # contexto de origen (4096) no cambio, asi que se mantiene el mismo
+      # recorte hasta tener evidencia propia de que ya no hace falta.
+      #
+      # Aun con este recorte activo, la sesion 15 midio que 6 de las 17 preguntas
+      # AMBIGUO que el piloto rechazo de mas (35%) YA exceden los 4096 tokens en
+      # la llamada a VerificadorGrounding con el sistema+contexto real -- y ese
+      # desborde HTTP 400 lo atrapa el catch de VerificadorGroundingOpenAi.java
+      # en silencio, indistinguible en el reporte de un rechazo legitimo. Es la
+      # causa individual mas grande de las 17 fallas -- mas grande que cualquier
+      # diferencia de juicio entre Ministral y Bonsai como verificador (que solo
+      # movio el resultado en 1 de 9 casos comparables, ver sesion 15). Bajar
+      # esta cuenta aun mas (5, o repartir el presupuesto de forma distinta entre
+      # sintesis y verificacion) es la via de mayor impacto pendiente, no
+      # explorada todavia en ninguna sesion.
+      KB_EXPANDIR_VECINOS: ${KB_EXPANDIR_VECINOS:-false}
+      KB_MAX_FRAGMENTOS_CONTEXTO: ${KB_MAX_FRAGMENTOS_CONTEXTO:-6}
+      KB_RECUPERACION_TOP_RERANK: ${KB_RECUPERACION_TOP_RERANK:-6}
+      # Subido de 3 (default de application.yml) a 20 tras el hallazgo 65 (sesion
+      # 17): contra las 32 preguntas que rechazaba de mas, tope=20 mejora 28/32
+      # sin empeorar ninguna via /api/search, y confirmado en el pipeline real
+      # sobre una muestra de 6 -- las 6 pasan de rechazar a responder correcto.
+      # tope=10 se probo como alternativa de "menos riesgo" pero se descarta:
+      # dejaba sin cruzar el techo de confianza justo al caso mas fuerte (id 1,
+      # el unico de la muestra de 6 que con tope=10 no mejora nada frente al
+      # baseline), y el chequeo de regresion ya mostro que tope=20 no perjudica
+      # ninguna de las 68 preguntas que ya respondian bien -- no hay evidencia
+      # de riesgo real que tope=10 evite y tope=20 no.
+      KB_RECUPERACION_TOPE_POR_DOCUMENTO: ${KB_RECUPERACION_TOPE_POR_DOCUMENTO:-20}
+      KB_LLM_SINTESIS_ESTRUCTURADA_HABILITADA: ${KB_LLM_SINTESIS_ESTRUCTURADA_HABILITADA:-false}

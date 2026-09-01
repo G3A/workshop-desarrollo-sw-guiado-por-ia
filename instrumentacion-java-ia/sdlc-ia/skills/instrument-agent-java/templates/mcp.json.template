@@ -1,0 +1,76 @@
+// Placeholders: the whole "mcpServers" object, plus one version per stdio package —
+//   {{CONTEXT7_MCP_VERSION}}  {{DBHUB_VERSION}}
+// Resolve each one when you write this file, and never copy a number out of this template:
+//   npm view @upstash/context7-mcp version
+//   npm view @bytebase/dbhub version
+// Keep ONLY the servers the team accepted in Phase 3, and drop this file to
+// `{"mcpServers": {}}` when they accepted none. An empty skeleton is still worth writing: it is
+// the committed, discoverable place the next server goes.
+//
+// Becomes .mcp.json at the repository ROOT. It is committed — that is the point. Project scope is
+// how a server reaches the whole team instead of living in one person's ~/.claude.json.
+//
+// NEVER WRITE A SECRET HERE. Every credential is an ${ENV_VAR} reference, and the variable name
+// goes in README.md so a teammate knows what to export. A token committed to .mcp.json is a token
+// in the history.
+//
+// EXPANSION, verified against the current docs:
+//   ${VAR}            expands to the environment variable
+//   ${VAR:-default}   expands to VAR, or to the default when it is unset
+// Expansion works in command, args, env, url and headers — and nowhere else.
+//
+// NEVER GIVE A CREDENTIAL A DEFAULT. `${SOME_TOKEN:-}` turns "the variable is not set" into "an
+// empty token was supplied", and the failure moves from a clear startup error to an authentication
+// error the user has to chase. A bare ${VAR} is correct for everything the user must export. The
+// `:-` form is for one thing only: a value with a genuinely sensible fallback — see the one
+// deliberate exception marked on ark_context7 below.
+//
+// ABSOLUTE PATHS DO NOT COME FROM ${CLAUDE_PROJECT_DIR}. Claude Code sets that variable in the
+// SERVER's environment, not in its own, so in a project-scoped .mcp.json it has nothing to expand
+// from at read time: ${CLAUDE_PROJECT_DIR:-.} always resolves to the default, `.`. A
+// machine-specific absolute path (a local database file, for instance) is machine-specific data:
+// treat it like a credential, an environment variable with no default, and put the export line in
+// README.md. See references/mcp-servers.md for the worked DBHub/SQLite example.
+//
+// WRITING THIS FILE DOES NOT CONNECT THE SERVERS. They sit at "Pending approval" until the user
+// trusts the workspace. Worse, `enableAllProjectMcpServers` and `enabledMcpjsonServers` committed
+// in .claude/settings.json are IGNORED in an untrusted folder, so a cloned repo cannot approve
+// its own servers. Report control status as "written, pending approval" and give the user the
+// step: run `claude` in the repo, accept the trust dialog, then `/mcp` to check.
+//
+// PIN EVERY STDIO PACKAGE VERSION IN THE NPX ARGS — `-y <package>@<resolved version>`, never a
+// bare `-y <package>`. This file is committed and read at every session start, so an unpinned
+// entry executes whatever npm has published since, with the user's own permissions, on every
+// machine that cloned the repo, and nothing in the history says the code changed. Pinning turns
+// that into a line in a diff someone can review.
+//
+// The number is RESOLVED, NOT TRANSCRIBED, in the same run that writes this file. A stale pin is
+// a dependency bump, which is a thing teams already know how to do.
+//
+// THE GITHUB SERVER NEEDS NO VERSION AND NO npx: it is HTTP, not stdio. Its transport is
+// https://api.githubcopilot.com/mcp; authenticate with a personal access token via the
+// Authorization header, resolved from an environment variable — never written literally.
+//
+// JSON DOES NOT ALLOW COMMENTS. Strip every // line before writing.
+// ---8<--- everything above this line is instructions for you; delete it ---8<---
+{
+  "mcpServers": {
+    "ark_github": {
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp",
+      "headers": { "Authorization": "Bearer ${GITHUB_PAT}" }
+    },
+    "ark_context7": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp@{{CONTEXT7_MCP_VERSION}}"],
+      "env": { "CONTEXT7_API_KEY": "${CONTEXT7_API_KEY:-}" }
+    },
+    "_comment_context7": "The empty default above is the ONE exception to the no-default rule: Context7 has an anonymous tier, so an unset key degrades to lower rate limits instead of failing. Delete this comment key along with the rest of the header.",
+    "ark_dbhub": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@bytebase/dbhub@{{DBHUB_VERSION}}", "--transport", "stdio", "--dsn", "${APP_DSN}"]
+    }
+  }
+}

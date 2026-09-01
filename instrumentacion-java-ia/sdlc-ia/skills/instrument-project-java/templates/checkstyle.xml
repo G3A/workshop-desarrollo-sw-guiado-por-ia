@@ -1,0 +1,70 @@
+<?xml version="1.0"?>
+<!DOCTYPE module PUBLIC
+  "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+  "https://checkstyle.org/dtds/configuration_1_3.dtd">
+<!--
+  Checkstyle baseline for control 3 (Style). Covers what Spotless does NOT enforce: unused/star
+  imports, naming, empty blocks, method length, line length. Spotless owns formatting
+  (whitespace, brace placement, import ordering); this file owns everything Spotless has no
+  opinion on.
+
+  ADJUSTABLE PER REPO: add/remove modules to match the team's conventions. Wire it in pom.xml:
+
+    <plugin>
+      <groupId>org.apache.maven.plugins</groupId>
+      <artifactId>maven-checkstyle-plugin</artifactId>
+      <configuration>
+        <configLocation>checkstyle.xml</configLocation>
+        <failOnViolation>true</failOnViolation>
+      </configuration>
+    </plugin>
+
+  Multi-module repo: point configLocation at the root so a submodule build still resolves it --
+  ${maven.multiModuleProjectDirectory}/checkstyle.xml.
+
+  Brownfield repo (existing code that never followed these rules): the first `checkstyle:check`
+  goes red on every pre-existing violation. Either fix the flagged files before wiring the gate, or
+  start with `failOnViolation=false` (report-only) and flip it once the backlog is triaged -- do
+  not silently soften a rule below to make an existing file pass, that hides the debt instead of
+  paying it down. Delete this comment block before writing the file.
+-->
+<module name="Checker">
+  <property name="charset" value="UTF-8"/>
+  <property name="severity" value="error"/>
+  <property name="fileExtensions" value="java"/>
+
+  <!-- No tabs (use spaces) -->
+  <module name="FileTabCharacter">
+    <property name="eachLine" value="true"/>
+  </module>
+
+  <module name="TreeWalker">
+    <!-- Imports -->
+    <module name="UnusedImports"/>
+    <module name="RedundantImport"/>
+    <module name="AvoidStarImport"/>
+
+    <!-- Naming -->
+    <module name="PackageName"/>
+    <module name="TypeName"/>
+    <module name="MethodName"/>
+    <module name="ConstantName"/>
+
+    <!-- Good practices -->
+    <module name="EmptyBlock"/>
+    <module name="NeedBraces"/>
+    <module name="EqualsHashCode"/>
+    <module name="SimplifyBooleanExpression"/>
+    <module name="SimplifyBooleanReturn"/>
+
+    <!-- Size (adjustable thresholds) -->
+    <module name="MethodLength">
+      <property name="max" value="150"/>
+    </module>
+  </module>
+
+  <module name="LineLength">
+    <property name="max" value="120"/>
+    <property name="ignorePattern" value="^package.*|^import.*|a href|href|http://|https://"/>
+  </module>
+</module>
