@@ -42,15 +42,65 @@ $(warning make desde Git Bash.)
 endif
 endif
 
-COMPOSE           := docker compose
-COMPOSE_GPU       := docker compose -f compose.yml -f compose.gpu.yml
+## ---------------------------------------------------------------- archivo de entorno
+##
+## make NO carga el archivo de entorno solo -- eso lo hace docker compose. Hasta
+## que este bloque existio, eso significaba que un KB_DATA_DIR / KB_VAULT_DIR /
+## KB_PORT puesto ahi lo respetaba compose y lo ignoraba make, y las dos mitades
+## trabajaban sobre valores distintos EN SILENCIO:
+##
+##   - `make pull-bonsai-gguf` bajaba el GGUF a ./.data mientras el contenedor
+##     montaba otra carpeta -- y despues el chequeo de up-bonsai lo declaraba
+##     ausente estando descargado.
+##   - `make vault-init` copiaba el corpus a un vault que nadie monta, y la
+##     ingesta seguia encontrando cero documentos.
+##   - `make health` / `make ingest` consultaban el puerto equivocado.
+##
+## Una sola lectura del archivo, misma filosofia que GPU_PLAN mas abajo. Solo se
+## leen las variables que make necesita ANTES de invocar a docker compose; las
+## que solo consume el contenedor se quedan como estan, que ya funciona.
+##
+## Precedencia resultante, la misma que aplica docker compose:
+##   entorno / linea de comandos  >  archivo de entorno  >  default del Makefile
+##
+## El sed recorta el comentario final, los espacios y las comillas envolventes, y
+## se queda con la ULTIMA aparicion, que es la que gana en docker compose.
+KB_ENV_FILE ?= .env
+ENV_LEIDAS := KB_GPU KB_DOCLING_GPU KB_VRAM_EMBEDDINGS_GPU KB_VRAM_DOCLING_GPU KB_DATA_DIR KB_VAULT_DIR KB_PORT
+ENV_PLAN := $(shell \
+  for v in $(ENV_LEIDAS); do \
+    val=""; \
+    if [ -f "$(KB_ENV_FILE)" ]; then \
+      val=$$(sed -nE "s/^[[:space:]]*$$v=//p" "$(KB_ENV_FILE)" | tail -1 \
+            | sed -E "s/[[:space:]]+#.*$$//; s/^[[:space:]]*//; s/[[:space:]]*$$//; s/^\"(.*)\"$$/\1/"); \
+    fi; \
+    [ -n "$$val" ] || val="-"; \
+    printf "%s " "$$val"; \
+  done)
+
+ENV_KB_GPU                 := $(patsubst -,,$(word 1,$(ENV_PLAN)))
+ENV_KB_DOCLING_GPU         := $(patsubst -,,$(word 2,$(ENV_PLAN)))
+ENV_KB_VRAM_EMBEDDINGS_GPU := $(patsubst -,,$(word 3,$(ENV_PLAN)))
+ENV_KB_VRAM_DOCLING_GPU    := $(patsubst -,,$(word 4,$(ENV_PLAN)))
+ENV_KB_DATA_DIR            := $(patsubst -,,$(word 5,$(ENV_PLAN)))
+ENV_KB_VAULT_DIR           := $(patsubst -,,$(word 6,$(ENV_PLAN)))
+ENV_KB_PORT                := $(patsubst -,,$(word 7,$(ENV_PLAN)))
+
+## Se le pasa a docker compose SOLO si el archivo existe: --env-file apuntando a
+## un archivo ausente no es un no-op, aborta con "env file ... not found" -- y
+## arrancar sin archivo de entorno es un caso soportado, porque todos los compose
+## traen sus propios defaults.
+ENV_FILE_FLAG := $(if $(wildcard $(KB_ENV_FILE)),--env-file $(KB_ENV_FILE),)
+
+COMPOSE           := docker compose $(ENV_FILE_FLAG)
+COMPOSE_GPU       := docker compose $(ENV_FILE_FLAG) -f compose.yml -f compose.gpu.yml
 LLM         ?= gemma3:4b
 EMBEDDINGS  ?= bge-m3
-KB_DATA_DIR ?= ./.data
+KB_DATA_DIR ?= $(if $(ENV_KB_DATA_DIR),$(ENV_KB_DATA_DIR),./.data)
 # Mismo default que compose.yml, y con el mismo motivo: el vault vive FUERA del
 # repo. Se declara aca para que vault-init sepa donde copiar el corpus de ejemplo.
-KB_VAULT_DIR ?= ../../vault
-KB_PORT     ?= 8080
+KB_VAULT_DIR ?= $(if $(ENV_KB_VAULT_DIR),$(ENV_KB_VAULT_DIR),../../vault)
+KB_PORT     ?= $(if $(ENV_KB_PORT),$(ENV_KB_PORT),8080)
 
 # El pom compila a release 25. Se verifica en jdk-check, del que dependen los
 # targets que compilan -- Maven solo se entera despues de resolver dependencias.
@@ -83,14 +133,14 @@ JAVA_MINIMO := 25
 ##   se fuerza igual, y con 0 se apaga.
 ##
 ## Los dos umbrales son variables: si mides otra cosa en tu equipo, cambialos.
-KB_VRAM_EMBEDDINGS_GPU ?= 6144
-KB_VRAM_DOCLING_GPU    ?= 8192
+KB_VRAM_EMBEDDINGS_GPU ?= $(if $(ENV_KB_VRAM_EMBEDDINGS_GPU),$(ENV_KB_VRAM_EMBEDDINGS_GPU),6144)
+KB_VRAM_DOCLING_GPU    ?= $(if $(ENV_KB_VRAM_DOCLING_GPU),$(ENV_KB_VRAM_DOCLING_GPU),8192)
 
 ## Devuelve, en una sola linea: vram_mib cc driver_major embeddings docling cuda_tag emb_en_env
 ## Sin GPU (o sin nvidia-smi) devuelve la fila neutra "0 75 0 cpu no 12.6.0 ...".
 GPU_PLAN := $(shell \
   info=$$(nvidia-smi --query-gpu=memory.total,compute_cap,driver_version --format=csv,noheader,nounits 2>/dev/null | head -1); \
-  if grep -sqE '^[[:space:]]*KB_EMBEDDINGS_MODELO=' ".env"; then fijo=si; else fijo=no; fi; \
+  if grep -sqE '^[[:space:]]*KB_EMBEDDINGS_MODELO=' "$(KB_ENV_FILE)"; then fijo=si; else fijo=no; fi; \
   if [ -z "$$info" ]; then echo "0 75 0 cpu no 12.6.0 $$fijo"; exit 0; fi; \
   vram=$$(echo "$$info" | cut -d, -f1 | tr -cd '0-9'); \
   cc=$$(echo   "$$info" | cut -d, -f2 | tr -cd '0-9'); \
@@ -111,6 +161,16 @@ GPU_EMBEDDINGS := $(word 4,$(GPU_PLAN))
 GPU_DOCLING    := $(word 5,$(GPU_PLAN))
 GPU_CUDA_TAG   := $(word 6,$(GPU_PLAN))
 GPU_EMB_FIJADO := $(word 7,$(GPU_PLAN))
+
+## Estas dos se consultan con ifeq y no con ?=, asi que el valor del archivo de
+## entorno se aplica aca: ifndef respeta lo que venga del entorno o de la linea
+## de comandos, que es la precedencia que queremos.
+ifndef KB_GPU
+KB_GPU := $(ENV_KB_GPU)
+endif
+ifndef KB_DOCLING_GPU
+KB_DOCLING_GPU := $(ENV_KB_DOCLING_GPU)
+endif
 
 ## KB_GPU manda sobre la deteccion: KB_GPU=1 fuerza el perfil GPU, KB_GPU=0 lo apaga.
 ## Sigue existiendo como salida de emergencia, pero desde que el Makefile fija su
@@ -188,13 +248,13 @@ endif
 ## docling se decide aparte en `up`.
 PERFIL_GPU := $(if $(HAY_GPU),-f compose.gpu.yml,)
 
-COMPOSE_BONSAI    := docker compose -f compose.yml -f compose.gpu.yml -f compose.bonsai.yml
+COMPOSE_BONSAI    := docker compose $(ENV_FILE_FLAG) -f compose.yml -f compose.gpu.yml -f compose.bonsai.yml
 # Los que siguen se sirven desde el `ollama` de siempre, no de un llama-server
 # aparte -- ver compose.ministral.yml sobre por que se dejo de usar llama-server, y
 # compose.qwen35.yml sobre el estado experimental de ese perfil. Granite, Phi-4 y
 # Qwen2.5 son de la sesion 25 (piloto de 100 preguntas con sintesis estructurada
 # contra los candidatos descartados por "texto pegado").
-COMPOSE_MINISTRAL := docker compose -f compose.yml $(PERFIL_GPU) -f compose.ministral.yml
+COMPOSE_MINISTRAL := docker compose $(ENV_FILE_FLAG) -f compose.yml $(PERFIL_GPU) -f compose.ministral.yml
 COMPOSE_QWEN35    := docker compose -f compose.yml $(PERFIL_GPU) -f compose.qwen35.yml
 COMPOSE_NEMOTRON  := docker compose -f compose.yml $(PERFIL_GPU) -f compose.nemotron.yml
 COMPOSE_GRANITE41 := docker compose -f compose.yml $(PERFIL_GPU) -f compose.granite41.yml
@@ -374,11 +434,11 @@ verificar:  ## Diagnostica por que responde "No encontre informacion" (usa PREGU
 	@# linea de comandos no puede pisar. Un scriptblock creado desde texto no es un
 	@# archivo, asi que no pasa por esa comprobacion: funciona en los tres casos.
 	@# Verificado forzando -ExecutionPolicy AllSigned.
-	@powershell -NoProfile -Command "& ([scriptblock]::Create((Get-Content -Raw 'scripts/verificar-respuesta-vacia.ps1'))) '$(PREGUNTA)'"
+	@KB_PORT=$(KB_PORT) powershell -NoProfile -Command "& ([scriptblock]::Create((Get-Content -Raw 'scripts/verificar-respuesta-vacia.ps1'))) '$(PREGUNTA)'"
 
 health:  ## Reporte de salud detallado: db, ollama y modelos faltantes
-	@curl -fsS http://localhost:$${KB_PORT:-8080}/actuator/health | python -m json.tool 2>/dev/null \
-	  || curl -fsS http://localhost:$${KB_PORT:-8080}/actuator/health
+	@curl -fsS http://localhost:$(KB_PORT)/actuator/health | python -m json.tool 2>/dev/null \
+	  || curl -fsS http://localhost:$(KB_PORT)/actuator/health
 
 docling-reciclar:  ## Reinicia docling-serve para liberar la VRAM que retiene entre conversiones
 	@# docling-serve no libera la VRAM al terminar una conversion (docling-serve#233,
