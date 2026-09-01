@@ -155,10 +155,21 @@ make gpu-check          # qué tarjeta ve y cómo va a repartirla
 make up                 # levanta db, ollama, docling-serve y api
 make pull-models        # ~5.5 GB, una sola vez
 make health             # confirma que no falta ningún modelo
-make seed               # ingiere el corpus de ejemplo
+make seed               # copia corpus/ al vault y lo ingiere
 ```
 
 Abre <http://localhost:8080>.
+
+`make seed` hace dos cosas, y la primera es fácil de pasar por alto: el corpus de ejemplo viene
+versionado en `corpus/`, pero el vault vive **fuera del repo** (`KB_VAULT_DIR`, por defecto
+`../../vault`). `seed` llama antes a `make vault-init`, que crea `vault/documentos` y `vault/repos`
+y copia el corpus ahí sin pisar nada que ya exista.
+
+Si te saltas ese paso el sistema **levanta perfecto y responde «No encontré información
+suficientemente relevante» a todo**, sin un solo error en los logs: el *bind mount* crea el vault
+vacío en vez de fallar, así que la ingesta corre sobre cero documentos y esa respuesta es correcta.
+Para ver qué hay realmente ingerido, `scripts/diagnostico-ingesta.sql` o el panel
+<http://localhost:8080/admin.html>.
 
 ## Reparto de la GPU
 

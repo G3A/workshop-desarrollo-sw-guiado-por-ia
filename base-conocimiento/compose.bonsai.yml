@@ -2,8 +2,17 @@
 # puntos 1 y 3 de la lista de trabajo de arquitectura). Servicio ADICIONAL, no
 # reemplaza a `ollama` -- bge-m3 se queda ahi (punto 2 del ADR, sin resolver).
 #
-# Uso, junto con el perfil GPU real:
+# Uso: SIEMPRE via `make up-bonsai`, no a mano.
+#
+# El comando crudo equivalente seria:
 #   docker compose -f compose.yml -f compose.gpu.yml -f compose.bonsai.yml up -d --build
+# pero saltarse `make` compila para la GPU EQUIVOCADA en cualquier maquina que no
+# sea la T600 del ADR. CUDA_ARCH de aca abajo cae en su default literal (75,
+# Turing) porque quien deriva la Compute Capability real de `nvidia-smi` y la
+# exporta al entorno es el Makefile (ver BONSAI_CUDA_ARCH ?= $(GPU_CC)), no este
+# archivo. En una RTX 3060 (Ampere, sm_86) eso son ~20 minutos de compilacion
+# para producir un binario que la tarjeta no puede ejecutar: el cubin de sm_75 no
+# trae PTX de reserva. `make gpu-check` muestra que dedujo antes de compilar.
 #
 # OJO -- a diferencia de cuando este archivo solo levantaba `llama-server`
 # solo, ahora SI hace falta para tener chat funcionando: `kb-api` (ver el
