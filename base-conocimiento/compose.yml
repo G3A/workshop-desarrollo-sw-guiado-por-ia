@@ -136,6 +136,31 @@ services:
       KB_AZDO_PAT: ${KB_AZDO_PAT:-}
       KB_AZDO_WIKI: ${KB_AZDO_WIKI:-}
       KB_RERANKER_RUTA: /models/reranker
+      # Recuperacion: los mismos dos valores que fijan los siete perfiles de
+      # modelo (compose.ministral.yml y hermanos, compose.bonsai.yml). El perfil
+      # base -- este archivo solo, `make up` -- era el UNICO de los ocho que se
+      # quedaba con los defaults de application.yml, y es justo el que se corre
+      # primero siguiendo el README.
+      #
+      # tope-por-documento acota cuantos chunks de un mismo documento sobreviven
+      # la fusion RRF antes del reranker (RrfFusion.limitarPorDiversidad). El
+      # default 3 esta pensado para dar diversidad entre VARIOS documentos; con
+      # un corpus dominado por uno solo hace lo contrario, censura al unico que
+      # importa. Medido con el corpus de ejemplo de este repo: jls25.pdf es el
+      # 99.5% de los chunks (1060 de 1065), asi que de 1060 candidatos posibles
+      # solo 3 llegaban al cross-encoder y preguntas cuya respuesta SI estaba
+      # ingerida ("cuales son los tipos primitivos en Java") caian en
+      # Orquestador:369 con INSUFICIENTE, sin un solo error en los logs.
+      #
+      # El 20 no es un numero nuevo: sale del hallazgo 65 (sesion 17), que contra
+      # las 32 preguntas que se rechazaban de mas midio 28/32 mejoradas via
+      # /api/search y ninguna regresion entre las 68 que ya respondian bien.
+      KB_RECUPERACION_TOPE_POR_DOCUMENTO: ${KB_RECUPERACION_TOPE_POR_DOCUMENTO:-20}
+      # Va de la mano del tope: con mas candidatos reales llegando a la sintesis,
+      # expandir cada fragmento con sus 2 chunks vecinos (hasta 3x tokens, ver
+      # Orquestador.construirContexto) arriesga desbordar el contexto justo
+      # cuando por fin hay material bueno que sintetizar.
+      KB_EXPANDIR_VECINOS: ${KB_EXPANDIR_VECINOS:-false}
       # Distinta de KB_VAULT_DIR (esa es la ruta del HOST que se monta abajo).
       # Dentro del contenedor el vault siempre queda en /vault, con las
       # subcarpetas documentos/ y repos/ (ver kb.ingesta.vault-dir). Sin esta
