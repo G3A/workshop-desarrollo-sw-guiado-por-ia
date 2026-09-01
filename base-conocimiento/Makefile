@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help up gpu-up gpu-check gpu-resumen docling-reciclar jdk-check up-bonsai down-bonsai up-ministral down-ministral up-qwen35 down-qwen35 up-nemotron down-nemotron up-granite41 down-granite41 up-phi4mini down-phi4mini up-qwen25 down-qwen25 down restart logs ps build test verify pull-models pull-reranker pull-bonsai-gguf pull-ministral pull-qwen35 pull-nemotron pull-granite41 pull-phi4mini pull-qwen25 pin-embeddings-cpu seed vault-init ingest ingest-repos ingest-teams ingest-azdo psql health clean format lint secrets check ci hooks
+.PHONY: help up gpu-up gpu-check gpu-resumen docling-reciclar jdk-check up-bonsai down-bonsai up-ministral down-ministral up-qwen35 down-qwen35 up-nemotron down-nemotron up-granite41 down-granite41 up-phi4mini down-phi4mini up-qwen25 down-qwen25 down restart logs ps build test verify pull-models pull-reranker pull-bonsai-gguf pull-ministral pull-qwen35 pull-nemotron pull-granite41 pull-phi4mini pull-qwen25 pin-embeddings-cpu seed vault-init ingest ingest-repos ingest-teams ingest-azdo psql health verificar clean format lint secrets check ci hooks
 
 
 
@@ -362,6 +362,19 @@ logs:  ## Sigue el log de la api
 
 ps:  ## Estado de los contenedores
 	$(COMPOSE_ACTIVO) ps
+
+verificar:  ## Diagnostica por que responde "No encontre informacion" (usa PREGUNTA="...")
+	@# Se invoca con [scriptblock]::Create y NO con `powershell -File`, a proposito.
+	@# La politica de ejecucion de PowerShell se aplica a ARCHIVOS: con RemoteSigned
+	@# (el default de Windows) mas la marca de descarga, o con AllSigned, un .ps1 del
+	@# repo se rechaza con "no esta firmado digitalmente. No se puede ejecutar este
+	@# script en el sistema actual" -- un error que suena a permisos y no lo es.
+	@# `-ExecutionPolicy Bypass` arregla ese caso, pero NO cuando la politica viene
+	@# impuesta por directiva de grupo (ambitos MachinePolicy/UserPolicy), que la
+	@# linea de comandos no puede pisar. Un scriptblock creado desde texto no es un
+	@# archivo, asi que no pasa por esa comprobacion: funciona en los tres casos.
+	@# Verificado forzando -ExecutionPolicy AllSigned.
+	@powershell -NoProfile -Command "& ([scriptblock]::Create((Get-Content -Raw 'scripts/verificar-respuesta-vacia.ps1'))) '$(PREGUNTA)'"
 
 health:  ## Reporte de salud detallado: db, ollama y modelos faltantes
 	@curl -fsS http://localhost:$${KB_PORT:-8080}/actuator/health | python -m json.tool 2>/dev/null \

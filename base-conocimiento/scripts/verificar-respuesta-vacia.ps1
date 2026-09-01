@@ -15,12 +15,31 @@
 # de abajo las separan, del mas barato al mas caro, y cada uno imprime que
 # significa su resultado.
 #
-# Uso (con el stack arriba):
-#   .\scripts\verificar-respuesta-vacia.ps1
-#   .\scripts\verificar-respuesta-vacia.ps1 "otra pregunta"
+# Uso (con el stack arriba). Lo simple:
 #
-# Si la politica de ejecucion lo bloquea, sin cambiarla de forma permanente:
-#   powershell -ExecutionPolicy Bypass -File .\scripts\verificar-respuesta-vacia.ps1
+#   make verificar
+#   make verificar PREGUNTA="otra pregunta"
+#
+# El target existe porque invocar el .ps1 a mano choca con la politica de
+# ejecucion de PowerShell, que se aplica a ARCHIVOS. Con RemoteSigned (el default
+# de Windows) mas la marca de descarga, o con AllSigned, el .ps1 se rechaza con:
+#
+#   ... no esta firmado digitalmente. No se puede ejecutar este script en el
+#   sistema actual.
+#
+# Suena a permisos y no lo es. Las salidas, de mas simple a mas robusta:
+#
+#   1) Bypass por invocacion -- no cambia nada de forma permanente, pero NO
+#      sirve si la politica viene por directiva de grupo:
+#        powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verificar-respuesta-vacia.ps1
+#
+#   2) Quitar la marca de descarga, si ese era el motivo:
+#        Unblock-File .\scripts\verificar-respuesta-vacia.ps1
+#
+#   3) Como scriptblock -- un scriptblock creado desde texto NO es un archivo,
+#      asi que no pasa por la comprobacion. Funciona incluso con AllSigned y con
+#      politica de directiva de grupo. Es lo que hace `make verificar`:
+#        & ([scriptblock]::Create((Get-Content -Raw '.\scripts\verificar-respuesta-vacia.ps1')))
 #
 # OJO -- este archivo es ASCII puro a proposito, sin acentos ni guiones largos.
 # Windows PowerShell 5.1 lee los .ps1 como cp1252 salvo que tengan BOM, y un
@@ -29,8 +48,16 @@
 # este script, retirada: aqui la shell es PowerShell.
 
 param(
-    [string]$Pregunta = "cuales son los tipos primitivos en Java"
+    [string]$Pregunta = ""
 )
+
+# Vacio y ausente valen lo mismo. Hace falta porque `make verificar` interpola
+# $(PREGUNTA) siempre, asi que sin argumento el script recibe '' -- que NO es lo
+# mismo que no recibir nada: un default de param() solo aplica cuando el
+# parametro esta ausente, y una cadena vacia lo pisaria.
+if ([string]::IsNullOrWhiteSpace($Pregunta)) {
+    $Pregunta = "cuales son los tipos primitivos en Java"
+}
 
 $ErrorActionPreference = "Continue"
 $puerto = if ($null -eq $env:KB_PORT -or $env:KB_PORT -eq "") { "8080" } else { $env:KB_PORT }
