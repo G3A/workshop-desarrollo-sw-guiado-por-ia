@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help up gpu-up gpu-check gpu-resumen docling-reciclar jdk-check up-bonsai down-bonsai up-ministral down-ministral up-qwen35 down-qwen35 up-nemotron down-nemotron up-granite41 down-granite41 up-phi4mini down-phi4mini up-qwen25 down-qwen25 down restart logs ps build test verify pull-models pull-reranker pull-bonsai-gguf pull-ministral pull-qwen35 pull-nemotron pull-granite41 pull-phi4mini pull-qwen25 pin-embeddings-cpu seed ingest ingest-repos ingest-teams ingest-azdo psql health clean format lint secrets check ci hooks
+.PHONY: help up gpu-up gpu-check gpu-resumen docling-reciclar jdk-check up-bonsai down-bonsai up-ministral down-ministral up-qwen35 down-qwen35 up-nemotron down-nemotron up-granite41 down-granite41 up-phi4mini down-phi4mini up-qwen25 down-qwen25 down restart logs ps build test verify pull-models pull-reranker pull-bonsai-gguf pull-ministral pull-qwen35 pull-nemotron pull-granite41 pull-phi4mini pull-qwen25 pin-embeddings-cpu seed vault-init ingest ingest-repos ingest-teams ingest-azdo psql health clean format lint secrets check ci hooks
 
 
 
@@ -47,6 +47,9 @@ COMPOSE_GPU       := docker compose -f compose.yml -f compose.gpu.yml
 LLM         ?= gemma3:4b
 EMBEDDINGS  ?= bge-m3
 KB_DATA_DIR ?= ./.data
+# Mismo default que compose.yml, y con el mismo motivo: el vault vive FUERA del
+# repo. Se declara aca para que vault-init sepa donde copiar el corpus de ejemplo.
+KB_VAULT_DIR ?= ../../vault
 KB_PORT     ?= 8080
 
 # El pom compila a release 25. Se verifica en jdk-check, del que dependen los
@@ -294,6 +297,19 @@ gpu-check:  ## Diagnostica que hardware vio make y como repartio la GPU
 up-bonsai:  ## Levanta el perfil Bonsai-8B (LLM 1-bit via llama-server); requiere GPU NVIDIA y el GGUF de pull-bonsai-gguf
 	@echo "Bonsai: imagen base nvidia/cuda:$(BONSAI_CUDA_TAG) (requiere driver NVIDIA >= $(BONSAI_DRIVER_MINIMO)) compilando para sm_$(BONSAI_CUDA_ARCH)."
 	@echo "Si falla con \"unsatisfied condition: cuda>=12.6\" o el modelo no corre en la GPU corre: make gpu-check"
+	@# Sin el GGUF, el bind mount de compose.bonsai.yml crea el directorio VACIO
+	@# (create_host_path) en vez de fallar: llama-server arranca, no encuentra el
+	@# modelo, sale, y como tiene restart: unless-stopped entra en bucle sin pasar
+	@# nunca el healthcheck. Lo que ve quien lo corre es "dependency failed to
+	@# start: container kb-llama-server is unhealthy" -- un error que apunta a la
+	@# api y no menciona el archivo que falta. El motivo real solo aparece en
+	@# `docker logs kb-llama-server`. Este chequeo lo dice antes de compilar.
+	@if [ ! -f "$(KB_DATA_DIR)/bonsai/Bonsai-8B-Q1_0.gguf" ]; then \
+		echo ""; \
+		echo "ERROR: falta el modelo en $(KB_DATA_DIR)/bonsai/Bonsai-8B-Q1_0.gguf"; \
+		echo "  Descargalo una sola vez (~1.16 GB) con:  make pull-bonsai-gguf"; \
+		exit 1; \
+	fi
 	$(COMPOSE_BONSAI) up -d --build
 
 down-bonsai:  ## Detiene el perfil Bonsai (mismos -f que up-bonsai, para no dejar contenedores huerfanos)
@@ -432,7 +448,22 @@ pin-embeddings-cpu:  ## Crea bge-m3-cpu, fijado a CPU, para dejarle toda la VRAM
 	@echo "Listo: $(EMBEDDINGS)-cpu creado. No hace falta tocar nada mas -- make lo selecciona"
 	@echo "solo mientras no fijes KB_EMBEDDINGS_MODELO a mano en tu archivo de entorno."
 
-seed: ingest  ## Alias de ingest: nombre usado en la seccion Verificacion del plan (corpus de ejemplo)
+vault-init:  ## Crea el vault y copia corpus/ a vault/documentos (no pisa lo que ya este)
+	@# El corpus de ejemplo viene versionado en corpus/, pero el vault vive FUERA
+	@# del repo (KB_VAULT_DIR, ver .env.example) y NADA conectaba las dos rutas.
+	@# Como el bind mount de compose.yml tiene create_host_path, un vault
+	@# inexistente se creaba VACIO en vez de fallar: `make seed` ingeria cero
+	@# documentos sin error, y despues toda pregunta respondia el
+	@# MENSAJE_SIN_INFORMACION del Orquestador -- correctamente, porque no habia
+	@# nada ingerido. Sin un solo error en ningun log.
+	@mkdir -p "$(KB_VAULT_DIR)/documentos" "$(KB_VAULT_DIR)/repos"
+	@cp -n corpus/* "$(KB_VAULT_DIR)/documentos/" 2>/dev/null || true
+	@echo "Vault en $(KB_VAULT_DIR) -- documentos/:"
+	@ls -1 "$(KB_VAULT_DIR)/documentos" 2>/dev/null | sed 's/^/  /' || echo "  (vacio)"
+
+seed:  ## Prepara el vault con el corpus de ejemplo y lo ingiere (vault-init + ingest)
+	@$(MAKE) --no-print-directory vault-init
+	@$(MAKE) --no-print-directory ingest
 
 ingest:  ## Ingiere vault/documentos: documentos nuevos o cambiados quedan troceados y encolados para embeber
 	@curl -fsS -X POST http://localhost:$(KB_PORT)/api/ingest/local-docs | python -m json.tool 2>/dev/null \
