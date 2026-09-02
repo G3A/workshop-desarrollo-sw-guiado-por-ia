@@ -171,6 +171,46 @@ vacío en vez de fallar, así que la ingesta corre sobre cero documentos y esa r
 Para ver qué hay realmente ingerido, `scripts/diagnostico-ingesta.sql` o el panel
 <http://localhost:8080/admin.html>.
 
+
+### Si una consulta falla: modelo ausente o corrupto
+
+Los dos se ven igual desde la interfaz —la respuesta se corta— y los dos vienen de Ollama, pero se
+arreglan distinto. Para saber cuál es:
+
+```bash
+make capturar-error     # deja scripts/error-api.txt con la causa
+```
+
+| Lo que dice el log | Qué pasa | Cómo se arregla |
+|---|---|---|
+| `404: model '…' not found` | El modelo del perfil no está descargado. Cada perfil sirve el suyo y se baja aparte | `make pull-<perfil>` |
+| `500: an error was encountered while running the model: unexpected EOF` | El modelo **sí** está, pero su archivo quedó truncado o dañado — una descarga interrumpida | Borrarlo y volver a bajarlo, abajo |
+
+`make health` también lista los modelos que faltan, pero **no** detecta los corruptos: para Ollama el
+blob existe y solo revienta al leerlo para inferir.
+
+Un modelo corrupto no se arregla repitiendo el `pull` a secas: con el manifiesto ya presente, Ollama
+puede dar el blob dañado por bueno. Hay que borrarlo primero, lo que fuerza la descarga y la
+verificación completas. Con Ministral como ejemplo:
+
+```bash
+docker exec kb-ollama ollama rm hf.co/mistralai/Ministral-3-3B-Instruct-2512-GGUF:Q4_K_M
+make pull-ministral
+make health
+make up-ministral
+```
+
+Para otro perfil, cambia el nombre del modelo por el que lista la tabla de [Perfiles de
+modelo](#perfiles-de-modelo) y el `pull-` por el suyo. Los nombres exactos, tal como los tiene
+Ollama:
+
+```bash
+docker exec kb-ollama ollama list
+```
+
+Si se repite en el mismo modelo, sospecha de la descarga —son entre 2 y 3.5 GB, y un corte deja
+exactamente este síntoma— o del disco.
+
 ## Reparto de la GPU
 
 `make` mira la tarjeta con `nvidia-smi` —VRAM, Compute Capability y versión del driver— y decide
