@@ -59,7 +59,7 @@ Estas son todas las herramientas, en orden. Solo las dos primeras son obligatori
 | 1 | **Docker Desktop** (con WSL2) | Todo corre en contenedores, incluido el build de la app | `winget install Docker.DockerDesktop` — luego ábrelo una vez y deja que termine de configurar WSL2 | `docker version` y `docker compose version` |
 | 2 | **Git for Windows** | Clonar el repo, y su `sh.exe` es el shell que usa `make` (ver abajo) | `winget install Git.Git` | `git --version` |
 | 3 | **GNU Make** | Los comandos de este README. Si no lo quieres, mira [Sin `make`](#sin-make) | `winget install ezwinports.make` | `make --version` |
-| 4 | **Driver NVIDIA** *(opcional)* | GPU para el LLM y los embeddings. Docker Desktop pasa la tarjeta a WSL2 solo, **no** hace falta instalar `nvidia-container-toolkit` a mano en Windows | [nvidia.com/drivers](https://www.nvidia.com/download/index.aspx) — para el perfil Bonsai hace falta **≥ 560** | `nvidia-smi` |
+| 4 | **Driver NVIDIA** *(opcional)* | GPU para el LLM y los embeddings. Docker Desktop pasa la tarjeta a WSL2 solo, **no** hace falta instalar `nvidia-container-toolkit` a mano en Windows | [nvidia.com/drivers](https://www.nvidia.com/download/index.aspx) — **≥ 550** o Ollama la ignora y cae a CPU en silencio; el perfil Bonsai necesita **≥ 560** | `nvidia-smi` |
 | 5 | **JDK 25** *(solo para desarrollar)* | Compilar y correr las pruebas fuera de Docker | `winget install EclipseAdoptium.Temurin.25.JDK` y apunta `JAVA_HOME` ahí | `make jdk-check` |
 | 6 | **gitleaks** *(solo para desarrollar)* | El gate de secretos (`make secrets`) | `winget install Gitleaks.Gitleaks` | `gitleaks version` |
 | 7 | **Node 20+** *(opcional)* | Solo para la evaluación de 100 preguntas (`eval-100-preguntas/`) | `winget install OpenJS.NodeJS.LTS` | `node --version` |
@@ -170,6 +170,83 @@ suficientemente relevante» a todo**, sin un solo error en los logs: el *bind mo
 vacío en vez de fallar, así que la ingesta corre sobre cero documentos y esa respuesta es correcta.
 Para ver qué hay realmente ingerido, `scripts/diagnostico-ingesta.sql` o el panel
 <http://localhost:8080/admin.html>.
+
+
+### Si Ollama corre en CPU teniendo GPU
+
+Síntoma: todo va lentísimo, las consultas dan *timeout* o mueren con
+`500: an error was encountered while running the model: unexpected EOF`, y sin embargo
+`make gpu-check` dice `Perfil de compose: GPU`. La comprobación que zanja no es esa:
+
+```powershell
+docker exec kb-ollama ollama ps       # mira la columna PROCESSOR
+```
+
+Si dice `100% CPU`, Ollama no está usando la tarjeta. Y **`make gpu-check` no lo detecta**: informa
+de lo que `make` decidió, no de lo que Ollama hizo.
+
+Que la GPU esté bien entregada al contenedor tampoco lo descarta. Estas tres comprobaciones pueden
+salir perfectas y Ollama seguir en CPU:
+
+```powershell
+docker inspect -f '{{json .HostConfig.DeviceRequests}}' kb-ollama   # reserva del dispositivo
+docker exec kb-ollama nvidia-smi                                    # la tarjeta se ve dentro
+make -n up-ministral                                                # el comando encadena compose.gpu.yml
+```
+
+**Quien decide es Ollama, y lo dice en su arranque:**
+
+```powershell
+docker logs kb-ollama | Select-String "driver too old|no compatible|inference compute"
+```
+
+| Lo que aparece | Qué pasa |
+|---|---|
+| `inference compute … library=CUDA … description="NVIDIA …"` | Ollama usa la tarjeta. Si aun así ves `100% CPU`, es reparto: mira la VRAM |
+| `NVIDIA driver too old … driver=546 required_driver="550 or newer"` | **Ollama descarta la GPU él mismo por versión de driver** |
+| `no compatible GPUs were discovered` | No la ve: CUDA no llega al contenedor |
+
+#### El driver mínimo de Ollama son 550
+
+Es un requisito aparte del de Bonsai (≥ 560) y no se parece a un fallo: Ollama no aborta, **cae a CPU
+en silencio** y deja `total_vram="0 B"`. Con un driver viejo, todo lo demás puede estar
+correcto —tarjeta reservada, `nvidia-smi` respondiendo dentro del contenedor, perfil GPU
+encadenado— y aun así no se usa.
+
+Tras actualizar el driver, **en este orden**:
+
+```powershell
+make down                    # 1. con Docker aún vivo
+wsl --shutdown               # 2. fuerza a WSL2 a recoger el driver nuevo
+# 3. abre Docker Desktop y espera a "Engine running"
+make up-ministral
+docker exec kb-ollama ollama ps
+```
+
+`wsl --shutdown` apaga la VM donde vive el motor de Docker: si lo corres **antes** del `make down`,
+te quedas sin demonio a mitad. Y si Docker Desktop no vuelve solo, ciérralo desde la bandeja del
+sistema y ábrelo otra vez.
+
+#### Hay dos drivers, y `gpu-check` solo ve uno
+
+```powershell
+nvidia-smi --query-gpu=driver_version --format=csv,noheader                    # Windows
+docker exec kb-ollama nvidia-smi --query-gpu=driver_version --format=csv,noheader   # contenedor
+```
+
+`make gpu-check` lee el de Windows. El que manda es el del contenedor, que llega por la VM de WSL2:
+hasta que esa VM se reinicia, **sigue exponiendo el driver viejo** aunque Windows ya tenga el nuevo.
+Si los dos números no coinciden, falta el `wsl --shutdown` de arriba.
+
+#### Y Ollama descubre la GPU una sola vez, al arrancar
+
+Un contenedor que lleva vivo desde antes de la actualización conserva su veredicto. `make up`
+reutiliza el contenedor si la configuración no cambió, así que no basta:
+
+```powershell
+docker rm -f kb-ollama
+make up-ministral
+```
 
 ## Reparto de la GPU
 
