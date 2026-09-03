@@ -31,7 +31,9 @@ camino — detalle completo en [`docs/architecture.md`](docs/architecture.md#pip
   de dejar sintetizar.
 - **Reintenta una vez, con la consulta reescrita**: si la búsqueda original no alcanza, `Reformulador`
   propone hasta tres reescrituras con estrategias distintas (término formal de la fuente,
-  descomposición en el concepto más concreto, sinónimos oficiales). En la UI web, si hay dos o
+  descomposición en el concepto más concreto, sinónimos oficiales), viendo como pistas los
+  fragmentos que la primera búsqueda ya encontró, para usar el vocabulario real de la fuente en
+  vez de adivinarlo. En la UI web, si hay dos o
   más, la persona elige con cuál buscar, la edita a mano si ninguna sirve, o se queda con su
   pregunta tal cual, y decide si quiere la respuesta en el idioma original de las fuentes en vez
   de español; con una sola se responde de inmediato. En Teams y `/api/ask` se aplica la primera sola y se repite el mismo plan de

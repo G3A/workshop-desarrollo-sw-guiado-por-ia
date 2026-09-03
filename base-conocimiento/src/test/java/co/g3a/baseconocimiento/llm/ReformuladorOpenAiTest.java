@@ -40,6 +40,24 @@ class ReformuladorOpenAiTest {
   }
 
   @Test
+  @DisplayName(
+      "Sin pistas el mensaje es la pregunta sola; con pistas van rotuladas y despues de la pregunta")
+  void elMensajeDeUsuarioSoloAgregaLasPistasCuandoLasHay() {
+    assertThat(ReformuladorOpenAi.mensajeDeUsuario("que es static", List.of()))
+        .isEqualTo("que es static");
+
+    String conPistas =
+        ReformuladorOpenAi.mensajeDeUsuario(
+            "que es static", List.of("[jls25.pdf] A class variable is...", "[jls25.pdf] static"));
+
+    assertThat(conPistas)
+        .startsWith("Pregunta: que es static\n\n")
+        .contains("pistas del vocabulario de la fuente")
+        .contains("- [jls25.pdf] A class variable is...\n")
+        .endsWith("- [jls25.pdf] static\n");
+  }
+
+  @Test
   @DisplayName("Sin candidatas utiles, la Reformulacion queda sin cambios")
   void sinCandidatasUtilesNoReformula() {
     var reformulacion =
