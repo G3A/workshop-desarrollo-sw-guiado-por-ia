@@ -1052,6 +1052,83 @@ class OrquestadorTest {
     assertThat(idiomasRecibidos).containsExactly(IdiomaRespuesta.ESPANOL);
   }
 
+  @Test
+  @DisplayName(
+      "Modo Proponer con UNA sola alternativa: no hay nada que elegir, responde de inmediato "
+          + "buscando con ella como el modo automatico")
+  void enModoProponerConUnaSolaAlternativaRespondeDeInmediato() {
+    Fragmento fragmentoDebil = fragmento(0.01);
+    Fragmento fragmentoFuerte = fragmento(9.0);
+    List<String> consultasRecibidas = new ArrayList<>();
+    Herramienta herramienta =
+        new Herramienta() {
+          @Override
+          public String nombre() {
+            return "fake_tool";
+          }
+
+          @Override
+          public String descripcion() {
+            return "de prueba";
+          }
+
+          @Override
+          public List<Fragmento> ejecutar(
+              String consulta, ProyectoId proyecto, List<Long> documentosPermitidos) {
+            consultasRecibidas.add(consulta);
+            return consulta.equals("boxing conversion")
+                ? List.of(fragmentoFuerte)
+                : List.of(fragmentoDebil);
+          }
+        };
+    var catalogo = new CatalogoHerramientas(List.of(herramienta));
+    var executor = new Executor(catalogo);
+    Planificador planificador =
+        (pregunta, herramientas) -> new PlanDeHerramientas(List.of("fake_tool"), "porque si");
+    Reformulador reformulador =
+        pregunta -> new Reformulador.Reformulacion(pregunta, List.of("boxing conversion"));
+    Sintetizador sintetizador = (pregunta, contexto, idioma) -> Flux.just("Respuesta.");
+    ContextoRepositorio contextoRepo = mock(ContextoRepositorio.class);
+    when(contextoRepo.vecinos(100L, 0)).thenReturn(List.of());
+    HerramientasRepositorio herramientasRepo = mock(HerramientasRepositorio.class);
+    when(herramientasRepo.contarChunks(anyString())).thenReturn(100L);
+    QueryLogRepositorio queryLog = mock(QueryLogRepositorio.class);
+    when(queryLog.registrar(any(), any(), any(), any(), any(), any(), any(), anyLong()))
+        .thenReturn(8L);
+
+    var orquestador =
+        new Orquestador(
+            planificador,
+            reformulador,
+            catalogo,
+            executor,
+            contextoRepo,
+            herramientasRepo,
+            sintetizador,
+            mock(VerificadorGrounding.class),
+            queryLog,
+            10,
+            true,
+            UMBRAL_POR_DEFECTO,
+            10,
+            mock(StreamsEnCursoRepositorio.class));
+
+    Consultar.RespuestaEnStreaming resultado =
+        orquestador.ejecutarEnStreaming(
+            new Pregunta("que es el autoboxing"),
+            PROYECTO,
+            Filtros.NINGUNO,
+            null,
+            new Consultar.Preferencias(
+                new Consultar.ModoReformulacion.Proponer(), IdiomaRespuesta.ESPANOL));
+    String texto = resultado.texto().collectList().map(p -> String.join("", p)).block();
+
+    assertThat(resultado.reformulacionesPropuestas()).isEmpty();
+    assertThat(consultasRecibidas).containsExactly("que es el autoboxing", "boxing conversion");
+    assertThat(resultado.consultaReformulada()).isEqualTo("boxing conversion");
+    assertThat(texto).isEqualTo("Respuesta.");
+  }
+
   private static Fragmento fragmento(double rerank) {
     return new Fragmento(
         1L,

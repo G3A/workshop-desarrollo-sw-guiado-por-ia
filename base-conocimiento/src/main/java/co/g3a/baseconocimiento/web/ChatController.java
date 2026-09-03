@@ -69,13 +69,13 @@ class ChatController {
    * más).
    *
    * <p><b>La reformulación se negocia en dos llamadas.</b> Con {@code proponer=true}, si la
-   * búsqueda con la pregunta tal cual no alcanza y el {@code Reformulador} tiene alternativas, el
-   * stream trae un único evento {@code reformulaciones} (un arreglo JSON de consultas) seguido de
-   * {@code fin}, sin citas ni tokens: la página se las muestra a la persona junto con la elección
-   * de idioma, y vuelve a llamar con {@code busqueda=<la elegida>} (o la pregunta original, si
-   * prefirió no reformular) e {@code idioma=es|original}. Esa segunda llamada busca con ese texto
-   * sin volver a reformular. Sin {@code proponer} ni {@code busqueda} se reformula sola, como en
-   * Teams.
+   * búsqueda con la pregunta tal cual no alcanza y el {@code Reformulador} tiene al menos dos
+   * alternativas, el stream trae un único evento {@code reformulaciones} (un arreglo JSON de
+   * consultas) seguido de {@code fin}, sin citas ni tokens: la página se las muestra a la persona
+   * junto con la elección de idioma, y vuelve a llamar con {@code busqueda=<la elegida>} (o la
+   * pregunta original, si prefirió no reformular) e {@code idioma=es|original}. Esa segunda llamada
+   * busca con ese texto sin volver a reformular. Con una sola alternativa se responde de inmediato
+   * con ella; sin {@code proponer} ni {@code busqueda} se reformula sola, como en Teams.
    *
    * <p><b>Cada token va como string JSON, no como texto crudo.</b> El estándar SSE le quita al
    * valor de un campo {@code data:} un único espacio inicial (es la convención para el delimitador
