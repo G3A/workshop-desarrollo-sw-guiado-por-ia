@@ -47,5 +47,16 @@ public interface Reformulador {
     }
   }
 
-  Reformulacion reformular(String pregunta);
+  /**
+   * @param pistasDelCorpus fragmentos (título + comienzo del texto) que la búsqueda con la pregunta
+   *     tal cual ya encontró, aunque no alcanzaran la puerta de relevancia. Le muestran al modelo
+   *     el vocabulario y el idioma REALES de la fuente en vez de dejarlo adivinar; vacía si no hay
+   *     ninguno. Medido en vivo: sin pistas, un modelo de 3B traducía la pregunta entera; con los
+   *     términos de la fuente a la vista, propone consultas que sí coinciden.
+   */
+  Reformulacion reformular(String pregunta, List<String> pistasDelCorpus);
+
+  default Reformulacion reformular(String pregunta) {
+    return reformular(pregunta, List.of());
+  }
 }

@@ -389,7 +389,11 @@ class Orquestador {
         !(modoReformulacion instanceof Consultar.ModoReformulacion.Elegida)
             && umbral.decision() != UmbralRelevancia.Decision.SUFICIENTE;
     if (puedeReformular) {
-      Reformulador.Reformulacion reformulacion = reformulador.reformular(pregunta.texto());
+      // Los fragmentos de la primera ronda, aunque no alcancen, ya son texto REAL
+      // de la fuente: le muestran al Reformulador con que palabras y en que
+      // idioma esta escrita, en vez de dejarlo adivinar (ver Reformulador).
+      Reformulador.Reformulacion reformulacion =
+          reformulador.reformular(pregunta.texto(), pistasDelCorpus(fragmentos));
       if (modoReformulacion instanceof Consultar.ModoReformulacion.Proponer
           && reformulacion.alternativas().size() >= MIN_ALTERNATIVAS_PARA_ELEGIR) {
         // La persona elige: se corta aca, sin gastar la segunda ronda de
@@ -477,6 +481,32 @@ class Orquestador {
         consultaReformuladaParaMostrar,
         List.of(),
         inicio);
+  }
+
+  /**
+   * Cuántos fragmentos de la primera ronda se le muestran al Reformulador, y cuánto de cada uno.
+   */
+  static final int MAX_PISTAS = 5;
+
+  static final int LARGO_PISTA = 200;
+
+  /**
+   * Una línea por fragmento: título y el comienzo del texto, aplanado. Acotado a {@link
+   * #MAX_PISTAS} por {@link #LARGO_PISTA} caracteres para que quepa de sobra en el contexto del
+   * reformulador (unos 300 tokens) sin desplazar al prompt de sistema.
+   */
+  static List<String> pistasDelCorpus(List<Fragmento> fragmentos) {
+    return fragmentos.stream()
+        .limit(MAX_PISTAS)
+        .map(
+            f -> {
+              String texto = f.texto() == null ? "" : f.texto().replaceAll("\\s+", " ").strip();
+              if (texto.length() > LARGO_PISTA) {
+                texto = texto.substring(0, LARGO_PISTA) + "…";
+              }
+              return "[" + Citas.tituloDe(f) + "] " + texto;
+            })
+        .toList();
   }
 
   /**

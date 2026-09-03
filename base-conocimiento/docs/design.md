@@ -22,7 +22,8 @@ REST y Server-Sent Events; toda la lógica de UI es JavaScript plano consumiendo
 - **Nunca ocultar la falta de evidencia**: si no hay evidencia suficiente, la UI debe mostrar ese
   corte explícito, no una respuesta genérica sin citas.
 - **La reformulación se elige, no se impone**: cuando la búsqueda con la pregunta tal cual no
-  alcanza y el `Reformulador` propone dos o más consultas, la página no deja que reescriba en
+  alcanza y el `Reformulador` (que ve como pistas los fragmentos que esa primera búsqueda encontró,
+  para hablar el vocabulario de la fuente) propone dos o más consultas, la página no deja que reescriba en
   silencio — muestra las alternativas (más "usar mi pregunta tal cual"), un campo de texto
   editable precargado con la elegida (lo que se busca es el campo, para corregir a mano cuando
   ninguna sirve) y un checkbox para pedir la respuesta en el idioma original de las fuentes en vez

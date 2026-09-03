@@ -78,6 +78,12 @@ class ReformuladorOpenAi implements Reformulador {
             fuente, sin signos de interrogacion, sin "que es" ni "como se", nunca una respuesta.
             Ordenalas de la mas probable a la menos. Deben ser distintas entre si.
 
+            Si junto con la pregunta llegan FRAGMENTOS DEL CORPUS (lo que la busqueda con la
+            pregunta tal cual alcanzo a encontrar), usalos como evidencia del vocabulario y el
+            idioma reales de la fuente: prefiere terminos que aparezcan literalmente en ellos
+            cuando tengan relacion con la pregunta. Son pistas, no el tema: si un fragmento no
+            tiene que ver con lo que se pregunta, ignoralo -- no propongas consultas sobre el.
+
             Si la pregunta ya usa terminologia formal, o no hay forma razonable de saber que
             terminos usa la fuente, devuelve la lista VACIA. No inventes terminologia de la que
             no haya certeza razonable -- es preferible no reformular a reformular mal.
@@ -95,13 +101,13 @@ class ReformuladorOpenAi implements Reformulador {
   }
 
   @Override
-  public Reformulacion reformular(String pregunta) {
+  public Reformulacion reformular(String pregunta, List<String> pistasDelCorpus) {
     try {
       Propuestas resultado =
           chatClient
               .prompt()
               .system(SISTEMA)
-              .user(pregunta)
+              .user(mensajeDeUsuario(pregunta, pistasDelCorpus))
               .call()
               .entity(Propuestas.class, spec -> spec.useProviderStructuredOutput());
 
@@ -116,6 +122,25 @@ class ReformuladorOpenAi implements Reformulador {
       log.warn("Fallo al reformular la consulta, se usa la pregunta original: {}", e.toString());
       return Reformulacion.sinCambios(pregunta);
     }
+  }
+
+  /**
+   * La pregunta sola cuando no hay pistas (mismo mensaje que antes de que existieran); con pistas,
+   * la pregunta primero y los fragmentos después, rotulados, para que el modelo no confunda una
+   * cosa con la otra.
+   */
+  static String mensajeDeUsuario(String pregunta, List<String> pistasDelCorpus) {
+    if (pistasDelCorpus.isEmpty()) {
+      return pregunta;
+    }
+    StringBuilder mensaje = new StringBuilder("Pregunta: ").append(pregunta).append("\n\n");
+    mensaje.append(
+        "Fragmentos del corpus que encontro la busqueda con la pregunta tal cual"
+            + " (pistas del vocabulario de la fuente):\n");
+    for (String pista : pistasDelCorpus) {
+      mensaje.append("- ").append(pista).append('\n');
+    }
+    return mensaje.toString();
   }
 
   /**

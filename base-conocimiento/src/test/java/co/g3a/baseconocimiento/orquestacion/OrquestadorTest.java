@@ -41,7 +41,7 @@ class OrquestadorTest {
   private static final UmbralRelevanciaPropiedades UMBRAL_POR_DEFECTO =
       new UmbralRelevanciaPropiedades(true, 0.003, 0.05, 500, 8.0);
   private static final Reformulador REFORMULADOR_SIN_CAMBIOS =
-      Reformulador.Reformulacion::sinCambios;
+      (pregunta, pistas) -> Reformulador.Reformulacion.sinCambios(pregunta);
 
   @Test
   @DisplayName("Conecta las siete etapas: plan, herramientas, fusion, sintesis y registro")
@@ -437,7 +437,8 @@ class OrquestadorTest {
     Planificador planificador =
         (pregunta, herramientas) -> new PlanDeHerramientas(List.of("fake_tool"), "porque si");
     Reformulador reformulador =
-        pregunta -> new Reformulador.Reformulacion(pregunta, List.of("boxing conversion"));
+        (pregunta, pistas) ->
+            new Reformulador.Reformulacion(pregunta, List.of("boxing conversion"));
 
     Sintetizador sintetizador = (pregunta, contexto, idioma) -> Flux.just("Respuesta.");
     VerificadorGrounding verificadorGrounding = mock(VerificadorGrounding.class);
@@ -541,7 +542,7 @@ class OrquestadorTest {
         (pregunta, herramientas) -> new PlanDeHerramientas(List.of("fake_tool"), "porque si");
     // Como el "que es un record" real: un LLM chico puede reformular lejos del tema.
     Reformulador reformulador =
-        pregunta ->
+        (pregunta, pistas) ->
             new Reformulador.Reformulacion(
                 pregunta, List.of("estructura con acceso por indice numerico"));
 
@@ -646,7 +647,7 @@ class OrquestadorTest {
 
     orquestador.ejecutar(new Pregunta("pregunta cualquiera"), PROYECTO, Filtros.NINGUNO);
 
-    verify(reformulador, never()).reformular(any());
+    verify(reformulador, never()).reformular(any(), any());
   }
 
   @Test
@@ -786,7 +787,7 @@ class OrquestadorTest {
     Planificador planificador =
         (pregunta, herramientas) -> new PlanDeHerramientas(List.of("fake_tool"), "porque si");
     Reformulador reformulador =
-        pregunta ->
+        (pregunta, pistas) ->
             new Reformulador.Reformulacion(
                 pregunta, List.of("boxing conversion", "autoboxing Java"));
     Sintetizador sintetizador = mock(Sintetizador.class);
@@ -949,7 +950,7 @@ class OrquestadorTest {
     assertThat(resultado.reformulacionesPropuestas()).isEmpty();
     assertThat(texto).isEqualTo("Boxing conversion is...");
     assertThat(idiomasRecibidos).containsExactly(IdiomaRespuesta.ORIGINAL_DEL_CORPUS);
-    verify(reformulador, never()).reformular(any());
+    verify(reformulador, never()).reformular(any(), any());
     // Lo que queda registrado sigue siendo la pregunta original, no la consulta elegida.
     verify(queryLog)
         .registrar(eq("que es el autoboxing"), any(), any(), any(), any(), any(), any(), anyLong());
@@ -1002,7 +1003,7 @@ class OrquestadorTest {
                 IdiomaRespuesta.ESPANOL));
     String texto = resultado.texto().collectList().map(p -> String.join("", p)).block();
 
-    verify(reformulador, never()).reformular(any());
+    verify(reformulador, never()).reformular(any(), any());
     assertThat(resultado.consultaReformulada()).isNull();
     assertThat(texto).isEqualTo(Orquestador.MENSAJE_SIN_INFORMACION);
   }
@@ -1086,7 +1087,8 @@ class OrquestadorTest {
     Planificador planificador =
         (pregunta, herramientas) -> new PlanDeHerramientas(List.of("fake_tool"), "porque si");
     Reformulador reformulador =
-        pregunta -> new Reformulador.Reformulacion(pregunta, List.of("boxing conversion"));
+        (pregunta, pistas) ->
+            new Reformulador.Reformulacion(pregunta, List.of("boxing conversion"));
     Sintetizador sintetizador = (pregunta, contexto, idioma) -> Flux.just("Respuesta.");
     ContextoRepositorio contextoRepo = mock(ContextoRepositorio.class);
     when(contextoRepo.vecinos(100L, 0)).thenReturn(List.of());
@@ -1127,6 +1129,98 @@ class OrquestadorTest {
     assertThat(consultasRecibidas).containsExactly("que es el autoboxing", "boxing conversion");
     assertThat(resultado.consultaReformulada()).isEqualTo("boxing conversion");
     assertThat(texto).isEqualTo("Respuesta.");
+  }
+
+  @Test
+  @DisplayName(
+      "El Reformulador recibe como pistas los fragmentos de la primera ronda: titulo y comienzo del "
+          + "texto, aplanados, como maximo MAX_PISTAS")
+  void elReformuladorRecibeLosFragmentosDeLaPrimeraRondaComoPistas() {
+    // rerank=0.01 -> INSUFICIENTE: dispara el Reformulador.
+    Fragmento f1 =
+        new Fragmento(
+            1L,
+            100L,
+            "file:///jls25.pdf",
+            "jls25.pdf",
+            "If a field is declared static,\n\n  there exists exactly one incarnation of the field.",
+            "doc_section",
+            0,
+            Instant.EPOCH,
+            Map.of(),
+            0.05,
+            0.01);
+    Fragmento f2 =
+        new Fragmento(
+            2L,
+            100L,
+            "file:///jls25.pdf",
+            "jls25.pdf",
+            "x".repeat(Orquestador.LARGO_PISTA + 50),
+            "doc_section",
+            1,
+            Instant.EPOCH,
+            Map.of(),
+            0.04,
+            0.01);
+    var catalogo = new CatalogoHerramientas(List.of(herramientaFalsa("fake_tool", f1, f2)));
+    var executor = new Executor(catalogo);
+    Planificador planificador =
+        (pregunta, herramientas) -> new PlanDeHerramientas(List.of("fake_tool"), "porque si");
+    List<List<String>> pistasRecibidas = new ArrayList<>();
+    Reformulador reformulador =
+        (pregunta, pistas) -> {
+          pistasRecibidas.add(pistas);
+          return Reformulador.Reformulacion.sinCambios(pregunta);
+        };
+    HerramientasRepositorio herramientasRepo = mock(HerramientasRepositorio.class);
+    when(herramientasRepo.contarChunks(anyString())).thenReturn(100L);
+    QueryLogRepositorio queryLog = mock(QueryLogRepositorio.class);
+    when(queryLog.registrar(any(), any(), any(), any(), any(), any(), any(), anyLong()))
+        .thenReturn(9L);
+
+    var orquestador =
+        new Orquestador(
+            planificador,
+            reformulador,
+            catalogo,
+            executor,
+            mock(ContextoRepositorio.class),
+            herramientasRepo,
+            mock(Sintetizador.class),
+            mock(VerificadorGrounding.class),
+            queryLog,
+            10,
+            true,
+            UMBRAL_POR_DEFECTO,
+            10,
+            mock(StreamsEnCursoRepositorio.class));
+
+    orquestador.ejecutar(new Pregunta("que significa static"), PROYECTO, Filtros.NINGUNO);
+
+    assertThat(pistasRecibidas).hasSize(1);
+    List<String> pistas = pistasRecibidas.getFirst();
+    assertThat(pistas).hasSize(2);
+    // Titulo entre corchetes, saltos de linea y espacios repetidos aplanados a uno.
+    assertThat(pistas.getFirst())
+        .isEqualTo(
+            "[jls25.pdf] If a field is declared static, there exists exactly one incarnation of"
+                + " the field.");
+    // El texto largo se corta en LARGO_PISTA y se marca.
+    assertThat(pistas.get(1)).hasSize("[jls25.pdf] ".length() + Orquestador.LARGO_PISTA + 1);
+    assertThat(pistas.get(1)).endsWith("…");
+  }
+
+  @Test
+  @DisplayName("pistasDelCorpus se queda con los primeros MAX_PISTAS fragmentos")
+  void pistasDelCorpusRespetaElMaximo() {
+    List<Fragmento> muchos =
+        java.util.stream.IntStream.range(0, Orquestador.MAX_PISTAS + 3)
+            .mapToObj(i -> fragmento(1.0))
+            .toList();
+
+    assertThat(Orquestador.pistasDelCorpus(muchos)).hasSize(Orquestador.MAX_PISTAS);
+    assertThat(Orquestador.pistasDelCorpus(List.of())).isEmpty();
   }
 
   private static Fragmento fragmento(double rerank) {
