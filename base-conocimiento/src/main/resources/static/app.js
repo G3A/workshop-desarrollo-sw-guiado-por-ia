@@ -816,14 +816,17 @@
     // Solo llega si se busco con un texto distinto de la pregunta (ver ChatController):
     // el vocabulario coloquial de la pregunta puede no coincidir con el termino formal
     // de la fuente (ej. "autoboxing" en la pregunta, "boxing conversion" en el corpus).
-    // Con `busqueda` es la consulta que la persona eligio; sin ella, la que el
-    // Reformulador aplico solo (camino automatico).
+    // Con `busqueda` es la consulta que la persona eligio -- y ese caso ya lo
+    // pinto mostrarEleccion al enviar, con el idioma incluido, asi que aqui no
+    // se pisa. Sin `busqueda`, es la que el Reformulador aplico solo (camino
+    // automatico, o una sola alternativa).
     fuente.addEventListener("reformulacion", (evento) => {
+      if (opciones.busqueda) {
+        return;
+      }
       const consulta = JSON.parse(evento.data);
       turno.reformulacionTexto = consulta;
-      turno.reformulacion.textContent = opciones.busqueda
-        ? "Buscando como: “" + consulta + "”"
-        : "Buscando también como: “" + consulta + "”";
+      turno.reformulacion.textContent = "Buscando también como: “" + consulta + "”";
     });
 
     // Solo con proponer=true: la busqueda original no alcanzo y hay alternativas.
@@ -942,6 +945,13 @@
       turno.eleccion.classList.add("oculto");
       turno.eleccion.innerHTML = "";
       turno.eligiendo = false;
+      // Se pinta ya, sin esperar el evento "reformulacion" del segundo stream
+      // (llega recien con las citas, minutos despues): la persona acaba de
+      // elegir y debe ver de inmediato con que se busca y en que idioma.
+      turno.reformulacionTexto = busqueda === pregunta ? null : busqueda;
+      turno.reformulacion.textContent =
+        (turno.reformulacionTexto ? "Buscando como: “" + busqueda + "”" : "Buscando con tu pregunta tal cual") +
+        (enIdiomaOriginal ? " · respuesta en el idioma original de las fuentes" : "");
       if (conversacionActualId === conversacionId) {
         boton.disabled = true;
       }
