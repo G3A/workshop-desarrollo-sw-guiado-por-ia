@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help up imagen gpu-up gpu-check gpu-resumen docling-reciclar cache-reciclar jdk-check up-bonsai down-bonsai up-ministral down-ministral up-qwen35 down-qwen35 up-nemotron down-nemotron up-granite41 down-granite41 up-phi4mini down-phi4mini up-qwen25 down-qwen25 down restart logs ps build test verify pull-models pull-reranker pull-bonsai-gguf pull-ministral pull-qwen35 pull-nemotron pull-granite41 pull-phi4mini pull-qwen25 pin-embeddings-cpu seed vault-init ingest ingest-repos ingest-teams ingest-azdo psql health verificar capturar-error clean format lint secrets check ci hooks
+.PHONY: help up gpu-up gpu-check gpu-resumen docling-reciclar cache-reciclar jdk-check up-bonsai down-bonsai up-ministral down-ministral up-qwen35 down-qwen35 up-nemotron down-nemotron up-granite41 down-granite41 up-phi4mini down-phi4mini up-qwen25 down-qwen25 down restart logs ps build test verify pull-models pull-reranker pull-bonsai-gguf pull-ministral pull-qwen35 pull-nemotron pull-granite41 pull-phi4mini pull-qwen25 pin-embeddings-cpu seed vault-init ingest ingest-repos ingest-teams ingest-azdo psql health verificar capturar-error clean format lint secrets check ci hooks
 
 
 
@@ -725,13 +725,6 @@ jdk-check:  ## Verifica que el JDK activo pueda compilar el proyecto (release $(
 	  exit 1; \
 	fi
 
-
-imagen:  ## Reconstruye la imagen de kb-api sin levantar nada (make up y los up-<perfil> ya lo hacen solos)
-	@# Existe para cuando se quiere construir SIN tocar lo que esta corriendo (por
-	@# ejemplo, dejar la imagen lista antes de un `down`/`up` mas tarde) o para
-	@# comprobar que el codigo compila dentro de Docker. No hace falta correrlo
-	@# antes de un up: todos los up de este Makefile pasan `--build`.
-	$(COMPOSE) build api
 
 build: jdk-check  ## Compila el jar sin correr pruebas
 	sh ./mvnw -B clean package -DskipTests
