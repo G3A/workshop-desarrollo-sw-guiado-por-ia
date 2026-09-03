@@ -37,32 +37,50 @@ class ReformuladorOpenAi implements Reformulador {
 
   static final int MAX_ALTERNATIVAS = 3;
 
+  /**
+   * Pide ESTRATEGIAS distintas, no paráfrasis. Medido en vivo (granite4.1:3b, corpus con la JLS,
+   * pregunta "qué significa cada scope de usar static dentro de una clase java"): con el prompt
+   * anterior las tres alternativas eran traducciones de la misma frase ("what is the meaning of
+   * each scope of using static...") y las cuatro variantes, incluida la original, terminaban en "No
+   * encontré información" con rerank máximo 5.6. Las mismas ideas escritas con el vocabulario de la
+   * fuente y descompuestas ("static field class variable static modifier", "static method class
+   * method", "static member class nested class", "static initializer") dieron rerank 9.1 a 10.0 y
+   * seis citas cada una. El cuello de botella era la pregunta, no el corpus.
+   */
   private static final String SISTEMA =
       """
             Eres un asistente de reformulacion de consultas para una busqueda hibrida
             (texto + vectorial) contra una base de conocimiento tecnica. La tarea NO es
-            responder la pregunta -- es proponer, solo si hace falta, hasta tres versiones
-            alternativas de la CONSULTA DE BUSQUEDA que usen el vocabulario y el idioma mas
-            probable de la documentacion fuente, para maximizar las coincidencias lexicas y
-            semanticas.
+            responder la pregunta -- es proponer, solo si hace falta, hasta tres CONSULTAS DE
+            BUSQUEDA alternativas que maximicen las coincidencias lexicas y semanticas con el
+            texto fuente.
 
-            Reformula SOLO si la pregunta parece usar terminos coloquiales, abreviados o
-            informales que probablemente no aparecen tal cual en documentacion tecnica formal
-            (ejemplo: "autoboxing" en vez del termino formal "boxing conversion"; jerga de la
-            industria en vez del nombre oficial de una especificacion). La documentacion
-            tecnica de referencia (especificaciones de lenguajes, estandares, RFCs) suele estar
-            escrita en ingles formal, incluso cuando la pregunta llega en español -- si eso
-            parece el caso, propone las consultas reformuladas en el idioma y la terminologia
-            que mas probablemente aparezcan en el texto fuente.
+            La documentacion tecnica de referencia (especificaciones de lenguajes, estandares,
+            RFCs, manuales oficiales) suele estar en ingles formal y nombrar las cosas con su
+            termino oficial, aunque la pregunta llegue en español y con jerga. Una consulta
+            buena usa ESAS palabras: los terminos exactos que aparecerian en la fuente.
 
-            Las alternativas deben ser distintas entre si (otro termino, otro idioma, otra
-            forma de nombrar el mismo concepto), ordenadas de la mas probable a la menos, y
-            cada una una frase de busqueda corta, nunca una respuesta a la pregunta.
+            NO propongas parafrasis: traducir la pregunta entera o reordenar sus palabras no
+            sirve, porque sigue sin contener los terminos de la fuente. Cada alternativa debe
+            seguir una ESTRATEGIA distinta:
 
-            Si la pregunta ya usa terminologia probablemente formal, o no hay forma de saber si
-            existe un termino tecnico mas formal, devuelve la lista VACIA. No inventes
-            terminologia de la que no haya certeza razonable -- es preferible no reformular a
-            reformular mal.
+            1. TERMINO FORMAL: el nombre oficial del concepto en la fuente, sin las palabras
+               de relleno de la pregunta. Ejemplo: "que es el autoboxing" -> "boxing conversion".
+            2. DESCOMPOSICION: si la pregunta abarca varios conceptos ("cada tipo de...",
+               "todos los usos de...", "que diferencias hay entre..."), una consulta por el
+               concepto mas concreto, con su termino formal. Ejemplo: "que significa cada scope
+               de usar static dentro de una clase java" -> "static field class variable static
+               modifier", "static method class method", "static member class nested class".
+            3. SINONIMOS OFICIALES: otra forma en que la misma fuente nombra ese concepto
+               (nombre de la seccion, palabra clave del lenguaje, sigla o su expansion).
+
+            Cada consulta: una frase corta de palabras clave (3 a 8 palabras), en el idioma de la
+            fuente, sin signos de interrogacion, sin "que es" ni "como se", nunca una respuesta.
+            Ordenalas de la mas probable a la menos. Deben ser distintas entre si.
+
+            Si la pregunta ya usa terminologia formal, o no hay forma razonable de saber que
+            terminos usa la fuente, devuelve la lista VACIA. No inventes terminologia de la que
+            no haya certeza razonable -- es preferible no reformular a reformular mal.
             """;
 
   /** La forma en que el modelo responde: solo las consultas, sin la pregunta ni banderas. */
