@@ -622,6 +622,7 @@
       '<div class="contenido-asistente">' +
       '<p class="turno-reformulacion"></p>' +
       '<p class="turno-estado"></p>' +
+      '<div class="turno-eleccion oculto"></div>' +
       '<div class="turno-respuesta"></div>' +
       '<div class="turno-feedback oculto">' +
       '<span>¿Te sirvió esta respuesta?</span>' +
@@ -660,6 +661,7 @@
       raiz: turno,
       estado: turno.querySelector(".turno-estado"),
       reformulacion: turno.querySelector(".turno-reformulacion"),
+      eleccion: turno.querySelector(".turno-eleccion"),
       previa: turno.querySelector(".turno-previa"),
       respuesta: turno.querySelector(".turno-respuesta"),
       citas: turno.querySelector(".turno-citas"),
@@ -673,6 +675,9 @@
       citasDatos: [],
       reformulacionTexto: null,
       queryLogId: null,
+      // true mientras el panel de reformulaciones espera que la persona elija:
+      // el "fin" de ese primer stream no cierra el turno ni lo guarda.
+      eligiendo: false,
     };
   }
 
@@ -755,7 +760,10 @@
     const detenerContador = iniciarContador(turno.estado, "Buscando y analizando tu pregunta");
 
     cargarVistaPrevia(pregunta, proyecto, turno, documentos);
-    iniciarStreaming(pregunta, proyecto, turno, detenerContador, conversacionId, inicioTurno, documentos);
+    // proponer: si la busqueda con la pregunta tal cual no alcanza, el servidor
+    // no reformula solo -- manda las alternativas y esta pagina se las muestra a
+    // la persona para que elija (ver mostrarEleccion).
+    iniciarStreaming(pregunta, proyecto, turno, detenerContador, conversacionId, inicioTurno, documentos, { proponer: true });
   }
 
   async function cargarVistaPrevia(pregunta, proyecto, turno, documentos) {
@@ -778,7 +786,14 @@
     }
   }
 
-  function iniciarStreaming(pregunta, proyecto, turno, detenerContador, conversacionId, inicioTurno, documentos) {
+  /**
+   * opciones: { proponer: true } en la primera llamada (el servidor puede
+   * contestar solo con reformulaciones para elegir), o { busqueda, idioma } en
+   * la segunda, con lo que la persona eligio (ver mostrarEleccion). Las dos
+   * llamadas comparten el mismo turno en pantalla.
+   */
+  function iniciarStreaming(pregunta, proyecto, turno, detenerContador, conversacionId, inicioTurno, documentos, opciones) {
+    opciones = opciones || {};
     let url = "/api/chat?q=" + encodeURIComponent(pregunta) + "&projectId=" + encodeURIComponent(proyecto);
     if (documentos.length) {
       url += "&documentos=" + documentos.join(",");
@@ -789,16 +804,37 @@
     if (conversacionId != null) {
       url += "&conversacionId=" + conversacionId;
     }
+    if (opciones.busqueda) {
+      url += "&busqueda=" + encodeURIComponent(opciones.busqueda);
+      url += "&idioma=" + encodeURIComponent(opciones.idioma || "es");
+    } else if (opciones.proponer) {
+      url += "&proponer=true";
+    }
     const fuente = new EventSource(url);
     streamsActivos.set(conversacionId, { fuente: fuente, turno: turno, detenerContador: detenerContador });
 
-    // Solo llega si el Reformulador cambio el texto de busqueda (ver ChatController):
+    // Solo llega si se busco con un texto distinto de la pregunta (ver ChatController):
     // el vocabulario coloquial de la pregunta puede no coincidir con el termino formal
     // de la fuente (ej. "autoboxing" en la pregunta, "boxing conversion" en el corpus).
+    // Con `busqueda` es la consulta que la persona eligio; sin ella, la que el
+    // Reformulador aplico solo (camino automatico).
     fuente.addEventListener("reformulacion", (evento) => {
       const consulta = JSON.parse(evento.data);
       turno.reformulacionTexto = consulta;
-      turno.reformulacion.textContent = "Buscando también como: “" + consulta + "”";
+      turno.reformulacion.textContent = opciones.busqueda
+        ? "Buscando como: “" + consulta + "”"
+        : "Buscando también como: “" + consulta + "”";
+    });
+
+    // Solo con proponer=true: la busqueda original no alcanzo y hay alternativas.
+    // El servidor manda "fin" justo despues, sin citas ni tokens; la respuesta
+    // real llega recien cuando la persona elige y se vuelve a llamar.
+    fuente.addEventListener("reformulaciones", (evento) => {
+      const alternativas = JSON.parse(evento.data);
+      turno.eligiendo = true;
+      detenerContador();
+      turno.estado.textContent = "Esperando tu elección";
+      mostrarEleccion(pregunta, proyecto, turno, alternativas, conversacionId, documentos);
     });
 
     fuente.addEventListener("citas", (evento) => {
@@ -827,6 +863,13 @@
     });
 
     fuente.addEventListener("fin", () => {
+      if (turno.eligiendo) {
+        // Fin del primer stream, el de las propuestas: se cierra la conexion
+        // (si no, EventSource reintenta solo) pero el turno sigue abierto
+        // esperando la eleccion -- no se guarda todavia, no hay respuesta.
+        cerrarStreaming(conversacionId, turno, detenerContador);
+        return;
+      }
       const duracionMs = Date.now() - inicioTurno;
       cerrarStreaming(conversacionId, turno, detenerContador, duracionMs);
       guardarTurno(pregunta, proyecto, turno, false, null, conversacionId, duracionMs);
@@ -839,6 +882,78 @@
       cerrarStreaming(conversacionId, turno, detenerContador);
       guardarTurno(pregunta, proyecto, turno, true, turno.estado.textContent, conversacionId);
     };
+  }
+
+  let contadorEleccion = 0;
+
+  /**
+   * Pinta, dentro del turno, la lista de consultas reformuladas que propuso el
+   * servidor (mas "usar mi pregunta tal cual") y la eleccion de idioma de la
+   * respuesta. Al confirmar, vuelve a preguntar con `busqueda` e `idioma`
+   * sobre el MISMO turno: la burbuja de la pregunta no se repite, y la
+   * respuesta aparece donde estaba el panel.
+   *
+   * Un F5 mientras el panel esta abierto pierde la eleccion (el servidor
+   * descarto el stream y este turno no se guardo): la persona vuelve a
+   * preguntar. Es la misma regla que ya aplica a una respuesta a medio
+   * generar (ver historial-db.js).
+   */
+  function mostrarEleccion(pregunta, proyecto, turno, alternativas, conversacionId, documentos) {
+    const idGrupo = ++contadorEleccion;
+    const nombreBusqueda = "busqueda-" + idGrupo;
+    const nombreIdioma = "idioma-" + idGrupo;
+    const opcionesBusqueda = alternativas
+      .map((alternativa, i) =>
+        '<label class="eleccion-opcion">' +
+        `<input type="radio" name="${nombreBusqueda}" value="${i}"${i === 0 ? " checked" : ""}>` +
+        `<span>${escaparHtml(alternativa)}</span>` +
+        "</label>")
+      .join("");
+    turno.eleccion.innerHTML =
+      '<p class="eleccion-titulo">La búsqueda con tu pregunta tal cual no encontró resultados claros. ' +
+      "Elige con qué texto buscar:</p>" +
+      '<div class="eleccion-grupo">' +
+      opcionesBusqueda +
+      '<label class="eleccion-opcion">' +
+      `<input type="radio" name="${nombreBusqueda}" value="original">` +
+      "<span>Usar mi pregunta tal cual</span>" +
+      "</label>" +
+      "</div>" +
+      '<p class="eleccion-titulo">Responder en:</p>' +
+      '<div class="eleccion-grupo eleccion-grupo-horizontal">' +
+      '<label class="eleccion-opcion">' +
+      `<input type="radio" name="${nombreIdioma}" value="es" checked>` +
+      "<span>Español</span>" +
+      "</label>" +
+      '<label class="eleccion-opcion">' +
+      `<input type="radio" name="${nombreIdioma}" value="original">` +
+      "<span>Idioma original de las fuentes</span>" +
+      "</label>" +
+      "</div>" +
+      '<button type="button" class="boton-eleccion">Responder</button>';
+    turno.eleccion.classList.remove("oculto");
+    turno.eleccion.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+    turno.eleccion.querySelector(".boton-eleccion").addEventListener("click", () => {
+      const seleccion = turno.eleccion.querySelector(`input[name="${nombreBusqueda}"]:checked`);
+      const idioma = turno.eleccion.querySelector(`input[name="${nombreIdioma}"]:checked`);
+      // "original" = la propia pregunta: el servidor busca con ella sin volver
+      // a reformular (si no, pisaria la eleccion con la reformulacion automatica).
+      const busqueda = !seleccion || seleccion.value === "original"
+        ? pregunta
+        : alternativas[Number(seleccion.value)];
+      turno.eleccion.classList.add("oculto");
+      turno.eleccion.innerHTML = "";
+      turno.eligiendo = false;
+      if (conversacionActualId === conversacionId) {
+        boton.disabled = true;
+      }
+      const detenerContador = iniciarContador(turno.estado, "Buscando y analizando tu pregunta");
+      iniciarStreaming(pregunta, proyecto, turno, detenerContador, conversacionId, Date.now(), documentos, {
+        busqueda: busqueda,
+        idioma: idioma ? idioma.value : "es",
+      });
+    });
   }
 
   function cerrarStreaming(conversacionId, turno, detenerContador, duracionMs) {

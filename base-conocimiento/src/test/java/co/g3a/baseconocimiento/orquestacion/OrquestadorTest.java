@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 
 import co.g3a.baseconocimiento.compartido.Dominio.Filtros;
 import co.g3a.baseconocimiento.compartido.Dominio.Fragmento;
+import co.g3a.baseconocimiento.compartido.Dominio.IdiomaRespuesta;
 import co.g3a.baseconocimiento.compartido.Dominio.Pregunta;
 import co.g3a.baseconocimiento.compartido.Dominio.ProyectoId;
 import co.g3a.baseconocimiento.llm.Planificador;
@@ -40,7 +41,7 @@ class OrquestadorTest {
   private static final UmbralRelevanciaPropiedades UMBRAL_POR_DEFECTO =
       new UmbralRelevanciaPropiedades(true, 0.003, 0.05, 500, 8.0);
   private static final Reformulador REFORMULADOR_SIN_CAMBIOS =
-      pregunta -> new Reformulador.Reformulacion(pregunta, false);
+      Reformulador.Reformulacion::sinCambios;
 
   @Test
   @DisplayName("Conecta las siete etapas: plan, herramientas, fusion, sintesis y registro")
@@ -66,7 +67,8 @@ class OrquestadorTest {
     Planificador planificador =
         (pregunta, herramientas) -> new PlanDeHerramientas(List.of("fake_tool"), "porque si");
 
-    Sintetizador sintetizador = (pregunta, contexto) -> Flux.just("Respuesta ", "citando ", "[1].");
+    Sintetizador sintetizador =
+        (pregunta, contexto, idioma) -> Flux.just("Respuesta ", "citando ", "[1].");
     VerificadorGrounding verificadorGrounding = mock(VerificadorGrounding.class);
 
     ContextoRepositorio contextoRepo = mock(ContextoRepositorio.class);
@@ -177,7 +179,7 @@ class OrquestadorTest {
 
     assertThat(resultado.respuesta().texto()).isEqualTo(Orquestador.MENSAJE_SIN_INFORMACION);
     assertThat(resultado.respuesta().citas()).isEmpty();
-    verify(sintetizador, never()).sintetizar(any(), any());
+    verify(sintetizador, never()).sintetizar(any(), any(), any());
     verify(verificadorGrounding, never()).verificar(any(), any());
   }
 
@@ -243,7 +245,7 @@ class OrquestadorTest {
 
     assertThat(resultado.respuesta().texto()).isEqualTo(Orquestador.MENSAJE_SIN_INFORMACION);
     assertThat(resultado.respuesta().citas()).isEmpty();
-    verify(sintetizador, never()).sintetizar(any(), any());
+    verify(sintetizador, never()).sintetizar(any(), any(), any());
   }
 
   @Test
@@ -270,7 +272,8 @@ class OrquestadorTest {
     Planificador planificador =
         (pregunta, herramientas) -> new PlanDeHerramientas(List.of("fake_tool"), "porque si");
 
-    Sintetizador sintetizador = (pregunta, contexto) -> Flux.just("Respuesta ", "citando ", "[1].");
+    Sintetizador sintetizador =
+        (pregunta, contexto, idioma) -> Flux.just("Respuesta ", "citando ", "[1].");
     VerificadorGrounding verificadorGrounding = mock(VerificadorGrounding.class);
     when(verificadorGrounding.verificar(anyString(), anyString())).thenReturn(new Veredicto(true));
 
@@ -334,7 +337,7 @@ class OrquestadorTest {
     Planificador planificador =
         (pregunta, herramientas) -> new PlanDeHerramientas(List.of("subsystem_index"), "porque si");
 
-    Sintetizador sintetizador = (pregunta, contexto) -> Flux.just("Respuesta.");
+    Sintetizador sintetizador = (pregunta, contexto, idioma) -> Flux.just("Respuesta.");
     VerificadorGrounding verificadorGrounding = mock(VerificadorGrounding.class);
 
     ContextoRepositorio contextoRepo = mock(ContextoRepositorio.class);
@@ -434,9 +437,9 @@ class OrquestadorTest {
     Planificador planificador =
         (pregunta, herramientas) -> new PlanDeHerramientas(List.of("fake_tool"), "porque si");
     Reformulador reformulador =
-        pregunta -> new Reformulador.Reformulacion("boxing conversion", true);
+        pregunta -> new Reformulador.Reformulacion(pregunta, List.of("boxing conversion"));
 
-    Sintetizador sintetizador = (pregunta, contexto) -> Flux.just("Respuesta.");
+    Sintetizador sintetizador = (pregunta, contexto, idioma) -> Flux.just("Respuesta.");
     VerificadorGrounding verificadorGrounding = mock(VerificadorGrounding.class);
 
     ContextoRepositorio contextoRepo = mock(ContextoRepositorio.class);
@@ -539,10 +542,11 @@ class OrquestadorTest {
     // Como el "que es un record" real: un LLM chico puede reformular lejos del tema.
     Reformulador reformulador =
         pregunta ->
-            new Reformulador.Reformulacion("estructura con acceso por indice numerico", true);
+            new Reformulador.Reformulacion(
+                pregunta, List.of("estructura con acceso por indice numerico"));
 
     Sintetizador sintetizador =
-        (pregunta, contexto) -> Flux.just("Un enum es un tipo restringido.");
+        (pregunta, contexto, idioma) -> Flux.just("Un enum es un tipo restringido.");
     VerificadorGrounding verificadorGrounding = mock(VerificadorGrounding.class);
     when(verificadorGrounding.verificar(any(), any())).thenReturn(new Veredicto(true));
 
@@ -610,7 +614,7 @@ class OrquestadorTest {
         (pregunta, herramientas) -> new PlanDeHerramientas(List.of("fake_tool"), "porque si");
     Reformulador reformulador = mock(Reformulador.class);
 
-    Sintetizador sintetizador = (pregunta, contexto) -> Flux.just("Respuesta.");
+    Sintetizador sintetizador = (pregunta, contexto, idioma) -> Flux.just("Respuesta.");
     VerificadorGrounding verificadorGrounding = mock(VerificadorGrounding.class);
 
     ContextoRepositorio contextoRepo = mock(ContextoRepositorio.class);
@@ -687,7 +691,7 @@ class OrquestadorTest {
     assertThat(resultado.respuesta().texto()).isEqualTo(Orquestador.MENSAJE_SERVIDOR_OCUPADO);
     assertThat(resultado.respuesta().citas()).isEmpty();
     verify(planificador, never()).planificar(any(), any());
-    verify(sintetizador, never()).sintetizar(any(), any());
+    verify(sintetizador, never()).sintetizar(any(), any(), any());
     verify(verificadorGrounding, never()).verificar(any(), any());
   }
 
@@ -716,7 +720,7 @@ class OrquestadorTest {
     Planificador planificador =
         (pregunta, herramientas) -> new PlanDeHerramientas(List.of("fake_tool"), "porque si");
 
-    Sintetizador sintetizador = (pregunta, contexto) -> Flux.just("Respuesta ", "final.");
+    Sintetizador sintetizador = (pregunta, contexto, idioma) -> Flux.just("Respuesta ", "final.");
     VerificadorGrounding verificadorGrounding = mock(VerificadorGrounding.class);
 
     ContextoRepositorio contextoRepo = mock(ContextoRepositorio.class);
@@ -750,7 +754,11 @@ class OrquestadorTest {
 
     Consultar.RespuestaEnStreaming resultado =
         orquestador.ejecutarEnStreaming(
-            new Pregunta("¿Que es esto?"), PROYECTO, Filtros.NINGUNO, 42L);
+            new Pregunta("¿Que es esto?"),
+            PROYECTO,
+            Filtros.NINGUNO,
+            42L,
+            Consultar.Preferencias.POR_DEFECTO);
     // El Flux es perezoso: doOnNext/doFinally recien corren al suscribirse.
     String textoCompleto =
         resultado.texto().collectList().map(partes -> String.join("", partes)).block();
@@ -760,6 +768,326 @@ class OrquestadorTest {
     verify(streamsEnCurso).iniciar(42L, "¿Que es esto?", "default");
     verify(streamsEnCurso).actualizarCitas(eq(42L), any(), any());
     verify(streamsEnCurso).finalizar(42L, "completo", "Respuesta final.", 1L);
+  }
+
+  @Test
+  @DisplayName(
+      "Modo Proponer: si la busqueda original no alcanza, devuelve las alternativas sin sintetizar, "
+          + "suelta el cupo y descarta el stream en curso")
+  void enModoProponerDevuelveLasAlternativasSinResponder() {
+    // rerank=0.01 -> INSUFICIENTE con la pregunta tal cual: dispara el Reformulador.
+    Fragmento fragmentoDebil = fragmento(0.01);
+    List<String> consultasRecibidas = new ArrayList<>();
+    var catalogo =
+        new CatalogoHerramientas(
+            List.of(herramientaQueRegistra("fake_tool", consultasRecibidas, fragmentoDebil)));
+    var executor = new Executor(catalogo);
+
+    Planificador planificador =
+        (pregunta, herramientas) -> new PlanDeHerramientas(List.of("fake_tool"), "porque si");
+    Reformulador reformulador =
+        pregunta ->
+            new Reformulador.Reformulacion(
+                pregunta, List.of("boxing conversion", "autoboxing Java"));
+    Sintetizador sintetizador = mock(Sintetizador.class);
+    QueryLogRepositorio queryLog = mock(QueryLogRepositorio.class);
+    StreamsEnCursoRepositorio streamsEnCurso = mock(StreamsEnCursoRepositorio.class);
+    HerramientasRepositorio herramientasRepo = mock(HerramientasRepositorio.class);
+    when(herramientasRepo.contarChunks(anyString())).thenReturn(100L);
+
+    // Cupo de 1: si el modo Proponer no lo soltara, la segunda llamada de abajo
+    // caeria en "servidor ocupado".
+    var orquestador =
+        new Orquestador(
+            planificador,
+            reformulador,
+            catalogo,
+            executor,
+            mock(ContextoRepositorio.class),
+            herramientasRepo,
+            sintetizador,
+            mock(VerificadorGrounding.class),
+            queryLog,
+            10,
+            true,
+            UMBRAL_POR_DEFECTO,
+            1,
+            streamsEnCurso);
+    var preferencias =
+        new Consultar.Preferencias(
+            new Consultar.ModoReformulacion.Proponer(), IdiomaRespuesta.ESPANOL);
+
+    Consultar.RespuestaEnStreaming resultado =
+        orquestador.ejecutarEnStreaming(
+            new Pregunta("que es el autoboxing"), PROYECTO, Filtros.NINGUNO, 42L, preferencias);
+
+    assertThat(resultado.reformulacionesPropuestas())
+        .containsExactly("boxing conversion", "autoboxing Java");
+    assertThat(resultado.citas()).isEmpty();
+    assertThat(resultado.consultaReformulada()).isNull();
+    assertThat(resultado.texto().collectList().block()).isEmpty();
+    assertThat(resultado.queryLogId().blockOptional()).isEmpty();
+    // Solo la ronda original: la segunda ronda la decide la persona.
+    assertThat(consultasRecibidas).containsExactly("que es el autoboxing");
+    verify(sintetizador, never()).sintetizar(any(), any(), any());
+    verify(queryLog, never()).registrar(any(), any(), any(), any(), any(), any(), any(), anyLong());
+    verify(streamsEnCurso).descartar(42L);
+    verify(streamsEnCurso, never()).finalizar(anyLong(), any(), any(), any());
+
+    Consultar.RespuestaEnStreaming segunda =
+        orquestador.ejecutarEnStreaming(
+            new Pregunta("que es el autoboxing"), PROYECTO, Filtros.NINGUNO, 42L, preferencias);
+    assertThat(segunda.reformulacionesPropuestas()).isNotEmpty();
+  }
+
+  @Test
+  @DisplayName(
+      "Modo Proponer: si el Reformulador no propone nada, responde como el modo automatico "
+          + "(sin alternativas que ofrecer)")
+  void enModoProponerSinAlternativasRespondeIgualQueElAutomatico() {
+    Fragmento fragmentoDebil = fragmento(0.01);
+    var catalogo = new CatalogoHerramientas(List.of(herramientaFalsa("fake_tool", fragmentoDebil)));
+    var executor = new Executor(catalogo);
+    Planificador planificador =
+        (pregunta, herramientas) -> new PlanDeHerramientas(List.of("fake_tool"), "porque si");
+    HerramientasRepositorio herramientasRepo = mock(HerramientasRepositorio.class);
+    when(herramientasRepo.contarChunks(anyString())).thenReturn(100L);
+    QueryLogRepositorio queryLog = mock(QueryLogRepositorio.class);
+    when(queryLog.registrar(any(), any(), any(), any(), any(), any(), any(), anyLong()))
+        .thenReturn(5L);
+
+    var orquestador =
+        new Orquestador(
+            planificador,
+            REFORMULADOR_SIN_CAMBIOS,
+            catalogo,
+            executor,
+            mock(ContextoRepositorio.class),
+            herramientasRepo,
+            mock(Sintetizador.class),
+            mock(VerificadorGrounding.class),
+            queryLog,
+            10,
+            true,
+            UMBRAL_POR_DEFECTO,
+            10,
+            mock(StreamsEnCursoRepositorio.class));
+
+    Consultar.RespuestaEnStreaming resultado =
+        orquestador.ejecutarEnStreaming(
+            new Pregunta("pregunta rara"),
+            PROYECTO,
+            Filtros.NINGUNO,
+            null,
+            new Consultar.Preferencias(
+                new Consultar.ModoReformulacion.Proponer(), IdiomaRespuesta.ESPANOL));
+
+    assertThat(resultado.reformulacionesPropuestas()).isEmpty();
+    String texto = resultado.texto().collectList().map(p -> String.join("", p)).block();
+    assertThat(texto).isEqualTo(Orquestador.MENSAJE_SIN_INFORMACION);
+  }
+
+  @Test
+  @DisplayName(
+      "Modo Elegida: busca con la consulta elegida, nunca llama al Reformulador, la muestra como "
+          + "reformulacion y sintetiza en el idioma pedido")
+  void enModoElegidaBuscaConLaConsultaElegidaSinReformular() {
+    Fragmento fragmentoFuerte = fragmento(9.0);
+    List<String> consultasRecibidas = new ArrayList<>();
+    var catalogo =
+        new CatalogoHerramientas(
+            List.of(herramientaQueRegistra("fake_tool", consultasRecibidas, fragmentoFuerte)));
+    var executor = new Executor(catalogo);
+    Planificador planificador =
+        (pregunta, herramientas) -> new PlanDeHerramientas(List.of("fake_tool"), "porque si");
+    Reformulador reformulador = mock(Reformulador.class);
+    List<IdiomaRespuesta> idiomasRecibidos = new ArrayList<>();
+    Sintetizador sintetizador =
+        (pregunta, contexto, idioma) -> {
+          idiomasRecibidos.add(idioma);
+          return Flux.just("Boxing conversion is...");
+        };
+    ContextoRepositorio contextoRepo = mock(ContextoRepositorio.class);
+    when(contextoRepo.vecinos(100L, 0)).thenReturn(List.of());
+    HerramientasRepositorio herramientasRepo = mock(HerramientasRepositorio.class);
+    when(herramientasRepo.contarChunks(anyString())).thenReturn(100L);
+    QueryLogRepositorio queryLog = mock(QueryLogRepositorio.class);
+    when(queryLog.registrar(any(), any(), any(), any(), any(), any(), any(), anyLong()))
+        .thenReturn(3L);
+    StreamsEnCursoRepositorio streamsEnCurso = mock(StreamsEnCursoRepositorio.class);
+
+    var orquestador =
+        new Orquestador(
+            planificador,
+            reformulador,
+            catalogo,
+            executor,
+            contextoRepo,
+            herramientasRepo,
+            sintetizador,
+            mock(VerificadorGrounding.class),
+            queryLog,
+            10,
+            true,
+            UMBRAL_POR_DEFECTO,
+            10,
+            streamsEnCurso);
+
+    Consultar.RespuestaEnStreaming resultado =
+        orquestador.ejecutarEnStreaming(
+            new Pregunta("que es el autoboxing"),
+            PROYECTO,
+            Filtros.NINGUNO,
+            42L,
+            new Consultar.Preferencias(
+                new Consultar.ModoReformulacion.Elegida("boxing conversion"),
+                IdiomaRespuesta.ORIGINAL_DEL_CORPUS));
+    String texto = resultado.texto().collectList().map(p -> String.join("", p)).block();
+
+    assertThat(consultasRecibidas).containsExactly("boxing conversion");
+    assertThat(resultado.consultaReformulada()).isEqualTo("boxing conversion");
+    assertThat(resultado.reformulacionesPropuestas()).isEmpty();
+    assertThat(texto).isEqualTo("Boxing conversion is...");
+    assertThat(idiomasRecibidos).containsExactly(IdiomaRespuesta.ORIGINAL_DEL_CORPUS);
+    verify(reformulador, never()).reformular(any());
+    // Lo que queda registrado sigue siendo la pregunta original, no la consulta elegida.
+    verify(queryLog)
+        .registrar(eq("que es el autoboxing"), any(), any(), any(), any(), any(), any(), anyLong());
+    verify(streamsEnCurso).actualizarCitas(eq(42L), any(), eq("boxing conversion"));
+  }
+
+  @Test
+  @DisplayName(
+      "Modo Elegida con la propia pregunta (la persona prefirio no reformular): busca con ella, no "
+          + "reformula y no muestra reformulacion")
+  void enModoElegidaConLaPreguntaOriginalNoReformulaNiLaMuestra() {
+    // rerank=0.01: INSUFICIENTE, el modo automatico si llamaria al Reformulador aca.
+    Fragmento fragmentoDebil = fragmento(0.01);
+    var catalogo = new CatalogoHerramientas(List.of(herramientaFalsa("fake_tool", fragmentoDebil)));
+    var executor = new Executor(catalogo);
+    Planificador planificador =
+        (pregunta, herramientas) -> new PlanDeHerramientas(List.of("fake_tool"), "porque si");
+    Reformulador reformulador = mock(Reformulador.class);
+    HerramientasRepositorio herramientasRepo = mock(HerramientasRepositorio.class);
+    when(herramientasRepo.contarChunks(anyString())).thenReturn(100L);
+    QueryLogRepositorio queryLog = mock(QueryLogRepositorio.class);
+    when(queryLog.registrar(any(), any(), any(), any(), any(), any(), any(), anyLong()))
+        .thenReturn(4L);
+
+    var orquestador =
+        new Orquestador(
+            planificador,
+            reformulador,
+            catalogo,
+            executor,
+            mock(ContextoRepositorio.class),
+            herramientasRepo,
+            mock(Sintetizador.class),
+            mock(VerificadorGrounding.class),
+            queryLog,
+            10,
+            true,
+            UMBRAL_POR_DEFECTO,
+            10,
+            mock(StreamsEnCursoRepositorio.class));
+
+    Consultar.RespuestaEnStreaming resultado =
+        orquestador.ejecutarEnStreaming(
+            new Pregunta("que es el autoboxing"),
+            PROYECTO,
+            Filtros.NINGUNO,
+            null,
+            new Consultar.Preferencias(
+                new Consultar.ModoReformulacion.Elegida("Que es el autoboxing "),
+                IdiomaRespuesta.ESPANOL));
+    String texto = resultado.texto().collectList().map(p -> String.join("", p)).block();
+
+    verify(reformulador, never()).reformular(any());
+    assertThat(resultado.consultaReformulada()).isNull();
+    assertThat(texto).isEqualTo(Orquestador.MENSAJE_SIN_INFORMACION);
+  }
+
+  @Test
+  @DisplayName("El camino bloqueante (Teams, /api/ask) sintetiza en español, sin preguntar nada")
+  void elCaminoBloqueanteSintetizaEnEspanol() {
+    Fragmento fragmentoFuerte = fragmento(9.0);
+    var catalogo =
+        new CatalogoHerramientas(List.of(herramientaFalsa("fake_tool", fragmentoFuerte)));
+    var executor = new Executor(catalogo);
+    Planificador planificador =
+        (pregunta, herramientas) -> new PlanDeHerramientas(List.of("fake_tool"), "porque si");
+    List<IdiomaRespuesta> idiomasRecibidos = new ArrayList<>();
+    Sintetizador sintetizador =
+        (pregunta, contexto, idioma) -> {
+          idiomasRecibidos.add(idioma);
+          return Flux.just("Respuesta.");
+        };
+    ContextoRepositorio contextoRepo = mock(ContextoRepositorio.class);
+    when(contextoRepo.vecinos(100L, 0)).thenReturn(List.of());
+    HerramientasRepositorio herramientasRepo = mock(HerramientasRepositorio.class);
+    when(herramientasRepo.contarChunks(anyString())).thenReturn(100L);
+    QueryLogRepositorio queryLog = mock(QueryLogRepositorio.class);
+    when(queryLog.registrar(any(), any(), any(), any(), any(), any(), any(), anyLong()))
+        .thenReturn(6L);
+
+    var orquestador =
+        new Orquestador(
+            planificador,
+            REFORMULADOR_SIN_CAMBIOS,
+            catalogo,
+            executor,
+            contextoRepo,
+            herramientasRepo,
+            sintetizador,
+            mock(VerificadorGrounding.class),
+            queryLog,
+            10,
+            true,
+            UMBRAL_POR_DEFECTO,
+            10,
+            mock(StreamsEnCursoRepositorio.class));
+
+    orquestador.ejecutar(new Pregunta("cualquier cosa"), PROYECTO, Filtros.NINGUNO);
+
+    assertThat(idiomasRecibidos).containsExactly(IdiomaRespuesta.ESPANOL);
+  }
+
+  private static Fragmento fragmento(double rerank) {
+    return new Fragmento(
+        1L,
+        100L,
+        "file:///doc1",
+        "Doc 1",
+        "Esto es el fragmento uno.",
+        "doc_section",
+        0,
+        Instant.EPOCH,
+        Map.of(),
+        0.05,
+        rerank);
+  }
+
+  /** Como {@link #herramientaFalsa}, pero anota cada consulta con la que la llamaron. */
+  private static Herramienta herramientaQueRegistra(
+      String nombre, List<String> consultasRecibidas, Fragmento... fragmentos) {
+    return new Herramienta() {
+      @Override
+      public String nombre() {
+        return nombre;
+      }
+
+      @Override
+      public String descripcion() {
+        return "de prueba";
+      }
+
+      @Override
+      public List<Fragmento> ejecutar(
+          String consulta, ProyectoId proyecto, List<Long> documentosPermitidos) {
+        consultasRecibidas.add(consulta);
+        return List.of(fragmentos);
+      }
+    };
   }
 
   private static Herramienta herramientaFalsa(String nombre, Fragmento... fragmentos) {

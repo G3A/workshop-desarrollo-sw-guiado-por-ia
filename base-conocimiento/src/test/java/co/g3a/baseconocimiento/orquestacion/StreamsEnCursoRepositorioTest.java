@@ -68,6 +68,21 @@ class StreamsEnCursoRepositorioTest {
     assertThat(estado.get().queryLogId()).isNull();
   }
 
+  @Test
+  @DisplayName(
+      "descartar: borra la fila, asi un F5 mientras la persona elige una reformulacion no"
+          + " encuentra ni 'en_curso' (sondeo eterno) ni una respuesta en blanco")
+  void descartarBorraLaFila() {
+    long conversacionId = 1003L;
+    streamsEnCurso.iniciar(conversacionId, "¿que es el autoboxing?", "default");
+
+    streamsEnCurso.descartar(conversacionId);
+
+    assertThat(streamsEnCurso.buscar(conversacionId)).isEmpty();
+    // Idempotente: descartar lo que ya no existe no falla.
+    streamsEnCurso.descartar(conversacionId);
+  }
+
   private long registrarQueryLogDePrueba() {
     var plan = new PlanDeHerramientas(List.of("search_unified"), "porque si");
     return queryLog.registrar(

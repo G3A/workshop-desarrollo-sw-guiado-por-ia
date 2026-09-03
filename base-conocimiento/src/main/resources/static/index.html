@@ -368,6 +368,47 @@
     50% { opacity: 1; transform: scale(1); }
   }
 
+  /* Panel para elegir la consulta reformulada y el idioma de la respuesta
+     (solo aparece cuando la busqueda original no alcanzo; ver app.js). */
+  .turno-eleccion {
+    border: 1px solid var(--borde);
+    border-radius: 12px;
+    padding: 0.85rem 1rem;
+    margin: 0 0 0.75rem;
+    background: var(--bg-elevado);
+    box-shadow: var(--sombra);
+  }
+  .turno-eleccion.oculto { display: none; }
+  .eleccion-titulo {
+    margin: 0 0 0.45rem;
+    font-size: 0.88rem;
+    color: var(--texto-atenuado);
+  }
+  .eleccion-titulo + .eleccion-grupo { margin-bottom: 0.8rem; }
+  .eleccion-grupo { display: flex; flex-direction: column; gap: 0.3rem; }
+  .eleccion-grupo-horizontal { flex-direction: row; flex-wrap: wrap; gap: 0.3rem 1.2rem; }
+  .eleccion-opcion {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    font-size: 0.92rem;
+    cursor: pointer;
+    line-height: 1.35;
+  }
+  .eleccion-opcion input { accent-color: var(--acento); margin-top: 0.2rem; flex: none; }
+  .boton-eleccion {
+    margin-top: 0.4rem;
+    border: none;
+    border-radius: 8px;
+    padding: 0.45rem 1rem;
+    background: var(--acento);
+    color: var(--acento-texto);
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .boton-eleccion:hover, .boton-eleccion:focus-visible { filter: brightness(0.92); }
+
   .turno-respuesta {
     white-space: pre-wrap;
     min-height: 1.4rem;
