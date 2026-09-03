@@ -21,6 +21,13 @@ REST y Server-Sent Events; toda la lógica de UI es JavaScript plano consumiendo
   landing" del artículo de Cerebras que inspira la arquitectura.
 - **Nunca ocultar la falta de evidencia**: si no hay evidencia suficiente, la UI debe mostrar ese
   corte explícito, no una respuesta genérica sin citas.
+- **La reformulación se elige, no se impone**: cuando la búsqueda con la pregunta tal cual no
+  alcanza, la página no deja que el `Reformulador` reescriba en silencio — muestra las consultas
+  alternativas que propuso (más "usar mi pregunta tal cual") y pregunta en qué idioma responder
+  (español o el original de las fuentes). Son dos llamadas a `/api/chat` sobre el mismo turno: la
+  primera con `proponer=true` termina en el evento SSE `reformulaciones`; la segunda lleva
+  `busqueda` e `idioma` y ya no reformula. Un F5 con el panel abierto pierde la elección, igual que
+  pierde una respuesta a medio generar.
 - <!-- TODO: agregar más principios si el equipo los formaliza; hoy solo estos dos son
   verificables desde el código y la arquitectura documentada. -->
 

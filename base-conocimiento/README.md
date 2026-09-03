@@ -30,7 +30,10 @@ camino — detalle completo en [`docs/architecture.md`](docs/architecture.md#pip
   suficiente; en la zona ambigua, `VerificadorGrounding` hace un juicio aparte contra el LLM antes
   de dejar sintetizar.
 - **Reintenta una vez, con la consulta reescrita**: si la búsqueda original no alcanza, `Reformulador`
-  reescribe la pregunta al vocabulario probable de la fuente y repite el mismo plan de herramientas.
+  propone hasta tres reescrituras al vocabulario probable de la fuente. En la UI web la persona
+  elige con cuál buscar (o se queda con su pregunta tal cual) y en qué idioma leer la respuesta
+  (español o el original de las fuentes); en Teams y `/api/ask` se aplica la primera sola y se
+  repite el mismo plan de herramientas.
 - **Sabe cuándo no sabe**: si tras eso sigue sin evidencia suficiente, corta con un mensaje fijo sin
   gastar la llamada de síntesis.
 

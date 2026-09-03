@@ -2,6 +2,7 @@ package co.g3a.baseconocimiento.orquestacion;
 
 import co.g3a.baseconocimiento.compartido.Dominio.Cita;
 import co.g3a.baseconocimiento.compartido.Dominio.Filtros;
+import co.g3a.baseconocimiento.compartido.Dominio.IdiomaRespuesta;
 import co.g3a.baseconocimiento.compartido.Dominio.Pregunta;
 import co.g3a.baseconocimiento.compartido.Dominio.ProyectoId;
 import co.g3a.baseconocimiento.compartido.Dominio.Respuesta;
@@ -30,6 +31,54 @@ public interface Consultar {
   Respuesta responder(Pregunta pregunta, ProyectoId proyecto, Filtros filtros);
 
   /**
+   * Qué hacer con el {@code Reformulador} cuando la búsqueda con la pregunta tal cual no alcanza.
+   *
+   * <p>Un tipo sellado y no un enum más un campo nulable: así {@link Elegida} no puede existir sin
+   * su consulta, y {@link Automatica}/{@link Proponer} no pueden arrastrar una que nadie lee.
+   */
+  sealed interface ModoReformulacion {
+
+    /**
+     * Lo de siempre: reformula sola, repite la búsqueda con la primera alternativa y se queda con
+     * la ronda que mejor pasa la puerta de relevancia. Es lo que usan Teams y {@code /api/ask}, que
+     * no tienen cómo preguntarle nada a la persona a mitad de camino.
+     */
+    record Automatica() implements ModoReformulacion {}
+
+    /**
+     * Si la búsqueda original no alcanza y el {@code Reformulador} tiene alternativas, NO responde:
+     * las devuelve en {@link RespuestaEnStreaming#reformulacionesPropuestas()} para que la persona
+     * elija con cuál buscar (y en qué idioma leer la respuesta). El adaptador vuelve a llamar con
+     * {@link Elegida}.
+     */
+    record Proponer() implements ModoReformulacion {}
+
+    /**
+     * Busca con esta consulta, sin pasar por el {@code Reformulador}. La pregunta que se responde
+     * sigue siendo la original: esto solo cambia el texto con el que se consultan las herramientas.
+     *
+     * @param consultaDeBusqueda lo que eligió la persona; puede ser la propia pregunta original si
+     *     prefirió no reformular
+     */
+    record Elegida(String consultaDeBusqueda) implements ModoReformulacion {
+      public Elegida {
+        if (consultaDeBusqueda == null || consultaDeBusqueda.isBlank()) {
+          throw new IllegalArgumentException("La consulta elegida no puede ser vacia");
+        }
+      }
+    }
+  }
+
+  /**
+   * Lo que la persona puede decidir sobre cómo se responde, más allá de la pregunta en sí. {@link
+   * #POR_DEFECTO} reproduce el comportamiento previo a que existieran estas opciones.
+   */
+  record Preferencias(ModoReformulacion reformulacion, IdiomaRespuesta idioma) {
+    public static final Preferencias POR_DEFECTO =
+        new Preferencias(new ModoReformulacion.Automatica(), IdiomaRespuesta.ESPANOL);
+  }
+
+  /**
    * Citas disponibles de inmediato — la etapa 5 (fusion + expansion) ya terminó — y el texto de la
    * síntesis en streaming, token a token. Existe para el adaptador web de F4: dejar que la UI
    * muestre las fuentes antes de que el LLM termine de redactar.
@@ -40,17 +89,31 @@ public interface Consultar {
    * @param queryLogId se resuelve recién cuando {@code texto} completa (ahí es cuando la etapa 7
    *     escribe la fila y se conoce el id) — nunca emite si el stream termina en error o se cancela
    *     antes, porque en ese caso nunca se llega a escribir en {@code query_log}
+   * @param reformulacionesPropuestas solo con {@link ModoReformulacion.Proponer}: si no está vacía,
+   *     NO hay respuesta — {@code citas} viene vacía, {@code texto} completa sin emitir nada y
+   *     {@code queryLogId} nunca emite. El adaptador se las muestra a la persona y vuelve a llamar
+   *     con {@link ModoReformulacion.Elegida}. Vacía en cualquier otro caso.
    */
   record RespuestaEnStreaming(
-      List<Cita> citas, Flux<String> texto, String consultaReformulada, Mono<Long> queryLogId) {}
+      List<Cita> citas,
+      Flux<String> texto,
+      String consultaReformulada,
+      Mono<Long> queryLogId,
+      List<String> reformulacionesPropuestas) {}
 
   /**
    * @param conversacionId identifica la conversación para poder reconectarse con {@link
    *     #estadoDeStream} tras un F5 a mitad de una respuesta; {@code null} = no persistir nada para
    *     reconectar (p. ej. un adaptador sin noción de conversación).
+   * @param preferencias ver {@link Preferencias}; usa {@link Preferencias#POR_DEFECTO} si el
+   *     adaptador no ofrece elegir
    */
   RespuestaEnStreaming responderEnStreaming(
-      Pregunta pregunta, ProyectoId proyecto, Filtros filtros, Long conversacionId);
+      Pregunta pregunta,
+      ProyectoId proyecto,
+      Filtros filtros,
+      Long conversacionId,
+      Preferencias preferencias);
 
   /**
    * Estado de la pregunta más reciente de una conversación — para que la UI se reconecte después de
