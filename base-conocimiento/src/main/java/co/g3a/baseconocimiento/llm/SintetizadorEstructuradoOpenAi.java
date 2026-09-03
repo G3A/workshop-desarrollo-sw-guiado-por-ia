@@ -1,5 +1,6 @@
 package co.g3a.baseconocimiento.llm;
 
+import co.g3a.baseconocimiento.compartido.Dominio.IdiomaRespuesta;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -50,7 +51,7 @@ class SintetizadorEstructuradoOpenAi implements Sintetizador {
       """
             Eres el sintetizador de una base de conocimiento interna. Respondes SOLO con lo
             que aparece en el contexto que se te da a continuacion, nunca con conocimiento
-            propio. Responde en español latinoamericano neutro.
+            propio. %s
 
             Tu respuesta es una lista de afirmaciones. Cada afirmacion es un objeto con dos
             campos: "texto" (una oracion o frase puntual, en prosa propia -- nunca una copia
@@ -99,12 +100,13 @@ class SintetizadorEstructuradoOpenAi implements Sintetizador {
     // diseño el espacio para repetir texto libre sin sentido.
     var opciones =
         OpenAiChatOptions.builder().extraBody(Map.of("reasoning_effort", "none")).maxTokens(4000);
-    this.chatClient =
-        ChatClient.builder(modelo).defaultSystem(SISTEMA).defaultOptions(opciones).build();
+    this.chatClient = ChatClient.builder(modelo).defaultOptions(opciones).build();
   }
 
   @Override
-  public Flux<String> sintetizar(String pregunta, String contexto) {
+  public Flux<String> sintetizar(String pregunta, String contexto, IdiomaRespuesta idioma) {
+    // Prompt de sistema por llamada, no defaultSystem: ver SintetizadorOpenAi.
+    String sistema = SISTEMA.formatted(InstruccionIdioma.para(idioma));
     // Flux.defer: la llamada bloqueante a entity() tiene que ocurrir DENTRO
     // del Flux, no antes de construirlo. Orquestador.ejecutarEnStreaming()
     // libera el cupo de consultas concurrentes en el doFinally() de este
@@ -119,6 +121,7 @@ class SintetizadorEstructuradoOpenAi implements Sintetizador {
           SintesisEstructurada resultado =
               chatClient
                   .prompt()
+                  .system(sistema)
                   .user(usuario)
                   .call()
                   .entity(SintesisEstructurada.class, spec -> spec.useProviderStructuredOutput());

@@ -1,5 +1,6 @@
 package co.g3a.baseconocimiento.llm;
 
+import co.g3a.baseconocimiento.compartido.Dominio.IdiomaRespuesta;
 import java.util.Map;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.openai.OpenAiChatModel;
@@ -45,8 +46,7 @@ class SintetizadorOpenAi implements Sintetizador {
             que aparece en el contexto que se te da a continuacion, nunca con conocimiento
             propio. Si el contexto no alcanza para responder la pregunta, dilo explicitamente
             en vez de inventar. Si dos fuentes del contexto se contradicen entre si, señala la
-            contradiccion en la respuesta en vez de elegir una en silencio. Responde en español
-            latinoamericano neutro.
+            contradiccion en la respuesta en vez de elegir una en silencio. %s
 
             Cada afirmacion debe llevar el marcador [n] de la fuente numerada en el contexto de
             la que sale, pegado al final de esa afirmacion puntual -- nunca antes de ella, y
@@ -112,13 +112,15 @@ class SintetizadorOpenAi implements Sintetizador {
                 Map.of("repeat_penalty", 1.1, "repeat_last_n", 4096, "reasoning_effort", "none"))
             .presencePenalty(0.1)
             .maxTokens(512);
-    this.chatClient =
-        ChatClient.builder(modelo).defaultSystem(SISTEMA).defaultOptions(opciones).build();
+    this.chatClient = ChatClient.builder(modelo).defaultOptions(opciones).build();
   }
 
   @Override
-  public Flux<String> sintetizar(String pregunta, String contexto) {
+  public Flux<String> sintetizar(String pregunta, String contexto, IdiomaRespuesta idioma) {
+    // El prompt de sistema se arma por llamada (no con defaultSystem en el
+    // builder) porque la frase del idioma cambia segun lo que eligio la persona.
+    String sistema = SISTEMA.formatted(InstruccionIdioma.para(idioma));
     String usuario = "Pregunta: %s\n\nContexto:\n%s".formatted(pregunta, contexto);
-    return chatClient.prompt().user(usuario).stream().content();
+    return chatClient.prompt().system(sistema).user(usuario).stream().content();
   }
 }

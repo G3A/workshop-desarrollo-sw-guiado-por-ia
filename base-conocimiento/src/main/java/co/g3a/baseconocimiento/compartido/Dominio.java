@@ -35,6 +35,17 @@ public final class Dominio {
   }
 
   /**
+   * En qué idioma se redacta la respuesta. {@link #ESPANOL} es el comportamiento de siempre; {@link
+   * #ORIGINAL_DEL_CORPUS} le pide al sintetizador que responda en el idioma en que están escritas
+   * las fuentes que usa (típicamente inglés en documentación técnica de referencia), aunque la
+   * pregunta haya llegado en español.
+   */
+  public enum IdiomaRespuesta {
+    ESPANOL,
+    ORIGINAL_DEL_CORPUS
+  }
+
+  /**
    * Restricciones opcionales sobre el corpus.
    *
    * @param documentosPermitidos IDs de {@code documents} a los que acotar la búsqueda; vacío = sin
