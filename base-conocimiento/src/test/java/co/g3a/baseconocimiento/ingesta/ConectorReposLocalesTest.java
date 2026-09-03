@@ -91,7 +91,19 @@ class ConectorReposLocalesTest {
       throws Exception {
     Path repoPath = vaultRoot.resolve("repos").resolve(nombreRepo);
     Files.createDirectories(repoPath);
-    try (Git git = Git.init().setDirectory(repoPath.toFile()).call()) {
+    // setGitDir explicito, no solo setDirectory: InitCommand lee GIT_DIR del
+    // entorno ANTES de decidir donde inicializar. Dentro de un hook de git (el
+    // pre-push de lefthook corre `make check`) en un worktree enlazado, GIT_DIR
+    // apunta al gitdir REAL del repositorio -- sin esta linea, el "repo temporal"
+    // era el repositorio de verdad con el directorio temporal como work tree:
+    // add(".") marcaba todo el arbol como borrado y el commit "inicial" caia
+    // sobre la rama real. Paso el 2026-09-03: dos commits que borraban 287
+    // archivos, pusheados a una rama de feature sin que nadie los pidiera.
+    try (Git git =
+        Git.init()
+            .setDirectory(repoPath.toFile())
+            .setGitDir(repoPath.resolve(".git").toFile())
+            .call()) {
       Files.writeString(repoPath.resolve(archivo), contenido);
       git.add().addFilepattern(".").call();
       git.commit()
