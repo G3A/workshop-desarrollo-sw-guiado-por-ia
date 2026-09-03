@@ -924,6 +924,8 @@
       "<span>Usar mi pregunta tal cual</span>" +
       "</label>" +
       "</div>" +
+      '<p class="eleccion-titulo">Se buscará con este texto (puedes editarlo):</p>' +
+      `<input type="text" class="eleccion-texto" value="${escaparHtml(alternativas[0])}" spellcheck="false">` +
       '<div class="eleccion-grupo">' +
       '<label class="eleccion-opcion">' +
       `<input type="checkbox" name="${nombreIdioma}">` +
@@ -934,14 +936,32 @@
     turno.eleccion.classList.remove("oculto");
     turno.eleccion.scrollIntoView({ behavior: "smooth", block: "nearest" });
 
+    // La lista precarga el campo de texto; lo que se manda es el campo. Asi la
+    // persona puede corregir una alternativa a mano cuando ninguna sirve tal
+    // cual (medido: un modelo chico a veces devuelve tres parafrasis de la
+    // misma frase), sin perder la comodidad de elegir con un click.
+    const campoTexto = turno.eleccion.querySelector(".eleccion-texto");
+    turno.eleccion.querySelectorAll(`input[name="${nombreBusqueda}"]`).forEach((radio) => {
+      radio.addEventListener("change", () => {
+        // "original" = la propia pregunta: el servidor busca con ella sin volver
+        // a reformular (si no, pisaria la eleccion con la reformulacion automatica).
+        campoTexto.value = radio.value === "original" ? pregunta : alternativas[Number(radio.value)];
+      });
+    });
+    campoTexto.addEventListener("keydown", (evento) => {
+      if (evento.key === "Enter") {
+        evento.preventDefault();
+        turno.eleccion.querySelector(".boton-eleccion").click();
+      }
+    });
+
     turno.eleccion.querySelector(".boton-eleccion").addEventListener("click", () => {
       const seleccion = turno.eleccion.querySelector(`input[name="${nombreBusqueda}"]:checked`);
       const enIdiomaOriginal = turno.eleccion.querySelector(`input[name="${nombreIdioma}"]`).checked;
-      // "original" = la propia pregunta: el servidor busca con ella sin volver
-      // a reformular (si no, pisaria la eleccion con la reformulacion automatica).
-      const busqueda = !seleccion || seleccion.value === "original"
-        ? pregunta
-        : alternativas[Number(seleccion.value)];
+      const editada = campoTexto.value.trim();
+      const busqueda = editada
+        ? editada
+        : (!seleccion || seleccion.value === "original" ? pregunta : alternativas[Number(seleccion.value)]);
       turno.eleccion.classList.add("oculto");
       turno.eleccion.innerHTML = "";
       turno.eligiendo = false;

@@ -23,9 +23,10 @@ REST y Server-Sent Events; toda la lógica de UI es JavaScript plano consumiendo
   corte explícito, no una respuesta genérica sin citas.
 - **La reformulación se elige, no se impone**: cuando la búsqueda con la pregunta tal cual no
   alcanza y el `Reformulador` propone dos o más consultas, la página no deja que reescriba en
-  silencio — muestra las alternativas (más "usar mi pregunta tal cual") y un checkbox para pedir la
-  respuesta en el idioma original de las fuentes en vez de español; solo responde cuando la persona
-  envía su elección. Con una sola alternativa no hay nada que elegir y responde de inmediato. Son
+  silencio — muestra las alternativas (más "usar mi pregunta tal cual"), un campo de texto
+  editable precargado con la elegida (lo que se busca es el campo, para corregir a mano cuando
+  ninguna sirve) y un checkbox para pedir la respuesta en el idioma original de las fuentes en vez
+  de español; solo responde cuando la persona envía su elección. Con una sola alternativa no hay nada que elegir y responde de inmediato. Son
   dos llamadas a `/api/chat` sobre el mismo turno: la
   primera con `proponer=true` termina en el evento SSE `reformulaciones`; la segunda lleva
   `busqueda` e `idioma` y ya no reformula. Un F5 con el panel abierto pierde la elección, igual que
