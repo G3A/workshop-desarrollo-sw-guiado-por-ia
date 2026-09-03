@@ -66,6 +66,13 @@ class Orquestador {
       "El servidor ya está atendiendo el máximo de consultas al mismo tiempo. "
           + "Esperá un momento y volvé a intentarlo.";
 
+  /**
+   * En modo {@link Consultar.ModoReformulacion.Proponer}, cuantas alternativas hacen falta para que
+   * valga la pena preguntarle a la persona: con una sola no hay elección posible, y se responde de
+   * inmediato con ella como en el modo automático.
+   */
+  static final int MIN_ALTERNATIVAS_PARA_ELEGIR = 2;
+
   private final Planificador planificador;
   private final Reformulador reformulador;
   private final CatalogoHerramientas catalogo;
@@ -383,12 +390,12 @@ class Orquestador {
             && umbral.decision() != UmbralRelevancia.Decision.SUFICIENTE;
     if (puedeReformular) {
       Reformulador.Reformulacion reformulacion = reformulador.reformular(pregunta.texto());
-      if (reformulacion.reformulada()
-          && modoReformulacion instanceof Consultar.ModoReformulacion.Proponer) {
+      if (modoReformulacion instanceof Consultar.ModoReformulacion.Proponer
+          && reformulacion.alternativas().size() >= MIN_ALTERNATIVAS_PARA_ELEGIR) {
         // La persona elige: se corta aca, sin gastar la segunda ronda de
-        // herramientas ni la sintesis. Si el Reformulador no propuso nada, se
-        // sigue como en el modo automatico (que tampoco tendria con que
-        // reintentar) y se responde con lo que hay.
+        // herramientas ni la sintesis. Con una sola alternativa no hay nada
+        // que elegir y se responde de inmediato por el camino automatico de
+        // abajo (pedido explicito de producto); sin ninguna, tambien.
         return new PreSintesis(
             plan,
             ejecuciones,

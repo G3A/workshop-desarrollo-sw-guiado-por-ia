@@ -888,8 +888,10 @@
 
   /**
    * Pinta, dentro del turno, la lista de consultas reformuladas que propuso el
-   * servidor (mas "usar mi pregunta tal cual") y la eleccion de idioma de la
-   * respuesta. Al confirmar, vuelve a preguntar con `busqueda` e `idioma`
+   * servidor (mas "usar mi pregunta tal cual") y un checkbox para pedir la
+   * respuesta en el idioma original de las fuentes en vez de español. Solo
+   * llega aqui con dos o mas alternativas: con una sola el servidor responde
+   * de inmediato. Al enviar, vuelve a preguntar con `busqueda` e `idioma`
    * sobre el MISMO turno: la burbuja de la pregunta no se repite, y la
    * respuesta aparece donde estaba el panel.
    *
@@ -919,24 +921,19 @@
       "<span>Usar mi pregunta tal cual</span>" +
       "</label>" +
       "</div>" +
-      '<p class="eleccion-titulo">Responder en:</p>' +
-      '<div class="eleccion-grupo eleccion-grupo-horizontal">' +
+      '<div class="eleccion-grupo">' +
       '<label class="eleccion-opcion">' +
-      `<input type="radio" name="${nombreIdioma}" value="es" checked>` +
-      "<span>Español</span>" +
-      "</label>" +
-      '<label class="eleccion-opcion">' +
-      `<input type="radio" name="${nombreIdioma}" value="original">` +
-      "<span>Idioma original de las fuentes</span>" +
+      `<input type="checkbox" name="${nombreIdioma}">` +
+      "<span>Responder en el idioma original de las fuentes (sin marcar: en español)</span>" +
       "</label>" +
       "</div>" +
-      '<button type="button" class="boton-eleccion">Responder</button>';
+      '<button type="button" class="boton-eleccion">Enviar</button>';
     turno.eleccion.classList.remove("oculto");
     turno.eleccion.scrollIntoView({ behavior: "smooth", block: "nearest" });
 
     turno.eleccion.querySelector(".boton-eleccion").addEventListener("click", () => {
       const seleccion = turno.eleccion.querySelector(`input[name="${nombreBusqueda}"]:checked`);
-      const idioma = turno.eleccion.querySelector(`input[name="${nombreIdioma}"]:checked`);
+      const enIdiomaOriginal = turno.eleccion.querySelector(`input[name="${nombreIdioma}"]`).checked;
       // "original" = la propia pregunta: el servidor busca con ella sin volver
       // a reformular (si no, pisaria la eleccion con la reformulacion automatica).
       const busqueda = !seleccion || seleccion.value === "original"
@@ -951,7 +948,7 @@
       const detenerContador = iniciarContador(turno.estado, "Buscando y analizando tu pregunta");
       iniciarStreaming(pregunta, proyecto, turno, detenerContador, conversacionId, Date.now(), documentos, {
         busqueda: busqueda,
-        idioma: idioma ? idioma.value : "es",
+        idioma: enIdiomaOriginal ? "original" : "es",
       });
     });
   }

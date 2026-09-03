@@ -46,10 +46,11 @@ public interface Consultar {
     record Automatica() implements ModoReformulacion {}
 
     /**
-     * Si la búsqueda original no alcanza y el {@code Reformulador} tiene alternativas, NO responde:
-     * las devuelve en {@link RespuestaEnStreaming#reformulacionesPropuestas()} para que la persona
-     * elija con cuál buscar (y en qué idioma leer la respuesta). El adaptador vuelve a llamar con
-     * {@link Elegida}.
+     * Si la búsqueda original no alcanza y el {@code Reformulador} tiene al menos DOS alternativas,
+     * NO responde: las devuelve en {@link RespuestaEnStreaming#reformulacionesPropuestas()} para
+     * que la persona elija con cuál buscar (y en qué idioma leer la respuesta). El adaptador vuelve
+     * a llamar con {@link Elegida}. Con una sola alternativa no hay nada que elegir: se responde de
+     * inmediato como en {@link Automatica}.
      */
     record Proponer() implements ModoReformulacion {}
 
