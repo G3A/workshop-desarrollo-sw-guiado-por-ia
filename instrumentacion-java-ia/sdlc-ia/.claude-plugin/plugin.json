@@ -1,0 +1,34 @@
+{
+  "name": "sdlc-ia",
+  "version": "0.1.0",
+  "description": "AI coding-agent skills for a Java/Spring, GitHub-native agentic SDLC.",
+  "author": {
+    "name": "G3A"
+  },
+  "license": "MIT",
+  "keywords": [
+    "agents.md",
+    "context",
+    "github",
+    "github-actions",
+    "github-issues",
+    "quality-gates",
+    "architecture-tests",
+    "archunit",
+    "maven",
+    "spring",
+    "spring-boot",
+    "spring-modulith",
+    "mcp",
+    "hooks",
+    "agent-guardrails",
+    "lefthook",
+    "gitleaks",
+    "checkstyle",
+    "spotless",
+    "claude-code",
+    "sdlc",
+    "instrumentation",
+    "onboarding"
+  ]
+}

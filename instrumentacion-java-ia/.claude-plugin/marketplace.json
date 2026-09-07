@@ -1,0 +1,14 @@
+{
+  "name": "sdlc-ia",
+  "description": "AI coding-agent skills for a Java/Spring, GitHub-native agentic SDLC.",
+  "owner": {
+    "name": "G3A"
+  },
+  "plugins": [
+    {
+      "name": "sdlc-ia",
+      "source": "./sdlc-ia",
+      "description": "AI coding-agent skills for a Java/Spring, GitHub-native agentic SDLC."
+    }
+  ]
+}

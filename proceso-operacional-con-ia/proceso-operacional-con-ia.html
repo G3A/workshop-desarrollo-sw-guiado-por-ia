@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Proceso operacional con IA — v1.0.0</title>
+  <link rel="icon" href="img/favicon.svg" type="image/svg+xml" />
+
+  <!-- bpmn-js 17.11.1 pineado + SRI: ningún asset alterado en el CDN ejecuta en esta sesión -->
+  <link rel="stylesheet" href="https://unpkg.com/bpmn-js@17.11.1/dist/assets/diagram-js.css"
+        integrity="sha384-2WPRuHNLlqer/8fKQLOMZSWVINTz4vDTnIB1SXm75ubMI3oBGJyfvuOcPPc0Pfjh" crossorigin="anonymous" />
+  <link rel="stylesheet" href="https://unpkg.com/bpmn-js@17.11.1/dist/assets/bpmn-js.css"
+        integrity="sha384-d5fPuJ8qoomhVwsLNT3CIO4Wr1Ur5kNIP6IkZ1c1m5deqBd43hlGyuXPeFUiuA0N" crossorigin="anonymous" />
+
+  <style>
+    /* ---------------------------------------------------------------------
+       Tokens — paleta "grafo de commits": cada carril tiene un acento propio,
+       reutilizado en badges del panel Y en los overlays del diagrama, para que
+       el color sea el mismo hilo conductor en las dos superficies.
+       ------------------------------------------------------------------- */
+    :root {
+      --paper: #f6f5f1; --panel: #ffffff; --card: #fbfaf7; --line: #dfdcd3;
+      --ink: #1b1f23; --muted: #6b7078; --ink-soft: #3a3f47;
+      --accent: #3e5fdd; --accent-ink: #ffffff;
+      --ok: #157f4f; --warn: #a5590a; --danger: #c02f3a;
+      --code-bg: #12141a; --code-ink: #e8eaed;
+
+      /* carriles, en el orden del proceso (1..6) */
+      --l1: #3e5fdd; /* persona desarrolladora */
+      --l2: #a5590a; /* registro de paquetes */
+      --l3: #7c3aed; /* agente de IA */
+      --l4: #0d8f8a; /* GitHub Issues/Projects */
+      --l5: #c23b8e; /* GitHub PR & Rulesets */
+      --l6: #1a9350; /* GitHub Actions */
+
+      --radius: 8px; --radius-sm: 5px;
+      --shadow: 0 1px 2px rgba(20,20,15,.06), 0 8px 24px -12px rgba(20,20,15,.18);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --paper: #14171c; --panel: #1a1e24; --card: #1f2430; --line: #2b303b;
+        --ink: #e9eaee; --muted: #9096a1; --ink-soft: #c7cbd4;
+        --accent: #7b93ff; --accent-ink: #0d1117;
+        --ok: #3ecf8e; --warn: #e2a13d; --danger: #f16472;
+        --code-bg: #0b0d11; --code-ink: #d8dbe2;
+        --l1: #7b93ff; --l2: #e2a13d; --l3: #b18aff; --l4: #3fc4bd; --l5: #ef7cc2; --l6: #4fd989;
+        --shadow: 0 1px 2px rgba(0,0,0,.4), 0 12px 30px -14px rgba(0,0,0,.6);
+      }
+    }
+    :root[data-theme="dark"] {
+      --paper: #14171c; --panel: #1a1e24; --card: #1f2430; --line: #2b303b;
+      --ink: #e9eaee; --muted: #9096a1; --ink-soft: #c7cbd4;
+      --accent: #7b93ff; --accent-ink: #0d1117;
+      --ok: #3ecf8e; --warn: #e2a13d; --danger: #f16472;
+      --code-bg: #0b0d11; --code-ink: #d8dbe2;
+      --l1: #7b93ff; --l2: #e2a13d; --l3: #b18aff; --l4: #3fc4bd; --l5: #ef7cc2; --l6: #4fd989;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 12px 30px -14px rgba(0,0,0,.6);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: var(--paper); color: var(--ink);
+      font: 14px/1.5 ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    body { display: flex; flex-direction: column; overflow: hidden; }
+    a { color: var(--accent); }
+    code, pre, .mono { font-family: ui-monospace, "Cascadia Code", "SF Mono", Consolas, monospace; }
+    ::selection { background: color-mix(in srgb, var(--accent) 30%, transparent); }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; } }
+
+    header { padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line); flex-shrink: 0; position: relative; z-index: 100; }
+    .hbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+    header .title { font-weight: 800; font-size: 15px; line-height: 1.25; margin-right: auto; letter-spacing: -.01em; }
+    header .title small { display: block; color: var(--muted); font-weight: 500; font-size: 11px; }
+    header .title .ver { font-family: ui-monospace, monospace; font-weight: 600; font-size: 10.5px; color: var(--muted);
+      border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; margin-left: 6px; vertical-align: 2px; }
+
+    button, select, input { font: inherit; color: inherit; }
+    .btn { background: var(--card); border: 1px solid var(--line); color: var(--ink); border-radius: var(--radius-sm);
+      padding: 6px 11px; font-size: 12.5px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+    .btn:hover { border-color: var(--accent); }
+    .btn:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, .chk-item:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+    .btn.ghost { background: transparent; }
+    .btn[disabled] { opacity: .45; cursor: not-allowed; }
+    select, .field input { background: var(--card); border: 1px solid var(--line); color: var(--ink);
+      border-radius: var(--radius-sm); padding: 6px 8px; font-size: 12.5px; }
+
+    .pop-wrap { position: relative; }
+    .pop { position: absolute; top: calc(100% + 6px); left: 0; z-index: 200; background: var(--panel);
+      border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 12px; min-width: 240px; }
+    .pop.right { left: auto; right: 0; }
+    .pop label { display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: var(--muted); margin: 6px 0; }
+    .pop .row { display: flex; gap: 6px; align-items: center; }
+    .hidden { display: none !important; }
+
+    main { display: grid; grid-template-columns: 1fr 420px; grid-template-rows: minmax(0, 1fr); flex: 1 1 auto; min-height: 0; isolation: isolate; }
+    #canvas { height: 100%; min-height: 0; background: var(--paper); }
+    :root[data-theme="light"] #canvas, :root:not([data-theme="dark"]) #canvas { background: #fcfbf8; }
+    #panel { background: var(--panel); border-left: 1px solid var(--line); overflow-y: auto; min-height: 0; padding: 18px; }
+    body.no-panel main, body.focus main { grid-template-columns: 1fr; }
+    body.no-panel #panel, body.focus #panel { display: none; }
+    body.focus header { display: none; }
+    .focus-exit { display: none; position: fixed; top: 10px; right: 12px; z-index: 60; box-shadow: var(--shadow); }
+    body.focus .focus-exit { display: inline-flex; }
+
+    .node-head { position: sticky; top: -18px; z-index: 2; display: flex; align-items: flex-start; justify-content: space-between;
+      gap: 8px; background: var(--panel); padding: 18px 0 8px; margin: -18px 0 0; }
+    .nodehead { font-size: 17px; font-weight: 800; letter-spacing: -.01em; min-width: 0; }
+    .nodeid { color: var(--muted); font-weight: 500; font-size: 12px; }
+    .empty { color: var(--muted); padding-top: 44px; text-align: center; font-size: 13px; }
+
+    .eyebrow { font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; margin: 16px 0 6px; }
+    .badges { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+    .badge { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; }
+    .badge.lane { border-color: var(--lc); color: var(--lc); background: color-mix(in srgb, var(--lc) 12%, transparent); }
+    .badge.actor { color: var(--warn); border-color: var(--warn); font-weight: 700; }
+    .badge.idempotent { color: var(--ok); border-color: var(--ok); }
+    .badge.guarded { color: var(--warn); border-color: var(--warn); }
+    .badge.destructive { color: var(--danger); border-color: var(--danger); }
+    .badge.mad-0 { color: #a5590a; border-color: #a5590a; background: color-mix(in srgb, #a5590a 10%, transparent); }
+    .badge.mad-1 { color: var(--ok); border-color: var(--ok); background: color-mix(in srgb, var(--ok) 10%, transparent); }
+    .badge.mad-2 { color: var(--l1); border-color: var(--l1); background: color-mix(in srgb, var(--l1) 10%, transparent); }
+    .badge.mad-3 { color: var(--l5); border-color: var(--l5); background: color-mix(in srgb, var(--l5) 10%, transparent); }
+    .badge.mad-transversal { color: var(--muted); border-color: var(--line); }
+
+    .doc { color: var(--ink-soft); background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; margin: 10px 0; font-size: 12.5px; }
+    details.why { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); margin: 10px 0; }
+    details.why > summary { cursor: pointer; list-style: none; padding: 9px 12px; font-size: 11px; text-transform: uppercase;
+      letter-spacing: .06em; color: var(--muted); font-weight: 700; user-select: none; display: flex; align-items: center; gap: 7px; }
+    details.why > summary::-webkit-details-marker { display: none; }
+    details.why > summary::before { content: "\25B8"; font-size: 10px; transition: transform .15s; color: var(--accent); }
+    details.why[open] > summary::before { transform: rotate(90deg); }
+    details.why .why-body { padding: 0 12px 12px; color: var(--ink); font-size: 13px; line-height: 1.55; text-align: justify; }
+    details.why .why-tech { margin-top: 9px; padding-top: 9px; border-top: 1px dashed var(--line); color: var(--muted); font-size: 12px; white-space: pre-line; }
+    details.why .why-tech .tlabel { display: block; text-transform: uppercase; letter-spacing: .06em; font-size: 10px; margin-bottom: 4px; }
+
+    .howto { background: color-mix(in srgb, var(--accent) 6%, var(--panel)); border: 1px solid var(--line); border-left: 3px solid var(--accent);
+      border-radius: var(--radius); padding: 10px 13px; margin: 8px 0 12px; font-size: 13px; color: var(--ink); }
+    .howto p { margin: 5px 0; } .howto ol, .howto ul { margin: 6px 0; padding-left: 20px; } .howto li { margin: 6px 0; }
+    .howto a { text-decoration: underline; word-break: break-word; }
+    .howto code { background: var(--code-bg); color: var(--code-ink); padding: 1px 6px; border-radius: 4px; font-size: 12px; }
+    .howto .tip { color: var(--muted); font-size: 12px; margin-top: 8px; }
+    .howto .danger-inline { color: var(--danger); font-weight: 600; }
+    .req { color: var(--muted); font-size: 12px; margin: 8px 0; } .req b { color: var(--ink); }
+
+    .chk-note { color: var(--muted); font-size: 12px; margin: 2px 0 10px; }
+    .chk-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
+    .chk-item { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--line);
+      border-radius: var(--radius); background: var(--card); cursor: pointer; transition: border-color .12s, background .12s; }
+    .chk-item:hover { border-color: var(--accent); }
+    .chk-item input { margin: 2px 0 0; width: 15px; height: 15px; accent-color: var(--ok); cursor: pointer; }
+    .chk-item .chk-lab { font-size: 13px; font-weight: 700; }
+    .chk-item .chk-hint { display: block; color: var(--muted); font-size: 12px; line-height: 1.4; margin-top: 3px; }
+    .chk-item.done { border-color: var(--ok); background: color-mix(in srgb, var(--ok) 10%, var(--card)); }
+    .chk-item.done .chk-lab { color: var(--ok); }
+    .chk-count { font-size: 12px; color: var(--muted); margin: 10px 0 4px; } .chk-count b { color: var(--ink); }
+    .chk-count.full { color: var(--ok); } .chk-count.full b { color: var(--ok); }
+
+    .nodeform { display: flex; flex-direction: column; gap: 10px; margin: 10px 0; }
+    .nodeform .field { display: flex; flex-direction: column; gap: 4px; }
+    .nodeform .field > span { font-size: 11.5px; color: var(--muted); font-weight: 600; }
+    .nodeform .opts { display: flex; flex-direction: column; gap: 4px; }
+    .nodeform .opts label { display: flex; gap: 7px; align-items: flex-start; font-size: 13px; }
+    .invalid { border-color: var(--danger) !important; } .err-msg { color: var(--danger); font-size: 11px; }
+
+    pre.out { background: var(--code-bg); color: var(--code-ink); border: 1px solid var(--line); border-radius: var(--radius);
+      padding: 12px 13px; font-size: 12.5px; line-height: 1.55; overflow-x: auto; white-space: pre-wrap; word-break: break-word; margin: 8px 0; }
+    .cmdbar { display: flex; gap: 8px; margin: 6px 0 4px; }
+    .confirm-box { border: 1px solid var(--danger); background: color-mix(in srgb, var(--danger) 8%, var(--panel));
+      border-radius: var(--radius); padding: 10px 12px; margin: 10px 0; font-size: 12.5px; }
+    .confirm-box input { width: 100%; margin-top: 6px; }
+
+    .ramas-box { border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; margin: 10px 0; background: var(--card); }
+    .ramas-box .rama { display: flex; justify-content: space-between; align-items: center; gap: 8px; width: 100%;
+      padding: 8px 6px; margin: 0; border: none; border-top: 1px dashed var(--line); border-radius: 6px;
+      background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+    .ramas-box .rama:first-child { border-top: none; }
+    .ramas-box .rama:hover, .ramas-box .rama:focus-visible { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+    .ramas-box .rama .rama-arrow { color: var(--accent); font-weight: 700; }
+
+    .about-lead { font-size: 13px; line-height: 1.55; margin: 8px 0; text-align: justify; }
+    figure.about { margin: 12px 0; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 8px; }
+    figure.about img { display: block; width: 100%; height: auto; border-radius: 6px; }
+    figure.about figcaption { color: var(--muted); font-size: 11.5px; line-height: 1.45; margin-top: 8px; }
+    figure.about figcaption b { color: var(--ink); }
+    blockquote.deming { margin: 10px 0 0; padding: 8px 12px; border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent) 6%, transparent);
+      font-style: italic; font-size: 13px; line-height: 1.45; }
+    blockquote.deming cite { display: block; margin-top: 5px; font-style: normal; font-size: 11px; color: var(--muted); }
+    .about-credit { color: var(--muted); font-size: 11px; line-height: 1.5; margin-top: 16px; }
+
+    .legend-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .legend-row { display: flex; gap: 10px; align-items: flex-start; padding: 9px 0; border-top: 1px solid var(--line); font-size: 12.5px; }
+    .legend-row:first-of-type { border-top: none; }
+    .legend-sw { flex: 0 0 auto; width: 12px; height: 12px; border-radius: 3px; margin-top: 3px; }
+
+    .progress-pills { display: flex; gap: 6px; }
+    .pill { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+    .pill.full { color: var(--ok); border-color: var(--ok); background: color-mix(in srgb, var(--ok) 10%, transparent); }
+
+    .bjs-powered-by { opacity: .35; }
+    /* overlays HTML sobre el diagrama */
+    /* pointer-events:none es lo importante acá: son badges decorativos que flotan sobre
+       la figura — sin esto, tapan el área de clic del nodo (grave en gateways/eventos
+       chicos, donde el badge puede cubrir casi toda la figura al zoom por defecto).
+       bpmn-js envuelve cada overlay en su propio .djs-overlay: hay que apagarlo ahí
+       también, no alcanza con el div de contenido de adentro. */
+    .djs-overlay-container, .djs-overlays, .djs-overlay { pointer-events: none; }
+    /* Relleno sólido, no solo contorno: un chip transparente se pierde contra un diagrama
+       denso — el original (intempo-coe/onboarding) usa fondo sólido + texto oscuro por
+       fase, y una sombra negra en el glifo de estado para que se lea sobre cualquier
+       línea o carril de fondo. Mismo criterio acá, con la paleta propia del proceso. */
+    .ov-status { font-size: 14px; font-weight: 800; line-height: 1; pointer-events: none;
+      text-shadow: 0 0 3px var(--paper), 0 0 3px var(--paper), 0 1px 1px var(--paper); }
+    .ov-mad { font-size: 9px; font-weight: 800; line-height: 1; padding: 2px 4px; border-radius: 4px;
+      cursor: default; pointer-events: none; box-shadow: 0 1px 2px rgba(0,0,0,.25); }
+
+    /* Foco de navegación: el nodo que estás viendo palpita; el siguiente paso sugerido
+       (solo cuando hay una única salida, nunca en un gateway con varias ramas) queda
+       marcado con un contorno punteado, para que el ojo sepa hacia dónde mirar. */
+    .is-actual .djs-visual > :first-child {
+      stroke: var(--accent) !important;
+      stroke-width: 3px !important;
+      animation: is-actual-pulse 1.6s ease-in-out infinite;
+    }
+    @keyframes is-actual-pulse {
+      0%, 100% { stroke-opacity: 1; }
+      50% { stroke-opacity: .4; }
+    }
+    .is-next .djs-visual > :first-child {
+      stroke: var(--l5) !important;
+      stroke-width: 2.5px !important;
+      stroke-dasharray: 7 5 !important;
+    }
+    /* "Siguiente" se topó con un gateway: no adivina la rama, avisa con un destello corto
+       para que elijas tú mismo/a cuál seguir haciendo clic en el diagrama. */
+    .flash-decision .djs-visual > :first-child {
+      animation: flash-decision-anim .9s ease-out;
+    }
+    @keyframes flash-decision-anim {
+      0%, 100% { stroke: inherit; stroke-width: inherit; }
+      15%, 45%, 75% { stroke: var(--warn) !important; stroke-width: 4px !important; }
+    }
+  </style>
+</head>
+<body>
+  <div id="fatal" class="hidden" style="position:fixed;inset:0;background:var(--paper);color:var(--ink);display:flex;
+    align-items:center;justify-content:center;padding:24px;z-index:999;">
+    <div style="max-width:520px;font-size:14px;line-height:1.6;">
+      <h2 style="margin-top:0;">No se pudo cargar</h2>
+      <p id="fatal-msg"></p>
+      <p>Esta página carga <code>comandos.json</code> y el diagrama con <code>fetch</code>, así que necesita servirse
+      por http(s) — abrirla directo como archivo local no funciona (CORS). Parado en esta carpeta:</p>
+      <pre class="out">npx --yes serve .
+# o
+python -m http.server</pre>
+    </div>
+  </div>
+
+  <header>
+    <div class="hbar">
+      <div class="title">Proceso operacional con IA<span class="ver">v1.0.0</span>
+        <small>Onboarding al desarrollo guiado por IA, sobre GitHub</small></div>
+
+      <div class="pop-wrap"><button class="btn" id="btn-lane">Carril: todos ▾</button></div>
+
+      <div class="pop-wrap">
+        <button class="btn" id="btn-repo">📁 Repo</button>
+        <div class="pop hidden" id="pop-repo">
+          <label>Organización/usuario de GitHub <input id="in-owner" type="text" placeholder="ej. mi-org" /></label>
+          <label>Repositorio <input id="in-repo" type="text" placeholder="ej. mi-repo" /></label>
+          <label>Ruta local <input id="in-path" type="text" placeholder="ej. ~/code/mi-repo" /></label>
+        </div>
+      </div>
+
+      <div class="pop-wrap">
+        <button class="btn" id="btn-issue">🎫 Issue <span id="issue-badge"></span></button>
+        <div class="pop hidden" id="pop-issue">
+          <div class="row"><input id="in-newissue" type="number" min="1" placeholder="Nº de issue" style="width:110px" />
+            <button class="btn primary" id="btn-addissue">Agregar</button></div>
+          <div id="issue-list" style="margin-top:8px;display:flex;flex-direction:column;gap:4px;"></div>
+        </div>
+      </div>
+
+      <span class="progress-pills" id="progress-pills"></span>
+
+      <button class="btn" id="btn-back">← Atrás</button>
+      <button class="btn primary" id="btn-next">Siguiente →</button>
+
+      <div class="pop-wrap">
+        <button class="btn" id="btn-reset">↺ Reiniciar ▾</button>
+        <div class="pop hidden right" id="pop-reset">
+          <button class="btn" id="reset-issue" style="width:100%;margin-bottom:6px;">Reiniciar solo el issue activo</button>
+          <button class="btn" id="reset-all" style="width:100%;color:var(--danger);border-color:var(--danger);">Reiniciar todo</button>
+        </div>
+      </div>
+
+      <div class="pop-wrap">
+        <button class="btn" id="btn-export">⬇ Bitácora ▾</button>
+        <div class="pop hidden right" id="pop-export">
+          <button class="btn" id="export-md" style="width:100%;margin-bottom:6px;">Markdown</button>
+          <button class="btn" id="export-json" style="width:100%;">JSON</button>
+        </div>
+      </div>
+
+      <div class="pop-wrap">
+        <button class="btn" id="btn-perfil">⚙ Perfil</button>
+        <div class="pop hidden" id="pop-perfil"></div>
+      </div>
+
+      <button class="btn" id="btn-legend">Leyenda</button>
+      <button class="btn" id="btn-about">Acerca de</button>
+      <button class="btn" id="btn-theme">◐</button>
+      <button class="btn" id="btn-focus">⛶</button>
+      <button class="btn ghost" id="btn-collapse">▸</button>
+    </div>
+  </header>
+
+  <main>
+    <div id="canvas"></div>
+    <aside id="panel"><div class="empty">Elige un paso del diagrama para ver el detalle.</div></aside>
+  </main>
+
+  <button class="btn primary focus-exit" id="btn-focus-exit">Salir de pantalla completa (Esc)</button>
+
+  <script src="https://unpkg.com/bpmn-js@17.11.1/dist/bpmn-navigated-viewer.production.min.js"
+          integrity="sha384-izUzsqBpTLenW0ylFgbiLMoW5T0/fTAi+oOM/yuwnzOZAc8OFynG1LHJGsCWEP4G" crossorigin="anonymous"></script>
+  <script>
+  (function () {
+    "use strict";
+
+    var JSON_FILE = "comandos.json", BPMN_FILE = "proceso-operacional-con-ia.bpmn";
+    var LS = "poia.perfil.", STATE_KEY = "poia.estado", ISSUES_KEY = "poia.issues",
+        AISSUE_KEY = "poia.issueActivo", CHK_KEY = "poia.chk.", THEME_KEY = "poia.theme";
+
+    var LANE_COLOR = {
+      "Persona desarrolladora — local (terminal + editor)": "l1",
+      "Registro de paquetes (npm público / GitHub Packages)": "l2",
+      "Agente de código con IA (skills · subagentes · MCP)": "l3",
+      "GitHub Issues / Projects": "l4",
+      "GitHub — Pull Requests & Rulesets": "l5",
+      "GitHub Actions (CI/CD)": "l6"
+    };
+
+    var PART = {
+      f0:"F", fd1:"F", fd2:"F", fd3:"F",
+      a1:"A", a2:"A", G1:"A",
+      G2:"B", b1:"B", bi:"B", b2:"B", b3:"B", b4:"B", pz:"B", pz2:"B", ds:"B", GT:"B", bt:"B", GT2:"B", bi2:"B",
+      bo1:"C", c1:"C", bo2:"C", G3:"C", c4a:"C", c2:"C", GUI:"C", v0:"C", vw:"C", c3:"C", G4:"C", c4p:"C",
+      c4b:"C", c4c:"C", p1:"C", G5:"C", pf:"C", cr:"C", G6:"C", ac:"C", mg:"C", cd1:"C", G8:"C", df:"C", c5:"C", G7:"C"
+    };
+    var CANON = {
+      F: ["f0","fd1","fd2","fd3"],
+      A: ["a1","a2"],
+      B: ["b1","b2","b3","b4","pz","pz2","ds"],
+      C: ["bo1","c1","bo2","c4a","c2","c3","c4b","c4c","p1","cr","mg","cd1","c5"]
+    };
+    var PART_LABEL = { F: "Fundamentos", A: "Máquina", B: "Proyecto", C: "Ciclo" };
+
+    var catalog = null, viewer = null, overlays = null, canvas = null, elementRegistry = null;
+    var laneFilter = "";
+    var currentNodeId = null;
+    var navHistory = [];
+    function leaveCurrentNode() {
+      // Guarda el nodo que se está por abandonar en el historial, salvo que ya sea
+      // el resultado de apretar "Atrás" (evita que ir hacia atrás vuelva a empujar
+      // hacia adelante el mismo paso).
+      if (currentNodeId) navHistory.push(currentNodeId);
+    }
+    var $ = function (s, r) { return (r || document).querySelector(s); };
+    var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+    function el(html) { var t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstElementChild; }
+    function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+
+    // ---- perfil / localStorage ---------------------------------------
+    function getLS(name, def) { var v = localStorage.getItem(LS + name); return v == null ? (def || "") : v; }
+    function setLS(name, val) { localStorage.setItem(LS + name, val); }
+    function projectScope() { return getLS("PROJECT_PATH", "") || getLS("GH_REPO", "") || "_"; }
+
+    function getEstado() { try { return JSON.parse(localStorage.getItem(STATE_KEY) || "{}"); } catch (e) { return {}; } }
+    function setEstado(o) { localStorage.setItem(STATE_KEY, JSON.stringify(o)); }
+    function scopeKey(id) {
+      var part = PART[id] || "C";
+      if (part === "F" || part === "A") return part + "|" + id;
+      if (part === "B") return "B|" + projectScope() + "|" + id;
+      return "C|" + projectScope() + "|" + (getIssueActivo() || "_") + "|" + id;
+    }
+    function nodeDone(id) { return !!getEstado()[scopeKey(id)]; }
+    function setNodeDone(id, val) { var e = getEstado(); if (val) e[scopeKey(id)] = true; else delete e[scopeKey(id)]; setEstado(e); refreshAll(); }
+
+    function getIssues() { try { return JSON.parse(localStorage.getItem(ISSUES_KEY) || "{}"); } catch (e) { return {}; } }
+    function setIssues(o) { localStorage.setItem(ISSUES_KEY, JSON.stringify(o)); }
+    function issuesDeProyecto() { return getIssues()[projectScope()] || []; }
+    function getIssueActivo() { return sessionStorage.getItem(AISSUE_KEY) || (issuesDeProyecto()[0] || ""); }
+    function setIssueActivo(n) { sessionStorage.setItem(AISSUE_KEY, n); refreshAll(); }
+
+    // ---- interpolación de comandos -------------------------------------
+    function ctxPerfil() {
+      var c = {}; Object.keys((catalog.perfilSchema || {})).forEach(function (k) { c[k] = getLS(k, catalog.perfilSchema[k].default || ""); });
+      c.ISSUE_ID = getIssueActivo(); return c;
+    }
+    function interpolate(tpl, ctx) { return String(tpl || "").replace(/\{([A-Z0-9_]+)\}/g, function (_, k) { return (ctx[k] != null && ctx[k] !== "") ? ctx[k] : "{" + k + "}"; }); }
+
+    // ---- carga -----------------------------------------------------------
+    function fatal(msg) { $("#fatal-msg").textContent = msg; $("#fatal").classList.remove("hidden"); }
+
+    Promise.all([
+      fetch(JSON_FILE).then(function (r) { if (!r.ok) throw new Error(JSON_FILE + " " + r.status); return r.json(); }),
+      fetch(BPMN_FILE).then(function (r) { if (!r.ok) throw new Error(BPMN_FILE + " " + r.status); return r.text(); })
+    ]).then(function (res) {
+      catalog = res[0];
+      viewer = new BpmnJS({ container: "#canvas" });
+      return viewer.importXML(res[1]);
+    }).then(function () {
+      overlays = viewer.get("overlays"); canvas = viewer.get("canvas"); elementRegistry = viewer.get("elementRegistry");
+      viewer.get("canvas").zoom("fit-viewport");
+      viewer.on("element.click", function (e) { if (e.element && e.element.type && e.element.type.indexOf("bpmn:") === 0 &&
+        e.element.type !== "bpmn:SequenceFlow" && e.element.businessObject) showNode(e.element); });
+      buildLaneFilter(); buildPerfilPopover(); buildIssuePopover(); refreshOverlays(); refreshProgress(); applyMarkers();
+    }).catch(function (err) { console.error(err); fatal(String(err && err.message || err)); });
+
+    function contenido(id) { return (catalog.nodos && catalog.nodos[id]) || (catalog.eventos && catalog.eventos[id]) || {}; }
+    function laneOf(element) {
+      var bo = element.businessObject, lane = null;
+      elementRegistry.forEach(function (e) {
+        if (e.type === "bpmn:Lane" && e.businessObject.flowNodeRef) {
+          e.businessObject.flowNodeRef.forEach(function (ref) { if (ref.id === bo.id) lane = e.businessObject.name; });
+        }
+      });
+      return lane;
+    }
+    function docOf(element) { return (element.businessObject.documentation && element.businessObject.documentation[0] &&
+      element.businessObject.documentation[0].text) || ""; }
+    function ramasDe(element) {
+      var out = {};
+      (element.outgoing || []).forEach(function (f) {
+        if (f.type !== "bpmn:SequenceFlow") return; // excluye associations (anotaciones)
+        var label = f.businessObject.name || "";
+        out[label || f.id] = f.target.id;
+      });
+      return out;
+    }
+
+    // ---- render del panel --------------------------------------------
+    function showNode(element, opts) {
+      opts = opts || {};
+      var id = element.businessObject.id, node = contenido(id), name = element.businessObject.name || id;
+      var lane = laneOf(element), laneKey = LANE_COLOR[lane] || "l1";
+      if (!opts.fromBack && currentNodeId !== id) leaveCurrentNode();
+      currentNodeId = id; applyMarkers();
+      var panel = $("#panel"); panel.innerHTML = ""; panel.scrollTop = 0;
+      var head = el('<div class="node-head"><div class="nodehead"></div><button class="btn ghost panel-x" aria-label="Cerrar">✕</button></div>');
+      head.querySelector(".nodehead").innerHTML = esc(name) + ' <span class="nodeid">#' + esc(id) + "</span>";
+      head.querySelector(".panel-x").onclick = function () {
+        leaveCurrentNode();
+        panel.innerHTML = '<div class="empty">Elige un paso del diagrama para ver el detalle.</div>';
+        currentNodeId = null; applyMarkers();
+      };
+      panel.appendChild(head);
+
+      var badges = el('<div class="badges"></div>');
+      if (lane) badges.appendChild(el('<span class="badge lane" style="--lc:var(--' + laneKey + ')">corre en: ' + esc(lane) + "</span>"));
+      if (node.actor) badges.appendChild(el('<span class="badge actor">actor: ' + esc(node.actor) + "</span>"));
+      if (node.semantica) badges.appendChild(el('<span class="badge ' + esc(node.semantica) + '">' + esc(node.semantica) + "</span>"));
+      if (node.madurez) {
+        var mtxt = node.madurez === "transversal" ? "Transversal" + (node.madurezSub ? " · " + node.madurezSub : "") : "Fase " + node.madurez;
+        badges.appendChild(el('<span class="badge mad-' + esc(node.madurez) + '">' + esc(mtxt) + "</span>"));
+      }
+      panel.appendChild(badges);
+
+      var doc = docOf(element);
+      if (node.porque || doc) {
+        var det = el('<details class="why" open><summary>¿Para qué sirve este paso?</summary><div class="why-body"></div></details>');
+        var body = det.querySelector(".why-body");
+        if (node.porque) body.appendChild(el("<p>" + node.porque + "</p>"));
+        if (doc) body.appendChild(el('<div class="why-tech"><span class="tlabel">Detalle técnico</span>' + esc(doc) + "</div>"));
+        panel.appendChild(det);
+      }
+
+      if (node.requires) panel.appendChild(el('<p class="req"><b>Requiere:</b> ' + esc(node.requires) + "</p>"));
+
+      if (node.guiaPasos) panel.appendChild(el('<div class="howto">' + node.guiaPasos + "</div>"));
+
+      if (node.checklist) { renderChecklist(panel, id, node); }
+      else if (node.esGateway && node.clase !== "T") { renderRamas(panel, element, node); renderManual(panel, id, node); }
+      else if (node.clase === "manual") { renderManual(panel, id, node); }
+      else { renderAuto(panel, id, node); }
+
+      if (node.esGateway && node.clase === "T") renderRamas(panel, element, node);
+
+      var toggle = el('<button id="node-toggle" style="margin-top:14px;width:100%;"></button>');
+      syncToggle(toggle, id);
+      toggle.onclick = function () { setNodeDone(id, !nodeDone(id)); syncToggle(toggle, id); };
+      panel.appendChild(toggle);
+    }
+
+    function syncToggle(btn, id) {
+      var done = nodeDone(id);
+      btn.className = "btn" + (done ? "" : " primary");
+      btn.textContent = done ? "✓ Marcado como hecho — desmarcar" : "Marcar como hecho";
+    }
+
+    function renderChecklist(panel, id, node) {
+      var ck = node.checklist, wrap = el('<div></div>');
+      wrap.appendChild(el('<p class="chk-note">' + esc(ck.nota || "") + "</p>"));
+      var list = el('<ul class="chk-list"></ul>');
+      var stored = {}; try { stored = JSON.parse(localStorage.getItem(CHK_KEY + id) || "{}"); } catch (e) {}
+      ck.items.forEach(function (it) {
+        var done = !!stored[it.id];
+        var li = el('<li class="chk-item ' + (done ? "done" : "") + '"><input type="checkbox" ' + (done ? "checked" : "") +
+          ' /><span><span class="chk-lab">' + esc(it.label) + '</span><span class="chk-hint">' + esc(it.hint || "") + "</span></span></li>");
+        li.querySelector("input").onchange = function (e) {
+          stored[it.id] = e.target.checked; localStorage.setItem(CHK_KEY + id, JSON.stringify(stored));
+          li.classList.toggle("done", e.target.checked);
+          var allDone = ck.items.every(function (x) { return stored[x.id]; });
+          setNodeDone(id, allDone); updateCount();
+          var t = document.getElementById("node-toggle"); if (t) syncToggle(t, id);
+        };
+        list.appendChild(li);
+      });
+      wrap.appendChild(list);
+      var count = el('<p class="chk-count"></p>');
+      function updateCount() {
+        var n = ck.items.filter(function (x) { return stored[x.id]; }).length;
+        count.className = "chk-count" + (n === ck.items.length ? " full" : "");
+        count.innerHTML = "<b>" + n + "/" + ck.items.length + "</b> confirmados";
+      }
+      updateCount(); wrap.appendChild(count);
+      panel.appendChild(wrap);
+    }
+
+    function renderRamas(panel, element, node) {
+      var ramas = ramasDe(element);
+      if (!Object.keys(ramas).length) return;
+      var box = el('<div class="ramas-box"></div>');
+      box.appendChild(el('<div class="eyebrow" style="margin-top:0;">Ramas de este gateway</div>'));
+      Object.keys(ramas).forEach(function (label) {
+        var target = ramas[label], targetEl = elementRegistry.get(target);
+        var tname = (targetEl && targetEl.businessObject.name) || target;
+        var row = el('<button type="button" class="rama"><span>' + esc(label) +
+          '</span><span class="rama-arrow">' + esc(tname) + " →</span></button>");
+        row.onclick = function () { if (targetEl) { canvas.scrollToElement(target); showNode(targetEl); } };
+        box.appendChild(row);
+      });
+      panel.appendChild(box);
+    }
+
+    function renderManual(panel, id, node) {
+      var ctx = ctxPerfil();
+      if (node.exigeConfirmacion) {
+        panel.appendChild(el('<div class="confirm-box"><b>⚠ Acción destructiva.</b> Escribe <code>CONFIRMAR</code> para habilitar cualquier comando de este paso.<input type="text" placeholder="CONFIRMAR" /></div>'));
+      }
+      if (node.manualNote) panel.appendChild(el('<div class="doc">' + node.manualNote + "</div>"));
+      if (node.manualRef) panel.appendChild(el('<pre class="out">' + esc(node.manualRef) + "</pre>"));
+      if (node.manualCmd) panel.appendChild(copyBlock(node.manualCmd));
+      if (node.manualCmdTpl) {
+        var inputs = node.manualInputs || [], vals = {};
+        var form = el('<div class="nodeform"></div>');
+        inputs.forEach(function (inp) {
+          var stored = getLS(inp.name, inp.default || ""); vals[inp.name] = stored;
+          var f = el('<div class="field"><span>' + esc(inp.label) + "</span></div>");
+          var field = el('<input type="text" placeholder="' + esc(inp.placeholder || "") + '" value="' + esc(stored) + '" />');
+          field.oninput = function () { vals[inp.name] = field.value; setLS(inp.name, field.value); update(); };
+          f.appendChild(field); form.appendChild(f);
+        });
+        panel.appendChild(form);
+        var out = el('<div></div>'); panel.appendChild(out);
+        function update() { out.innerHTML = ""; out.appendChild(copyBlock(interpolate(node.manualCmdTpl, Object.assign({}, ctx, vals)))); }
+        update();
+      }
+      if (node.plantillaCommit) {
+        var f2 = el('<div class="field"><span>Resumen del commit</span><input type="text" placeholder="ej. agrega validación de email" /></div>');
+        panel.appendChild(f2);
+        var out2 = el('<div></div>'); panel.appendChild(out2);
+        function upd2() { var v = f2.querySelector("input").value; out2.innerHTML = "";
+          out2.appendChild(copyBlock(interpolate(node.plantillaCommit, Object.assign({}, ctx, { RESUMEN: v || "{RESUMEN}" })))); }
+        f2.querySelector("input").oninput = upd2; upd2();
+      }
+    }
+
+    function renderAuto(panel, id, node) {
+      var ctx = ctxPerfil(), vals = {};
+      var inputs = node.inputs || [];
+      if (inputs.length) {
+        var form = el('<div class="nodeform"></div>');
+        inputs.forEach(function (inp) {
+          vals[inp.name] = "";
+          var f = el('<div class="field"><span>' + esc(inp.label) + "</span></div>");
+          var field;
+          if (inp.type === "select") {
+            field = el("<select></select>");
+            (inp.options || []).forEach(function (o) { field.appendChild(el('<option value="' + esc(o) + '">' + esc(o) + "</option>")); });
+          } else { field = el('<input type="text" placeholder="' + esc(inp.placeholder || "") + '" />'); }
+          field.oninput = field.onchange = function () { vals[inp.name] = field.value; update(); };
+          f.appendChild(field); form.appendChild(f);
+        });
+        panel.appendChild(form);
+      }
+      var precheckBox = null;
+      if (node.precheck) panel.appendChild(el('<div class="doc"><b>Verificación previa</b><br>' + esc(node.precheck) + "</div>"));
+      var out = el('<div></div>'); panel.appendChild(out);
+      function update() {
+        var tpl = node.clase === "S" ? node.slash : node.cmd;
+        out.innerHTML = ""; out.appendChild(copyBlock(interpolate(tpl, Object.assign({}, ctx, vals))));
+      }
+      update();
+    }
+
+    function copyBlock(text) {
+      var wrap = el('<div></div>');
+      wrap.appendChild(el('<pre class="out">' + esc(text) + "</pre>"));
+      var bar = el('<div class="cmdbar"></div>');
+      var btn = el('<button class="btn">📋 Copiar</button>');
+      btn.onclick = function () { navigator.clipboard && navigator.clipboard.writeText(text).then(function () {
+        btn.textContent = "✓ Copiado"; setTimeout(function () { btn.textContent = "📋 Copiar"; }, 1400); }); };
+      bar.appendChild(btn); wrap.appendChild(bar);
+      return wrap;
+    }
+
+    // ---- overlays / marcadores en el diagrama --------------------------
+    function isInscribedShape(element) {
+      // Rombos (gateway) y círculos (start/end event): la figura solo toca el borde
+      // del bounding box en el punto medio de cada lado, no en las esquinas — un
+      // badge anclado "esquina" queda flotando lejos de la figura o pisa su etiqueta
+      // externa (que en estos dos tipos va arriba o abajo, nunca a los costados).
+      return element.type === "bpmn:ExclusiveGateway" || element.type === "bpmn:StartEvent" || element.type === "bpmn:EndEvent";
+    }
+    function refreshOverlays() {
+      overlays.remove({ all: true });
+      elementRegistry.forEach(function (element) {
+        var bo = element.businessObject;
+        if (!bo || !bo.id) return;
+        var esNodoDelProceso = !!PART[bo.id] || !!(catalog.eventos && catalog.eventos[bo.id]);
+        if (!esNodoDelProceso) return;
+        var node = contenido(bo.id);
+        var small = isInscribedShape(element);
+        var midY = Math.round((element.height || 70) / 2);
+        if (PART[bo.id]) {
+          var done = nodeDone(bo.id);
+          var glyph = done ? "✓" : "○";
+          var glyphColor = done ? "var(--ok)" : "var(--muted)";
+          var glyphPos = small ? { top: midY - 8, right: -8 } : { top: -8, right: -8 };
+          overlays.add(element, { position: glyphPos,
+            html: '<div class="ov-status" style="color:' + glyphColor + ';">' + glyph + "</div>" });
+        }
+        if (node.madurez) {
+          var mtxt = node.madurez === "transversal" ? "T" : ("F" + node.madurez);
+          var fill = { "0": "#f2c14e", "1": "#4fd18f", "2": "#8fa8ff", "3": "#f088c0", transversal: "#5b6472" }[node.madurez];
+          var ink = { "0": "#4a3200", "1": "#063820", "2": "#0d1a4d", "3": "#4d0f30", transversal: "#f1f2f5" }[node.madurez];
+          var chipPos = small ? { top: midY - 7, left: -6 } : { top: -8, left: -6 };
+          overlays.add(element, { position: chipPos,
+            html: '<div class="ov-mad" style="background:' + fill + ";color:" + ink + ';" title="' + esc(mtxt) + '">' + esc(mtxt) + "</div>" });
+        }
+      });
+    }
+    function singleNext(id) {
+      var element = elementRegistry.get(id);
+      if (!element) return null;
+      var flows = (element.outgoing || []).filter(function (f) { return f.type === "bpmn:SequenceFlow"; });
+      return flows.length === 1 ? flows[0].target.id : null;
+    }
+    function applyMarkers() {
+      elementRegistry.forEach(function (element) {
+        canvas.removeMarker(element, "dim");
+        canvas.removeMarker(element, "is-actual");
+        canvas.removeMarker(element, "is-next");
+        if (laneFilter) {
+          var lane = laneOf(element);
+          if (lane && lane !== laneFilter) canvas.addMarker(element, "dim");
+        }
+      });
+      var nextId;
+      if (currentNodeId) {
+        var cur = elementRegistry.get(currentNodeId);
+        if (cur) canvas.addMarker(cur, "is-actual");
+        nextId = singleNext(currentNodeId);
+      } else {
+        nextId = firstPendiente();
+      }
+      if (nextId) {
+        var nextEl = elementRegistry.get(nextId);
+        if (nextEl) canvas.addMarker(nextEl, "is-next");
+      }
+      updateNextButton();
+      updateBackButton();
+    }
+    function refreshProgress() {
+      var wrap = $("#progress-pills"); wrap.innerHTML = "";
+      Object.keys(CANON).forEach(function (part) {
+        var total = CANON[part].length, done = CANON[part].filter(function (id) { return nodeDone(id); }).length;
+        wrap.appendChild(el('<span class="pill' + (done === total ? " full" : "") + '">' + PART_LABEL[part] + " " + done + "/" + total + "</span>"));
+      });
+    }
+    function refreshAll() { refreshOverlays(); refreshProgress(); applyMarkers(); }
+
+    // ---- toolbar: carril -------------------------------------------------
+    function buildLaneFilter() {
+      var btn = $("#btn-lane"), lanes = Object.keys(LANE_COLOR);
+      var pop = el('<div class="pop hidden" id="pop-lane"></div>');
+      pop.appendChild(el('<div class="row" style="margin-bottom:4px;"><button class="btn" style="width:100%;" id="lane-all">Todos los carriles</button></div>'));
+      lanes.forEach(function (l) { var b = el('<button class="btn" style="width:100%;margin-top:4px;text-align:left;">' + esc(l) + "</button>");
+        b.onclick = function () { laneFilter = l; btn.textContent = "Carril: " + l.slice(0, 22) + "… ▾"; applyMarkers(); pop.classList.add("hidden"); };
+        pop.appendChild(b); });
+      pop.querySelector("#lane-all").onclick = function () { laneFilter = ""; btn.textContent = "Carril: todos ▾"; applyMarkers(); pop.classList.add("hidden"); };
+      btn.parentNode.appendChild(pop);
+      btn.onclick = function () { pop.classList.toggle("hidden"); };
+      document.addEventListener("click", function (e) { if (!pop.contains(e.target) && e.target !== btn) pop.classList.add("hidden"); });
+    }
+
+    // ---- toolbar: repo / issue / perfil ----------------------------------
+    // La posicion del boton dentro de la barra depende del ancho de la
+    // ventana (los botones se van a una fila nueva segun el espacio) --
+    // una alineacion fija (izquierda o derecha) por CSS se corta en algun
+    // ancho de ventana. Por eso se mide en cada apertura, no se fija una
+    // vez con una clase estatica.
+    function togglePop(btnId, popId) {
+      var btn = $(btnId), pop = $(popId);
+      btn.onclick = function (e) {
+        e.stopPropagation();
+        $$(".pop").forEach(function (p) { if (p !== pop) p.classList.add("hidden"); });
+        pop.classList.toggle("hidden");
+        if (!pop.classList.contains("hidden")) {
+          pop.classList.remove("right");
+          var btnRect = btn.getBoundingClientRect();
+          var popWidth = pop.offsetWidth || 240;
+          if (btnRect.left + popWidth > window.innerWidth) pop.classList.add("right");
+        }
+      };
+      pop.addEventListener("click", function (e) { e.stopPropagation(); });
+    }
+    document.addEventListener("click", function () { $$(".pop").forEach(function (p) { p.classList.add("hidden"); }); });
+    togglePop("#btn-repo", "#pop-repo"); togglePop("#btn-issue", "#pop-issue");
+    togglePop("#btn-reset", "#pop-reset"); togglePop("#btn-export", "#pop-export"); togglePop("#btn-perfil", "#pop-perfil");
+
+    $("#in-owner").value = getLS("GH_OWNER"); $("#in-repo").value = getLS("GH_REPO"); $("#in-path").value = getLS("PROJECT_PATH");
+    $("#in-owner").oninput = function () { setLS("GH_OWNER", this.value); };
+    $("#in-repo").oninput = function () { setLS("GH_REPO", this.value); refreshAll(); buildIssuePopover(); };
+    $("#in-path").oninput = function () { setLS("PROJECT_PATH", this.value); refreshAll(); buildIssuePopover(); };
+
+    function buildIssuePopover() {
+      var list = $("#issue-list"); list.innerHTML = "";
+      var issues = issuesDeProyecto(), active = getIssueActivo();
+      $("#issue-badge").textContent = active ? "#" + active : "";
+      issues.forEach(function (n) {
+        var row = el('<div class="row"><button class="btn" style="flex:1;text-align:left;' +
+          (n === active ? "border-color:var(--accent);" : "") + '">#' + esc(n) + "</button><button class=\"btn ghost\" aria-label=\"Quitar\">✕</button></div>");
+        var btns = row.querySelectorAll("button");
+        btns[0].onclick = function () { setIssueActivo(n); buildIssuePopover(); };
+        btns[1].onclick = function () { var all = getIssues(); all[projectScope()] = issuesDeProyecto().filter(function (x) { return x !== n; }); setIssues(all); buildIssuePopover(); refreshAll(); };
+        list.appendChild(row);
+      });
+    }
+    $("#btn-addissue").onclick = function () {
+      var n = $("#in-newissue").value.trim(); if (!n) return;
+      var all = getIssues(), arr = issuesDeProyecto();
+      if (arr.indexOf(n) === -1) arr.push(n); all[projectScope()] = arr; setIssues(all);
+      setIssueActivo(n); $("#in-newissue").value = ""; buildIssuePopover();
+    };
+    buildIssuePopover();
+
+    function buildPerfilPopover() {
+      var pop = $("#pop-perfil"); pop.innerHTML = "";
+      Object.keys(catalog.perfilSchema || {}).forEach(function (k) {
+        if (k === "PROJECT_PATH" || k === "GH_OWNER" || k === "GH_REPO") return; // ya tienen su propio control
+        var sc = catalog.perfilSchema[k];
+        var f = el('<label>' + esc(sc.label) + "</label>");
+        var field;
+        if (sc.type === "select") { field = el("<select></select>"); (sc.options || []).forEach(function (o) { field.appendChild(el('<option value="' + esc(o) + '">' + esc(o) + "</option>")); }); }
+        else { field = el('<input type="text" />'); }
+        field.value = getLS(k, sc.default || ""); field.onchange = field.oninput = function () { setLS(k, field.value); };
+        f.appendChild(field); pop.appendChild(f);
+      });
+      if (!pop.children.length) pop.appendChild(el('<p style="color:var(--muted);font-size:12px;margin:0;">Nada que configurar acá — el resto vive en 📁 Repo.</p>'));
+    }
+
+    // ---- siguiente / reiniciar -------------------------------------------
+    function firstPendiente() {
+      var order = CANON.F.concat(CANON.A, CANON.B, CANON.C);
+      for (var i = 0; i < order.length; i++) if (!nodeDone(order[i])) return order[i];
+      return null;
+    }
+    function outgoingFlows(id) {
+      var element = elementRegistry.get(id);
+      if (!element) return [];
+      return (element.outgoing || []).filter(function (f) { return f.type === "bpmn:SequenceFlow"; });
+    }
+    function flashDecision(id) {
+      var element = elementRegistry.get(id);
+      if (!element) return;
+      canvas.addMarker(element, "flash-decision");
+      setTimeout(function () { canvas.removeMarker(element, "flash-decision"); }, 900);
+    }
+    function updateNextButton() {
+      var btn = $("#btn-next");
+      var atGateway = currentNodeId && outgoingFlows(currentNodeId).length >= 2;
+      btn.disabled = !!atGateway;
+      btn.title = atGateway ? "Este paso es un gateway: elige la rama a mano en el diagrama." : "";
+    }
+    function updateBackButton() {
+      $("#btn-back").disabled = navHistory.length === 0;
+    }
+    $("#btn-back").onclick = function () {
+      if (!navHistory.length) return;
+      var prevId = navHistory.pop();
+      var element = elementRegistry.get(prevId);
+      if (element) { canvas.scrollToElement(prevId); showNode(element, { fromBack: true }); }
+      else { updateBackButton(); }
+    };
+    $("#btn-next").onclick = function () {
+      var targetId = null;
+      if (currentNodeId) {
+        var flows = outgoingFlows(currentNodeId);
+        if (flows.length >= 2) { flashDecision(currentNodeId); return; } // gateway: el usuario elige la rama a mano
+        if (flows.length === 1) targetId = flows[0].target.id;
+      }
+      if (!targetId) targetId = firstPendiente();
+      if (!targetId) { alert("¡Recorriste todo el camino principal! Revisa si quedan issues del sprint (G7)."); return; }
+      var element = elementRegistry.get(targetId); if (element) { canvas.scrollToElement(targetId); showNode(element); }
+    };
+    $("#reset-issue").onclick = function () {
+      if (!confirm("¿Reiniciar el progreso del issue activo?")) return;
+      var e = getEstado(), prefix = "C|" + projectScope() + "|" + (getIssueActivo() || "_") + "|";
+      Object.keys(e).forEach(function (k) { if (k.indexOf(prefix) === 0) delete e[k]; });
+      setEstado(e); refreshAll();
+    };
+    $("#reset-all").onclick = function () {
+      if (!confirm("Esto borra TODO el progreso guardado (todas las partes, todos los issues). ¿Seguro?")) return;
+      localStorage.removeItem(STATE_KEY);
+      Object.keys(localStorage).forEach(function (k) { if (k.indexOf(CHK_KEY) === 0) localStorage.removeItem(k); });
+      refreshAll();
+    };
+
+    // ---- export bitácora ---------------------------------------------
+    function download(name, content, type) {
+      var blob = new Blob([content], { type: type }), a = document.createElement("a");
+      a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    }
+    function bitacoraData() {
+      var estado = getEstado(), out = { generado: "cliente", proyecto: projectScope(), partes: {} };
+      Object.keys(CANON).forEach(function (part) {
+        out.partes[part] = CANON[part].map(function (id) { return { id: id, hecho: nodeDone(id) }; });
+      });
+      return out;
+    }
+    $("#export-json").onclick = function () { download("bitacora.json", JSON.stringify(bitacoraData(), null, 2), "application/json"); };
+    $("#export-md").onclick = function () {
+      var d = bitacoraData(), md = "# Bitácora — proceso operacional con IA\n\nProyecto: `" + d.proyecto + "`\n\n";
+      md += "_Sin secretos: solo ids de pasos y su estado hecho/pendiente._\n\n";
+      Object.keys(d.partes).forEach(function (part) {
+        md += "## " + PART_LABEL[part] + "\n\n| Paso | Hecho |\n|---|---|\n";
+        d.partes[part].forEach(function (row) { md += "| " + row.id + " | " + (row.hecho ? "✓" : "—") + " |\n"; });
+        md += "\n";
+      });
+      download("bitacora.md", md, "text/markdown");
+    };
+
+    // ---- legend / about --------------------------------------------------
+    function renderLegend() {
+      leaveCurrentNode(); currentNodeId = null; applyMarkers();
+      var panel = $("#panel"); panel.innerHTML = ""; panel.scrollTop = 0;
+      panel.appendChild(el('<div class="node-head"><div class="nodehead">Leyenda</div><button class="btn ghost panel-x">✕</button></div>'));
+      panel.querySelector(".panel-x").onclick = function () {
+        panel.innerHTML = '<div class="empty">Elige un paso del diagrama para ver el detalle.</div>';
+        leaveCurrentNode(); currentNodeId = null; applyMarkers();
+      };
+      panel.appendChild(el('<div class="eyebrow" style="margin-top:0;">Carriles</div>'));
+      Object.keys(LANE_COLOR).forEach(function (l) {
+        panel.appendChild(el('<div class="legend-row"><span class="legend-sw" style="background:var(--' + LANE_COLOR[l] + ');"></span><span>' + esc(l) + "</span></div>"));
+      });
+      panel.appendChild(el('<div class="eyebrow">Clases de paso</div>'));
+      Object.keys(catalog.meta.clases).forEach(function (k) {
+        panel.appendChild(el('<div class="legend-row"><b style="width:56px;flex:0 0 auto;">' + esc(k) + "</b><span>" + esc(catalog.meta.clases[k]) + "</span></div>"));
+      });
+      panel.appendChild(el('<div class="eyebrow">Semántica</div>'));
+      Object.keys(catalog.meta.semantica).forEach(function (k) {
+        panel.appendChild(el('<div class="legend-row"><b style="width:90px;flex:0 0 auto;">' + esc(k) + "</b><span>" + esc(catalog.meta.semantica[k]) + "</span></div>"));
+      });
+      panel.appendChild(el('<div class="eyebrow">Pirámide de madurez</div>'));
+      ["0", "1", "2", "3"].forEach(function (k) {
+        panel.appendChild(el('<div class="legend-row"><span class="badge mad-' + k + '">Fase ' + k + " · " + esc(catalog.meta.madurez[k]) + '</span></div><p style="margin:4px 0 0;color:var(--muted);font-size:12px;">' + esc(catalog.meta.madurezDetalle[k]) + "</p>"));
+      });
+      panel.appendChild(el('<div class="legend-row"><span class="badge mad-transversal">Transversal</span></div><p style="margin:4px 0 0;color:var(--muted);font-size:12px;">' + esc(catalog.meta.madurezTransversal) + "</p>"));
+    }
+    $("#btn-legend").onclick = renderLegend;
+
+    function renderAbout() {
+      leaveCurrentNode(); currentNodeId = null; applyMarkers();
+      var panel = $("#panel"); panel.innerHTML = ""; panel.scrollTop = 0;
+      panel.appendChild(el('<div class="node-head"><div class="nodehead">Acerca de este proceso</div><button class="btn ghost panel-x">✕</button></div>'));
+      panel.querySelector(".panel-x").onclick = function () {
+        panel.innerHTML = '<div class="empty">Elige un paso del diagrama para ver el detalle.</div>';
+        leaveCurrentNode(); currentNodeId = null; applyMarkers();
+      };
+      panel.appendChild(el('<p class="about-lead">Este proceso completo es un ciclo de mejora continua: Planear, Hacer, Verificar, Actuar (PDCA), el marco que popularizó <b>W. Edwards Deming</b>. El bloque C —tomar un issue, planificarlo, implementarlo, verificarlo, mergearlo, aprender de él— se repite una y otra vez, y cada vuelta parte un poco más arriba que la anterior.</p>'));
+      panel.appendChild(el('<figure class="about"><img src="img/pdca-cycle.png" alt="Diagrama del ciclo PDCA" /><figcaption><b>El ciclo PDCA.</b> Planear, Hacer, Verificar, Actuar — y volver a planear con lo aprendido.</figcaption></figure>'));
+      panel.appendChild(el('<figure class="about"><img src="img/deming-portrait.jpg" alt="Retrato de W. Edwards Deming" /><figcaption><b>W. Edwards Deming</b> (1900–1993), estadístico e ingeniero. Fuente: Wikimedia Commons, dominio público.</figcaption></figure>'));
+      panel.appendChild(el('<blockquote class="deming">"No basta con hacer lo mejor que uno pueda; primero hay que saber qué hacer, y entonces hacer lo mejor que uno pueda."<cite>— W. Edwards Deming</cite></blockquote>'));
+      panel.appendChild(el('<figure class="about"><img src="img/deming-tokyo.jpg" alt="Deming enseñando en Tokio" /><figcaption><b>Deming enseñando control estadístico de calidad en Japón, década de 1950.</b> Fuente: Wikimedia Commons, dominio público.</figcaption></figure>'));
+      panel.appendChild(el('<p class="about-credit">Este visor es software genérico: el motor (diagrama + panel + progreso local) no depende de ninguna organización en particular — solo el contenido de <code>comandos.json</code> describe este proceso puntual. Siéntete libre de adaptarlo al tuyo.</p>'));
+    }
+    $("#btn-about").onclick = renderAbout;
+
+    // ---- panel collapse / focus / theme ----------------------------------
+    $("#btn-collapse").onclick = function () { document.body.classList.toggle("no-panel");
+      $("#btn-collapse").textContent = document.body.classList.contains("no-panel") ? "◂" : "▸"; };
+    function enterFocus() { document.body.classList.add("focus"); }
+    function exitFocus() { document.body.classList.remove("focus"); }
+    $("#btn-focus").onclick = enterFocus; $("#btn-focus-exit").onclick = exitFocus;
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape") exitFocus(); });
+
+    function applyTheme(t) { if (t) document.documentElement.setAttribute("data-theme", t); else document.documentElement.removeAttribute("data-theme");
+      $("#btn-theme").textContent = t === "dark" ? "☀" : t === "light" ? "☾" : "◐"; }
+    var savedTheme = localStorage.getItem(THEME_KEY) || "";
+    applyTheme(savedTheme);
+    $("#btn-theme").onclick = function () {
+      var cur = localStorage.getItem(THEME_KEY) || "";
+      var next = cur === "" ? "light" : cur === "light" ? "dark" : "";
+      localStorage.setItem(THEME_KEY, next); applyTheme(next);
+    };
+  })();
+  </script>
+</body>
+</html>

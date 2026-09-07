@@ -1,0 +1,21 @@
+# gitleaks -- secret detection (control 6, instrument-project-java).
+# Extiende el ruleset por defecto y agrega el allowlist propio de este repo. Un falso positivo
+# puntual y verificado (una linea/commit concreto) NO va aca: va por huella exacta en
+# .gitleaksignore (gitleaks lo carga solo). Regla: acotar el hallazgo, nunca aflojar la deteccion
+# en general para un solo match.
+#
+# Uso: gitleaks detect --source . --config .gitleaks.toml   (usado hoy solo en CI, ver make ci)
+
+title = "gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allowed paths and patterns"
+paths = [
+  '''(^|/)\.env\.(example|sample|template)$''',
+  '''(^|/)fixtures/''',
+  '''(^|/)test(s)?/''',
+  '''(^|/)src/test/resources/''',
+]

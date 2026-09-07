@@ -1,0 +1,87 @@
+# syntax=docker/dockerfile:1
+# Prototipo experimental para el punto 1 de ADR-0009 (docs/adrs/0009-bonsai-8b-integracion-pospuesta.md):
+# sirve el fork de PrismML (llama.cpp, rama `prism`) via llama-server, con la
+# cuantizacion propia que usa Bonsai 8B (el Ollama del proyecto no la soporta).
+#
+# NO esta enganchado a compose.yml ni al cliente de Spring AI todavia -- eso son
+# los puntos 2-4 del ADR, a resolver solo si este prototipo prueba que el
+# contenedor levanta y responde. Se levanta aparte con compose.bonsai.yml.
+
+# ---------- etapa 1: build del fork con soporte CUDA ----------
+# Misma version de CUDA en build y runtime para que el ABI coincida.
+#
+# El tag es un ARG y no una constante porque no es una decision libre: la imagen
+# nvidia/cuda declara un driver minimo y lo VERIFICA al arrancar el contenedor.
+# 12.6.0 exige driver NVIDIA >= 560; con uno anterior el contenedor ni arranca
+# ("unsatisfied condition: cuda>=12.6"), y recien se descubre despues de haber
+# compilado llama.cpp entero. Bajar el tag (12.4.1 pide >= 550, 12.2.2 pide >= 535)
+# es la salida cuando no se puede actualizar el driver del equipo.
+ARG CUDA_TAG=12.6.0
+FROM nvidia/cuda:${CUDA_TAG}-devel-ubuntu22.04 AS build
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends git cmake build-essential ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /src
+# Rama `prism`, no la default del fork -- ahi vive el soporte de la cuantizacion
+# de Bonsai (ver docs/build.md de ese repo).
+RUN git clone --depth 1 --branch prism https://github.com/PrismML-Eng/llama.cpp.git .
+
+# CMAKE_CUDA_ARCHITECTURES=75 es Turing (T600, la GPU de referencia del ADR).
+# Si tu GPU es de otra generacion, cambia este numero por su Compute Capability:
+#   75 = Turing (T600, RTX 20xx)   86 = Ampere (RTX 30xx)
+#   89 = Ada (RTX 40xx)            120 = Blackwell (RTX 50xx)
+# Se pasa desde compose.bonsai.yml via BONSAI_CUDA_ARCH.
+# LLAMA_CURL=OFF: no hace falta el downloader integrado, el GGUF se monta como
+# volumen (ver compose.bonsai.yml) en vez de bajarlo con `-hf` en runtime.
+ARG CUDA_ARCH=75
+# GGML_CUDA_NO_VMM=ON: la imagen *-devel no trae libcuda.so (el driver real, con
+# las funciones cuMem* de VMM) porque el build no tiene GPU -- eso llega recien
+# en runtime via nvidia-container-toolkit. Sin este flag, el link final de
+# llama-server falla con "undefined reference to cuMemCreate" y similares.
+# Desactivar VMM solo cambia la estrategia de reserva de memoria de la GPU
+# (cudaMalloc en vez del pool virtual); no afecta que el modelo entre o no --
+# Bonsai mide 1.76 GB reales (ADR-0009, hallazgo 11), sobra margen en la T600.
+#
+# Cache mount en build/: si el link falla y hay que reintentar, no recompila
+# los .cu/.cpp ya hechos (~20 min), solo relinkea.
+RUN --mount=type=cache,target=/src/build \
+    cmake -B build \
+      -DGGML_CUDA=ON \
+      -DGGML_CUDA_NO_VMM=ON \
+      -DCMAKE_CUDA_ARCHITECTURES=${CUDA_ARCH} \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DLLAMA_CURL=OFF \
+ && cmake --build build --target llama-server -j"$(nproc)" \
+ && mkdir -p /build-out \
+ && cp -r build/bin/. /build-out/
+
+# ---------- etapa 2: runtime ----------
+# runtime, no devel: no hace falta el toolchain de compilacion para servir.
+FROM nvidia/cuda:${CUDA_TAG}-runtime-ubuntu22.04 AS runtime
+
+# libgomp1: runtime de OpenMP que usan las operaciones CPU de ggml -- sin el,
+# llama-server falla al arrancar con "error while loading shared libraries".
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends curl libgomp1 \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN useradd --system --create-home --uid 10001 kb
+USER kb
+WORKDIR /app
+
+# El build de llama.cpp deja el binario y sus .so (libggml*, libllama*) juntos;
+# se copian desde /build-out (no /src/build, que es un cache mount y no
+# persiste en la imagen) para no perseguir nombres uno por uno.
+COPY --from=build --chown=kb:kb /build-out/ ./
+
+COPY --chown=kb:kb --chmod=755 entrypoint-bonsai.sh ./entrypoint.sh
+
+# Los .so del build (libggml*, libllama*) quedan en el mismo directorio que el
+# binario, no en una ruta estandar del linker -- sin esto, llama-server falla
+# al arrancar con "error while loading shared libraries".
+ENV LD_LIBRARY_PATH=/app
+
+EXPOSE 8080
+ENTRYPOINT ["./entrypoint.sh"]

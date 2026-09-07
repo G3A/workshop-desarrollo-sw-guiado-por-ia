@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Base de Conocimiento — Administración</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg-main: #ffffff;
+    --bg-elevado: #f7f7f8;
+    --bg-hover: #ececee;
+    --borde: #e5e5e7;
+    --texto: #0d0d0d;
+    --texto-atenuado: #8e8ea0;
+    --acento: #10a37f;
+    --acento-texto: #ffffff;
+    --ok: #1a7f37;
+    --ok-bg: #dcfce7;
+    --error: #d1352b;
+    --error-bg: #fee2e2;
+    --sombra: 0 2px 10px rgba(0, 0, 0, 0.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg-main: #212121;
+      --bg-elevado: #2a2a2a;
+      --bg-hover: #2e2e2e;
+      --borde: #3a3a3a;
+      --texto: #ececec;
+      --texto-atenuado: #9b9b9b;
+      --acento: #19c37d;
+      --acento-texto: #0d0d0d;
+      --ok: #4ade80;
+      --ok-bg: #14321f;
+      --error: #f2867a;
+      --error-bg: #3a1f1c;
+      --sombra: 0 2px 14px rgba(0, 0, 0, 0.35);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 2rem 1.25rem 4rem;
+    line-height: 1.55;
+    background: var(--bg-main);
+    color: var(--texto);
+  }
+  a { color: var(--acento); }
+  h1 { font-size: 1.4rem; margin-bottom: 0.25rem; }
+  p.subtitulo { color: var(--texto-atenuado); margin-top: 0; }
+
+  .encabezado {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: 1.25rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid var(--borde);
+  }
+  .encabezado nav { display: flex; align-items: center; gap: 0.6rem; }
+  .encabezado nav a {
+    color: var(--texto-atenuado);
+    font-size: 0.85rem;
+    text-decoration: none;
+    padding: 0.35rem 0.6rem;
+    border-radius: 8px;
+  }
+  .encabezado nav a:hover { background: var(--bg-hover); color: var(--texto); }
+  #boton-ayuda {
+    width: 1.9rem;
+    height: 1.9rem;
+    padding: 0;
+    border-radius: 50%;
+    background: var(--bg-elevado);
+    color: var(--acento);
+    border: 1px solid var(--borde);
+    font-weight: 700;
+    cursor: pointer;
+  }
+  #boton-ayuda:hover { background: var(--bg-hover); }
+
+  section { margin-bottom: 2rem; }
+  section h2 {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--texto-atenuado);
+    margin-bottom: 0.6rem;
+  }
+
+  .tarjeta {
+    background: var(--bg-elevado);
+    border: 1px solid var(--borde);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    box-shadow: var(--sombra);
+  }
+
+  .fila-token {
+    display: flex;
+    gap: 0.6rem;
+    align-items: center;
+    margin-bottom: 1.75rem;
+    padding: 0.75rem 1rem;
+  }
+  .fila-token input {
+    flex: 1 1 260px;
+    padding: 0.5rem 0.7rem;
+    border: 1px solid var(--borde);
+    border-radius: 8px;
+    background: var(--bg-main);
+    color: var(--texto);
+  }
+  .fila-token span { font-size: 0.82rem; color: var(--texto-atenuado); }
+
+  .grupo-fuente {
+    border: 1px solid var(--borde);
+    border-radius: 12px;
+    padding: 0.85rem 1.1rem;
+    margin-bottom: 0.85rem;
+    background: var(--bg-elevado);
+  }
+  .grupo-fuente-encabezado { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+  .grupo-fuente-encabezado h3 { margin: 0; font-size: 0.98rem; }
+  .grupo-fuente-encabezado button {
+    padding: 0.35rem 0.9rem;
+    border: none;
+    border-radius: 8px;
+    background: var(--acento);
+    color: var(--acento-texto);
+    cursor: pointer;
+    font-size: 0.83rem;
+    font-weight: 600;
+  }
+  .grupo-fuente-encabezado button:hover { filter: brightness(1.06); }
+  .grupo-fuente-encabezado button:disabled { opacity: 0.6; cursor: default; }
+  .ultimo-resultado { font-size: 0.85rem; margin: 0.4rem 0 0; }
+  .ultimo-resultado.ok { color: var(--ok); }
+  .ultimo-resultado.error { color: var(--error); }
+  .ultimo-resultado.sin-datos { color: var(--texto-atenuado); }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 0.6rem; font-size: 0.88rem; }
+  th, td { text-align: left; padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--borde); }
+  th { color: var(--texto-atenuado); font-weight: 600; }
+
+  .cola { display: flex; gap: 1rem; }
+  .cola div { text-align: center; flex: 1; }
+  .cola .numero { font-size: 1.5rem; font-weight: 700; }
+  .cola .etiqueta { font-size: 0.78rem; color: var(--texto-atenuado); text-transform: uppercase; letter-spacing: 0.03em; }
+
+  .archivos-vault-contenedor { max-height: 26rem; overflow-y: auto; }
+  td.col-archivo { max-width: 22rem; overflow-wrap: anywhere; }
+  .estado-badge {
+    display: inline-block;
+    padding: 0.18rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.76rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .estado-badge.estado-detectado    { background: var(--bg-hover); color: var(--texto-atenuado); }
+  .estado-badge.estado-extrayendo,
+  .estado-badge.estado-procesando   { background: #dbeafe; color: #1e40af; }
+  .estado-badge.estado-embebiendo   { background: #fef3c7; color: #92400e; }
+  .estado-badge.estado-listo        { background: var(--ok-bg); color: var(--ok); }
+  .estado-badge.estado-error        { background: var(--error-bg); color: var(--error); }
+  .fila-archivo-error td { color: var(--error); }
+  .boton-reintentar-archivo {
+    padding: 0.22rem 0.65rem;
+    border: 1px solid var(--error);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--error);
+    cursor: pointer;
+    font-size: 0.76rem;
+  }
+  .boton-reintentar-archivo:disabled { opacity: 0.6; cursor: default; }
+  .col-acciones { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+  .boton-eliminar-archivo {
+    padding: 0.22rem 0.65rem;
+    border: 1px solid var(--borde);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--texto-atenuado);
+    cursor: pointer;
+    font-size: 0.76rem;
+  }
+  .boton-eliminar-archivo:hover { border-color: var(--error); color: var(--error); }
+  .boton-eliminar-archivo:disabled { opacity: 0.6; cursor: default; }
+
+  .carga { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
+  .carga input[type="file"] {
+    font-size: 0.85rem;
+    color: var(--texto);
+  }
+  .carga button {
+    padding: 0.45rem 1rem;
+    border: none;
+    border-radius: 8px;
+    background: var(--acento);
+    color: var(--acento-texto);
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.85rem;
+  }
+  .carga button:hover { filter: brightness(1.06); }
+  #estado-carga { font-size: 0.85rem; color: var(--texto-atenuado); }
+
+  dialog {
+    max-width: 480px;
+    border: 1px solid var(--borde);
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    background: var(--bg-elevado);
+    color: var(--texto);
+  }
+  dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
+  dialog h2 { font-size: 1rem; margin-top: 0; }
+  dialog code { background: var(--bg-hover); padding: 0.1rem 0.3rem; border-radius: 4px; }
+  dialog .cerrar {
+    margin-top: 0.75rem;
+    padding: 0.45rem 1rem;
+    border: 1px solid var(--borde);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--texto);
+    cursor: pointer;
+  }
+
+  code { background: var(--bg-hover); padding: 0.1rem 0.3rem; border-radius: 4px; }
+</style>
+</head>
+<body>
+  <div class="encabezado">
+    <div>
+      <h1>Administración</h1>
+      <p class="subtitulo">Estado de las fuentes, la cola de ingesta y la carga de archivos.</p>
+    </div>
+    <nav>
+      <a href="/">← Volver al chat</a>
+      <button type="button" id="boton-ayuda" title="¿Dónde pongo mis archivos?">?</button>
+    </nav>
+  </div>
+
+  <dialog id="modal-ayuda">
+    <div id="contenido-ayuda"></div>
+    <button type="button" class="cerrar" onclick="document.getElementById('modal-ayuda').close()">Cerrar</button>
+  </dialog>
+
+  <div class="fila-token tarjeta">
+    <input id="campo-token" type="password" placeholder="Token de API (solo si KB_API_TOKEN está configurado)">
+    <span>Se guarda únicamente en este navegador (sessionStorage).</span>
+  </div>
+
+  <section>
+    <h2>Cola de ingesta</h2>
+    <div class="cola tarjeta" id="cola"></div>
+  </section>
+
+  <section>
+    <h2>Fuentes</h2>
+    <div id="fuentes"></div>
+  </section>
+
+  <section>
+    <h2>Archivos del vault</h2>
+    <p class="subtitulo" style="margin: 0 0 0.5rem;">
+      Estado de cada archivo detectado: pendiente → extrayendo (PDF/DOCX/PPTX) → procesando →
+      embebiendo → listo, o error.
+    </p>
+    <div class="archivos-vault-contenedor tarjeta">
+      <table>
+        <thead>
+          <tr><th>Archivo</th><th>Fuente</th><th>Estado</th><th>Actualizado</th><th></th></tr>
+        </thead>
+        <tbody id="archivos-vault"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Subir un documento</h2>
+    <form id="formulario-carga" class="carga tarjeta">
+      <input type="file" id="campo-archivo" accept=".md,.markdown,.txt,.pdf,.docx,.pptx">
+      <button type="submit">Subir</button>
+      <span id="estado-carga"></span>
+    </form>
+  </section>
+
+  <script src="ayuda.js"></script>
+  <script src="admin.js"></script>
+  <script>kbAyuda.inicializar("boton-ayuda", "modal-ayuda", "contenido-ayuda");</script>
+</body>
+</html>

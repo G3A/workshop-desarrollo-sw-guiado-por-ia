@@ -1,0 +1,996 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_Onboarding" targetNamespace="http://proceso-operacional-con-ia.local/proceso" exporter="bpmn-js (https://demo.bpmn.io)" exporterVersion="18.25.1">
+  <bpmn:collaboration id="Collab_1">
+    <bpmn:participant id="Participant_Onboarding" name="Desarrollo operacional guiado por IA — sobre GitHub" processRef="Proc_Onboarding" />
+    <bpmn:textAnnotation id="Anno_3">
+      <bpmn:text>Replanear exige confirmación explícita — es destructivo, descarta el plan actual.</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Anno_3_assoc" associationDirection="None" sourceRef="G3" targetRef="Anno_3" />
+    <bpmn:textAnnotation id="Anno_2">
+      <bpmn:text>Se configura una sola vez por repositorio, no por issue.</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Anno_2_assoc" associationDirection="None" sourceRef="pz" targetRef="Anno_2" />
+  </bpmn:collaboration>
+  <bpmn:process id="Proc_Onboarding" isExecutable="false">
+    <bpmn:laneSet id="LS_1">
+      <bpmn:lane id="Lane_dev" name="Persona desarrolladora — local (terminal + editor)">
+        <bpmn:flowNodeRef>start1</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>f0</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>fd1</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>a1</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>G1</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>G2</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>b2</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>b3</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>b4</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>b5</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>GT</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>GT2</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>G3</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>c4a</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>GUI</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>vw</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>c3</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>G4</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>c4b</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>c4c</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>ac</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>end_ok</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_registry" name="Registro de paquetes (npm público / GitHub Packages)" />
+      <bpmn:lane id="Lane_agente" name="Agente de código con IA (skills · subagentes · MCP)">
+        <bpmn:flowNodeRef>fd2</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>fd3</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>a2</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>b1</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>bi</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>ds</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>bt</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>c1</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>c2</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>c4p</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>pf</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>df</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>c5</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_issues" name="GitHub Issues / Projects">
+        <bpmn:flowNodeRef>bi2</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>bo1</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>bo2</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>G7</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_repo" name="GitHub — Pull Requests &#38; Rulesets">
+        <bpmn:flowNodeRef>p1</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>cr</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>G6</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>mg</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_actions" name="GitHub Actions (CI/CD)">
+        <bpmn:flowNodeRef>pz</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>pz2</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>v0</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>G5</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>cd1</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>G8</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="start1" name="Empieza el onboarding">
+      <bpmn:documentation>Punto de entrada al proceso de onboarding.</bpmn:documentation>
+      <bpmn:outgoing>e01</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:task id="f0" name="Fundamentos de colaboración">
+      <bpmn:documentation>Introduce el ciclo PDCA y las reglas de colaboración humano-IA del equipo.</bpmn:documentation>
+      <bpmn:incoming>e01</bpmn:incoming>
+      <bpmn:outgoing>e02</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="fd1" name="Instalar el agente de IA">
+      <bpmn:documentation>Instala el agente de código con IA (CLI o extensión) en el entorno local.</bpmn:documentation>
+      <bpmn:incoming>e02</bpmn:incoming>
+      <bpmn:outgoing>e03</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="fd2" name="Dominar los 4 gestos base">
+      <bpmn:documentation>Practica los 4 gestos base: preguntar, generar, revisar, iterar con el agente.</bpmn:documentation>
+      <bpmn:incoming>e03</bpmn:incoming>
+      <bpmn:outgoing>e04</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="fd3" name="Alfabetización de contexto y costo">
+      <bpmn:documentation>Aprende a leer el consumo de contexto/tokens y su costo asociado.</bpmn:documentation>
+      <bpmn:incoming>e04</bpmn:incoming>
+      <bpmn:outgoing>e05</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="a1" name="Autenticar GitHub CLI">
+      <bpmn:documentation>Autentica el GitHub CLI (gh auth login) contra la cuenta u organización de trabajo.</bpmn:documentation>
+      <bpmn:incoming>e05</bpmn:incoming>
+      <bpmn:outgoing>e06</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="a2" name="Configurar MCP y hooks del agente">
+      <bpmn:documentation>Registra los servidores MCP que el repo necesita y activa el catálogo de hooks del agente — instrument-agent-java.</bpmn:documentation>
+      <bpmn:incoming>e06</bpmn:incoming>
+      <bpmn:incoming>e09</bpmn:incoming>
+      <bpmn:outgoing>e07</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:exclusiveGateway id="G1" name="¿Chequeo de salud OK?">
+      <bpmn:documentation>Valida que agente, CLI y MCP respondan correctamente antes de continuar.</bpmn:documentation>
+      <bpmn:incoming>e07</bpmn:incoming>
+      <bpmn:outgoing>e08</bpmn:outgoing>
+      <bpmn:outgoing>e09</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:exclusiveGateway id="G2" name="¿Existe archivo de contexto?">
+      <bpmn:documentation>Verifica si ya existe un archivo de contexto (ej. AGENTS.md) en el repositorio.</bpmn:documentation>
+      <bpmn:incoming>e08</bpmn:incoming>
+      <bpmn:outgoing>e10</bpmn:outgoing>
+      <bpmn:outgoing>e11</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="b1" name="Generar contexto del repo">
+      <bpmn:documentation>El agente genera desde cero el archivo de contexto del repositorio.</bpmn:documentation>
+      <bpmn:incoming>e10</bpmn:incoming>
+      <bpmn:outgoing>e12</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="bi" name="Completar solo el andamiaje">
+      <bpmn:documentation>El agente completa solo las secciones de andamiaje faltantes, sin tocar lo humano.</bpmn:documentation>
+      <bpmn:incoming>e11</bpmn:incoming>
+      <bpmn:outgoing>e13</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="b2" name="Completar los TODO humanos">
+      <bpmn:documentation>La persona desarrolladora completa las secciones marcadas TODO (criterio humano).</bpmn:documentation>
+      <bpmn:incoming>e12</bpmn:incoming>
+      <bpmn:incoming>e13</bpmn:incoming>
+      <bpmn:outgoing>e14</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="pz" name="Configurar el juez de CI">
+      <bpmn:documentation>El repo-lead configura el pipeline de CI como juez objetivo de calidad. Esto es lo que crea lefthook.yml — tiene que pasar antes de que b3 pueda encontrarlo.</bpmn:documentation>
+      <bpmn:incoming>e14</bpmn:incoming>
+      <bpmn:outgoing>e17</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="pz2" name="Disparar la primera corrida">
+      <bpmn:documentation>Dispara la primera corrida de CI para validar la configuración recién creada.</bpmn:documentation>
+      <bpmn:incoming>e17</bpmn:incoming>
+      <bpmn:outgoing>e18</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="b3" name="Verificar que llegó el arnés">
+      <bpmn:documentation>Confirma que el arnés de pruebas y herramientas quedó operativo localmente.</bpmn:documentation>
+      <bpmn:incoming>e18</bpmn:incoming>
+      <bpmn:outgoing>e15</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="b4" name="Activar hooks locales">
+      <bpmn:documentation>Activa hooks locales (pre-commit/pre-push) para obtener feedback temprano.</bpmn:documentation>
+      <bpmn:incoming>e15</bpmn:incoming>
+      <bpmn:outgoing>e16</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="b5" name="Confirmar hooks del agente">
+      <bpmn:documentation>Dispara cada hook del agente a propósito (no los de lefthook) y confirma que corta o corre de verdad, en esta máquina, antes de confiar en él.</bpmn:documentation>
+      <bpmn:incoming>e16</bpmn:incoming>
+      <bpmn:outgoing>e60</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="ds" name="Pagar deuda técnica existente">
+      <bpmn:documentation>El agente identifica y paga deuda técnica preexistente antes de operar en el repo.</bpmn:documentation>
+      <bpmn:incoming>e60</bpmn:incoming>
+      <bpmn:outgoing>e19</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:exclusiveGateway id="GT" name="¿Ya existe estrategia de pruebas?">
+      <bpmn:documentation>Verifica si ya existe una estrategia de pruebas documentada en el repositorio.</bpmn:documentation>
+      <bpmn:incoming>e19</bpmn:incoming>
+      <bpmn:outgoing>e20</bpmn:outgoing>
+      <bpmn:outgoing>e21</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="bt" name="Crear estrategia de pruebas">
+      <bpmn:documentation>El agente crea la estrategia de pruebas (pirámide, cobertura objetivo, herramientas).</bpmn:documentation>
+      <bpmn:incoming>e21</bpmn:incoming>
+      <bpmn:outgoing>e22</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:exclusiveGateway id="GT2" name="¿Aparecieron costuras a producción?">
+      <bpmn:documentation>Detecta si aparecieron costuras (seams) necesarias para llevar código a producción.</bpmn:documentation>
+      <bpmn:incoming>e20</bpmn:incoming>
+      <bpmn:incoming>e22</bpmn:incoming>
+      <bpmn:outgoing>e23</bpmn:outgoing>
+      <bpmn:outgoing>e24</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="bi2" name="Registrar como issue de backlog">
+      <bpmn:documentation>Registra la costura detectada como issue de backlog para no perder el hallazgo.</bpmn:documentation>
+      <bpmn:incoming>e23</bpmn:incoming>
+      <bpmn:outgoing>e25</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="bo1" name="Tomar issue del sprint">
+      <bpmn:documentation>Se toma el siguiente issue priorizado del sprint desde GitHub Issues/Projects.</bpmn:documentation>
+      <bpmn:incoming>e24</bpmn:incoming>
+      <bpmn:incoming>e25</bpmn:incoming>
+      <bpmn:incoming>e58</bpmn:incoming>
+      <bpmn:outgoing>e26</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="c1" name="Planificar el issue">
+      <bpmn:documentation>El agente descompone el issue en un plan de tareas ejecutables.</bpmn:documentation>
+      <bpmn:incoming>e26</bpmn:incoming>
+      <bpmn:incoming>e30</bpmn:incoming>
+      <bpmn:incoming>e31</bpmn:incoming>
+      <bpmn:outgoing>e27</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="bo2" name="Revisar tareas generadas">
+      <bpmn:documentation>Se revisan las tareas generadas por el agente en GitHub Issues/Projects.</bpmn:documentation>
+      <bpmn:incoming>e27</bpmn:incoming>
+      <bpmn:outgoing>e28</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:exclusiveGateway id="G3" name="¿Aprobación del plan?">
+      <bpmn:documentation>Gate humano: aprobar, ajustar o replanear el plan antes de tocar código.</bpmn:documentation>
+      <bpmn:incoming>e28</bpmn:incoming>
+      <bpmn:outgoing>e29</bpmn:outgoing>
+      <bpmn:outgoing>e30</bpmn:outgoing>
+      <bpmn:outgoing>e31</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="c4a" name="Crear rama antes de implementar">
+      <bpmn:documentation>Crea la rama de trabajo antes de que el agente empiece a implementar.</bpmn:documentation>
+      <bpmn:incoming>e29</bpmn:incoming>
+      <bpmn:outgoing>e32</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="c2" name="Ejecutar tareas, 1 commit c/u">
+      <bpmn:documentation>El agente ejecuta las tareas del plan, un commit atómico por tarea.</bpmn:documentation>
+      <bpmn:incoming>e32</bpmn:incoming>
+      <bpmn:incoming>e41</bpmn:incoming>
+      <bpmn:outgoing>e33</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:exclusiveGateway id="GUI" name="¿Necesita verificación visual?">
+      <bpmn:documentation>Determina si el cambio tiene una superficie visual que requiera revisión.</bpmn:documentation>
+      <bpmn:incoming>e33</bpmn:incoming>
+      <bpmn:outgoing>e34</bpmn:outgoing>
+      <bpmn:outgoing>e35</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="v0" name="Levantar vista previa efímera">
+      <bpmn:documentation>GitHub Actions levanta un entorno de vista previa efímero para el PR.</bpmn:documentation>
+      <bpmn:incoming>e34</bpmn:incoming>
+      <bpmn:outgoing>e36</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="vw" name="Verificar visualmente">
+      <bpmn:documentation>La persona desarrolladora revisa visualmente el resultado en la vista previa.</bpmn:documentation>
+      <bpmn:incoming>e36</bpmn:incoming>
+      <bpmn:outgoing>e37</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="c3" name="Verificación en 4 capas">
+      <bpmn:documentation>Verificación en las 4 capas: unidad, contrato, integración y aceptación.</bpmn:documentation>
+      <bpmn:incoming>e35</bpmn:incoming>
+      <bpmn:incoming>e37</bpmn:incoming>
+      <bpmn:outgoing>e38</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:exclusiveGateway id="G4" name="¿Criterios de aceptación OK?">
+      <bpmn:documentation>Gate: los criterios de aceptación se cumplieron en la verificación de 4 capas.</bpmn:documentation>
+      <bpmn:incoming>e38</bpmn:incoming>
+      <bpmn:outgoing>e39</bpmn:outgoing>
+      <bpmn:outgoing>e40</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="c4p" name="Replanear la tarea fallida">
+      <bpmn:documentation>El agente replanea la tarea que falló para volver a ejecutarla.</bpmn:documentation>
+      <bpmn:incoming>e40</bpmn:incoming>
+      <bpmn:outgoing>e41</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="c4b" name="Commit con pie Closes #N">
+      <bpmn:documentation>Commit final con pie 'Closes #N' para enlazar el commit con el issue de GitHub.</bpmn:documentation>
+      <bpmn:incoming>e39</bpmn:incoming>
+      <bpmn:outgoing>e42</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="c4c" name="Push de la rama">
+      <bpmn:documentation>Push de la rama de trabajo al remoto en GitHub.</bpmn:documentation>
+      <bpmn:incoming>e42</bpmn:incoming>
+      <bpmn:outgoing>e43</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="p1" name="Abrir Pull Request">
+      <bpmn:documentation>Se abre el Pull Request en GitHub.</bpmn:documentation>
+      <bpmn:incoming>e43</bpmn:incoming>
+      <bpmn:incoming>e47</bpmn:incoming>
+      <bpmn:outgoing>e44</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:exclusiveGateway id="G5" name="¿CI en verde?">
+      <bpmn:documentation>Gate: los checks de CI configurados en el PR están en verde.</bpmn:documentation>
+      <bpmn:incoming>e44</bpmn:incoming>
+      <bpmn:outgoing>e45</bpmn:outgoing>
+      <bpmn:outgoing>e46</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="pf" name="Arreglar y repushear">
+      <bpmn:documentation>El agente diagnostica el fallo de CI y hace un repush con la corrección.</bpmn:documentation>
+      <bpmn:incoming>e46</bpmn:incoming>
+      <bpmn:outgoing>e47</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="cr" name="Revisión de código (agente + CODEOWNERS)">
+      <bpmn:documentation>Revisión de código combinada: primera pasada del agente + CODEOWNERS humano.</bpmn:documentation>
+      <bpmn:incoming>e45</bpmn:incoming>
+      <bpmn:incoming>e51</bpmn:incoming>
+      <bpmn:outgoing>e48</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:exclusiveGateway id="G6" name="¿PR aprobada?">
+      <bpmn:documentation>Gate: la Pull Request fue aprobada según el Ruleset del repositorio.</bpmn:documentation>
+      <bpmn:incoming>e48</bpmn:incoming>
+      <bpmn:outgoing>e49</bpmn:outgoing>
+      <bpmn:outgoing>e50</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="ac" name="Atender comentarios">
+      <bpmn:documentation>La persona desarrolladora atiende los comentarios de la revisión.</bpmn:documentation>
+      <bpmn:incoming>e50</bpmn:incoming>
+      <bpmn:outgoing>e51</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="mg" name="Merge (Rulesets exige checks)">
+      <bpmn:documentation>Merge del PR; los Rulesets de GitHub exigen que los checks estén en verde.</bpmn:documentation>
+      <bpmn:incoming>e49</bpmn:incoming>
+      <bpmn:outgoing>e52</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="cd1" name="CD automático a staging">
+      <bpmn:documentation>GitHub Actions despliega automáticamente a staging tras el merge.</bpmn:documentation>
+      <bpmn:incoming>e52</bpmn:incoming>
+      <bpmn:incoming>e56</bpmn:incoming>
+      <bpmn:outgoing>e53</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:exclusiveGateway id="G8" name="¿CD en verde?">
+      <bpmn:documentation>Gate: el despliegue continuo a staging terminó en verde.</bpmn:documentation>
+      <bpmn:incoming>e53</bpmn:incoming>
+      <bpmn:outgoing>e54</bpmn:outgoing>
+      <bpmn:outgoing>e55</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="df" name="Arreglar hacia adelante">
+      <bpmn:documentation>El agente arregla hacia adelante (fix-forward) el problema detectado en CD.</bpmn:documentation>
+      <bpmn:incoming>e55</bpmn:incoming>
+      <bpmn:outgoing>e56</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="c5" name="Retrospectiva">
+      <bpmn:documentation>El agente arma una retrospectiva breve del issue recién cerrado.</bpmn:documentation>
+      <bpmn:incoming>e54</bpmn:incoming>
+      <bpmn:outgoing>e57</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:exclusiveGateway id="G7" name="¿Quedan issues del sprint?">
+      <bpmn:documentation>Chequea si quedan issues pendientes del sprint actual.</bpmn:documentation>
+      <bpmn:incoming>e57</bpmn:incoming>
+      <bpmn:outgoing>e58</bpmn:outgoing>
+      <bpmn:outgoing>e59</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="end_ok" name="Sprint cerrado">
+      <bpmn:documentation>Cierre del sprint: no quedan issues pendientes en el ciclo PDCA.</bpmn:documentation>
+      <bpmn:incoming>e59</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="e01" sourceRef="start1" targetRef="f0" />
+    <bpmn:sequenceFlow id="e02" sourceRef="f0" targetRef="fd1" />
+    <bpmn:sequenceFlow id="e03" sourceRef="fd1" targetRef="fd2" />
+    <bpmn:sequenceFlow id="e04" sourceRef="fd2" targetRef="fd3" />
+    <bpmn:sequenceFlow id="e05" sourceRef="fd3" targetRef="a1" />
+    <bpmn:sequenceFlow id="e06" sourceRef="a1" targetRef="a2" />
+    <bpmn:sequenceFlow id="e07" sourceRef="a2" targetRef="G1" />
+    <bpmn:sequenceFlow id="e08" name="Sí" sourceRef="G1" targetRef="G2" />
+    <bpmn:sequenceFlow id="e09" name="No" sourceRef="G1" targetRef="a2" />
+    <bpmn:sequenceFlow id="e10" name="No" sourceRef="G2" targetRef="b1" />
+    <bpmn:sequenceFlow id="e11" name="Sí" sourceRef="G2" targetRef="bi" />
+    <bpmn:sequenceFlow id="e12" sourceRef="b1" targetRef="b2" />
+    <bpmn:sequenceFlow id="e13" sourceRef="bi" targetRef="b2" />
+    <bpmn:sequenceFlow id="e14" sourceRef="b2" targetRef="pz" />
+    <bpmn:sequenceFlow id="e17" sourceRef="pz" targetRef="pz2" />
+    <bpmn:sequenceFlow id="e18" sourceRef="pz2" targetRef="b3" />
+    <bpmn:sequenceFlow id="e15" sourceRef="b3" targetRef="b4" />
+    <bpmn:sequenceFlow id="e16" sourceRef="b4" targetRef="b5" />
+    <bpmn:sequenceFlow id="e60" sourceRef="b5" targetRef="ds" />
+    <bpmn:sequenceFlow id="e19" sourceRef="ds" targetRef="GT" />
+    <bpmn:sequenceFlow id="e20" name="Sí" sourceRef="GT" targetRef="GT2" />
+    <bpmn:sequenceFlow id="e21" name="No" sourceRef="GT" targetRef="bt" />
+    <bpmn:sequenceFlow id="e22" sourceRef="bt" targetRef="GT2" />
+    <bpmn:sequenceFlow id="e23" name="Sí" sourceRef="GT2" targetRef="bi2" />
+    <bpmn:sequenceFlow id="e24" name="No" sourceRef="GT2" targetRef="bo1" />
+    <bpmn:sequenceFlow id="e25" sourceRef="bi2" targetRef="bo1" />
+    <bpmn:sequenceFlow id="e26" sourceRef="bo1" targetRef="c1" />
+    <bpmn:sequenceFlow id="e27" sourceRef="c1" targetRef="bo2" />
+    <bpmn:sequenceFlow id="e28" sourceRef="bo2" targetRef="G3" />
+    <bpmn:sequenceFlow id="e29" name="Seguir" sourceRef="G3" targetRef="c4a" />
+    <bpmn:sequenceFlow id="e30" name="Ajustar" sourceRef="G3" targetRef="c1" />
+    <bpmn:sequenceFlow id="e31" name="Replanear" sourceRef="G3" targetRef="c1" />
+    <bpmn:sequenceFlow id="e32" sourceRef="c4a" targetRef="c2" />
+    <bpmn:sequenceFlow id="e33" sourceRef="c2" targetRef="GUI" />
+    <bpmn:sequenceFlow id="e34" name="Sí" sourceRef="GUI" targetRef="v0" />
+    <bpmn:sequenceFlow id="e35" name="No" sourceRef="GUI" targetRef="c3" />
+    <bpmn:sequenceFlow id="e36" sourceRef="v0" targetRef="vw" />
+    <bpmn:sequenceFlow id="e37" sourceRef="vw" targetRef="c3" />
+    <bpmn:sequenceFlow id="e38" sourceRef="c3" targetRef="G4" />
+    <bpmn:sequenceFlow id="e39" name="Sí" sourceRef="G4" targetRef="c4b" />
+    <bpmn:sequenceFlow id="e40" name="No" sourceRef="G4" targetRef="c4p" />
+    <bpmn:sequenceFlow id="e41" sourceRef="c4p" targetRef="c2" />
+    <bpmn:sequenceFlow id="e42" sourceRef="c4b" targetRef="c4c" />
+    <bpmn:sequenceFlow id="e43" sourceRef="c4c" targetRef="p1" />
+    <bpmn:sequenceFlow id="e44" sourceRef="p1" targetRef="G5" />
+    <bpmn:sequenceFlow id="e45" name="Sí" sourceRef="G5" targetRef="cr" />
+    <bpmn:sequenceFlow id="e46" name="No" sourceRef="G5" targetRef="pf" />
+    <bpmn:sequenceFlow id="e47" sourceRef="pf" targetRef="p1" />
+    <bpmn:sequenceFlow id="e48" sourceRef="cr" targetRef="G6" />
+    <bpmn:sequenceFlow id="e49" name="Sí" sourceRef="G6" targetRef="mg" />
+    <bpmn:sequenceFlow id="e50" name="No" sourceRef="G6" targetRef="ac" />
+    <bpmn:sequenceFlow id="e51" sourceRef="ac" targetRef="cr" />
+    <bpmn:sequenceFlow id="e52" sourceRef="mg" targetRef="cd1" />
+    <bpmn:sequenceFlow id="e53" sourceRef="cd1" targetRef="G8" />
+    <bpmn:sequenceFlow id="e54" name="Sí" sourceRef="G8" targetRef="c5" />
+    <bpmn:sequenceFlow id="e55" name="No" sourceRef="G8" targetRef="df" />
+    <bpmn:sequenceFlow id="e56" sourceRef="df" targetRef="cd1" />
+    <bpmn:sequenceFlow id="e57" sourceRef="c5" targetRef="G7" />
+    <bpmn:sequenceFlow id="e58" name="Sí" sourceRef="G7" targetRef="bo1" />
+    <bpmn:sequenceFlow id="e59" name="No" sourceRef="G7" targetRef="end_ok" />
+    <bpmn:textAnnotation id="Anno_1">
+      <bpmn:text>Todo el proceso es un ciclo PDCA (Deming) — Bloque C se repite por cada issue del sprint y cierra en G7.</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Anno_1_assoc" associationDirection="None" sourceRef="f0" targetRef="Anno_1" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="D_1">
+    <bpmndi:BPMNPlane id="Pl_1" bpmnElement="Collab_1">
+      <bpmndi:BPMNShape id="Participant_Onboarding_di" bpmnElement="Participant_Onboarding" isHorizontal="true">
+        <dc:Bounds x="160" y="80" width="9218" height="1230" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_actions_di" bpmnElement="Lane_actions" isHorizontal="true">
+        <dc:Bounds x="190" y="1130" width="9188" height="180" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_repo_di" bpmnElement="Lane_repo" isHorizontal="true">
+        <dc:Bounds x="190" y="950" width="9188" height="180" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_issues_di" bpmnElement="Lane_issues" isHorizontal="true">
+        <dc:Bounds x="190" y="770" width="9188" height="180" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_agente_di" bpmnElement="Lane_agente" isHorizontal="true">
+        <dc:Bounds x="190" y="470" width="9188" height="300" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_registry_di" bpmnElement="Lane_registry" isHorizontal="true">
+        <dc:Bounds x="190" y="380" width="9188" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_dev_di" bpmnElement="Lane_dev" isHorizontal="true">
+        <dc:Bounds x="190" y="80" width="9188" height="300" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="start1_di" bpmnElement="start1">
+        <dc:Bounds x="282" y="212" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="268" y="256" width="65" height="28" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="f0_di" bpmnElement="f0">
+        <dc:Bounds x="420" y="195" width="160" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="fd1_di" bpmnElement="fd1">
+        <dc:Bounds x="620" y="195" width="160" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="fd2_di" bpmnElement="fd2">
+        <dc:Bounds x="820" y="490" width="160" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="fd3_di" bpmnElement="fd3">
+        <dc:Bounds x="1020" y="490" width="160" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="a1_di" bpmnElement="a1">
+        <dc:Bounds x="1220" y="195" width="160" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="a2_di" bpmnElement="a2">
+        <dc:Bounds x="1420" y="490" width="160" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="G1_di" bpmnElement="G1" isMarkerVisible="true">
+        <dc:Bounds x="1675" y="205" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1664" y="169" width="72" height="28" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="G2_di" bpmnElement="G2" isMarkerVisible="true">
+        <dc:Bounds x="1875" y="205" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1851" y="169" width="98" height="28" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="b1_di" bpmnElement="b1">
+        <dc:Bounds x="2020" y="490" width="160" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="bi_di" bpmnElement="bi">
+        <dc:Bounds x="2020" y="645" width="160" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="b2_di" bpmnElement="b2">
+        <dc:Bounds x="2220" y="195" width="160" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="pz_di" bpmnElement="pz">
+        <dc:Bounds x="2420" y="1185" width="160" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="pz2_di" bpmnElement="pz2">
+        <dc:Bounds x="2620" y="1185" width="160" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="b3_di" bpmnElement="b3">
+        <dc:Bounds x="2820" y="195" width="160" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="b4_di" bpmnElement="b4">
+        <dc:Bounds x="3020" y="195" width="160" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="b5_di" bpmnElement="b5">
+        <dc:Bounds x="3220" y="195" width="160" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ds_di" bpmnElement="ds">
+        <dc:Bounds x="3620" y="490" width="160" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="GT_di" bpmnElement="GT" isMarkerVisible="true">
+        <dc:Bounds x="3875" y="205" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3869" y="160" width="64" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="bt_di" bpmnElement="bt">
+        <dc:Bounds x="4020" y="490" width="160" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="GT2_di" bpmnElement="GT2" isMarkerVisible="true">
+        <dc:Bounds x="4275" y="205" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="4261" y="155" width="78" height="42" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="bi2_di" bpmnElement="bi2">
+        <dc:Bounds x="4420" y="825" width="160" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="bo1_di" bpmnElement="bo1">
+        <dc:Bounds x="4620" y="825" width="160" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="c1_di" bpmnElement="c1">
+        <dc:Bounds x="4820" y="490" width="160" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="bo2_di" bpmnElement="bo2">
+        <dc:Bounds x="5020" y="825" width="160" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="G3_di" bpmnElement="G3" isMarkerVisible="true">
+        <dc:Bounds x="5275" y="205" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="4779.5" y="236" width="81" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="c4a_di" bpmnElement="c4a">
+        <dc:Bounds x="5420" y="195" width="160" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="c2_di" bpmnElement="c2">
+        <dc:Bounds x="5620" y="490" width="160" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="GUI_di" bpmnElement="GUI" isMarkerVisible="true">
+        <dc:Bounds x="5875" y="205" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="5852" y="160" width="56" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="v0_di" bpmnElement="v0">
+        <dc:Bounds x="6020" y="1185" width="160" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="vw_di" bpmnElement="vw">
+        <dc:Bounds x="6220" y="195" width="160" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="c3_di" bpmnElement="c3">
+        <dc:Bounds x="6420" y="195" width="160" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="G4_di" bpmnElement="G4" isMarkerVisible="true">
+        <dc:Bounds x="6675" y="205" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="6655" y="169" width="91" height="28" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="c4p_di" bpmnElement="c4p">
+        <dc:Bounds x="6620" y="490" width="160" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="c4b_di" bpmnElement="c4b">
+        <dc:Bounds x="6820" y="195" width="160" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="c4c_di" bpmnElement="c4c">
+        <dc:Bounds x="7020" y="195" width="160" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p1_di" bpmnElement="p1">
+        <dc:Bounds x="7220" y="1005" width="160" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="G5_di" bpmnElement="G5" isMarkerVisible="true">
+        <dc:Bounds x="7475" y="1195" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="7458" y="1253" width="85" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="pf_di" bpmnElement="pf">
+        <dc:Bounds x="7420" y="490" width="160" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="cr_di" bpmnElement="cr">
+        <dc:Bounds x="7620" y="1005" width="160" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="G6_di" bpmnElement="G6" isMarkerVisible="true">
+        <dc:Bounds x="7875" y="1015" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="7901" y="973" width="78" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ac_di" bpmnElement="ac">
+        <dc:Bounds x="7820" y="195" width="160" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="mg_di" bpmnElement="mg">
+        <dc:Bounds x="8020" y="1005" width="160" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="cd1_di" bpmnElement="cd1">
+        <dc:Bounds x="8220" y="1185" width="160" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="G8_di" bpmnElement="G8" isMarkerVisible="true">
+        <dc:Bounds x="8475" y="1195" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="8458" y="1253" width="85" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="df_di" bpmnElement="df">
+        <dc:Bounds x="8420" y="490" width="160" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="c5_di" bpmnElement="c5">
+        <dc:Bounds x="8620" y="490" width="160" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="G7_di" bpmnElement="G7" isMarkerVisible="true">
+        <dc:Bounds x="8875" y="835" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="8859" y="894.5" width="81" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="end_ok_di" bpmnElement="end_ok">
+        <dc:Bounds x="9082" y="212" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="9065" y="188" width="70" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Anno_1_di" bpmnElement="Anno_1">
+        <dc:Bounds x="560" y="95" width="230" height="95" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="e01_di" bpmnElement="e01">
+        <di:waypoint x="318" y="230" />
+        <di:waypoint x="420" y="230" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e02_di" bpmnElement="e02">
+        <di:waypoint x="580" y="230" />
+        <di:waypoint x="620" y="230" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e03_di" bpmnElement="e03">
+        <di:waypoint x="700" y="265" />
+        <di:waypoint x="700" y="525" />
+        <di:waypoint x="820" y="525" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e04_di" bpmnElement="e04">
+        <di:waypoint x="980" y="525" />
+        <di:waypoint x="1020" y="525" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e05_di" bpmnElement="e05">
+        <di:waypoint x="1100" y="490" />
+        <di:waypoint x="1100" y="230" />
+        <di:waypoint x="1220" y="230" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e06_di" bpmnElement="e06">
+        <di:waypoint x="1300" y="265" />
+        <di:waypoint x="1300" y="525" />
+        <di:waypoint x="1420" y="525" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e07_di" bpmnElement="e07">
+        <di:waypoint x="1500" y="490" />
+        <di:waypoint x="1500" y="230" />
+        <di:waypoint x="1675" y="230" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e08_di" bpmnElement="e08">
+        <di:waypoint x="1725" y="230" />
+        <di:waypoint x="1875" y="230" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1784" y="203" width="11" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e09_di" bpmnElement="e09">
+        <di:waypoint x="1700" y="255" />
+        <di:waypoint x="1700" y="610" />
+        <di:waypoint x="1500" y="610" />
+        <di:waypoint x="1500" y="560" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1709" y="293" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e10_di" bpmnElement="e10">
+        <di:waypoint x="1925" y="230" />
+        <di:waypoint x="2100" y="230" />
+        <di:waypoint x="2100" y="490" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1972" y="203" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e11_di" bpmnElement="e11">
+        <di:waypoint x="1900" y="255" />
+        <di:waypoint x="1900" y="680" />
+        <di:waypoint x="2020" y="680" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1914" y="293" width="11" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e12_di" bpmnElement="e12">
+        <di:waypoint x="2150" y="490" />
+        <di:waypoint x="2150" y="230" />
+        <di:waypoint x="2220" y="230" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e13_di" bpmnElement="e13">
+        <di:waypoint x="2180" y="680" />
+        <di:waypoint x="2270" y="680" />
+        <di:waypoint x="2270" y="265" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e14_di" bpmnElement="e14">
+        <di:waypoint x="2310" y="265" />
+        <di:waypoint x="2310" y="1220" />
+        <di:waypoint x="2420" y="1220" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e17_di" bpmnElement="e17">
+        <di:waypoint x="2580" y="1220" />
+        <di:waypoint x="2620" y="1220" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e18_di" bpmnElement="e18">
+        <di:waypoint x="2700" y="1185" />
+        <di:waypoint x="2700" y="230" />
+        <di:waypoint x="2820" y="230" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e15_di" bpmnElement="e15">
+        <di:waypoint x="2980" y="230" />
+        <di:waypoint x="3020" y="230" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e16_di" bpmnElement="e16">
+        <di:waypoint x="3180" y="230" />
+        <di:waypoint x="3220" y="230" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e60_di" bpmnElement="e60">
+        <di:waypoint x="3300" y="265" />
+        <di:waypoint x="3300" y="525" />
+        <di:waypoint x="3620" y="525" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e19_di" bpmnElement="e19">
+        <di:waypoint x="3700" y="490" />
+        <di:waypoint x="3700" y="230" />
+        <di:waypoint x="3875" y="230" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e20_di" bpmnElement="e20">
+        <di:waypoint x="3925" y="230" />
+        <di:waypoint x="4275" y="230" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="4054" y="213" width="11" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e21_di" bpmnElement="e21">
+        <di:waypoint x="3900" y="255" />
+        <di:waypoint x="3900" y="525" />
+        <di:waypoint x="4020" y="525" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3904" y="348" width="26" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e22_di" bpmnElement="e22">
+        <di:waypoint x="4180" y="525" />
+        <di:waypoint x="4280" y="525" />
+        <di:waypoint x="4280" y="235" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e23_di" bpmnElement="e23">
+        <di:waypoint x="4300" y="255" />
+        <di:waypoint x="4300" y="860" />
+        <di:waypoint x="4420" y="860" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="4314" y="283" width="11" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e24_di" bpmnElement="e24">
+        <di:waypoint x="4325" y="230" />
+        <di:waypoint x="4650" y="230" />
+        <di:waypoint x="4650" y="825" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="4365" y="203" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e25_di" bpmnElement="e25">
+        <di:waypoint x="4580" y="860" />
+        <di:waypoint x="4620" y="860" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e26_di" bpmnElement="e26">
+        <di:waypoint x="4750" y="825" />
+        <di:waypoint x="4750" y="525" />
+        <di:waypoint x="4820" y="525" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e27_di" bpmnElement="e27">
+        <di:waypoint x="4900" y="560" />
+        <di:waypoint x="4900" y="860" />
+        <di:waypoint x="5020" y="860" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e28_di" bpmnElement="e28">
+        <di:waypoint x="5180" y="860" />
+        <di:waypoint x="5300" y="860" />
+        <di:waypoint x="5300" y="255" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e29_di" bpmnElement="e29">
+        <di:waypoint x="5325" y="230" />
+        <di:waypoint x="5420" y="230" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="5355" y="213" width="32" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e30_di" bpmnElement="e30">
+        <di:waypoint x="5300" y="205" />
+        <di:waypoint x="5300" y="170" />
+        <di:waypoint x="4860" y="170" />
+        <di:waypoint x="4860" y="490" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="5036" y="154" width="35" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e31_di" bpmnElement="e31">
+        <di:waypoint x="5275" y="230" />
+        <di:waypoint x="4940" y="230" />
+        <di:waypoint x="4940" y="490" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="5114" y="213" width="51" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e32_di" bpmnElement="e32">
+        <di:waypoint x="5500" y="265" />
+        <di:waypoint x="5500" y="525" />
+        <di:waypoint x="5620" y="525" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e33_di" bpmnElement="e33">
+        <di:waypoint x="5700" y="490" />
+        <di:waypoint x="5700" y="230" />
+        <di:waypoint x="5875" y="230" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e34_di" bpmnElement="e34">
+        <di:waypoint x="5900" y="255" />
+        <di:waypoint x="5900" y="1220" />
+        <di:waypoint x="6020" y="1220" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="5909" y="336" width="11" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e35_di" bpmnElement="e35">
+        <di:waypoint x="5925" y="230" />
+        <di:waypoint x="6000" y="230" />
+        <di:waypoint x="6000" y="160" />
+        <di:waypoint x="6500" y="160" />
+        <di:waypoint x="6500" y="195" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="6066" y="133" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e36_di" bpmnElement="e36">
+        <di:waypoint x="6100" y="1185" />
+        <di:waypoint x="6100" y="230" />
+        <di:waypoint x="6220" y="230" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e37_di" bpmnElement="e37">
+        <di:waypoint x="6380" y="230" />
+        <di:waypoint x="6420" y="230" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e38_di" bpmnElement="e38">
+        <di:waypoint x="6580" y="230" />
+        <di:waypoint x="6675" y="230" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e39_di" bpmnElement="e39">
+        <di:waypoint x="6725" y="230" />
+        <di:waypoint x="6820" y="230" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="6764" y="173" width="13" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e40_di" bpmnElement="e40">
+        <di:waypoint x="6700" y="255" />
+        <di:waypoint x="6700" y="490" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="6728" y="343" width="13" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e41_di" bpmnElement="e41">
+        <di:waypoint x="6700" y="560" />
+        <di:waypoint x="6700" y="1290" />
+        <di:waypoint x="5700" y="1290" />
+        <di:waypoint x="5700" y="560" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e42_di" bpmnElement="e42">
+        <di:waypoint x="6980" y="230" />
+        <di:waypoint x="7020" y="230" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e43_di" bpmnElement="e43">
+        <di:waypoint x="7100" y="265" />
+        <di:waypoint x="7100" y="1040" />
+        <di:waypoint x="7220" y="1040" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e44_di" bpmnElement="e44">
+        <di:waypoint x="7300" y="1075" />
+        <di:waypoint x="7300" y="1220" />
+        <di:waypoint x="7475" y="1220" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e45_di" bpmnElement="e45">
+        <di:waypoint x="7525" y="1220" />
+        <di:waypoint x="7700" y="1220" />
+        <di:waypoint x="7700" y="1075" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="7604" y="1193" width="11" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e46_di" bpmnElement="e46">
+        <di:waypoint x="7500" y="1195" />
+        <di:waypoint x="7500" y="560" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="7512" y="1153" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e47_di" bpmnElement="e47">
+        <di:waypoint x="7420" y="525" />
+        <di:waypoint x="7300" y="525" />
+        <di:waypoint x="7300" y="1005" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e48_di" bpmnElement="e48">
+        <di:waypoint x="7780" y="1040" />
+        <di:waypoint x="7875" y="1040" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e49_di" bpmnElement="e49">
+        <di:waypoint x="7925" y="1040" />
+        <di:waypoint x="8020" y="1040" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="7954" y="1013" width="11" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e50_di" bpmnElement="e50">
+        <di:waypoint x="7900" y="1015" />
+        <di:waypoint x="7900" y="265" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="7912" y="903" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e51_di" bpmnElement="e51">
+        <di:waypoint x="7820" y="230" />
+        <di:waypoint x="7700" y="230" />
+        <di:waypoint x="7700" y="1005" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e52_di" bpmnElement="e52">
+        <di:waypoint x="8100" y="1075" />
+        <di:waypoint x="8100" y="1220" />
+        <di:waypoint x="8220" y="1220" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e53_di" bpmnElement="e53">
+        <di:waypoint x="8380" y="1220" />
+        <di:waypoint x="8475" y="1220" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e54_di" bpmnElement="e54">
+        <di:waypoint x="8525" y="1220" />
+        <di:waypoint x="8700" y="1220" />
+        <di:waypoint x="8700" y="560" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="8624" y="1193" width="11" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e55_di" bpmnElement="e55">
+        <di:waypoint x="8500" y="1195" />
+        <di:waypoint x="8500" y="560" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="8512" y="1153" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e56_di" bpmnElement="e56">
+        <di:waypoint x="8420" y="525" />
+        <di:waypoint x="8300" y="525" />
+        <di:waypoint x="8300" y="1185" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e57_di" bpmnElement="e57">
+        <di:waypoint x="8780" y="525" />
+        <di:waypoint x="8810" y="525" />
+        <di:waypoint x="8810" y="860" />
+        <di:waypoint x="8875" y="860" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e58_di" bpmnElement="e58">
+        <di:waypoint x="8900" y="835" />
+        <di:waypoint x="8900" y="110" />
+        <di:waypoint x="4730" y="110" />
+        <di:waypoint x="4730" y="825" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="8914" y="783" width="11" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e59_di" bpmnElement="e59">
+        <di:waypoint x="8925" y="860" />
+        <di:waypoint x="9100" y="860" />
+        <di:waypoint x="9100" y="248" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="8992" y="833" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Anno_1_assoc_di" bpmnElement="Anno_1_assoc">
+        <di:waypoint x="500" y="195" />
+        <di:waypoint x="675" y="190" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Anno_3_di" bpmnElement="Anno_3">
+        <dc:Bounds x="5310" y="120" width="230" height="78" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Anno_2_di" bpmnElement="Anno_2">
+        <dc:Bounds x="2420" y="1123" width="210" height="48" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Anno_3_assoc_di" bpmnElement="Anno_3_assoc">
+        <di:waypoint x="5300" y="205" />
+        <di:waypoint x="5425" y="198" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Anno_2_assoc_di" bpmnElement="Anno_2_assoc">
+        <di:waypoint x="2500" y="1185" />
+        <di:waypoint x="2525" y="1171" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

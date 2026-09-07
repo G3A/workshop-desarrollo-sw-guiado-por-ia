@@ -1,0 +1,38 @@
+# Perfil experimental: Nanbeige4.1-3B (Nanbeige), servido por el mismo `ollama`
+# que ya levanta compose.yml -- mismo mecanismo que el resto de los perfiles
+# de Ollama.
+#
+# Por que este candidato: la sesion 2 de docs/investigacion-vram-y-modelo-llm.md
+# (hallazgo 7) lo descarto -- el mejor ajuste de VRAM de esa sesion (23%/77%
+# CPU/GPU), pero conectado al pipeline real se quedaba generando razonamiento
+# sin converger en las llamadas de salida JSON forzada (Planificador,
+# VerificadorGrounding): mas de 1800 tokens decodificados sin producir nunca
+# una respuesta. Esa sesion es ANTERIOR al fix reasoning_effort=none (hallazgo
+# 76, sesion 18/20) -- este perfil existe para volver a probarlo ahora que ese
+# fix ya esta cableado sin condicionar por modelo en los cuatro componentes
+# *OpenAi, igual que ya confirmo la sesion 23 con SmolLM3-3B (mismo modo de
+# falla, mismo fix, si funciono).
+#
+# Uso, junto con el perfil GPU real:
+#   docker compose -f compose.yml -f compose.gpu.yml -f compose.nanbeige.yml up -d
+#
+# El modelo NO se baja solo: hace falta `make pull-nanbeige` (o
+# `docker compose exec ollama ollama pull tomng/nanbeige4.1:3b-q4_K_M`) antes
+# de levantar `api`, una sola vez -- el tag SIN sufijo trae Q8_0 (4.2 GB, no
+# comparable con el resto de candidatos de ~3B); este es el correcto.
+
+services:
+  api:
+    environment:
+      SPRING_AI_OPENAI_BASE_URL: http://ollama:11434/v1
+      KB_LLM_MODELO: tomng/nanbeige4.1:3b-q4_K_M
+      # 450s de margen por si el fix no alcanza y el modelo se acerca otra vez
+      # al limite de contexto sin converger -- que timeee limpio en vez de
+      # colgar el pipeline indefinidamente.
+      KB_LLM_TIMEOUT: ${KB_LLM_TIMEOUT:-450s}
+      KB_UMBRAL_RELEVANCIA_TECHO_CONFIANZA: ${KB_UMBRAL_RELEVANCIA_TECHO_CONFIANZA:-8.0}
+      KB_EXPANDIR_VECINOS: ${KB_EXPANDIR_VECINOS:-false}
+      KB_MAX_FRAGMENTOS_CONTEXTO: ${KB_MAX_FRAGMENTOS_CONTEXTO:-6}
+      KB_RECUPERACION_TOP_RERANK: ${KB_RECUPERACION_TOP_RERANK:-6}
+      KB_RECUPERACION_TOPE_POR_DOCUMENTO: ${KB_RECUPERACION_TOPE_POR_DOCUMENTO:-20}
+      KB_LLM_SINTESIS_ESTRUCTURADA_HABILITADA: ${KB_LLM_SINTESIS_ESTRUCTURADA_HABILITADA:-false}

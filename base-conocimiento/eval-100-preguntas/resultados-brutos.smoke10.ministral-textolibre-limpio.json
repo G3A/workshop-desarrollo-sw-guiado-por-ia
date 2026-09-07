@@ -1,0 +1,122 @@
+[
+  {
+    "id": 1,
+    "categoria": "tipos",
+    "pregunta": "¿Cuáles son los ocho tipos primitivos definidos en el lenguaje Java?",
+    "esperado": "responde",
+    "respuesta": "Los ocho tipos primitivos definidos en Java son:\nbyte, **short**, int, **long**, **char**, float, double y boolean [1].\n\nNo hay contradicción entre las fuentes consultadas.",
+    "estadoFinal": "Respondido en 5:38",
+    "error": null,
+    "inicio": "2026-08-22T22:56:32.020Z",
+    "fin": "2026-08-22T23:02:11.527Z",
+    "elapsedMs": 339507
+  },
+  {
+    "id": 3,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es una conversión de ensanchamiento (widening) entre tipos primitivos?",
+    "esperado": "responde",
+    "respuesta": "Una **conversión de ensanchamiento** entre tipos primitivos es una conversión que **aumenta el tamaño del espacio de almacenamiento** sin perder información exacta en ciertos casos, según las reglas definidas en [1].\n\nEjemplos de conversiones de ensanchamiento:\n- byte → short, int, long, float o double\n- char → int, long, float o double (solo si luego se usa un **ensanchamiento y encogimiento**, como en el contexto [2])\n\n**Características clave**:\n- Preserva la magnitud exacta de valores numéricos en:\n  - Conversiones entre tipos enteros (ej. `int` → `long`) **[1]**.\n  - Conversión de byte/short/char a tipo flotante o `double` **[1]**.\n  - Conversión específica de `int` a `double` **[1]**.\n\n- Puede perder precisión en conversiones como:\n  - `int` → `float`, `long` → `float` o `long` → `double` (ejemplo: `big = 1234567890` → `approx = float` pierde bits significativos, resultado `-46` **[1]**).\n\n- **No genera excepciones** a nivel de ejecución ([1]).\n\n---\n*Nota sobre contradicción*: El contexto [2] menciona que la conversión `byte → char` combina un ensanchamiento seguido de un encogimiento (no es pura conversión de ensanchamiento), mientras que el resto del texto ([1], [3]) se enfoca en conversiones puras de ensanchamiento. Esto no contradice las definiciones, sino que especifica un caso híbrido.",
+    "estadoFinal": "Respondido en 3:38",
+    "error": null,
+    "inicio": "2026-08-22T23:02:36.795Z",
+    "fin": "2026-08-22T23:06:15.389Z",
+    "elapsedMs": 218594
+  },
+  {
+    "id": 4,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es el autoboxing y cuándo ocurre de forma automática?",
+    "esperado": "responde",
+    "respuesta": "No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.",
+    "estadoFinal": "Respondido en 4:17",
+    "error": null,
+    "inicio": "2026-08-22T23:06:15.392Z",
+    "fin": "2026-08-22T23:10:32.985Z",
+    "elapsedMs": 257593
+  },
+  {
+    "id": 5,
+    "categoria": "tipos",
+    "pregunta": "¿Qué representa el tipo null y a qué tipos de referencia se puede asignar?",
+    "esperado": "responde",
+    "respuesta": "El tipo **null** representa una referencia vacía [1].\n\nSe puede asignar un valor de tipo `null` a cualquier **tipo de referencia** (clases, interfaces o arrays), pero no a tipos primitivos como `int`, `char`, etc. [1, 5].",
+    "estadoFinal": "Respondido en 2:38",
+    "error": null,
+    "inicio": "2026-08-22T23:10:32.987Z",
+    "fin": "2026-08-22T23:13:11.329Z",
+    "elapsedMs": 158342
+  },
+  {
+    "id": 6,
+    "categoria": "tipos",
+    "pregunta": "¿Qué significa que un método tenga tipo de retorno void?",
+    "esperado": "responde",
+    "respuesta": "No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.",
+    "estadoFinal": "Respondido en 1:00",
+    "error": null,
+    "inicio": "2026-08-22T23:13:11.335Z",
+    "fin": "2026-08-22T23:14:12.158Z",
+    "elapsedMs": 60823
+  },
+  {
+    "id": 7,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es un tipo genérico parametrizado, por ejemplo List<String>?",
+    "esperado": "responde",
+    "respuesta": "No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.",
+    "estadoFinal": "Respondido en 58 s",
+    "error": null,
+    "inicio": "2026-08-22T23:14:12.161Z",
+    "fin": "2026-08-22T23:15:10.257Z",
+    "elapsedMs": 58096
+  },
+  {
+    "id": 8,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es un literal de tipo long y cómo se distingue de un literal int en el código fuente?",
+    "esperado": "responde",
+    "respuesta": "No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.",
+    "estadoFinal": "Respondido en 54 s",
+    "error": null,
+    "inicio": "2026-08-22T23:15:10.259Z",
+    "fin": "2026-08-22T23:16:04.231Z",
+    "elapsedMs": 53972
+  },
+  {
+    "id": 9,
+    "categoria": "variables",
+    "pregunta": "¿Qué diferencia hay entre una variable local declarada con var y una declarada con un tipo explícito?",
+    "esperado": "responde",
+    "respuesta": "La diferencia principal entre una **variable declarada con `var`** y una declarada con un **tipo explícito** en Java es su inferencia de tipo:\n\n- **Con `var`**:\n  - El tipo se infiere automáticamente desde el valor inicializado, aplicando la *upward projection* (proyección hacia arriba) si hay sintéticos o capturas de variables (§15.2).\n  - No permite usar sintaxis con corchetes (`[]`) en el identificador ni múltiples declaradores sin inicializador [4].\n  - Ejemplo válido: `var x = 3;` → `x` tiene tipo `int`.\n  - **No funciona** si el valor inicial no es asignable a un tipo denotable (ej. `var g = null;` o lambdas) [2].\n\n- **Con tipo explícito**:\n  - El tipo se define manualmente en la declaración, como `int x = 3;`.\n  - Permite usar cualquier sintaxis válida para tipos (incluyendo arrays, genericos con corchetes, etc.) sin restricciones de inferencia.\n  - Ejemplo: `List<String> lista = new ArrayList<>();`.\n\n---\n**Contradicción en el contexto**:\nEl texto [1] menciona que el tipo de una variable declarada con `var` es la *upward projection* del tipo inicializador, pero no especifica qué pasa si ese valor contiene sintéticos o capturas. El ejemplo [2] ilustra casos válidos/inválidos para `var`, pero **no detalla explícitamente** cómo se comporta en presencia de tipos genéricos con corchetes (ej: `List<String>` vs `var lista = new ArrayList<>()`).\n\n---\n**Resumen clave**:\n- `var` infiere el tipo desde el inicializador, sin necesidad de escribirlo.\n- El tipo explícito permite mayor flexibilidad sintáctica pero requiere especificar manualmente el tipo.",
+    "estadoFinal": "Respondido en 8:06",
+    "error": null,
+    "inicio": "2026-08-22T23:16:04.233Z",
+    "fin": "2026-08-22T23:24:11.002Z",
+    "elapsedMs": 486769
+  },
+  {
+    "id": 10,
+    "categoria": "variables",
+    "pregunta": "¿Qué es el ámbito (scope) de una variable local?",
+    "esperado": "responde",
+    "respuesta": "El ámbito de una **variable local** en Java depende del tipo de declaración:\n\n- En un **declaración de bloque** (ejemplo: `{}`), su alcance es desde el inicio del inicializador hasta el final del mismo bloque, incluyendo cualquier declarador adicional a la derecha en la declaración [1].\n- En el **parte `ForInit`** de una declaración `for`, incluye:\n  - Su propio inicializador,\n  - Declaradores adicionales a la derecha,\n  - Las partes `Expression` y `ForUpdate`,\n  - Y todo el contenido del bloque asociado [1].\n\nNo hay contradicción entre las fuentes.",
+    "estadoFinal": "Respondido en 3:51",
+    "error": null,
+    "inicio": "2026-08-22T23:24:11.005Z",
+    "fin": "2026-08-22T23:28:03.245Z",
+    "elapsedMs": 232240
+  },
+  {
+    "id": 2,
+    "categoria": "tipos",
+    "pregunta": "¿Qué diferencia hay entre un tipo primitivo y un tipo de referencia en Java?",
+    "esperado": "responde",
+    "respuesta": "",
+    "estadoFinal": "Se perdió la conexión con el servidor (¿Ollama no responde?).",
+    "error": "Se perdió la conexión con el servidor (¿Ollama no responde?).",
+    "inicio": "2026-08-22T23:28:52.008Z",
+    "fin": "2026-08-22T23:29:12.395Z",
+    "elapsedMs": 20387
+  }
+]

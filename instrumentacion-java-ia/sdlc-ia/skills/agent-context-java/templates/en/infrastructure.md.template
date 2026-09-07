@@ -1,0 +1,56 @@
+<!--
+Placeholders:
+  {{PROJECT_NAME}}
+  {{DETECTED_DEPLOYMENT}}    — e.g. "Docker Compose on a VM", "Kubernetes", "WAR on WildFly/Tomcat"
+  {{DETECTED_CI}}            — e.g. "GitHub Actions", "Jenkins", "Azure Pipelines"
+-->
+
+# Infrastructure — {{PROJECT_NAME}}
+
+## Local development
+
+### Prerequisites
+
+<!-- TODO: list the tools a new dev must install (JDK, DB, Docker, the Maven/Gradle wrapper is already committed, etc.). -->
+
+### Quick start
+
+```bash
+# TODO: the 3-5 commands to run the app from a clean clone (./mvnw / ./gradlew / make, depending on the repo).
+```
+
+### Services (local)
+
+| Service | URL | Purpose |
+|---|---|---|
+| | | |
+
+### Environment variables
+
+- `.env.example` is the canonical list. Copy it to `.env` and fill it in.
+- Never commit `.env`.
+
+## Production
+
+### Deployment target
+
+{{DETECTED_DEPLOYMENT}}
+
+### Topology
+
+<!-- TODO: brief description + diagram (Mermaid) of the production topology. What sits behind the load balancer, what talks to what. -->
+
+### CI/CD
+
+- **Tool:** {{DETECTED_CI}}
+- **Trigger:** <!-- push to main / tag / manual -->
+- **Steps:** <!-- build → test → deploy summary, referencing the pipeline file -->
+
+## Observability
+
+<!-- TODO: logs, metrics, traces (Actuator + Micrometer exposed? where does it go?). If nothing is set up, note "TODO — not configured yet" so agents don't assume otherwise. -->
+
+## Related docs
+
+- [Architecture](./architecture.md)
+- [Decisions](./adrs/)

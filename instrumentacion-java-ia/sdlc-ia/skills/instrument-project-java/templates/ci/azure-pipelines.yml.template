@@ -1,0 +1,117 @@
+# Written to `.azdevops/azure-pipelines.yml`, or the repo's existing pipeline path.
+#
+# Placeholders:
+#   {{JAVA_VERSION}}      the repo's own <java.version> / <maven.compiler.release> (e.g. "21").
+#                          Never a literal copied from this file.
+#   {{GITLEAKS_VERSION}}  gh release view --repo gitleaks/gitleaks --json tagName --jq '.tagName' | tr -d v
+#
+# Two lines carry the whole design:
+#   JavaToolInstaller@0    the agent installs the JDK version the repo targets. Same version
+#                           everywhere.
+#   make ci                 one definition of "the code is fine". Restating the steps here
+#                           guarantees drift the first time someone adds a check to the Makefile.
+#
+# `make ci` needs `make` and `gitleaks` on PATH. ubuntu-latest hosted images ship `make`; gitleaks
+# is installed below. Self-hosted agents usually have neither -- check before assuming.
+#
+# JavaToolInstaller@0 with jdkSourceOption: PreInstalled reads the JDK already on the image via
+# JAVA_HOME_<major>_X64. Ubuntu 24.04 hosted images (what "ubuntu-latest" resolves to) ship
+# OpenJDK 21 by default alongside 17/11/8 -- confirm against the current hosted-agent software
+# list before relying on a version this template did not verify
+# (https://github.com/actions/runner-images, the Azure DevOps equivalent under
+# learn.microsoft.com/azure/devops/pipelines/agents/hosted). If the target JDK is not preinstalled,
+# switch jdkSourceOption to a download source instead of assuming PreInstalled will resolve it.
+#
+# `pool` depends on the org: `vmImage: ubuntu-latest` for Microsoft-hosted agents (needs a
+# parallelism grant), or `name: Default` for a self-hosted pool. Ask if the repo does not already
+# say.
+# Delete this header before writing the file.
+
+# Every branch, every push. A gate that only runs on main tells the team about breakage after it is
+# already shared; on a feature branch it tells the person who wrote it, while they still have the
+# context. Exclude noisy prefixes here if the team uses them, e.g. exclude: [users/*/wip/*].
+trigger:
+  branches:
+    include:
+      - '*'
+
+# There is deliberately no `pr:` block. For an Azure Repos Git repository the PR trigger CANNOT be
+# configured in YAML -- Azure DevOps implements it through the target branch's Build validation
+# policy instead, and a `pr:` block here is silently ignored. Add `pr:` only if this pipeline is
+# attached to a GitHub repository.
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  # Resolved at install time from the gitleaks releases API; see the Install gitleaks step.
+  GITLEAKS_VERSION: "{{GITLEAKS_VERSION}}"
+  # Cache@2 needs a real path. Azure DevOps does not predefine a Maven repo location the way
+  # actions/setup-java's `cache: maven` does -- point it at the default local repo explicitly so
+  # the cache step and mvnw's restore agree on the same directory.
+  MAVEN_CACHE_FOLDER: $(Pipeline.Workspace)/.m2/repository
+  MAVEN_OPTS: '-Dmaven.repo.local=$(MAVEN_CACHE_FOLDER)'
+
+steps:
+  # gitleaks scans history, so it needs the full clone.
+  # Drop fetchDepth if secret scanning was skipped in Phase 2.
+  - checkout: self
+    fetchDepth: 0
+
+  # Puts the binary on PATH so `make ci` can run the single scan the Makefile defines.
+  # Drop this step if secret scanning was skipped.
+  #
+  # {{GITLEAKS_VERSION}} is RESOLVED AT INSTALL TIME, not written by hand -- see the placeholder
+  # list above. Pinning it is not a contradiction of "never hardcode a version": that rule is about
+  # resolving from the source of truth when the file is written. Re-resolving on every run means the
+  # gate runs a different binary tomorrow than today, unrecorded. Bump it like any other dependency.
+  - script: |
+      set -euo pipefail
+      BASE="https://github.com/gitleaks/gitleaks/releases/download/v$(GITLEAKS_VERSION)"
+      ARCHIVE="gitleaks_$(GITLEAKS_VERSION)_linux_x64.tar.gz"
+      cd "$(mktemp -d)"
+      curl -fsSL -o "$ARCHIVE" "$BASE/$ARCHIVE"
+      curl -fsSL -o checksums.txt "$BASE/gitleaks_$(GITLEAKS_VERSION)_checksums.txt"
+      # Verify before extracting: the pin says which URL was fetched, the checksum says what came
+      # back from it.
+      grep " ${ARCHIVE}\$" checksums.txt | sha256sum -c -
+      # No sudo, and prependpath puts it on PATH for every later step in the job.
+      mkdir -p "$HOME/.local/bin"
+      tar -xzf "$ARCHIVE" -C "$HOME/.local/bin" gitleaks
+      echo "##vso[task.prependpath]$HOME/.local/bin"
+      "$HOME/.local/bin/gitleaks" version
+    displayName: "Install gitleaks"
+
+  - task: JavaToolInstaller@0
+    displayName: "Install JDK {{JAVA_VERSION}}"
+    inputs:
+      versionSpec: "{{JAVA_VERSION}}"
+      jdkArchitectureOption: x64
+      jdkSourceOption: PreInstalled
+
+  - task: Cache@2
+    displayName: "Cache Maven repository"
+    inputs:
+      key: 'maven | "$(Agent.OS)" | **/pom.xml'
+      restoreKeys: 'maven | "$(Agent.OS)"'
+      path: $(MAVEN_CACHE_FOLDER)
+
+  - script: make ci
+    displayName: "Run the same gates as local"
+
+  # Only useful if the reactor writes Surefire/Failsafe XML under target/surefire-reports, which
+  # `make test` already produces. Delete this task if the repo suppresses those reports.
+  - task: PublishTestResults@2
+    displayName: "Publish test results"
+    condition: always()
+    inputs:
+      testResultsFormat: JUnit
+      testResultsFiles: "**/target/surefire-reports/TEST-*.xml"
+      failTaskOnMissingResultsFile: false
+
+# THIS FILE ON ITS OWN DOES NOTHING. Unlike GitHub Actions, Azure DevOps does not discover YAML in
+# the repository. Two manual steps, both in the web UI, both the user's to do:
+#   1. Pipelines > New pipeline > Azure Repos Git > Existing Azure Pipelines YAML file > this path.
+#   2. Repos > Branches > main > Branch policies > Build validation > add the pipeline.
+# Step 1 makes it run; step 2 makes it a gate. Report control 8 as written but not yet active until
+# both are done.

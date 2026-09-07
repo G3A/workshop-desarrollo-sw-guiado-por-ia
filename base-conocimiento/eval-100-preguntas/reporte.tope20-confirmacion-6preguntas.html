@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Reporte de evaluación — 100 preguntas</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: system-ui, "Segoe UI", sans-serif; margin: 2rem; line-height: 1.4; }
+  h1 { margin-bottom: 0.2rem; }
+  .subtitulo { color: #777; margin-top: 0; }
+  .resumen { display: flex; flex-wrap: wrap; gap: 1rem; margin: 1.5rem 0; }
+  .tarjeta { border: 1px solid #8883; border-radius: 8px; padding: 0.9rem 1.2rem; min-width: 160px; }
+  .tarjeta .valor { font-size: 1.6rem; font-weight: 700; }
+  .tarjeta .etiqueta { font-size: 0.8rem; color: #888; text-transform: uppercase; letter-spacing: 0.03em; }
+  .controles { margin: 1rem 0; display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
+  th, td { border: 1px solid #8884; padding: 0.4rem 0.5rem; vertical-align: top; }
+  th { position: sticky; top: 0; background: Canvas; text-align: left; }
+  td.pregunta { max-width: 260px; }
+  td.respuesta { max-width: 320px; }
+  td.respuesta details summary { cursor: pointer; }
+  td.num, td.centro { text-align: center; white-space: nowrap; }
+  tr.ok { background: color-mix(in srgb, green 12%, Canvas); }
+  tr.bad { background: color-mix(in srgb, crimson 12%, Canvas); }
+  tr.err { background: color-mix(in srgb, orange 15%, Canvas); }
+  .contenedor-tabla { overflow-x: auto; max-height: 75vh; overflow-y: auto; border: 1px solid #8883; border-radius: 8px; }
+  code { background: #8882; padding: 0.05rem 0.3rem; border-radius: 4px; }
+</style>
+</head>
+<body>
+  <h1>Reporte de evaluación — 100 preguntas (jls25.pdf)</h1>
+  <p class="subtitulo">Umbral dinámico de relevancia (ADR-0008) recalculado a partir de <code>query_log</code>:
+    piso=0.003, techo=0.05, chunksReferencia=500, techoConfianza=8,
+    chunks del proyecto=1065.</p>
+
+  <div class="resumen">
+    <div class="tarjeta"><div class="valor">6/6</div><div class="etiqueta">Precisión global (100.0%)</div></div>
+    <div class="tarjeta"><div class="valor">6/6</div><div class="etiqueta">Correctas entre las que debían responder</div></div>
+    <div class="tarjeta"><div class="valor">0/0</div><div class="etiqueta">Correctas entre las que debían rechazar</div></div>
+    <div class="tarjeta"><div class="valor">5</div><div class="etiqueta">Decisión SUFICIENTE</div></div>
+    <div class="tarjeta"><div class="valor">1</div><div class="etiqueta">Decisión AMBIGUO</div></div>
+    <div class="tarjeta"><div class="valor">0</div><div class="etiqueta">Decisión INSUFICIENTE</div></div>
+    <div class="tarjeta"><div class="valor">199 s</div><div class="etiqueta">Latencia promedio por pregunta</div></div>
+    <div class="tarjeta"><div class="valor">0</div><div class="etiqueta">Errores de infraestructura (no calificados)</div></div>
+  </div>
+
+  <div class="controles">
+    <label>Categoría: <select id="filtroCategoria"><option value="">(todas)</option><option>tipos</option><option>variables</option><option>clases</option><option>records</option><option>generics</option></select></label>
+    <label>Solo incorrectas: <input type="checkbox" id="filtroIncorrectas"></label>
+  </div>
+
+  <div class="contenedor-tabla">
+  <table id="tabla">
+    <thead>
+      <tr>
+        <th>#</th><th>Categoría</th><th>Pregunta</th><th>Respuesta</th><th>Esperado</th>
+        <th>Comportamiento real</th><th>¿Correcta?</th><th>Mejor rerank</th><th>Umbral(n)</th>
+        <th>Techo confianza</th><th>Decisión</th><th>Latencia</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="ok" data-categoria="tipos" data-correcta="true">
+        <td>1</td>
+        <td>tipos</td>
+        <td class="pregunta">¿Cuáles son los ocho tipos primitivos definidos en el lenguaje Java?</td>
+        <td class="respuesta"><details><summary>Los ocho tipos primitivos definidos en Java según el contexto son:
+
+byte, short, int, long…</summary>Los ocho tipos primitivos definidos en Java según el contexto son:
+
+byte, short, int, long, char, float, double, boolean **[1]**.</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">8.0929</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>SUFICIENTE</td>
+        <td class="num">119.7 s</td>
+      </tr>
+      <tr class="ok" data-categoria="tipos" data-correcta="true">
+        <td>6</td>
+        <td>tipos</td>
+        <td class="pregunta">¿Qué significa que un método tenga tipo de retorno void?</td>
+        <td class="respuesta"><details><summary>Un método declarado **`void`** **[3]** indica que **no devuelve ningún valor** al llamado …</summary>Un método declarado **`void`** **[3]** indica que **no devuelve ningún valor** al llamado que realiza el código que lo invoca.
+
+---
+No hay más detalles específicos sobre su significado en este contexto.</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">6.7367</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">262.0 s</td>
+      </tr>
+      <tr class="ok" data-categoria="variables" data-correcta="true">
+        <td>12</td>
+        <td>variables</td>
+        <td class="pregunta">¿Qué implica declarar una variable como final?</td>
+        <td class="respuesta"><details><summary>Implica **no poder asignarle valores adicionales** después de su inicialización ([1]).
+
+Si…</summary>Implica **no poder asignarle valores adicionales** después de su inicialización ([1]).
+
+Si es una referencia a un objeto (incluyendo arrays), puede modificar el estado interno del objeto, pero la variable siempre apuntará al mismo lugar en memoria ([1]). No permite operadores de incremento/decremento ([3][6]).
+
+No aplica para constantes primitivas o `String` con expresiones constantes ([1]).</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">9.8261</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>SUFICIENTE</td>
+        <td class="num">151.4 s</td>
+      </tr>
+      <tr class="ok" data-categoria="clases" data-correcta="true">
+        <td>23</td>
+        <td>clases</td>
+        <td class="pregunta">¿Qué es una clase anónima en Java?</td>
+        <td class="respuesta"><details><summary>Una **clase anónima** en Java es un tipo de clase declarada **sin nombre propio**, creada …</summary>Una **clase anónima** en Java es un tipo de clase declarada **sin nombre propio**, creada directamente en el lugar donde se usa mediante expresiones como `new Clase() { ... }` o dentro de constantes de enumeraciones (`enum`).
+
+Específicamente:
+- No puede tener un nombre explícito ([1], [4]).
+- Es siempre una **subclase implícita** de un tipo dado por la expresión de creación ([1], [6]).
+- Tiene un cuerpo definido en el momento de su declaración ([1], [6]).
+
+No puede heredar de otra clase anónima ni declararse como abstracta ([1]). Su constructor es **implícito** y sigue reglas específicas según su relación con clases internas ([3]).
+
+---
+*Nota sobre restricciones:*
+Si la clase anónima hereda de una clase local estática o de otro tipo especial, hay errores de compilación si no cumple condiciones de contexto ([5]).</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">8.9205</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>SUFICIENTE</td>
+        <td class="num">209.4 s</td>
+      </tr>
+      <tr class="ok" data-categoria="records" data-correcta="true">
+        <td>31</td>
+        <td>records</td>
+        <td class="pregunta">¿Qué es el constructor canónico de un record?</td>
+        <td class="respuesta"><details><summary>El **constructor canónico** de un *record* es un método especial que inicializa todos los …</summary>El **constructor canónico** de un *record* es un método especial que inicializa todos los campos componentes del mismo mediante sus parámetros correspondientes en orden de declaración.
+
+Si no está explícitamente declarado en la declaración del *record*, se genera de forma **implicita** con las siguientes características:
+- Tiene el mismo nombre que la clase (*record*).
+- Sus parámetros son derivados de los componentes del *record* según su tipo y orden [1].
+- Su modificador de acceso coincide con el del *record* (si este no especifica acceso, usa acceso de paquete) [1].
+
+No incluye cláusula `throws` ni invocación explícita de otro constructor [1].
+
+---
+**Nota sobre implicito vs explícito**:
+- Un constructor canónico puede declararse **explicitamente** como un constructor normal o compacto, pero solo existe **uno por *record*** [2].
+- En caso de conflicto entre ambos métodos (normal y compacto), el compilador marca error [1].</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">8.4314</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>SUFICIENTE</td>
+        <td class="num">226.7 s</td>
+      </tr>
+      <tr class="ok" data-categoria="generics" data-correcta="true">
+        <td>64</td>
+        <td>generics</td>
+        <td class="pregunta">¿Qué es un parámetro de tipo genérico en una clase o método?</td>
+        <td class="respuesta"><details><summary>Un parámetro de tipo genérico en una **clase** es una variable de tipo declarada dentro de…</summary>Un parámetro de tipo genérico en una **clase** es una variable de tipo declarada dentro de la sección de tipos genéricos, delimitada por `&lt;` y `&gt;` después del nombre de la clase [1][2].
+
+---
+En un **método**, los parámetros de tipo genérico son las variables de tipo definidas en la declaración del método dentro de la sintaxis `&lt;T1, T2, ...&gt;` (ejemplo: `&lt;T&gt;` o `&lt;K, V&gt;`), donde cada `T` representa un tipo que puede ser reemplazado por cualquier otro tipo al momento de invocar el método [1].
+
+---
+No hay información específica sobre cómo se aplican estos conceptos en métodos vs. clases en este contexto, pero ambos usan el mismo formato sintáctico para definir **tipos genéricos**. En ambos casos, permiten crear instancias parametrizadas según los tipos proporcionados al usar la clase/método [1][2][3].</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">9.0831</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>SUFICIENTE</td>
+        <td class="num">223.7 s</td>
+      </tr></tbody>
+  </table>
+  </div>
+
+  <script>
+    const selCategoria = document.getElementById("filtroCategoria");
+    const chkIncorrectas = document.getElementById("filtroIncorrectas");
+    function aplicarFiltro() {
+      const cat = selCategoria.value;
+      const soloIncorrectas = chkIncorrectas.checked;
+      for (const fila of document.querySelectorAll("#tabla tbody tr")) {
+        const pasaCategoria = !cat || fila.dataset.categoria === cat;
+        const pasaIncorrectas = !soloIncorrectas || fila.dataset.correcta === "false";
+        fila.style.display = (pasaCategoria && pasaIncorrectas) ? "" : "none";
+      }
+    }
+    selCategoria.addEventListener("change", aplicarFiltro);
+    chkIncorrectas.addEventListener("change", aplicarFiltro);
+  </script>
+</body>
+</html>

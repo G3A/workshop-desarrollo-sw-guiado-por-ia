@@ -1,0 +1,28 @@
+# Plantilla de configuracion de la VM de WSL2.
+#
+# ESTE ES EL UNICO HUECO HONESTO DEL "infraestructura como codigo" de este repo:
+# docker-compose NO puede fijar la memoria ni los nucleos de la VM de WSL2. Eso
+# vive en un archivo del host. Lo versionamos aqui, pero aplicarlo es manual.
+#
+# Como aplicarlo (PowerShell):
+#   Copy-Item wslconfig.example $env:USERPROFILE\.wslconfig
+#   wsl --shutdown
+#   # luego vuelve a abrir Docker Desktop
+#
+# Los valores de abajo estan calculados para un equipo de 32 GB de RAM y 16 hilos
+# logicos: dejan margen para Windows y el IDE mientras los modelos corren dentro.
+# Si tu equipo tiene otra capacidad, ajusta memory a aproximadamente el 60 %.
+
+[wsl2]
+memory=20GB
+processors=12
+swap=8GB
+
+# Devuelve memoria al host cuando los contenedores la liberan. Sin esto, la VM
+# retiene el pico de uso hasta que reinicias WSL — y tras una ingesta grande ese
+# pico son varios GB que Windows no recupera.
+autoMemoryReclaim=gradual
+
+# Necesario para que los contenedores vean la GPU NVIDIA (perfil compose.gpu.yml).
+[wsl2.gpu]
+enabled=true

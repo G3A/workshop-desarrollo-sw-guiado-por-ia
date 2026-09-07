@@ -1,0 +1,194 @@
+[
+  {
+    "id": 1,
+    "pregunta": "¿Cuáles son los ocho tipos primitivos definidos en el lenguaje Java?",
+    "mejorRerankBaselineSesion16": 2.505065377464159,
+    "mejorRerank": 2.505065377464159
+  },
+  {
+    "id": 4,
+    "pregunta": "¿Qué es el autoboxing y cuándo ocurre de forma automática?",
+    "mejorRerankBaselineSesion16": 0.005912683522994243,
+    "mejorRerank": 0.03296927202964161
+  },
+  {
+    "id": 6,
+    "pregunta": "¿Qué significa que un método tenga tipo de retorno void?",
+    "mejorRerankBaselineSesion16": 0.011305118117935643,
+    "mejorRerank": 6.736675203784394
+  },
+  {
+    "id": 12,
+    "pregunta": "¿Qué implica declarar una variable como final?",
+    "mejorRerankBaselineSesion16": 7.6914588203529,
+    "mejorRerank": 9.826141150837527
+  },
+  {
+    "id": 13,
+    "pregunta": "¿Cómo se declara una constante de clase en Java?",
+    "mejorRerankBaselineSesion16": 0.6651366983618787,
+    "mejorRerank": 5.608974701052402
+  },
+  {
+    "id": 14,
+    "pregunta": "¿Cómo funciona la herencia simple de clases en Java?",
+    "mejorRerankBaselineSesion16": 0.036542901165822886,
+    "mejorRerank": 0.09006356353572263
+  },
+  {
+    "id": 17,
+    "pregunta": "¿Qué reglas sigue el compilador para elegir el constructor que se invoca al crear un objeto?",
+    "mejorRerankBaselineSesion16": 5.921566935849026,
+    "mejorRerank": 5.921566935849026
+  },
+  {
+    "id": 18,
+    "pregunta": "¿Qué diferencia hay entre sobrecargar (overload) y sobreescribir (override) un método?",
+    "mejorRerankBaselineSesion16": 0.7743161986569841,
+    "mejorRerank": 2.7632140184123335
+  },
+  {
+    "id": 21,
+    "pregunta": "¿Qué es una clase anidada estática y en qué se diferencia de una clase interna (inner class)?",
+    "mejorRerankBaselineSesion16": 1.534084021467304,
+    "mejorRerank": 6.966893461233514
+  },
+  {
+    "id": 23,
+    "pregunta": "¿Qué es una clase anónima en Java?",
+    "mejorRerankBaselineSesion16": 0.019075304709833863,
+    "mejorRerank": 8.920501653853682
+  },
+  {
+    "id": 24,
+    "pregunta": "¿Qué es un método default en una interfaz y para qué se introdujo?",
+    "mejorRerankBaselineSesion16": 0.504317638720779,
+    "mejorRerank": 5.377406029329168
+  },
+  {
+    "id": 30,
+    "pregunta": "¿Qué es un record en Java y qué problema resuelve frente a una clase tradicional?",
+    "mejorRerankBaselineSesion16": 0.25529097561830405,
+    "mejorRerank": 0.25529097561830405
+  },
+  {
+    "id": 31,
+    "pregunta": "¿Qué es el constructor canónico de un record?",
+    "mejorRerankBaselineSesion16": 0.09838873225905997,
+    "mejorRerank": 8.431444058945956
+  },
+  {
+    "id": 32,
+    "pregunta": "¿Cómo se llaman los métodos de acceso que un record genera automáticamente para sus componentes?",
+    "mejorRerankBaselineSesion16": 3.4341536197585674,
+    "mejorRerank": 7.258177727722183
+  },
+  {
+    "id": 43,
+    "pregunta": "¿Qué es un patrón de registro (record pattern) y cómo permite deconstruir un record?",
+    "mejorRerankBaselineSesion16": 1.2921807612741847,
+    "mejorRerank": 1.2921807612741847
+  },
+  {
+    "id": 47,
+    "pregunta": "¿Se pueden anidar patrones de registro dentro de otros patrones de registro?",
+    "mejorRerankBaselineSesion16": 0.0038694458728936324,
+    "mejorRerank": 0.007696302745629999
+  },
+  {
+    "id": 48,
+    "pregunta": "¿Qué ventaja tiene deconstruir un objeto con un patrón frente a llamar a sus métodos de acceso manualmente?",
+    "mejorRerankBaselineSesion16": 0.003513335789140784,
+    "mejorRerank": 0.003513335789140784
+  },
+  {
+    "id": 49,
+    "pregunta": "¿Qué es una variable no nombrada representada con guion bajo _?",
+    "mejorRerankBaselineSesion16": 0.03831082045090455,
+    "mejorRerank": 0.03831082045090455
+  },
+  {
+    "id": 51,
+    "pregunta": "¿Se pueden usar patrones no nombrados al deconstruir un record pattern?",
+    "mejorRerankBaselineSesion16": 0.3017209189062651,
+    "mejorRerank": 0.3627501781647091
+  },
+  {
+    "id": 52,
+    "pregunta": "¿Qué significa que los arrays en Java sean covariantes?",
+    "mejorRerankBaselineSesion16": 0.47225441537200297,
+    "mejorRerank": 1.0634073226880583
+  },
+  {
+    "id": 55,
+    "pregunta": "¿Cómo se obtiene la longitud de un array en Java?",
+    "mejorRerankBaselineSesion16": 0.23236886281795394,
+    "mejorRerank": 6.5017870709726076
+  },
+  {
+    "id": 57,
+    "pregunta": "¿Qué diferencia hay entre una excepción verificada (checked) y una no verificada (unchecked)?",
+    "mejorRerankBaselineSesion16": 0.6197074373796548,
+    "mejorRerank": 1.292910498059804
+  },
+  {
+    "id": 62,
+    "pregunta": "¿Cómo se propaga una excepción no capturada a través de la pila de llamadas?",
+    "mejorRerankBaselineSesion16": 0.0005665990551097375,
+    "mejorRerank": 0.0014871194168539557
+  },
+  {
+    "id": 63,
+    "pregunta": "¿Qué es la causa encadenada (cause) de una excepción?",
+    "mejorRerankBaselineSesion16": 0.003584333919628386,
+    "mejorRerank": 0.14453930608282628
+  },
+  {
+    "id": 64,
+    "pregunta": "¿Qué es un parámetro de tipo genérico en una clase o método?",
+    "mejorRerankBaselineSesion16": 0.2663354348908518,
+    "mejorRerank": 9.08309181853454
+  },
+  {
+    "id": 67,
+    "pregunta": "¿Qué es un parámetro de tipo acotado (bounded type parameter)?",
+    "mejorRerankBaselineSesion16": 0.18209058900092973,
+    "mejorRerank": 1.7698284426954538
+  },
+  {
+    "id": 68,
+    "pregunta": "¿Los genéricos en Java son covariantes o invariantes por defecto?",
+    "mejorRerankBaselineSesion16": 0.022558608940230943,
+    "mejorRerank": 0.022558608940230943
+  },
+  {
+    "id": 69,
+    "pregunta": "¿Cómo se declara un método genérico independiente de si la clase que lo contiene es genérica?",
+    "mejorRerankBaselineSesion16": 0.18214967423919637,
+    "mejorRerank": 5.05100487287276
+  },
+  {
+    "id": 70,
+    "pregunta": "¿Qué declara el archivo module-info.java de un módulo?",
+    "mejorRerankBaselineSesion16": 0.0961875983937179,
+    "mejorRerank": 0.7578983121170274
+  },
+  {
+    "id": 73,
+    "pregunta": "¿Qué describen las directivas provides y uses en el sistema de módulos?",
+    "mejorRerankBaselineSesion16": 2.1615157244650804,
+    "mejorRerank": 6.064291126195212
+  },
+  {
+    "id": 74,
+    "pregunta": "¿Qué son los archivos de código fuente compactos y los métodos main de instancia introducidos en Java 25?",
+    "mejorRerankBaselineSesion16": 0.9109720007177622,
+    "mejorRerank": 1.054509854957527
+  },
+  {
+    "id": 75,
+    "pregunta": "¿Qué son los cuerpos de constructor flexibles (flexible constructor bodies)?",
+    "mejorRerankBaselineSesion16": 0.6644362522274314,
+    "mejorRerank": 0.6644362522274314
+  }
+]

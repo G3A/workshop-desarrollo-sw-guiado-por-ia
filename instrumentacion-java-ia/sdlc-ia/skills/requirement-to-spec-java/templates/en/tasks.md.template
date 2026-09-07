@@ -1,0 +1,29 @@
+<!--
+Placeholders:
+  {{TITULO}}   — same title as spec.md
+  {{SPEC_LINK}} — relative path to spec.md
+  {{TAREAS}}    — task list, functional work first, documentation last — each with: file(s)
+                  touched, what it does, how it's verified. Each task must be small: one
+                  github-plan-build Step C commit, not something that still needs its own split.
+-->
+
+# Tasks — {{TITULO}}
+
+Full specification in [{{SPEC_LINK}}]({{SPEC_LINK}}).
+
+Order: functional work first (schema before service before endpoint), documentation last — never
+ahead of the work it describes.
+
+{{TAREAS}}
+
+<!--
+Suggested per-task format:
+
+## N. Short task title
+
+**File(s):** exact path(s)
+
+**What it does:** one or two sentences.
+
+**Verification:** how you confirm it's right — a test, a command, a manual check.
+-->

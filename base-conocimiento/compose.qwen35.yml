@@ -1,0 +1,75 @@
+# Perfil experimental: Qwen3.5 4B (Alibaba, Apache 2.0), servido por el mismo
+# `ollama` que ya levanta compose.yml -- mismo patron que compose.ministral.yml
+# (sin llama-server aparte: Ollama carga el GGUF oficial sin problema).
+#
+# Por que este perfil existe: la sesion 18 de docs/investigacion-vram-y-modelo-llm.md
+# habia descartado qwen3.5:4b porque su modo "thinking" (activado por defecto)
+# rompia el Planificador y el VerificadorGrounding (salida JSON forzada, el
+# pensamiento se comia todo el maxTokens sin dejar nada para el JSON -- hallazgos
+# 74-75) y dejaba la sintesis inconsistente (hallazgo 77). La misma sesion
+# encontro el fix (hallazgo 76): "think":false y "chat_template_kwargs.enable_
+# thinking":false NO funcionan contra /v1/chat/completions (el endpoint que de
+# verdad usa este pipeline via OpenAiChatModel), pero "reasoning_effort":"none"
+# si lo apaga -- probado aislado con los dos veredictos canonicos del ADR-0008,
+# los dos correctos. Este perfil es la integracion real de ese fix
+# (PlanificadorOpenAi/VerificadorGroundingOpenAi/SintetizadorOpenAi ya agregan
+# "reasoning_effort":"none" a su extraBody), pendiente de re-evaluar con el
+# piloto completo -- ver la advertencia mas abajo.
+#
+# Uso, junto con el perfil GPU real:
+#   docker compose -f compose.yml -f compose.gpu.yml -f compose.qwen35.yml up -d
+#
+# El modelo NO se baja solo: hace falta `make pull-qwen35` (o
+# `docker compose exec ollama ollama pull qwen3.5:4b`) antes de levantar `api`,
+# una sola vez. Queda en el mismo volumen de Ollama que Ministral/gemma3/bge-m3
+# (${KB_DATA_DIR}/ollama) -- sin volumen propio que mantener aparte.
+#
+# ADVERTENCIA -- lo que este perfil SI tiene evidencia propia y lo que NO:
+# la sesion 18 confirmo el fix contra los dos casos canonicos del ADR-0008,
+# aislados, con el prompt SIMPLIFICADO de la prueba (no el catalogo completo
+# de herramientas ni las salvedades codigo-vs-documentacion del Planificador
+# real). No hay todavia un piloto de evaluacion (ver eval-100-preguntas/) que
+# confirme precision real con este modelo, ni una medicion de latencia end-to-
+# end del pipeline completo -- qwen3.5:4b carga con 53% CPU / 47% GPU (peor
+# reparto que Ministral, mejor que gemma3:4b, sesion 18/hallazgo 73), asi que
+# "sin pensamiento" no implica automaticamente "mas rapido que Ministral" en
+# total. No usar este perfil como reemplazo de produccion sin correr el piloto
+# completo primero.
+
+services:
+  api:
+    environment:
+      # Mismo mecanismo que compose.ministral.yml: el endpoint compatible con
+      # OpenAI que ya expone el `ollama` de compose.yml.
+      SPRING_AI_OPENAI_BASE_URL: http://ollama:11434/v1
+      KB_LLM_MODELO: qwen3.5:4b
+      # Punto de partida conservador, igual que Ministral (sesion 10): sin
+      # medicion propia de latencia end-to-end de este modelo bajo el pipeline
+      # completo (planificador + herramientas + verificador + sintesis
+      # encadenados), no asumir que evitar el "thinking" alcanza para bajar
+      # el timeout frente a los 450s que ya usan Ministral y Bonsai.
+      KB_LLM_TIMEOUT: ${KB_LLM_TIMEOUT:-450s}
+      # Punto de partida: el default de ADR-0008 (calibrado con gemma3:4b), NO
+      # un valor propio de qwen3.5:4b -- igual que advierte compose.ministral.yml,
+      # este numero no tiene evidencia propia con este modelo todavia.
+      KB_UMBRAL_RELEVANCIA_TECHO_CONFIANZA: ${KB_UMBRAL_RELEVANCIA_TECHO_CONFIANZA:-8.0}
+      # OJO -- a diferencia de compose.ministral.yml, estos tres NO estan
+      # confirmados en vivo para qwen3.5:4b: la sesion 15 midio con `ollama ps`
+      # que Ministral carga con num_ctx=4096 y de ahi salio el recorte de
+      # abajo, pero la sesion 18 no repitio esa medicion puntual para
+      # qwen3.5:4b (arquitectura qwen35 distinta a Ministral3ForCausalLM, sin
+      # garantia de que Ollama le aplique el mismo num_ctx por defecto pese a
+      # su contexto nativo de 262144). Se copian estos valores como punto de
+      # partida seguro (el mismo corpus, jls25.pdf, es la variable que de
+      # verdad los motiva -- ver compose.ministral.yml), pero confirmar con
+      # `docker compose exec ollama ollama ps` despues de la primera consulta
+      # real antes de confiar en ellos para este modelo puntual.
+      KB_EXPANDIR_VECINOS: ${KB_EXPANDIR_VECINOS:-false}
+      KB_MAX_FRAGMENTOS_CONTEXTO: ${KB_MAX_FRAGMENTOS_CONTEXTO:-6}
+      KB_RECUPERACION_TOP_RERANK: ${KB_RECUPERACION_TOP_RERANK:-6}
+      # Este si es independiente del LLM -- es una correccion de recuperacion
+      # (hallazgo 63-69: el tope de diversidad por documento ahogaba a
+      # jls25.pdf compitiendo contra si mismo) que ya es el default comprometido
+      # de compose.ministral.yml. Se hereda igual aca porque el corpus es el
+      # mismo, no por evidencia propia de qwen3.5:4b.
+      KB_RECUPERACION_TOPE_POR_DOCUMENTO: ${KB_RECUPERACION_TOPE_POR_DOCUMENTO:-20}

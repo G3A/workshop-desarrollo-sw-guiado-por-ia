@@ -1,0 +1,37 @@
+# Perfil experimental: MiniCPM5 1B (OpenBMB), servido por el mismo `ollama`
+# que ya levanta compose.yml -- mismo mecanismo que el resto de los perfiles
+# de Ollama.
+#
+# Por que este candidato: la sesion 2 de docs/investigacion-vram-y-modelo-llm.md
+# (hallazgo 7) lo descarto -- el mejor ajuste de VRAM posible de toda la
+# investigacion (857 MB, 100% GPU), pero conectado al pipeline real se
+# descontrolaba igual que Nanbeige4.1-3B (mas de 3600 tokens decodificados sin
+# converger), y encima ya habia fallado una pregunta factual trivial contra
+# /api/generate puro ("la capital de Francia no existe"). Esa sesion es
+# ANTERIOR al fix reasoning_effort=none (hallazgo 76, sesion 18/20) -- este
+# perfil existe para volver a probar el problema de convergencia con ese fix
+# ya aplicado (la falla factual es un problema aparte, sin relacion con
+# "thinking" ni con esta sesion).
+#
+# Uso, junto con el perfil GPU real:
+#   docker compose -f compose.yml -f compose.gpu.yml -f compose.minicpm5.yml up -d
+#
+# El modelo NO se baja solo: hace falta `make pull-minicpm5` (o
+# `docker compose exec ollama ollama pull openbmb/minicpm5`) antes de levantar
+# `api`, una sola vez.
+
+services:
+  api:
+    environment:
+      SPRING_AI_OPENAI_BASE_URL: http://ollama:11434/v1
+      KB_LLM_MODELO: openbmb/minicpm5
+      # 450s de margen por si el fix no alcanza y el modelo se acerca otra vez
+      # al limite de contexto sin converger -- que timeee limpio en vez de
+      # colgar el pipeline indefinidamente.
+      KB_LLM_TIMEOUT: ${KB_LLM_TIMEOUT:-450s}
+      KB_UMBRAL_RELEVANCIA_TECHO_CONFIANZA: ${KB_UMBRAL_RELEVANCIA_TECHO_CONFIANZA:-8.0}
+      KB_EXPANDIR_VECINOS: ${KB_EXPANDIR_VECINOS:-false}
+      KB_MAX_FRAGMENTOS_CONTEXTO: ${KB_MAX_FRAGMENTOS_CONTEXTO:-6}
+      KB_RECUPERACION_TOP_RERANK: ${KB_RECUPERACION_TOP_RERANK:-6}
+      KB_RECUPERACION_TOPE_POR_DOCUMENTO: ${KB_RECUPERACION_TOPE_POR_DOCUMENTO:-20}
+      KB_LLM_SINTESIS_ESTRUCTURADA_HABILITADA: ${KB_LLM_SINTESIS_ESTRUCTURADA_HABILITADA:-false}

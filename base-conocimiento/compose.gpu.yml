@@ -1,0 +1,30 @@
+# Override opcional: reserva la GPU NVIDIA para Ollama.
+#
+#   docker compose -f compose.yml -f compose.gpu.yml up -d
+#
+# Por que solo Ollama, y por que los embeddings siguen en CPU:
+# la T600 de esta maquina tiene 4 GB de VRAM. gemma3:4b cuantizado ocupa ~2,5 GB
+# mas su cache KV, asi que meter tambien bge-m3 deja el margen al filo.
+#
+# La reparticion elegida: el LLM se queda con la GPU y los embeddings van a CPU,
+# donde el AVX-512 con VNNI de este i7-11800H los hace baratos. Se aplica con:
+#
+#   make pin-embeddings-cpu
+#   # y luego en .env:  KB_EMBEDDINGS_MODELO=bge-m3-cpu
+#
+# Requiere nvidia-container-toolkit. Sin GPU, simplemente no uses este archivo.
+
+services:
+  ollama:
+    environment:
+      # Dos modelos cargados a la vez: el LLM en GPU y los embeddings en CPU.
+      # Bajarlo a 1 obligaria a Ollama a intercambiar entre embeber la pregunta
+      # y sintetizar la respuesta — o sea, dos recargas por consulta.
+      OLLAMA_MAX_LOADED_MODELS: "2"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]

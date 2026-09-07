@@ -1,0 +1,58 @@
+# Placeholders: none — every command below reads from the wrapper and the Makefile the repo
+# already has (or this skill just wrote).
+#
+# Repo root. Activate with `make hooks` (`lefthook install`).
+#
+# Lefthook is a single binary, no runtime dependency:
+#   macOS    brew install lefthook
+#   Windows  winget install evilmartians.lefthook
+#   Linux    go install github.com/evilmartians/lefthook@latest
+#
+# Design: fast on pre-commit (staged files only), thorough on pre-push. A pre-commit that takes
+# 30 seconds gets disabled within a week.
+#
+# There is deliberately NO commit-msg block here. That is EVIDENCE-BASED, not an oversight:
+# Phase 1 of SKILL.md reads `git log --oneline -20` before this file is written. Add a
+# Conventional Commits check only when the existing subjects already follow that convention —
+# imposing one the team does not use is a team decision, not an instrumentation fix, and a hook
+# nobody agreed to is the first one disabled.
+#
+# The format command CHECKS rather than auto-applies on the staged set. Maven/Spotless has no
+# equivalent to `dotnet format --include {staged_files}` -- spotless:apply reformats every file its
+# <includes> matches, not only what is staged, so wiring it directly into pre-commit would silently
+# rewrite unrelated files on every commit. Checking and pointing at `make format` keeps the fix
+# explicit and scoped to what the developer chooses to re-stage.
+#
+# Drop the `secrets` command if the team opted out of secret scanning (Phase 2), and drop it from
+# the `ci` Makefile target in the same edit.
+#   macOS    brew install gitleaks
+#   Windows  winget install gitleaks
+#   Linux    apt install gitleaks on Debian trixie+ / Ubuntu 25.04+; older LTS needs the release
+#            binary from https://github.com/gitleaks/gitleaks/releases
+#
+# Delete this header before writing the file.
+
+pre-commit:
+  parallel: true
+  # Merges and rebases replay commits that already passed these checks, and a conflict resolution
+  # is a bad moment to be blocked by a formatter. Without this the team disables the hook.
+  skip:
+    - merge
+    - rebase
+  commands:
+    format:
+      glob: "*.java"
+      run: ./mvnw -q spotless:check
+      fail_text: "Style: run `make format` and re-stage."
+    secrets:
+      run: gitleaks protect --staged --no-banner --redact
+      fail_text: "Possible secret in the staged changes. If it is a false positive, add its fingerprint to .gitleaksignore -- never its file path."
+
+pre-push:
+  commands:
+    check:
+      run: make check
+      fail_text: "`make check` failed. Fix it before pushing."
+
+# Emergency exit: LEFTHOOK=0 git commit …
+# It exists on purpose -- a gate with no escape hatch gets uninstalled instead of skipped.

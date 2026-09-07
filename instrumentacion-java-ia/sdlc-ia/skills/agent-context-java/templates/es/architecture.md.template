@@ -1,0 +1,74 @@
+<!--
+Placeholders:
+  {{PROJECT_NAME}}
+  {{STACK_SUMMARY}}         — ej. "Spring Boot 4.1 + PostgreSQL + Spring Data JDBC, desplegado en contenedores Docker"
+  {{DETECTED_LANGUAGES}}    — lenguajes primarios detectados en Fase 1 (Java, Kotlin, más el lenguaje del frontend si aplica)
+  {{DETECTED_FRAMEWORK}}    — framework principal (Spring Boot, Jakarta EE, Quarkus, Micronaut...)
+  {{DETECTED_PERSISTENCE}}  — BD + framework + herramienta de migraciones (PostgreSQL + JPA/Hibernate + Flyway, PostgreSQL + Spring Data JDBC + Flyway...)
+  {{DETECTED_DEPLOYMENT}}   — Kubernetes, contenedor Docker, WAR en WildFly/Tomcat, etc.
+-->
+
+# Arquitectura
+
+## Resumen
+
+{{STACK_SUMMARY}}
+
+## Atributos de calidad
+
+| Atributo | Prioridad | Justificación |
+|---|---|---|
+| <!-- ej. Simplicidad --> | <!-- Alta/Media/Baja --> | <!-- Por qué importa aquí --> |
+| Desplegabilidad | | |
+| Modificabilidad | | |
+| Confiabilidad | | |
+| Rendimiento | | |
+| Seguridad | | |
+
+Borra filas que no apliquen. Deja solo las que generan trade-offs reales.
+
+## Stack técnico
+
+- **Lenguajes:** {{DETECTED_LANGUAGES}}
+- **Framework(s):** {{DETECTED_FRAMEWORK}}
+- **Persistencia:** {{DETECTED_PERSISTENCE}}
+- **Despliegue:** {{DETECTED_DEPLOYMENT}}
+- **CI/CD:** <!-- TODO: confirmar la herramienta de CI detectada en .github/workflows, Jenkinsfile, etc. -->
+
+## Patrón
+
+<!-- TODO: describir el patrón de alto nivel (capas / hexagonal / módulos de Spring Modulith / microservicios / monolito modular) en 1-2 párrafos. Incluye un árbol de carpetas para que los agentes sepan dónde vive el código. -->
+
+```
+<raíz-del-proyecto>/
+├── <carpeta de código principal>/
+├── <carpeta de tests>/
+└── <config>
+```
+
+## Diagrama de componentes
+
+<!-- TODO: dibuja un C4 simple (contexto + contenedores). Mermaid sugerido:
+
+```mermaid
+flowchart LR
+  user[Usuario] -->|HTTPS| app[{{PROJECT_NAME}}]
+  app -->|SQL| db[(Base de datos)]
+```
+
+-->
+
+## Reglas clave (reforzadas por la arquitectura, no por el linter)
+
+<!-- TODO: lista los invariantes arquitectónicos. Ejemplo:
+- El módulo `web` solo puede cruzar hacia el núcleo por su fachada pública. Justificación: ADR-001.
+- Toda ruta de escritura debe validar el scope de tenant. Justificación: ADR-002.
+-->
+
+<!-- Si el repo usa Spring Modulith (`@ApplicationModule` en algún `package-info.java`), nombra aquí el gate que lo hace cumplir: normalmente un test que llama `ApplicationModules.of(...).verify()`. Ese test es la razón por la que estas reglas no son solo convención. -->
+
+## Docs relacionados
+
+- [Decisiones](./adrs/) — por qué la arquitectura se ve así.
+- [Modelo de datos](./data-model.md) — esquema + relaciones.
+- [Infraestructura](./infrastructure.md) — topología de despliegue.

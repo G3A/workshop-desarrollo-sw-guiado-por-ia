@@ -1,0 +1,122 @@
+[
+  {
+    "id": 1,
+    "categoria": "tipos",
+    "pregunta": "¿Cuáles son los ocho tipos primitivos definidos en el lenguaje Java?",
+    "esperado": "responde",
+    "respuesta": "We are asked: \"¿Cuáles son los ocho tipos primitivos definidos en el lenguaje Java?\" (What are the eight primitive types defined in the Java language?)\n\nWe have a context provided with several sources [1] to [6] from jls25.pdf. We need to answer the question based solely on the context.\n\nFirst, let's extract the relevant information from the context.\n\nFrom [1]:\n- It says: \"PrimitiveType: {Annotation} NumericType {Annotation} boolean NumericType: IntegralType FloatingPointType IntegralType: (one of) byte short int long char FloatingPointType: (one of) float double\"\n- Then it describes:\n  - The integral types: byte, short, int, long (with bit sizes and signed two's complement)\n  - The floating-point types: float (32-bit IEEE 754) and double (64-bit IEEE 754)\n  - The boolean type: has exactly two values true and false.\n\nSo from [1], we can list: byte, short, int, long, char, float, double, boolean. That's seven types? Wait: byte, short, int, long, char, float, double, boolean -> that's 7. But the question asks for \"ocho tipos primitivos\" (eight primitive types). So we are missing one? Or maybe char is considered a primitive type? Yes, char is listed. But let's count: \n1. byte\n2. short\n3. int\n4. long\n5. char\n6. float\n7. double\n8. boolean\n\nThat's eight. Wait, the description in [1] says: \"The integral types are byte , short , int , and long\" -> 4 integral types. \"The floating-point types are float , whose values exactly correspond to the 32bit IEEE 754 binary32 floating-point numbers, and double , whose values exactly correspond to the 64bit IEEE 754 binary64 floating-point numbers.\" -> 2 floating-point types. \"The boolean type has exactly two values: true and false.\" -> 1 boolean type. And char is mentioned separately: \"char , whose values are 16-bit unsigned integers representing UTF-16 code units\". So that",
+    "estadoFinal": "Respondido en 7:44",
+    "error": null,
+    "inicio": "2026-08-22T21:07:38.682Z",
+    "fin": "2026-08-22T21:15:23.428Z",
+    "elapsedMs": 464746
+  },
+  {
+    "id": 2,
+    "categoria": "tipos",
+    "pregunta": "¿Qué diferencia hay entre un tipo primitivo y un tipo de referencia en Java?",
+    "esperado": "responde",
+    "respuesta": "We are given a query that appears to be about Java types and values, specifically focusing on primitive types, integral types, floating-point types, boolean, and reference types. The user has provided a detailed excerpt from a document (jls25.pdf) that describes the kinds of types and values in Java. The query does not explicitly state a question, but the context suggests that the user might be asking for an explanation or summary of the provided information. However, the query is presented as a raw text that includes a table and a description of types.\n\nLooking at the query, it seems the user might be asking for clarification or a structured explanation of the types and values described. Alternatively, the user might be providing this as background for a follow-up question, but the query ends with the provided text and no explicit question.\n\nBut note: the query starts with \"PrimitiveType: {Annotation} NumericType {Annotation} boolean NumericType: (one of) byte short int long char FloatingPointType: (one of) float double\" and then has a detailed description. Then there is a section from jls25.pdf.\n\nGiven the context, I suspect the user might be asking for an explanation of the types and values as described in the document. However, the query is a bit messy: it starts with a pseudo-code-like structure and then has the PDF content.\n\nAlternatively, the user might be asking to explain the types and values in the context of the provided diagram or table.\n\nBut wait: the query has a section that says \"Primitive values do not share state with other primitive values.\" and then describes the types.\n\nAnother possibility: the user might be asking to explain the hierarchy of types and the properties of each type.\n\nGiven the ambiguity, I should consider the most likely intent. Since the query includes a detailed description of Java types (from JLS 25) and a specific excerpt, and the user has labeled it as \"Types, 4.1 4.2\", it is probable that the user wants a summary or explanation of the types and values as described.\n\nHowever, the query also includes a part about heap pollution and reifiable types, which is more advanced.\n\nBut note: the initial part of the query has a structure that looks like a type hierarchy or a classification:\n\nPrimitiveType: {Annotation} NumericType {Annotation} boolean\nNumericType: (one of) byte,",
+    "estadoFinal": "Respondido en 2:57",
+    "error": null,
+    "inicio": "2026-08-22T21:15:23.430Z",
+    "fin": "2026-08-22T21:18:20.692Z",
+    "elapsedMs": 177262
+  },
+  {
+    "id": 3,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es una conversión de ensanchamiento (widening) entre tipos primitivos?",
+    "esperado": "responde",
+    "respuesta": "We are asked: \"¿Qué es una conversión de ensanchamiento (widening) entre tipos primitivos?\" which translates to \"What is a widening conversion (widening) between primitive types?\"\n\nWe have a context provided in the query, which includes several sources [1] to [6] from jls25.pdf. We must answer based solely on the context, and we must not invent information beyond what is in the context.\n\nFirst, let's extract the relevant information about widening primitive conversions from the context.\n\nFrom [1]:\n- \"specific conversions on primitive types are called the widening primitive conversions :\"\n- Lists examples: \n  - byte to short, int, long, float, or double\n  - short to int, long, float, or double\n  - char to int, long, float, or double\n  - int to long, float, or double\n  - long to float or double\n  - float to double\n- Additional notes:\n  - \"A widening primitive conversion does not lose information about the overall magnitude of a numeric value in the following cases, where the numeric value is preserved exactly:\n    - from an integral type to another integral type\n    - from byte, short, or char to a floating-point type\n    - from int to double\n    - from float to double\n  - However, widening from int to float, or from long to float, or from long to double, may result in loss of precision (i.e., the result may lose some of the least significant bits of the value). In this case, the resulting floatingpoint value will be a correctly rounded version of the integer value, using the round to nearest rounding policy (§15.4).\n  - A widening conversion of a signed integer value to an integral type T simply signextends the two's-complement representation of the integer value to fill the wider format.\n  - A widening conversion of a char to an integral type T zero-extends the representation of the char value to fill the wider format.\n  - A widening conversion from int to float, or from long to float, or from long to double, occurs as determined by the rules of IEEE 754 for converting from an integer format to a binary floating-point format.\n  - A widening conversion from float to double occurs as determined by the rules of IEEE 754 for converting between binary floating-point formats.",
+    "estadoFinal": "Respondido en 4:30",
+    "error": null,
+    "inicio": "2026-08-22T21:18:20.697Z",
+    "fin": "2026-08-22T21:22:51.503Z",
+    "elapsedMs": 270806
+  },
+  {
+    "id": 4,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es el autoboxing y cuándo ocurre de forma automática?",
+    "esperado": "responde",
+    "respuesta": "No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.",
+    "estadoFinal": "Respondido en 3:49",
+    "error": null,
+    "inicio": "2026-08-22T21:22:51.506Z",
+    "fin": "2026-08-22T21:26:41.668Z",
+    "elapsedMs": 230162
+  },
+  {
+    "id": 5,
+    "categoria": "tipos",
+    "pregunta": "¿Qué representa el tipo null y a qué tipos de referencia se puede asignar?",
+    "esperado": "responde",
+    "respuesta": "We are asked: \"¿Qué representa el tipo null y a qué tipos de referencia se puede asignar?\" (What represents the null type and to what types of references can it be assigned?)\n\nWe have context from multiple sources (documents [1] to [6] from jls25.pdf). We must answer based solely on the context provided, and we must not invent information beyond the context.\n\nFirst, let's extract relevant parts from the context:\n\nFrom [1]:\n- \"The null type has one value, the null reference, represented by the null literal null, which is formed from ASCII characters.\"\n- \"A null literal is always of the null type (§4.1).\"\n\nFrom [2]:\n- Discusses assignment contexts and conversions, but specifically mentions: \"Finally, a value of the null type (the null reference is the only such value) may be assigned to any reference type, resulting in a null reference of that type.\"\n\nFrom [3]:\n- \"There is also a special null type.\"\n\nFrom [4]:\n- \"The reference values (often just references ) are pointers to these objects, and a special null reference, which refers to no object.\"\n\nFrom [5]:\n- \"A variable of a class type T can hold a null reference or a reference to an instance of class T or of any class that is a subclass of T . ... A variable of type Object[] can hold a reference to an array of any reference type. ... A variable of type Object can hold a null reference or a reference to any object, whether it is an instance of a class or an array.\"\n\nAlso from [5]: \"It is possible that a variable of a parameterized type will refer to an object that is not of that parameterized type. This situation is known as heap pollution.\"\n\nFrom [6]:\n- \"The following program demonstrates that a null reference may be used to access a class ( static ) variable without causing an exception:\"\n\nWe need to answer two parts:\n1. ¿Qué representa el tipo null? (What does the null type represent?)\n2. A qué tipos de referencia se puede asignar? (To what types of references can it be assigned?)\n\nFrom the context:\n\nFor the first part: The null type represents \"the null reference\" (null reference). It is a special value that refers to no",
+    "estadoFinal": "Respondido en 3:52",
+    "error": null,
+    "inicio": "2026-08-22T21:26:41.674Z",
+    "fin": "2026-08-22T21:30:33.973Z",
+    "elapsedMs": 232299
+  },
+  {
+    "id": 6,
+    "categoria": "tipos",
+    "pregunta": "¿Qué significa que un método tenga tipo de retorno void?",
+    "esperado": "responde",
+    "respuesta": "No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.",
+    "estadoFinal": "Respondido en 3:23",
+    "error": null,
+    "inicio": "2026-08-22T21:30:33.975Z",
+    "fin": "2026-08-22T21:33:57.611Z",
+    "elapsedMs": 203636
+  },
+  {
+    "id": 7,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es un tipo genérico parametrizado, por ejemplo List<String>?",
+    "esperado": "responde",
+    "respuesta": "We are given a code snippet that attempts to reverse a list by copying and then swapping elements. The problem is about type safety and the need for a type-safe method to reverse a list. The user has provided a context from a document (jls25.pdf) that discusses generics, raw types, and heap pollution. However, the immediate question is about the provided code snippet and the need for a type-safe method.\n\nThe code snippet in question is:\n\n```java\npublic static <T> void rev(List<? extends T> list) tmp = new ArrayList<T>(list); for (int i = 0; i < list.size(); i++) { list.set(i, tmp.get(list.size() - i - 1)); } }\n```\n\nBut note: the user has written the code with a typo: \"rev\" is misspelled as \"rev\" in the last line? Actually, the code snippet has:\n```java\npublic static <T> void rev() tmp = new ArrayList<T>(list); ... \n```\nWait, the method name is written as \"rev\" but then the body uses \"list\" which is not defined. Also, the method parameter is not shown. Let me read again:\n\nThe user says: \"The implementation needs to copy the list, extract elements from the copy, and insert them into the original. To do this in a type-safe manner, we need to give a name, T , to the element type of the incoming list. We do this in the private service method rev() . This requires us to pass the incoming argument list, of type List<?>&gt; , as an argument to rev() .\"\n\nBut then the code snippet has:\n```java\npublic static <T> void rev() tmp = new ArrayList<T>(list); ...\n```\n\nThere are several issues:\n1. The method name is written as \"rev\" but likely intended to be \"reverse\" or similar.\n2. The parameter \"list\" is not declared. It should be a parameter to the method.\n3. The method signature in the text says: \"public static <T> void fill(List<T> l, T obj)\" but then the method rev() is mentioned. There might be a confusion.\n\nLooking at the provided code snippet again:\n\n```java\npublic static <T> void rev",
+    "estadoFinal": "Respondido en 4:45",
+    "error": null,
+    "inicio": "2026-08-22T21:33:57.613Z",
+    "fin": "2026-08-22T21:38:43.470Z",
+    "elapsedMs": 285857
+  },
+  {
+    "id": 8,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es un literal de tipo long y cómo se distingue de un literal int en el código fuente?",
+    "esperado": "responde",
+    "respuesta": "We are asked: \"¿Qué es un literal de tipo long y cómo se distingue de un literal int en el código fuente?\" \nWe have context from multiple sources (jls25.pdf) that describe literals in what appears to be a programming language (likely Java or similar, given the context of literals and types). The question is about \"literal de tipo long\" and how it differs from \"literal int\".\n\nFirst, we need to extract the definition of a \"literal de tipo long\" and how it is distinguished from an \"int\" literal.\n\nFrom the context:\n\n[1] Provides definitions for various integer literals: DecimalIntegerLiteral, HexIntegerLiteral, OctalIntegerLiteral, BinaryIntegerLiteral, and specifies that:\n- An integer literal is of type long if it is suffixed with an ASCII letter L or l (ell); otherwise it is of type int (§4.2.1).\n- Also provides rules for the structure of these literals, including allowed separators (underscores) and the use of prefixes (0x, 0b, 0) for hex, binary, octal.\n\n[2] Provides general information about literals and types: \n- The type of an integer literal that ends with L or l is long; otherwise it is int.\n\n[3] Gives specific examples and limits for int and long literals, including the suffixes and the maximum values.\n\n[4] Defines what a literal is.\n\n[5] Provides type hierarchy.\n\n[6] Provides supertype relations.\n\nThe question is specifically about \"literal de tipo long\" and how it differs from \"literal int\". So we need to focus on the distinction between long literals and int literals.\n\nKey points from the context:\n\n1. **Suffix/Prefix distinction**: \n   - For an integer literal to be of type `long`, it must have a suffix `L` (uppercase) or `l` (lowercase) at the end. However, note that in the examples, we see both `0L` and `0l`. Also, in the context of prefixed literals (like `0x`, `0b`, `0`), the suffix is used to denote the type.\n   - Without the suffix (or with the suffix but not explicitly stated? Actually, the context says: \"if it is suffixed with an ASCII letter L or l\" -> so",
+    "estadoFinal": "Respondido en 6:38",
+    "error": null,
+    "inicio": "2026-08-22T21:38:43.473Z",
+    "fin": "2026-08-22T21:45:22.098Z",
+    "elapsedMs": 398625
+  },
+  {
+    "id": 9,
+    "categoria": "variables",
+    "pregunta": "¿Qué diferencia hay entre una variable local declarada con var y una declarada con un tipo explícito?",
+    "esperado": "responde",
+    "respuesta": "We are given a query that appears to be a mix of Java language specification excerpts and possibly a problem statement. However, the query is not entirely clear. The user has provided several excerpts from the Java Language Specification (jls) and seems to be asking about the handling of annotations in certain contexts, particularly regarding type annotations and lambda expressions.\n\nLooking at the query, it starts with a discussion about \"name clashes created by lambda parameters and other variables declared in lambda expressions\" and then provides two design alternatives. Then, it provides several excerpts from jls25.pdf (sections [5] and [6]) that discuss:\n- The closest type for an annotation in various contexts (for field declarations, generic methods, etc.)\n- Rules for when an annotation is applicable to different syntactic locations.\n- Rules for type patterns and record patterns.\n\nThe query ends with a question that is not explicitly stated. However, the initial part of the query seems to be setting up a problem about handling name clashes and annotations in lambda expressions. The user might be asking for clarification on the design alternatives, or they might be presenting a scenario and asking for the correct approach according to the Java specification.\n\nBut note: the query starts with: \"There are two design alternatives for handling name clashes created by lambda parameters and other variables declared in lambda expressions. One is to mimic class declarations: like local classes, lambda expressions introduce a new \"level\" for names, and all variable names outside the expression can be redeclared. Another is a \"local\" strategy: like catch clauses, for loops, and blocks, lambda expressions operate at the same \"level\" as the enclosing context, and local variables outside the expression cannot be shadowed. The above rules use the local strategy; there is no special dispensation that allows a variable declared in a lambda expression to shadow a variable declared in an enclosing method.\"\n\nThen, it provides excerpts from jls25.pdf. The excerpts [5] and [6] are about annotations and types, but they do not directly address the name clash question. However, the initial part of the query is discussing a design alternative for name clashes in lambda expressions, and then it says \"The above rules use the local strategy\". This suggests that the \"above rules\" (which are the excerpts [5] and [6]) are providing the rules that use the local strategy.\n\nBut wait: the query is presented as if it is a problem statement or a question. However, the",
+    "estadoFinal": "Respondido en 4:59",
+    "error": null,
+    "inicio": "2026-08-22T21:45:22.102Z",
+    "fin": "2026-08-22T21:50:21.926Z",
+    "elapsedMs": 299824
+  },
+  {
+    "id": 10,
+    "categoria": "variables",
+    "pregunta": "¿Qué es el ámbito (scope) de una variable local?",
+    "esperado": "responde",
+    "respuesta": "No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.",
+    "estadoFinal": "Respondido en 3:41",
+    "error": null,
+    "inicio": "2026-08-22T21:50:21.928Z",
+    "fin": "2026-08-22T21:54:03.799Z",
+    "elapsedMs": 221871
+  }
+]

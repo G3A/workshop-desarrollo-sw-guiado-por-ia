@@ -1,0 +1,45 @@
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+.env
+.data/
+
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.settings/
+.classpath
+.project
+.factorypath
+
+*.log
+*.pid
+.jqwik-database
+
+# Carpetas de dependencias Node (en cualquier nivel)
+node_modules/
+
+# Archivos de pesos/imagenes de modelos de IA
+*.gguf
+*.ggml
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.onnx
+*.ckpt
+*.h5
+*.pb
+
+# Binarios genericos
+*.exe
+*.dll
+*.so
+*.dylib
+*.o
+*.obj
+*.out

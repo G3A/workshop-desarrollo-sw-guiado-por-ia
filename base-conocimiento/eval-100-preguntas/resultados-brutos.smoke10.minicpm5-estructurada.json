@@ -1,0 +1,122 @@
+[
+  {
+    "id": 1,
+    "categoria": "tipos",
+    "pregunta": "¿Cuáles son los ocho tipos primitivos definidos en el lenguaje Java?",
+    "esperado": "responde",
+    "respuesta": "Pregunjemos las afirmaciones siguientes: 1. El lenguaje Java define los ocho tipos primitivos en el que se detalla la definición de los primitive types, los valores primitivos y las reglas sobre la correspondencia entre tipos compilados y run-time. 2. Los primitive types son los tipos predefinidos por el lenguaje Java, incluidos los tipos numericos y booleano. 3. El tipo numérico es el conjunto de integrales y de punto flotante, y el tipo booleano tiene dos valores: true y false. 4. Los tipos primitivos son el tipo primitive y el tipo refero. 5. El tipo refero incluye clases y interfaces. 6. El tipo null es un tipo especial que no tiene nombre y no puede declararse o castar. 7. La correspondencia entre tipos compilados y run-time es incompleta debido a dos razones: la primera es que los tipos de clase y intersecciones se loadan en diferentes loaders, lo que puede provocar fallos en el descompiso al link tiempo. 8. El tipo de variable y el tipo de argumento no son reificados al run time. 9. El tipo de clipeo es un tipo compilado pero no hay instancias de interfaces. 10. El tipo de array tiene una clase directa. 11. El tipo de primitive es un tipo compilado que se deduce al ejecutar el código. 12. El tipo de referencia es un tipo compilado que puede deducir al ejecutarse el código. 13. El tipo de clipeo es un tipo compilado pero no hay instancias de interfaces. 14. El tipo de clipeo es un tipo compilado que se deduce al ejecutar el código. 15. El tipo de clipeo es un tipo compilado que se deduce al ejecutar el código. 16. El tipo de clipeo es un tipo compilado que se deduce al ejecutar el código. 17. El tipo de clipeo es un tipo compilado que se deduce al ejecutar el código. 18. El tipo de clipeo es un tipo compilado que se deduce al ejecutar el código. 19. El tipo de clipeo es un tipo compilado que se deduce al ejecutar el código. 20. El tipo de clipeo es un tipo compilado que se deduce al ejecutar el código. [1] El lenguaje Java define los ocho tipos primitivos en el que se detalla la definición de los primitive types, los valores primitivos y las reglas sobre la correspondencia entre tipos compilados y run-time. El tipo numérico es el conjunto de integrales y de punto flotante, y el tipo booleano tiene dos valores: true y false. Los tipos primitivos son el tipo primitive y el tipo refero. El tipo null es un tipo especial que no tiene nombre y no puede declararse o castar. La correspondencia entre tipos compilados y run-time es incompleta debido a dos razones: la primera es que los tipos de clase y intersecciones se loadan en diferentes loaders, lo que puede provocar fallos en el descompiso al link tiempo. El tipo de clipeo es un tipo compilado pero no hay instancias de interfaces. El tipo de clipeo es un tipo compilado que se deduce al ejecutar el código. El tipo de clipeo es un tipo compilado que se deduce al ejecutar el código. El tipo de clipeo es un tipo compilado que se deduce al ejecutar el código. El tipo de clipeo es un tipo compilado que se deduce al ejecutar el código. El tipo de clipeo es un tipo compilado que se deduce al ejecutar el código. El tipo de clipeo es un tipo compilado que se deduce al ejecutar el código. El tipo de clipeo es un tipo compilado que se deduce al ejecutar el código. [2]",
+    "estadoFinal": "Respondido en 2:48",
+    "error": null,
+    "inicio": "2026-08-21T19:57:04.266Z",
+    "fin": "2026-08-21T19:59:52.948Z",
+    "elapsedMs": 168682
+  },
+  {
+    "id": 2,
+    "categoria": "tipos",
+    "pregunta": "¿Qué diferencia hay entre un tipo primitivo y un tipo de referencia en Java?",
+    "esperado": "responde",
+    "respuesta": "A variable of a class type T can hold a null reference or a reference to an instance of class T or of any class that is a subclass of T. A variable of an interface type can hold a null reference or a reference to any instance of any class that implements the interface. Note that a variable is not guaranteed to always refer to a subtype of its declared type, but only to subclasses or subinterfaces of the declared type. This is due to the possibility of heap pollution discussed below. If T is a primitive type, then a variable of type 'array of T' can hold a null reference or a reference to any array of type 'array of T'. If T is a reference type, then a variable of type 'array of T' can hold a null reference or a reference to any array of type 'array of S' such that type S is a subclass or subinterface of type T. A variable of type Object[] can hold a reference to an array of any reference type. A variable of type Object can hold a reference to any object, whether it is an instance of a class or an array. It is possible that a variable of a parameterized type will refer to an object that is not of that parameterized type. This situation is known as heap pollution. Heap pollution can only occur if the program performed some operation involving a raw type that would give rise to a compile-time unchecked warning, or if the program aliases an array variable of non-reifiable element type through an array variable of a supertype which is either raw or non-generic. For example, the code: List l = new ArrayList<Number>(); List<String> ls = l; // Unchecked warning. If the code above is executed, heap pollution arises as the variable ls, declared to be a List<Integer>, refers to a value that is not in fact a List<Integer>. The problem cannot be identified at run time because type variables are not reified, and thus instances do not carry any information at run time regarding the type arguments used to create them. In a simple example as given above, it may appear that it should be straightforward to identify the situation at compile time and give an error. However, in the general (and typical) case, the value of the variable l may be the result of an invocation of a separately compiled method, or its value may depend upon arbitrary control flow. The code above is therefore very atypical, and indeed very bad style. Furthermore, the fact that Object[] is a supertype of all array types means that unsafe aliasing can occur which leads to heap pollution. For example, the following code compiles because it is statically type-correct: static void m(List<String>... stringLists) { Object[] array = stringLists; List<Integer> tmpList = Arrays.asList(42); array[0] = tmpList; } Heap pollution occurs at (1) because a component in the stringLists array that should refer to a List<Integer> now refers to a List<Number>. There is no way to detect this pollution in the presence of both a universal supertype (Object[]) and a non-reifiable type (the declared type of the formal parameter, List<String>). No unchecked warning is justified at (1); nevertheless, at run time, a ClassCastException will occur at (2). [0]",
+    "estadoFinal": "Respondido en 1:46",
+    "error": null,
+    "inicio": "2026-08-21T19:59:52.954Z",
+    "fin": "2026-08-21T20:01:39.805Z",
+    "elapsedMs": 106851
+  },
+  {
+    "id": 3,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es una conversión de ensanchamiento (widening) entre tipos primitivos?",
+    "esperado": "responde",
+    "respuesta": "A widening primitive conversion from int to float, or from long to float, may result in loss of precision, that is, the result may lose some of the least significant bits of the value. In this case, the resulting floatingpoint value will be a correctly rounded version of the integer value, using the round to nearest rounding policy (§15.4). [1] A widening conversion of a signed integer value to an integral type T simply signextends the two's-complement representation of the integer value to fill the wider format. [2] A widening conversion from int to float, or from long to float, or from int to double, or from long to double occurs as determined by the rules of IEEE 754 for converting from an integer format to a binary floating-point format. [3] A widening conversion from float to double occurs as determined by the rules of IEEE 754 for converting between binary floating-point formats. [4] Despite the fact that loss of precision may occur, a widening primitive conversion never results in a run-time exception (§11.1.1). [5]",
+    "estadoFinal": "Respondido en 1:12",
+    "error": null,
+    "inicio": "2026-08-21T20:01:39.808Z",
+    "fin": "2026-08-21T20:02:52.734Z",
+    "elapsedMs": 72926
+  },
+  {
+    "id": 5,
+    "categoria": "tipos",
+    "pregunta": "¿Qué representa el tipo null y a qué tipos de referencia se puede asignar?",
+    "esperado": "responde",
+    "respuesta": "The null type has one value, the null reference, represented by the null literal null , which is formed from ASCII characters. The null literal is always of the null type (§4.1). [1] A variable of a class type T can hold a null reference or a reference to an instance of class T or of any class that is a subclass of T . A variable of an interface type can hold a null reference or a reference to any instance of any class that implements the interface. Note that a variable is not guaranteed to always refer to a subtype of its declared type, but only to subclasses or subinterfaces of the declared type. This is due to the possibility of heap pollution discussed below. If T is a primitive type, then a variable of type [2] If T is a reference type, then a variable of type [3] A variable of type Object[] can hold a reference to an array of any reference type. A variable of type Object can hold a null reference or a reference to any object, whether it is an instance of a class or an array. It is possible that a variable of a parameterized type will refer to an object that is not of that parameterized type. This situation is known as heap pollution . [4]",
+    "estadoFinal": "Respondido en 1:11",
+    "error": null,
+    "inicio": "2026-08-21T20:05:18.401Z",
+    "fin": "2026-08-21T20:06:30.197Z",
+    "elapsedMs": 71796
+  },
+  {
+    "id": 7,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es un tipo genérico parametrizado, por ejemplo List<String>?",
+    "esperado": "responde",
+    "respuesta": "No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.",
+    "estadoFinal": "Respondido en 35 s",
+    "error": null,
+    "inicio": "2026-08-21T20:11:06.162Z",
+    "fin": "2026-08-21T20:11:41.882Z",
+    "elapsedMs": 35720
+  },
+  {
+    "id": 9,
+    "categoria": "variables",
+    "pregunta": "¿Qué diferencia hay entre una variable local declarada con var y una declarada con un tipo explícito?",
+    "esperado": "responde",
+    "respuesta": "No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.",
+    "estadoFinal": "Respondido en 24 s",
+    "error": null,
+    "inicio": "2026-08-21T20:16:38.372Z",
+    "fin": "2026-08-21T20:17:02.575Z",
+    "elapsedMs": 24203
+  },
+  {
+    "id": 10,
+    "categoria": "variables",
+    "pregunta": "¿Qué es el ámbito (scope) de una variable local?",
+    "esperado": "responde",
+    "respuesta": "",
+    "estadoFinal": "Respondido en 1:42",
+    "error": null,
+    "inicio": "2026-08-21T20:17:02.577Z",
+    "fin": "2026-08-21T20:18:45.264Z",
+    "elapsedMs": 102687
+  },
+  {
+    "id": 4,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es el autoboxing y cuándo ocurre de forma automática?",
+    "esperado": "responde",
+    "respuesta": "The  following  program  combines  the  enhanced  for  statement  with  auto-unboxing  to translate a histogram into a frequency table: [1] Boxing  conversion  treats  expressions  of  a  primitive  type  as  expressions  of  a corresponding  reference  type. Specifically,  the  following  nine  conversions  are called  the  boxing  conversions : [2] Ideally,  boxing  a  primitive  value  would  always  yield  an  identical  reference. In practice,  this  may  not  be  feasible  using  existing  implementation  techniques. The  rule  above  is  a  pragmatic  compromise,  requiring  that  certain  common  values  always  be  boxed  into  indistinguishable  objects. The  implementation  may  cache  these,  lazily  or  eagerly. For  other  values,  the  rule  disallows  any  assumptions  about  the  identity  of  the  boxed  values on  the  programmer's  part. This  allows (but  does  not  require)  sharing  of  some  or  all  of  these  references. [3] A  boxing  conversion  may  result  in  an  OutOfMemoryError  if  a  new  instance  of  one  of  the  wrapper  classes ( Boolean , Byte , Character , Short , Integer , Long , Float , or  Double )  needs  to  be  allocated  and  insufficient  storage  is  available. [4] A  type  is  said  to  be  convertible  to  a  numeric  type  if  it  is  a  numeric  type  (type  (§4.2) ),  or  it  is  a  reference  type  that  may  be  converted  to  a  numeric  type  by  unboxing  conversion (unboxing  (§5.1.8)). [5] A  type  is  said  to  be  convertible  to  an  integral  type  if  it  is  an  integral  type  (type  (§4.2) ),  or  it  is  a  reference  type  that  may  be  converted  to  an  integral  type  by  unboxing  conversion (unboxing  (§5.1.8)). [6] If  the  value  of  the  Expression  is  false  the  first  time  it  is  evaluated,  then  the  Statement  is  not  executed. [7]",
+    "estadoFinal": "Respondido en 59 s",
+    "error": null,
+    "inicio": "2026-08-21T20:18:56.388Z",
+    "fin": "2026-08-21T20:19:55.537Z",
+    "elapsedMs": 59149
+  },
+  {
+    "id": 6,
+    "categoria": "tipos",
+    "pregunta": "¿Qué significa que un método tenga tipo de retorno void?",
+    "esperado": "responde",
+    "respuesta": "Pregunta: ¿Qué significa que un método tenga tipo de retorno void? [1] Contexto: [1] jls25.pdf (file:///vault/documentos/jls25.pdf) Changing the result type of a method...; [2] jls25.pdf (file:///vault/documentos/jls25.pdf) The invocation type of a most specific accessible and applicable method... [1] Contexto: [3] jls25.pdf (file:///vault/documentos/jls25.pdf) The result of a method declaration either declares the type of value that the method returns...; [4] jls25.pdf (file:///vault/documentos/jls25.pdf) A return statement returns control to the invoker... [1] Contexto: [5] jls25.pdf (file:///vault/documentos/jls25.pdf) The result of a method declaration either declares the type of value that the method returns...; [6] jls25.pdf (file:///vault/documentos/jls25.pdf) | Keyword: ReservedKeyword ContextualKeyword | Keyword: ReservedKeyword ContextualKeyword | implements int | class Cell<E> { E value; Cell(E v) { value = v; } E get() { return value; } void set(E v) { value = v; } public static void main(String[] args) { Cell x = new Cell<String>( [1]",
+    "estadoFinal": "Respondido en 1:07",
+    "error": null,
+    "inicio": "2026-08-21T20:19:55.540Z",
+    "fin": "2026-08-21T20:21:02.797Z",
+    "elapsedMs": 67257
+  },
+  {
+    "id": 8,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es un literal de tipo long y cómo se distingue de un literal int en el código fuente?",
+    "esperado": "responde",
+    "respuesta": "",
+    "estadoFinal": "Se perdió la conexión con el servidor (¿Ollama no responde?).",
+    "error": "Se perdió la conexión con el servidor (¿Ollama no responde?).",
+    "inicio": "2026-08-21T20:25:23.520Z",
+    "fin": "2026-08-21T20:29:49.291Z",
+    "elapsedMs": 265771
+  }
+]

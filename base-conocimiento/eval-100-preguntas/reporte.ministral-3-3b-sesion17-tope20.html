@@ -1,0 +1,2174 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Reporte de evaluación — 100 preguntas</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: system-ui, "Segoe UI", sans-serif; margin: 2rem; line-height: 1.4; }
+  h1 { margin-bottom: 0.2rem; }
+  .subtitulo { color: #777; margin-top: 0; }
+  .resumen { display: flex; flex-wrap: wrap; gap: 1rem; margin: 1.5rem 0; }
+  .tarjeta { border: 1px solid #8883; border-radius: 8px; padding: 0.9rem 1.2rem; min-width: 160px; }
+  .tarjeta .valor { font-size: 1.6rem; font-weight: 700; }
+  .tarjeta .etiqueta { font-size: 0.8rem; color: #888; text-transform: uppercase; letter-spacing: 0.03em; }
+  .controles { margin: 1rem 0; display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
+  th, td { border: 1px solid #8884; padding: 0.4rem 0.5rem; vertical-align: top; }
+  th { position: sticky; top: 0; background: Canvas; text-align: left; }
+  td.pregunta { max-width: 260px; }
+  td.respuesta { max-width: 320px; }
+  td.respuesta details summary { cursor: pointer; }
+  td.num, td.centro { text-align: center; white-space: nowrap; }
+  tr.ok { background: color-mix(in srgb, green 12%, Canvas); }
+  tr.bad { background: color-mix(in srgb, crimson 12%, Canvas); }
+  tr.err { background: color-mix(in srgb, orange 15%, Canvas); }
+  .contenedor-tabla { overflow-x: auto; max-height: 75vh; overflow-y: auto; border: 1px solid #8883; border-radius: 8px; }
+  code { background: #8882; padding: 0.05rem 0.3rem; border-radius: 4px; }
+</style>
+</head>
+<body>
+  <h1>Reporte de evaluación — 100 preguntas (jls25.pdf)</h1>
+  <p class="subtitulo">Umbral dinámico de relevancia (ADR-0008) recalculado a partir de <code>query_log</code>:
+    piso=0.003, techo=0.05, chunksReferencia=500, techoConfianza=8,
+    chunks del proyecto=1065.</p>
+
+  <div class="resumen">
+    <div class="tarjeta"><div class="valor">81/95</div><div class="etiqueta">Precisión global (85.3%)</div></div>
+    <div class="tarjeta"><div class="valor">65/79</div><div class="etiqueta">Correctas entre las que debían responder</div></div>
+    <div class="tarjeta"><div class="valor">16/16</div><div class="etiqueta">Correctas entre las que debían rechazar</div></div>
+    <div class="tarjeta"><div class="valor">28</div><div class="etiqueta">Decisión SUFICIENTE</div></div>
+    <div class="tarjeta"><div class="valor">52</div><div class="etiqueta">Decisión AMBIGUO</div></div>
+    <div class="tarjeta"><div class="valor">15</div><div class="etiqueta">Decisión INSUFICIENTE</div></div>
+    <div class="tarjeta"><div class="valor">759 s</div><div class="etiqueta">Latencia promedio por pregunta</div></div>
+    <div class="tarjeta"><div class="valor">5</div><div class="etiqueta">Errores de infraestructura (no calificados)</div></div>
+  </div>
+
+  <div class="controles">
+    <label>Categoría: <select id="filtroCategoria"><option value="">(todas)</option><option>tipos</option><option>variables</option><option>clases</option><option>interfaces</option><option>records</option><option>sealed</option><option>pattern-matching</option><option>unnamed</option><option>arrays</option><option>excepciones</option><option>generics</option><option>modulos</option><option>java25</option><option>proyecto</option><option>control</option></select></label>
+    <label>Solo incorrectas: <input type="checkbox" id="filtroIncorrectas"></label>
+  </div>
+
+  <div class="contenedor-tabla">
+  <table id="tabla">
+    <thead>
+      <tr>
+        <th>#</th><th>Categoría</th><th>Pregunta</th><th>Respuesta</th><th>Esperado</th>
+        <th>Comportamiento real</th><th>¿Correcta?</th><th>Mejor rerank</th><th>Umbral(n)</th>
+        <th>Techo confianza</th><th>Decisión</th><th>Latencia</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="ok" data-categoria="tipos" data-correcta="true">
+        <td>1</td>
+        <td>tipos</td>
+        <td class="pregunta">¿Cuáles son los ocho tipos primitivos definidos en el lenguaje Java?</td>
+        <td class="respuesta"><details><summary>Los **eight** tipos primitivos definidos en Java según el JLS 25 son:
+
+byte, short, int, l…</summary>Los **eight** tipos primitivos definidos en Java según el JLS 25 son:
+
+byte, short, int, long, float, double, char, boolean **[1]**.
+
+No hay contradicción entre las fuentes consultadas.</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">8.0929</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>SUFICIENTE</td>
+        <td class="num">43.3 s</td>
+      </tr>
+      <tr class="ok" data-categoria="tipos" data-correcta="true">
+        <td>2</td>
+        <td>tipos</td>
+        <td class="pregunta">¿Qué diferencia hay entre un tipo primitivo y un tipo de referencia en Java?</td>
+        <td class="respuesta"><details><summary>En **Java**, la principal diferencia entre los tipos primitivos y los tipos de referencia …</summary>En **Java**, la principal diferencia entre los tipos primitivos y los tipos de referencia es:
+
+- **Tipos primitivos** ([4]) son definidos por el lenguaje con palabras clave como `int`, `double`, `char` o `boolean`. Almacenan valores directamente en la memoria y **no requieren una instancia de clase**; su valor es independiente de otras variables ([4]).
+
+- **Tipos de referencia** ([1], [2], [5]) representan objetos creados mediante clases o interfaces. Una variable de este tipo puede almacenar un **referencia a un objeto** (puede ser `null`) o apuntar a un objeto concreto, pero **solo existe en memoria cuando hay una asignación efectiva** ([1]). Su comportamiento depende del objeto al que apunte, lo cual implica operaciones dinámicas como invocaciones de métodos o conversiones basadas en el tipo real del objeto ([3]).
+
+---
+*Nota sobre contradicciones*: No hay conflictos entre las fuentes proporcionadas para definir estos conceptos básicos.</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">9.5417</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>SUFICIENTE</td>
+        <td class="num">273.2 s</td>
+      </tr>
+      <tr class="ok" data-categoria="tipos" data-correcta="true">
+        <td>3</td>
+        <td>tipos</td>
+        <td class="pregunta">¿Qué es una conversión de ensanchamiento (widening) entre tipos primitivos?</td>
+        <td class="respuesta"><details><summary>Una **conversión de ensanchamiento** (widening) entre tipos primitivos es una transformaci…</summary>Una **conversión de ensanchamiento** (widening) entre tipos primitivos es una transformación que **aumenta el tamaño del espacio de almacenamiento** de un valor numérico sin perder información sobre su magnitud exacta en ciertos casos, según las reglas definidas en el JLS 25.
+
+Por ejemplo:
+- **byte → short/int/long/float/double**
+- **short → int/long/float/double**
+- **char → int/long/float/double**
+- **int → long/float/double** (puede perder precisión si va a *float*)
+- **long → float/double**
+
+No pierde información cuando ocurre desde **integral a integral** ([1]) o desde **byte/short/char a punto flotante** ([1]), pero sí puede hacerlo en conversiones como *int→float* ([1]).
+
+---
+**[1]**</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">9.0308</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>SUFICIENTE</td>
+        <td class="num">188.0 s</td>
+      </tr>
+      <tr class="bad" data-categoria="tipos" data-correcta="false">
+        <td>4</td>
+        <td>tipos</td>
+        <td class="pregunta">¿Qué es el autoboxing y cuándo ocurre de forma automática?</td>
+        <td class="respuesta"><details><summary>No encontré información suficientemente relevante en la base de conocimiento para responde…</summary>No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.</details></td>
+        <td>responde</td>
+        <td>rechaza</td>
+        <td class="centro">❌</td>
+        <td class="num">0.0330</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>INSUFICIENTE</td>
+        <td class="num">23.0 s</td>
+      </tr>
+      <tr class="ok" data-categoria="tipos" data-correcta="true">
+        <td>5</td>
+        <td>tipos</td>
+        <td class="pregunta">¿Qué representa el tipo null y a qué tipos de referencia se puede asignar?</td>
+        <td class="respuesta"><details><summary>El **tipo `null`** representa la ausencia de referencia a ningún objeto y solo tiene un va…</summary>El **tipo `null`** representa la ausencia de referencia a ningún objeto y solo tiene un valor: **la literal `null`**.
+
+Puede asignarse a cualquier **tipo de referencia** ([1]), pero no está permitido asignarlo a tipos primitivos ni a objetos no instanciables.
+
+No hay restricciones adicionales sobre qué tipos de referencia pueden recibirlo, salvo que sean compatibles por conversión de asignación ([2]).</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">9.7200</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>SUFICIENTE</td>
+        <td class="num">153.7 s</td>
+      </tr>
+      <tr class="ok" data-categoria="tipos" data-correcta="true">
+        <td>6</td>
+        <td>tipos</td>
+        <td class="pregunta">¿Qué significa que un método tenga tipo de retorno void?</td>
+        <td class="respuesta"><details><summary>Un método declarado como **`void`** **[3]** indica que **no devuelve ningún valor** al lla…</summary>Un método declarado como **`void`** **[3]** indica que **no devuelve ningún valor** al llamado que realiza el código que lo invoca.
+
+---
+**Nota sobre compatibilidad**:
+Si otro método sobrescribe el primero y también tiene un retorno `void`, ambos son **compatibles** **[3]**. En caso de que el segundo método devuelva un tipo distinto, esto violaría las reglas de substitución de tipos de retorno **[3]**.</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">6.7367</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">35.4 s</td>
+      </tr>
+      <tr class="ok" data-categoria="tipos" data-correcta="true">
+        <td>7</td>
+        <td>tipos</td>
+        <td class="pregunta">¿Qué es un tipo genérico parametrizado, por ejemplo List&lt;String&gt;?</td>
+        <td class="respuesta"><details><summary>Un tipo genérico parametrizado como **`List&lt;String&gt;`** es una clase o interfaz con parámet…</summary>Un tipo genérico parametrizado como **`List&lt;String&gt;`** es una clase o interfaz con parámetros de tipo definidos dentro de sus angle brackets (`&lt;&gt;`), donde cada `&lt;T&gt;` representa un tipo que puede variar según la instancia específica del objeto creado.
+
+Por ejemplo, `List&lt;String&gt;` es un caso concreto de la clase genérica `List&lt;T&gt;`, donde el tipo `T` se reemplaza por `String`. Esto permite que la misma clase `List` funcione indistintamente con cualquier tipo de datos, siempre que se especifique correctamente al momento de instanciarla [1].
+
+---
+*Nota: El contexto no define explícitamente qué es un tipo genérico en sí mismo, solo describe cómo se usan los tipos genéricos parametrizados.*</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">4.3450</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">521.5 s</td>
+      </tr>
+      <tr class="ok" data-categoria="tipos" data-correcta="true">
+        <td>8</td>
+        <td>tipos</td>
+        <td class="pregunta">¿Qué es un literal de tipo long y cómo se distingue de un literal int en el código fuente?</td>
+        <td class="respuesta"><details><summary>Un **literal de tipo `long`** se distingue por incluir la sufijo **`L` o `l`** al final de…</summary>Un **literal de tipo `long`** se distingue por incluir la sufijo **`L` o `l`** al final del número entero [1][2].
+
+En comparación, un **literal `int`** no lleva este sufijo; por ejemplo:
+- `42` → `int`
+- `42L` → `long`
+
+El tamaño máximo de un literal `int` es **2³¹−1 (2147483647)**, mientras que el de `long` es **2⁶³−1 (9223372036854775807)** [1][3].
+
+---
+*Nota:* En binario/hexadecimal/octal, los underscores solo aparecen dentro del valor numérico, pero **no después del prefijo (`0x`, `0b`) ni del sufijo (`L`)** [1].</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">7.0105</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">430.5 s</td>
+      </tr>
+      <tr class="ok" data-categoria="variables" data-correcta="true">
+        <td>9</td>
+        <td>variables</td>
+        <td class="pregunta">¿Qué diferencia hay entre una variable local declarada con var y una declarada con un tipo explícito?</td>
+        <td class="respuesta"><details><summary>La **diferencia principal** entre una variable local declarada con `var` y una declarada c…</summary>La **diferencia principal** entre una variable local declarada con `var` y una declarada con un **tipo explícito** radica en cómo se infiere el tipo:
+
+- Con **`var`**, el tipo se deduce del valor inicial asignado mediante *upward projection* (proyección hacia arriba), considerando sintéticos y eliminando capturas si las hay [1].
+  Ejemplo válido: `var x = 5;` → `int`.
+  Ejemplo inválido sin inicializador o con restricciones como lambdas: `var y;` [3].
+
+- Con un **tipo explícito**, el compilador usa el tipo escrito en el código (ej: `int`, `String`) sin inferencias dinámicas [2]. No puede usarse para expresiones complejas que no tengan un tipo determinable estáticamente (como lambdas) [3].
+
+---
+**Contradicción detectada**:
+El contexto [1] menciona que el tipo de `var` es la *upward projection* del inicializador, pero [2] también describe casos donde `var` no permite tipos explícitos cuando su tipo no es denotable (ej: lambdas, `null`). Ambas fuentes coinciden en que:
+- **`var` requiere inicialización** [3] (compilación falla sin ella).
+- **No permite múltiples declaradores ni brackets adicionales** [3], mientras que los tipos explícitos sí lo permiten (ej: `int[][] arr = new int[2][3]`).
+
+---
+**Ejemplos clave**:
+| Declaración       | Tipo deducido          | Validez                     |
+|-------------------|-----------------------|----------------------------|
+| `var a = 1;`      | `int`                 | Válida                     |
+| `int b = 1;`      | `int`                 | Válida                     |
+| `var c = () =&gt; 1;`| **Compilación falla** | No permite lambdas         |
+
+---
+[1] y [3] coinciden en que `var` depende del inicializador, pero [2] añade excepciones como tipos no denotables.</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">6.0277</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">543.3 s</td>
+      </tr>
+      <tr class="ok" data-categoria="variables" data-correcta="true">
+        <td>10</td>
+        <td>variables</td>
+        <td class="pregunta">¿Qué es el ámbito (scope) de una variable local?</td>
+        <td class="respuesta"><details><summary>El ámbito (scope) de una **variable local** en Java comienza desde su declaración hasta el…</summary>El ámbito (scope) de una **variable local** en Java comienza desde su declaración hasta el final del bloque donde está definida, incluyendo sus inicializadores y cualquier declarador adicional a la derecha dentro de la misma declaración.
+
+Por ejemplo:
+- En un bloque (`{}`), abarca todo el contenido restante tras la declaración, como los inicializadores y expresiones posteriores [1].
+- En el `ForInit` de una sentencia *for*, incluye el propio inicializador, otros declaradores a la derecha, las partes `Expression` y `ForUpdate`, y el cuerpo de la sentencia [1].
+
+No incluye el ámbito de clases o métodos externos, salvo que sea **shadoweado** por otra variable con el mismo nombre en el mismo nivel de alcance [2].</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">6.6167</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">330.5 s</td>
+      </tr>
+      <tr class="ok" data-categoria="variables" data-correcta="true">
+        <td>11</td>
+        <td>variables</td>
+        <td class="pregunta">¿Qué significa que una variable esté sombreada (shadowing) por otra?</td>
+        <td class="respuesta"><details><summary>Cuando una **variable** local o de ámbito más estrecho (como `x` en el método `main`) coin…</summary>Cuando una **variable** local o de ámbito más estrecho (como `x` en el método `main`) coincide en nombre con otra declaración existente en un ámbito superior (como `Test.x`), **se dice que la variable local *sombra* (shadows)** a la declaración original.
+
+En este caso específico:
+- `[1]` define que una declaración `d` de tipo `n` (ej. `x`) **sombra** a cualquier otra declaración de ese mismo nombre (`n`) dentro de su alcance.
+- En el ejemplo del código proporcionado ([2]), al declarar `int x = 0;` dentro del método `main`, **oculta** (shadowing) la referencia a `static int x = 1;` declarada en la clase `Test`.
+
+Por tanto, cuando se usa `x` en el bloque local, se refiere a la nueva variable, mientras que el acceso a la declaración original requiere usar el nombre completo `Test.x`. Esto explica el comportamiento observado en el programa:
+```
+x=0, Test.x=1
+```</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">1.4463</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">469.8 s</td>
+      </tr>
+      <tr class="ok" data-categoria="variables" data-correcta="true">
+        <td>12</td>
+        <td>variables</td>
+        <td class="pregunta">¿Qué implica declarar una variable como final?</td>
+        <td class="respuesta"><details><summary>Implica **no poder asignarle valores adicionales** después de su primera inicialización [1…</summary>Implica **no poder asignarle valores adicionales** después de su primera inicialización [1].
+Si es una referencia a objeto (incluyendo arreglos), aunque el objeto pueda modificarse internamente, la variable siempre apunta al mismo lugar en memoria [1].
+
+No permite reasignaciones posteriores, pero sí cambios en el estado del objeto al que apunta [1].</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">9.8261</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>SUFICIENTE</td>
+        <td class="num">55.1 s</td>
+      </tr>
+      <tr class="ok" data-categoria="variables" data-correcta="true">
+        <td>13</td>
+        <td>variables</td>
+        <td class="pregunta">¿Cómo se declara una constante de clase en Java?</td>
+        <td class="respuesta"><details><summary>En **Java**, una constante de clase se declara como un campo estático final dentro de una …</summary>En **Java**, una constante de clase se declara como un campo estático final dentro de una clase:
+
+**`final tipo nombre = valor;`**
+
+[4]
+[5]</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">5.6090</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">405.7 s</td>
+      </tr>
+      <tr class="bad" data-categoria="clases" data-correcta="false">
+        <td>14</td>
+        <td>clases</td>
+        <td class="pregunta">¿Cómo funciona la herencia simple de clases en Java?</td>
+        <td class="respuesta"><details><summary>No encontré información suficientemente relevante en la base de conocimiento para responde…</summary>No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.</details></td>
+        <td>responde</td>
+        <td>rechaza</td>
+        <td class="centro">❌</td>
+        <td class="num">0.1675</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">179.9 s</td>
+      </tr>
+      <tr class="ok" data-categoria="clases" data-correcta="true">
+        <td>15</td>
+        <td>clases</td>
+        <td class="pregunta">¿Qué diferencia hay entre los modificadores de acceso public, protected, private y el acceso por defecto (package-private)?</td>
+        <td class="respuesta"><details><summary>Diferencia entre los modificadores de acceso según el contexto:
+
+- **Public** ([6]): Acces…</summary>Diferencia entre los modificadores de acceso según el contexto:
+
+- **Public** ([6]): Acceso permitido desde cualquier clase, incluso fuera del paquete donde está declarado.
+- **Protected** ([6]): Acceso permitido dentro del mismo paquete y por subclasses de cualquier paquete.
+- **Private** ([6]): Solo accesible dentro del propio clase o interfaz que lo declara.
+- **Acceso por defecto (package-private)** ([1], [6]):
+  - Acceso limitado al paquete donde está declarada la clase, interfaz o miembro.
+  - No es accesible fuera del paquete ni por subclasses declaradas en otros paquetes.
+  - Implicita cuando no se especifica ningún modificador de acceso ([1], [6]).
+
+*Nota sobre interfaces*: Los modificadores `protected` y `private` solo aplican a miembros de interfaces (*member interfaces*), mientras que `public` aplica a interfaces top-level ([2]).</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">8.8930</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>SUFICIENTE</td>
+        <td class="num">169.1 s</td>
+      </tr>
+      <tr class="ok" data-categoria="clases" data-correcta="true">
+        <td>16</td>
+        <td>clases</td>
+        <td class="pregunta">¿Qué es una clase abstracta y en qué se diferencia de una clase concreta?</td>
+        <td class="respuesta"><details><summary>Una **clase abstracta** es un tipo incompleto que **no puede instanciarse directamente** […</summary>Una **clase abstracta** es un tipo incompleto que **no puede instanciarse directamente** [1].
+
+---
+Diferencia clave frente a una **clase concreta**:
+- Una clase concreta permite crear objetos y define métodos completamente implementados.
+- Una clase abstracta **puede tener métodos abstractos** (declarados pero sin implementación) [1][2].
+- Solo las clases concretas pueden instanciarse como objetos; las abstractas solo sirven como base para herencia [1][4].
+
+---
+**Ejemplo práctico**:
+Si `Super` es abstracta (`abstract class Super { abstract void out(); }`), cualquier clase extendida que no implemente `out()` generará un error de compilación [4].
+[No hay contradicción entre las fuentes citadas.]</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">5.7487</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">287.4 s</td>
+      </tr>
+      <tr class="ok" data-categoria="clases" data-correcta="true">
+        <td>17</td>
+        <td>clases</td>
+        <td class="pregunta">¿Qué reglas sigue el compilador para elegir el constructor que se invoca al crear un objeto?</td>
+        <td class="respuesta"><details><summary>El compilador selecciona el constructor según las siguientes reglas principales basadas en…</summary>El compilador selecciona el constructor según las siguientes reglas principales basadas en el contexto proporcionado **[1]** y **[2]**:
+
+1. **Argumentos del constructor**:
+   - Se determinan según el tipo de clase (`C`) y su relación con clases internas/anónimas:
+     - Para clases anónimas con superclase `S` no-inner (no clase interna):
+       Los argumentos son los del argumento listado en la expresión de creación de instancia **[1]**.
+     - Para clases locales privadas o no-anónimas, los argumentos son los mismos que aparecen en la lista de parámetros de la expresión de creación de instancia **[1]**.
+
+2. **Selección del constructor aplicable y accesible** (si no hay argumentos especiales):
+   - Usa el proceso descrito en §15.12.2 modificado para constructores, priorizando el **constructor más específico y accesible** de la clase `T` (definida como `C` seguido de sus tipos genéricos) **[1]**.
+   - Si no hay constructor único válido (aplicable y accesible), genera error de compilación **[1]**.
+
+---
+**Detalles adicionales sobre acceso y overrides**:
+- El compilador ignora modificadores como *abstract*, *static* o *final* para constructores **[3]**, pero sí considera modificadores de acceso (*public*, *protected*, etc.) para determinar accesibilidad **[2]**.
+- En casos de sobrescritura de constructores (ej.: invocaciones explícitas con `this()` o `super()`), el compilador sigue reglas específicas de resolución de ambigüedad, pero no aplica *dynamic dispatch* durante la creación del objeto (como en métodos) **[6]**.
+
+---
+**Contradicciones detectadas**:
+No hay inconsistencias claras entre las fuentes citadas para este tema. Las reglas de selección de constructor son coherentes con el contexto proporcionado.</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">7.6499</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">460.6 s</td>
+      </tr>
+      <tr class="bad" data-categoria="clases" data-correcta="false">
+        <td>18</td>
+        <td>clases</td>
+        <td class="pregunta">¿Qué diferencia hay entre sobrecargar (overload) y sobreescribir (override) un método?</td>
+        <td class="respuesta"><details><summary>No encontré información suficientemente relevante en la base de conocimiento para responde…</summary>No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.</details></td>
+        <td>responde</td>
+        <td>rechaza</td>
+        <td class="centro">❌</td>
+        <td class="num">2.7632</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">189.9 s</td>
+      </tr>
+      <tr class="ok" data-categoria="clases" data-correcta="true">
+        <td>19</td>
+        <td>clases</td>
+        <td class="pregunta">¿Para qué sirve la palabra clave static en un miembro de clase?</td>
+        <td class="respuesta"><details><summary>En el contexto proporcionado, **no hay información específica sobre el uso de `static` com…</summary>En el contexto proporcionado, **no hay información específica sobre el uso de `static` como modificador en miembros de clase para funciones o métodos**, solo sobre clases y variables estáticas.
+
+Sin embargo, según [2]:
+- El modificador **`static`** aplica específicamente a **variables de clase** (campos estáticos), no a métodos ni funciones dentro de clases.
+- Un método estático puede declararse en una clase pero **no requiere necesariamente que sea parte de un miembro de clase específico**.
+
+Si hablamos de **miembros de clase** (como campos o métodos), el modificador `static` define que son **de clase** (compartidos por todas las instancias) y no dependen de objetos específicos.
+
+---
+*No se menciona explícitamente cómo afecta `static` a los métodos dentro de clases en este contexto.*</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">0.8516</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">289.0 s</td>
+      </tr>
+      <tr class="ok" data-categoria="clases" data-correcta="true">
+        <td>20</td>
+        <td>clases</td>
+        <td class="pregunta">¿Qué es un bloque de inicialización estático y cuándo se ejecuta?</td>
+        <td class="respuesta"><details><summary>Un **bloque de inicialización estática** es un código ejecutado cuando se inicia la clase …</summary>Un **bloque de inicialización estática** es un código ejecutado cuando se inicia la clase (§12.4.2).
+Surgido como **`static Block`**, se usa junto con los inicializadores de variables estáticas (§8.3.2) para asignar valores a las variables de clase [1].
+
+---
+**¿Cuándo se ejecuta?**
+- Durante la **inicialización de la clase** (ejecución de sus *static initializers* y los inicializadores de campos estáticos) [1].
+- Antes de cualquier uso de la clase, incluyendo métodos estáticos o `new` de objetos de dicha clase [3].
+
+---
+**Nota clave**:
+No puede contener `return` ni usar `this`/`super`, por lo que está restringida a referencias puramente lógicas a variables de clase [1].
+
+[1] / [3].</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">6.0340</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">228.1 s</td>
+      </tr>
+      <tr class="ok" data-categoria="clases" data-correcta="true">
+        <td>21</td>
+        <td>clases</td>
+        <td class="pregunta">¿Qué es una clase anidada estática y en qué se diferencia de una clase interna (inner class)?</td>
+        <td class="respuesta"><details><summary>Una **clase anidada estática** ([5]) es un tipo de clase miembro (*member class*) que llev…</summary>Una **clase anidada estática** ([5]) es un tipo de clase miembro (*member class*) que lleva explícitamente el modificador `static`, por lo que **no es considerada una *inner class*** ([1]).
+
+---
+La **diferencia clave** radica en su acceso y comportamiento respecto a instancias del contenedor:
+
+- **Clases anidadas estáticas**:
+  - No tienen referencia a una instancia del contenedor (no tienen *immediately enclosing instance*).
+  - Pueden acceder a miembros estáticos y variables locales del contenedor, pero **no a sus miembros no estáticos ni a instancias del mismo**.
+  - Su declaración puede usar el modificador `static` ([5]), mientras que las *inner classes* no pueden ser estáticas en este sentido ([5]).
+
+- **Inner classes** ([1]):
+  - Son clases anidadas que **no son estáticas**, ya sea porque llevan el modificador `non-static` o porque pertenecen a otro tipo de anidación como *local classes* o *anonymous classes*.
+  - Tienen acceso a miembros no estáticos del contenedor mediante referencias implícitas (`this`), permitiendo manipular objetos del entorno anidado.
+  - Las *inner classes* pueden declararse como estáticas solo si son **clases miembro** ([5]).
+
+---
+**Contradicción en el contexto**:
+El punto [1] afirma que *&quot;un miembro enum class&quot;* ([8.9]) es **implícitamente estático**, pero según [5], los *member classes* sí pueden llevar el modificador `static`. Esto implica que algunos casos de *member classes* podrían considerarse estáticos dependiendo de cómo se declaren (ej.: si usan `static`). Sin embargo, esto no aplica a *local classes* o *anonymous classes*, que **no admiten el modificador `static`** ([5]).</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">6.9669</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">409.7 s</td>
+      </tr>
+      <tr class="ok" data-categoria="clases" data-correcta="true">
+        <td>22</td>
+        <td>clases</td>
+        <td class="pregunta">¿Para qué se usan las palabras clave this y super dentro de un constructor?</td>
+        <td class="respuesta"><details><summary>**`this`** se usa en un constructor para referirse explícitamente al objeto **instantáneo*…</summary>**`this`** se usa en un constructor para referirse explícitamente al objeto **instantáneo** que está siendo creado por ese mismo constructor [1].
+
+**`super`** sirve para invocar al constructor de la clase padre (superclase directa) de la clase actual [1].
+
+---
+*Nota sobre restricciones:*
+En un contexto de construcción temprana (early construction context), estas referencias están prohibidas porque aún no existe el objeto completo [1].
+Si hay ambigüedad entre ambas palabras en el código, se prioriza `super` para invocaciones de superclases y `this` para invocaciones alternativas del propio constructor [1].</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">8.2092</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>SUFICIENTE</td>
+        <td class="num">210.0 s</td>
+      </tr>
+      <tr class="ok" data-categoria="clases" data-correcta="true">
+        <td>23</td>
+        <td>clases</td>
+        <td class="pregunta">¿Qué es una clase anónima en Java?</td>
+        <td class="respuesta"><details><summary>Una **clase anónima** en Java es un tipo de clase declarada **sin nombre propio**, creada …</summary>Una **clase anónima** en Java es un tipo de clase declarada **sin nombre propio**, creada directamente en el lugar donde se usa mediante una expresión de creación de instancia ([1]).
+
+No puede tener **nombre ni ser declarada explícitamente** ([1]). Su declaración ocurre dentro de otra clase, interfaz u objeto como cuerpo de código ([1]).
+
+Por ejemplo:
+```java
+new SuperClase() {
+    // Cuerpo de la clase anónima
+};
+```
+Es una **subclase implícita** de `SuperClase` ([1]), pero **no puede heredar de otras clases ni implementar interfaces fuera de su contexto** ([1]).
+
+Su constructor es **implicito** y sigue reglas específicas según su relación con la clase padre ([3]). Por ejemplo, si hereda de una clase no estática, incluye un parámetro adicional que representa el objeto que la contiene ([3]).
+
+---
+**Características clave**:
+- No es abstracta ni sellada ([1]).
+- Siempre es una **inner class** ([1]).
+- No pertenece a ningún paquete ([1]).
+- Su comportamiento depende de cómo se use en la creación de instancias ([1]).</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">8.9205</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>SUFICIENTE</td>
+        <td class="num">206.8 s</td>
+      </tr>
+      <tr class="ok" data-categoria="interfaces" data-correcta="true">
+        <td>24</td>
+        <td>interfaces</td>
+        <td class="pregunta">¿Qué es un método default en una interfaz y para qué se introdujo?</td>
+        <td class="respuesta"><details><summary>Un método **default** en una interfaz es una declaración de método con el modificador `def…</summary>Un método **default** en una interfaz es una declaración de método con el modificador `default` que proporciona una implementación predeterminada mediante un bloque de código.
+
+Fue introducido en **Java 8** como parte de las mejoras para permitir la evolución de las interfaces sin romper la compatibilidad hacia atrás con las clases existentes [1].
+
+---
+**Contexto relevante:**
+- Se define como un método con cuerpo explícito (`block`) que actúa como implementación por defecto para cualquier clase que implemente la interfaz sin sobrescribirlo [1].
+- Permite añadir funcionalidad adicional a métodos heredados sin romper la compatibilidad con clases previas [1, 2].
+- Su propósito es facilitar la extensión gradual de interfaces, permitiendo que los implementadores opten por usar la implementación predeterminada cuando sea adecuado [1].</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">5.3774</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">439.3 s</td>
+      </tr>
+      <tr class="ok" data-categoria="interfaces" data-correcta="true">
+        <td>25</td>
+        <td>interfaces</td>
+        <td class="pregunta">¿Pueden las interfaces tener métodos estáticos? ¿Para qué se usan?</td>
+        <td class="respuesta"><details><summary>Sí, **las interfaces pueden declarar métodos estáticos** según lo permitido por el lenguaj…</summary>Sí, **las interfaces pueden declarar métodos estáticos** según lo permitido por el lenguaje Java [2].
+
+Los métodos estáticos en interfaces son útiles principalmente cuando se necesitan **funciones auxiliares lógicas** que no dependen de instancias de la clase o interfaz, como implementaciones comunes de operaciones que podrían compartirse entre múltiples clases que implementan dicha interfaz. Por ejemplo, un método estático puede servir para validaciones globales o cálculos que no requieren estado de instancia.
+
+Sin embargo, **no es posible declararlos como `private`** dentro de una interfaz [1]: solo están permitidos los modificadores `default`, `static` o `abstract` (sin cuerpo explícito) [2].</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">8.1708</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>SUFICIENTE</td>
+        <td class="num">130.3 s</td>
+      </tr>
+      <tr class="ok" data-categoria="interfaces" data-correcta="true">
+        <td>26</td>
+        <td>interfaces</td>
+        <td class="pregunta">¿Puede una clase implementar más de una interfaz en Java? ¿Qué pasa con la herencia múltiple?</td>
+        <td class="respuesta"><details><summary>Sí, **una clase puede implementar múltiples interfaces** en Java [3].
+
+La **herencia múlti…</summary>Sí, **una clase puede implementar múltiples interfaces** en Java [3].
+
+La **herencia múltiple por clases** (un solo padre) **no existe en Java**: las clases pueden extender solo una clase y heredar métodos concretos de ella, pero pueden implementar **más de una interfaz simultáneamente** [3].
+
+---
+En cuanto a conflictos entre métodos con nombres y firmas similares heredados de diferentes interfaces, **solo hay ambigüedad cuando los nombres son idénticos**, como en el caso de `RED` en [4]:
+*&quot;Si dos interfaces definen métodos con el mismo nombre y tipo de retorno, la clase no puede implementarlos ambos directamente&quot;* —por ejemplo, `GREEN` o `RED` en [4].
+Sin embargo, si los métodos tienen nombres distintos, **no hay problema** [3].
+
+---
+El contexto no especifica qué pasa con la *herencia múltiple* (de clases), pero según [3], Java **prohíbe** que una clase extienda más de una clase (a diferencia de otros lenguajes como C++).
+Las reglas sobre conflictos entre métodos de interfaces aplican solo a casos donde hay **mismos nombres y tipos de retorno** [4].</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">5.6852</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">342.0 s</td>
+      </tr>
+      <tr class="ok" data-categoria="interfaces" data-correcta="true">
+        <td>27</td>
+        <td>interfaces</td>
+        <td class="pregunta">¿Qué es una interfaz funcional?</td>
+        <td class="respuesta"><details><summary>Una **interfaz funcional** es un tipo de interfaz que cumple los siguientes criterios segú…</summary>Una **interfaz funcional** es un tipo de interfaz que cumple los siguientes criterios según el estándar Java ([JLS 25]):
+
+1. Tiene solo **un método abstracto no heredado de `Object`**, aunque puede incluir métodos ya definidos en `Object`.
+   - Ejemplo válido: `Comparator&lt;T&gt;` tiene un único método abstracto relevante (`compare`) además de `equals`, que proviene de `Object` ([2]).
+
+2. **No está declarada como `sealed`** ([3]). Esto significa que permite extenderla libremente con otras interfaces.
+
+3. **Los métodos abstractos no de `Object` deben cumplir estas condiciones**:
+   - Su firma debe ser una **subfirma** (subsignatura) de todas las demás firmas abstractas no de `Object` en la interfaz ([3]).
+     - Ejemplo válido: En `Z extends X, Y`, donde `X.m` y `Y.m` tienen el mismo parámetro y retorno, son subsignaturas lógicas ([4]).
+
+4. **La firma debe ser compatible por tipo de retorno** (return-type-substitutable) entre todos los métodos abstractos relevantes ([3]).
+   - Ejemplo válido: `Foo&lt;T&gt;` y `Bar` cumplen esto porque sus `m` son subsignaturas lógicas, pero `X` y `Y` en `[4]` fallan cuando las firmas difieren en tipos de parámetros irrelevantes ([4]).
+
+---
+**Contradicciones detectadas**:
+- El punto 1 se describe en términos ambiguos en [1]: *&quot;no es, en realidad, una interfaz funcional&quot;* si no cumple algún requisito explícito, pero no define claramente qué método *debe* existir. En cambio, [2] y [3] detallan que **solo uno** (además de los de `Object`) es necesario.
+- [1] menciona que no siempre se usa `@FunctionalInterface`, mientras que [3] especifica reglas técnicas más estrictas para definirlo automáticamente.
+
+---
+**Resumen clave**: Una interfaz funcional es aquella que **representa un contrato de función única** (un método abstracto no de `Object`), con reglas precisas sobre cómo se extiende y sobre compatibilidad de firmas ([3]-[4]).</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">7.8024</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">340.1 s</td>
+      </tr>
+      <tr class="ok" data-categoria="interfaces" data-correcta="true">
+        <td>28</td>
+        <td>interfaces</td>
+        <td class="pregunta">¿Qué modificadores implícitos tienen los campos declarados en una interfaz?</td>
+        <td class="respuesta"><details><summary>En interfaces, **los modificadores implícitos** aplicables a los **campos declarados** son…</summary>En interfaces, **los modificadores implícitos** aplicables a los **campos declarados** son:
+
+- **`final`** (implícito por defecto en interfaces desde Java 8, aunque no se especifica explícitamente como modificador en el código).
+  [6]
+
+Los campos declarados en interfaces **no pueden tener otros modificadores explícitos** como `public`, `private`, `protected`, `static`, ni combinaciones con ellos, según las reglas de acceso y restricciones de modificadores en interfaces:
+- Solo puede usarse **`public`** (implícito) para los métodos y campos en interfaces.
+- Los modificadores `protected` y `private` **no son válidos** para miembros de interfaces.
+- No hay restricción explícita sobre `static` en campos, pero en interfaces clásicas (pre-Java 8) estos suelen considerarse implícitamente `public final`.
+  [1]
+
+---
+**Nota:** En interfaces anónimas o locales, los campos **deben incluir un inicializador** (ejemplo: `int x = 0`), ya que no tienen valor predeterminado asignable automáticamente.
+[2]</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">1.5017</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">311.2 s</td>
+      </tr>
+      <tr class="ok" data-categoria="interfaces" data-correcta="true">
+        <td>29</td>
+        <td>interfaces</td>
+        <td class="pregunta">¿Qué es una interfaz marcadora (marker interface)?</td>
+        <td class="respuesta"><details><summary>Una **interfaz marcadora** (*marker interface*) es un tipo especial de interfaz declarada …</summary>Una **interfaz marcadora** (*marker interface*) es un tipo especial de interfaz declarada mediante un **anotador marcador**, como `@interface` sin elementos ni parámetros, según lo descrito en el contexto [1].
+
+Es una forma abreviada de definir interfaces que solo sirven para marcar elementos del código, indicando características como **preliminares sujetas a cambios** ([1]), sin requerir implementación concreta ni métodos asociados ([4]).
+
+---
+*Ejemplo práctico*: `@Preliminary` en [3].
+[1], [4].</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">3.1748</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">200.6 s</td>
+      </tr>
+      <tr class="ok" data-categoria="records" data-correcta="true">
+        <td>30</td>
+        <td>records</td>
+        <td class="pregunta">¿Qué es un record en Java y qué problema resuelve frente a una clase tradicional?</td>
+        <td class="respuesta"><details><summary>Un **record** en Java es una declaración especial de clase que define un tipo **inmutable*…</summary>Un **record** en Java es una declaración especial de clase que define un tipo **inmutable** compuesto por valores (componentes), similar a una estructura de datos simple.
+
+**[3]** Resalta que los records proporcionan implementaciones automáticas de métodos clave como `equals()`, `hashCode()` y `toString()`, basadas directamente en sus componentes, sin necesidad de escribir código adicional. Esto **evita problemas comunes** con clases tradicionales, como:
+- **Falta de implementación de métodos esenciales** (ej.: `equals` o `hashCode`), lo que puede causar errores en colecciones como `HashSet` o `HashMap`.
+- **Dificultad para mantener consistencia** en comparaciones lógicas o almacenamiento de objetos en estructuras que requieren estos métodos.
+
+Además, los records **implementan el patrón *immutable*** por defecto, eliminando riesgos asociados a modificaciones accidentales de campos internos.
+
+---
+*Nota*: No hay contradicción entre las fuentes citadas sobre cómo resuelven el problema frente a clases tradicionales.</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">0.2553</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">362.8 s</td>
+      </tr>
+      <tr class="ok" data-categoria="records" data-correcta="true">
+        <td>31</td>
+        <td>records</td>
+        <td class="pregunta">¿Qué es el constructor canónico de un record?</td>
+        <td class="respuesta"><details><summary>El **constructor canónico** de un *record* es un método especial que inicializa todos sus …</summary>El **constructor canónico** de un *record* es un método especial que inicializa todos sus componentes mediante valores proporcionados por parámetros, siguiendo estas reglas:
+
+- Es **implicito** si no se declara explícitamente en el cuerpo del *record*, pero cumple las mismas condiciones que los constructores declarados manualmente ([1][6]).
+
+- Su **signatura** incluye solo los tipos de los componentes declarados en el encabezado del *record* ([2][3]), sin parámetros adicionales ni modificadores como `throws` ([1][2]).
+
+- Los parámetros del constructor canónico son derivados directamente de los componentes del *record*: cada componente define un parámetro con el mismo nombre y tipo ([1][2][3]). Para componentes de varianza (*varargs*), el parámetro también es de varianza ([1][2]).
+
+- El acceso al constructor depende del nivel de visibilidad del *record*:
+  - **Público**: debe ser público ([1]).
+  - **Protegido**: debe ser protegido o público ([1]).
+  - **Paquete**: no puede ser privado ([1]).
+  - **Privado**: puede tener cualquier accesibilidad ([1]).
+
+Si el constructor canónico **no está declarado**, el compilador genera uno implícito con estos detalles ([1]).</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">8.4314</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>SUFICIENTE</td>
+        <td class="num">235.5 s</td>
+      </tr>
+      <tr class="ok" data-categoria="records" data-correcta="true">
+        <td>32</td>
+        <td>records</td>
+        <td class="pregunta">¿Cómo se llaman los métodos de acceso que un record genera automáticamente para sus componentes?</td>
+        <td class="respuesta"><details><summary>Los métodos de acceso generados automáticamente por un *record* son **component fields** e…</summary>Los métodos de acceso generados automáticamente por un *record* son **component fields** e **accessor methods** [1].
+
+- **Component field**: Es una variable privada, final y no estática declarada implícitamente con el mismo nombre y tipo del componente del *record*.
+- **Accessor method**: Método público sin parámetros ni cláusula `throws`, declarado explícita o implícitamente con el mismo nombre del componente y retorno del tipo del componente [1][2].</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">7.2582</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">241.0 s</td>
+      </tr>
+      <tr class="ok" data-categoria="records" data-correcta="true">
+        <td>33</td>
+        <td>records</td>
+        <td class="pregunta">¿Puede un record extender otra clase?</td>
+        <td class="respuesta"><details><summary>No hay información explícita en el contexto proporcionado sobre si **un *record*** puede e…</summary>No hay información explícita en el contexto proporcionado sobre si **un *record*** puede extender otra clase en general, pero sí se menciona lo siguiente relevante:
+
+- Los *records* **no pueden tener un cláusula `extends`** ([2]), por lo que no pueden extender directamente ninguna clase (ni siquiera `Object`, ya que su tipo superclase implícito es `Record`).
+- Sin embargo, los *records* **sí pueden implementar interfaces** ([6]) y heredan métodos predeterminados de `Record` (como `equals`, `hashCode`, etc.), aunque no pueden extender clases tradicionales.
+
+---
+**Respuesta directa:**
+Los *records* **no pueden extender otras clases** ([2]). Su relación con otras clases es solo mediante implementación de interfaces ([6]).
+
+[2]</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">1.8680</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">421.2 s</td>
+      </tr>
+      <tr class="err" data-categoria="records" data-correcta="false">
+        <td>34</td>
+        <td>records</td>
+        <td class="pregunta">¿Qué es un constructor compacto (compact constructor) en un record?</td>
+        <td class="respuesta"><details><summary>(sin respuesta)</summary>Se perdió la conexión con el servidor (¿Ollama no responde?).</details></td>
+        <td>responde</td>
+        <td>error</td>
+        <td class="centro">⚠️ error</td>
+        <td class="num">—</td>
+        <td class="num">—</td>
+        <td class="num">—</td>
+        <td>—</td>
+        <td class="num">48.8 s</td>
+      </tr>
+      <tr class="err" data-categoria="records" data-correcta="false">
+        <td>35</td>
+        <td>records</td>
+        <td class="pregunta">¿Un record puede implementar interfaces?</td>
+        <td class="respuesta"><details><summary>(sin respuesta)</summary>page.waitForSelector: Timeout 900000ms exceeded.
+Call log:
+[2m  - waiting for locator('#boton-preguntar:not([disabled])') to be visible[22m
+</details></td>
+        <td>responde</td>
+        <td>error</td>
+        <td class="centro">⚠️ error</td>
+        <td class="num">—</td>
+        <td class="num">—</td>
+        <td class="num">—</td>
+        <td>—</td>
+        <td class="num">3830.4 s</td>
+      </tr>
+      <tr class="err" data-categoria="sealed" data-correcta="false">
+        <td>36</td>
+        <td>sealed</td>
+        <td class="pregunta">¿Qué es una clase sealed y qué controla la cláusula permits?</td>
+        <td class="respuesta"><details><summary>(sin respuesta)</summary>page.waitForSelector: Timeout 900000ms exceeded.
+Call log:
+[2m  - waiting for locator('#boton-preguntar:not([disabled])') to be visible[22m
+</details></td>
+        <td>responde</td>
+        <td>error</td>
+        <td class="centro">⚠️ error</td>
+        <td class="num">—</td>
+        <td class="num">—</td>
+        <td class="num">—</td>
+        <td>—</td>
+        <td class="num">917.2 s</td>
+      </tr>
+      <tr class="ok" data-categoria="sealed" data-correcta="true">
+        <td>37</td>
+        <td>sealed</td>
+        <td class="pregunta">¿Qué modificadores puede tener una subclase directa de una clase sealed?</td>
+        <td class="respuesta"><details><summary>Una **subclase directa** de una clase *sealed* **puede ser declarada como**:
+- **final** […</summary>Una **subclase directa** de una clase *sealed* **puede ser declarada como**:
+- **final** [1]
+- **sealed** [1]
+
+Si la clase padre no especifica un cláusula `permits`, las subclases son inferidas por el compilador, pero el contexto no detalla restricciones adicionales sobre qué tipos de modificadores pueden aplicarse a ellas más allá de los mencionados arriba.
+
+No hay información explícita en el contexto proporcionado sobre si una subclase puede ser **non-sealed**.</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">8.8504</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>SUFICIENTE</td>
+        <td class="num">241.9 s</td>
+      </tr>
+      <tr class="ok" data-categoria="sealed" data-correcta="true">
+        <td>38</td>
+        <td>sealed</td>
+        <td class="pregunta">¿Una interfaz puede declararse sealed?</td>
+        <td class="respuesta"><details><summary>Sí, **una interfaz puede declararse como `sealed`** según los criterios establecidos en el…</summary>Sí, **una interfaz puede declararse como `sealed`** según los criterios establecidos en el JLS ([1]).
+
+La clave está en que debe cumplirse que:
+- todas sus **subclases/directas** sean conocidas al momento de declararla,
+- y no se desean ni requieran otras extensiones adicionales ([1]).
+
+No hay restricciones generales sobre su uso fuera de estos requisitos ([3]).</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">9.9506</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>SUFICIENTE</td>
+        <td class="num">198.3 s</td>
+      </tr>
+      <tr class="ok" data-categoria="sealed" data-correcta="true">
+        <td>39</td>
+        <td>sealed</td>
+        <td class="pregunta">¿Qué relación hay entre las clases selladas y la exhaustividad en una expresión switch?</td>
+        <td class="respuesta"><details><summary>La relación entre **clases selladas (*sealed*)** y la **exhaustividad en un `switch`** se …</summary>La relación entre **clases selladas (*sealed*)** y la **exhaustividad en un `switch`** se define principalmente en estos casos según el contexto:
+
+- **[1]** Para una clase sellada **abstracta**, un `switch` sobre su tipo es exhaustivo si cada **subtipo permitido directo** aparece como caso en el bloque del `switch`, incluso sin necesidad de un `default`. Esto aplica cuando:
+  - El selector tiene tipo igual al de la clase sellada o uno de sus permisidos directos (**erased**), o
+  - Usas patrones que cubran los tipos permitidos (ejemplo: `[n]`).
+  Ejemplo válido con exhaustividad:
+  ```java
+  sealed interface I permits A, B {}
+  final class A implements I {}
+  final class B implements I {}
+  record C() implements I {}
+  static int testExhaustive(I i) {
+      return switch (i) { // Exhaustivo por A/B/C
+          case A a -&gt; 0;
+          case B b -&gt; 1;
+          case C c -&gt; 2;
+      };
+  }
+  ```
+
+- **[1]** Si la clase sellada es **no abstracta**, pero todos sus subtipos permitidos son exhaustivos para el selector (incluyendo casos como `null`), el `switch` también cumple exhaustividad sin requerir `default` explícito. Por ejemplo:
+  ```java
+  sealed class Base permits Derived {}
+  final class Derived extends Base {}
+  static int testExhaustive(Base b) {
+      return switch (b) { // Exhaustivo por Derived
+          case Derived d -&gt; 0;
+      };
+  }
+  ```
+
+---
+**Contradicción detectada**:
+El punto [2] menciona que añadir un nuevo subtipo permitido a una clase sellada **no rompe compatibilidad binaria**, pero puede causar errores de ejecución en switches exhaustivos si ese subtipo no estaba previsto en tiempo de compilación (ejemplo: `MatchException`). Esto implica que aunque el código compila, **la exhaustividad dinámica fallará** si surge un caso no esperado ([1], [2]).
+
+---
+**Resumen clave**:
+Las clases selladas garantizan exhaustividad en `switch` cuando:
+1. Todos los casos posibles están definidos en el bloque (`case` + patrones), **incluso si la clase evoluciona** (pero solo si el nuevo caso no afecta la exhaustividad</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">7.8130</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">632.7 s</td>
+      </tr>
+      <tr class="ok" data-categoria="sealed" data-correcta="true">
+        <td>40</td>
+        <td>sealed</td>
+        <td class="pregunta">¿Qué pasa si una subclase de una clase sealed no se declara final, sealed ni non-sealed?</td>
+        <td class="respuesta"><details><summary>No hay información explícita en el contexto proporcionado sobre qué ocurre cuando **una su…</summary>No hay información explícita en el contexto proporcionado sobre qué ocurre cuando **una subclase de una clase *sealed*** no se declara como `final`, `sealed` ni `non-sealed`.
+
+Sin embargo, según las reglas generales de Java ([§8.1.6](https://docs.oracle.com/en/java/javase/17/docs/specs/language/class.html#:~:text=All%20direct%20subclasses%20of%20a%20sealed%20class%20must%20be%20either%20final%2C%20sealed%20or%20non-sealed.)):
+
+- Una clase *sealed* **obliga** a sus directas subclases a declararse explícitamente como `final`, `sealed` o `non-sealed`.
+- Declarar una subclase de una clase *sealed* sin ninguna de estas opciones generaría un **error de compilación**.
+
+Por tanto, **no es posible declarar una subclase de una clase *sealed* sin especificar si es `final`, `sealed` o `non-sealed`**, sino que el código sería inválido desde el punto de vista del lenguaje.
+
+---
+Si el contexto hubiera mencionado excepciones o casos especiales, habría sido necesario consultarlos.</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">9.8594</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>SUFICIENTE</td>
+        <td class="num">172.4 s</td>
+      </tr>
+      <tr class="ok" data-categoria="pattern-matching" data-correcta="true">
+        <td>41</td>
+        <td>pattern-matching</td>
+        <td class="pregunta">¿Qué es el pattern matching con instanceof?</td>
+        <td class="respuesta"><details><summary>El **pattern matching** con `instanceof` en Java permite evaluar si un valor coincide con …</summary>El **pattern matching** con `instanceof` en Java permite evaluar si un valor coincide con un patrón específico, **no solo con un tipo estático**, sino también con estructuras más complejas como registros (*records*) o componentes detallados.
+
+Cuando el operando derecho de `instanceof` es un **patrón** (`p`), actúa como operador de *matching* y devuelve `true` si el valor cumple las reglas definidas por ese patrón, inicializando variables locales declaradas en él [1][2].
+
+---
+**Ejemplo práctico**:
+```java
+record Person(String nombre, int edad) {}
+Person p = new Person(&quot;Ana&quot;, 30);
+
+// Patrón de registro (record pattern):
+if (p instanceof Person(var nom, int age)) {
+    System.out.println(nom + &quot;, &quot; + age); // Imprime &quot;Ana, 30&quot;
+}
+```
+Aquí, `nom` y `age` son **variables locales** que se asignan automáticamente si el valor coincide con el patrón [1][2][3].
+
+---
+**Notas clave**:
+- El resultado de `instanceof` con patrones **siempre inicializa variables** si hay coincidencia [1].
+- No aplica para tipos genéricos anotados ni tipos crudos (*raw types*), generará error de compilación [3].
+- Si el operando es un **tipo simple** (ej. `String`), sigue siendo comparación tradicional de tipos [1].</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">9.0981</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>SUFICIENTE</td>
+        <td class="num">212.3 s</td>
+      </tr>
+      <tr class="ok" data-categoria="pattern-matching" data-correcta="true">
+        <td>42</td>
+        <td>pattern-matching</td>
+        <td class="pregunta">¿Qué es un patrón de tipo (type pattern) en Java?</td>
+        <td class="respuesta"><details><summary>En **Java**, un **patrón de tipo** (*type pattern*) es una estructura sintáctica usada par…</summary>En **Java**, un **patrón de tipo** (*type pattern*) es una estructura sintáctica usada para verificar si un valor pertenece a un tipo específico y, en algunos casos, extraerlo mediante patrones de componentes.
+
+---
+**Definición clave según el contexto:**
+Un **tipo patrón** declara una única variable de patrón (puede tener nombre o ser anónima) y cumple estas reglas para ser válido como *top-level* ([1]):
+- Declara un solo `VariableDeclarator` sin inicializador ni paréntesis (`[]`) ([1]).
+- El `LocalVariableType` debe ser un **reference type** (no `var`, por ejemplo) ([1]).
+
+---
+**Ejemplo práctico implícito**:
+Si declaras algo como:
+```java
+if (objeto instanceof SomeClass(x)) {
+    // x será asignado al campo correspondiente de 'objeto'
+}
+```
+aquí, `SomeClass(x)` es un **patrón de tipo**.
+
+---
+**Notas adicionales relevantes**:
+- Solo puede usarse en contextos de **matching de patrones** (ejemplo: `switch` con expresiones de patrones) o en estructuras como **record patterns** ([2],[3]).
+- En un **record pattern**, los tipos patrones aparecen dentro de listas de componentes ([2]).
+- No es compatible con `var` fuera de un *component pattern* de un record ([1]).
+
+---
+No hay más detalles sobre su implementación directa en código fuera del contexto dado.</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">1.8899</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">497.7 s</td>
+      </tr>
+      <tr class="ok" data-categoria="pattern-matching" data-correcta="true">
+        <td>43</td>
+        <td>pattern-matching</td>
+        <td class="pregunta">¿Qué es un patrón de registro (record pattern) y cómo permite deconstruir un record?</td>
+        <td class="respuesta"><details><summary>Un **patrón de registro** (*record pattern*) es una estructura sintáctica en Java para rea…</summary>Un **patrón de registro** (*record pattern*) es una estructura sintáctica en Java para realizar **deconstrucción de registros** mediante patrones de coincidencia.
+
+Es un tipo de **patrón** (`RecordPattern`) que permite extraer componentes específicos de un objeto de tipo registro (`R`), asignándolos a variables locales o expresiones, según corresponda. Su sintaxis incluye un nombre del tipo de registro y una lista de **componentes de patrón** (`ComponentPattern`).
+
+---
+**Cómo funciona**:
+1. Debe coincidir con un objeto de un tipo registro (`ReferenceType`).
+2. Sus componentes deben tener la misma cantidad que los campos declarados en el registro.
+3. Cada componente puede ser:
+   - Una **variable de patrón** (con nombre o sin él, como `var`).
+   - El **patrón &quot;todo&quot;** (`MatchAllPattern`, equivalente a omitirlo).
+   - Otra expresión compleja si está dentro de otro patrón de registro.
+
+Ejemplo básico:
+```java
+record Persona(String nombre, int edad) {}
+// Deconstrucción:
+Persona({String nombre = &quot;Juan&quot;, int edad}) → asigna &quot;Juan&quot; a nombre y 25 a edad.
+```
+---
+**Construcción explícita**:
+Si se desea nombrar las variables de patrón, se usa la forma:
+```java
+Persona({nombre: &quot;Ana&quot;, edad: 30}) → nombre = &quot;Ana&quot;, edad = 30.
+```
+---
+**Limitaciones clave**:
+- No declara variables por sí mismo, sino que **encierra** declaraciones de variables de patrón en su lista de componentes.
+- Si hay más de un patrón de la misma variable en su lista, genera un error de compilación ([1]).
+
+---
+**¿Cómo permite deconstruir?**
+Al coincidir con un registro, cada componente del patrón se evalúa contra el campo correspondiente del registro. Los valores coincidentes se asignan a las variables declaradas en el patrón, permitiendo trabajar con partes específicas del objeto sin necesidad de acceder directamente a sus métodos o atributos.
+
+---
+[1], [2], [3].</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">1.2922</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">538.3 s</td>
+      </tr>
+      <tr class="ok" data-categoria="pattern-matching" data-correcta="true">
+        <td>44</td>
+        <td>pattern-matching</td>
+        <td class="pregunta">¿Cómo funciona el pattern matching dentro de una expresión switch?</td>
+        <td class="respuesta"><details><summary>En un **pattern matching** dentro de una expresión `switch` en Java, el proceso funciona a…</summary>En un **pattern matching** dentro de una expresión `switch` en Java, el proceso funciona así:
+
+- El valor del **selector** (expresión evaluada) se compara contra los patrones definidos en las etiquetas `case`.
+- Para **etiquetas con constantes (`CaseConstant`)**, como `case 'a'` o `case 42`, se aplica un **match exacto** tras posibles conversiones de tipo en contexto de prueba (*testing context*), según [4].
+- Para **patrones complejos (`CasePattern`)**—como asignaciones, tipos condicionales o estructuras—, se ejecuta primero el *pattern matching* (definido en [14.30.2]), que puede inicializar variables locales si hay variables declaradas en el patrón. Luego, si el patrón coincide, se evalúa el cuerpo asociado (si existe un guardador `when`).
+
+Si hay **guardadores (`when`)** en un patrón, se evalúan después del éxito del *match*, usando conversiones de tipo (incluyendo unboxing para primitivos) y pueden generar excepciones como `ClassCastException` si fallan [2].
+
+---
+**Detalles clave:**
+- Las variables introducidas por un patrón son **definitivamente asignadas** solo si el patrón coincide y el cuerpo de la regla (`-&gt;`) se ejecuta [1].
+- En expresiones `switch`, el resultado depende del último caso exitoso evaluado [6].</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">9.1312</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>SUFICIENTE</td>
+        <td class="num">171.5 s</td>
+      </tr>
+      <tr class="ok" data-categoria="pattern-matching" data-correcta="true">
+        <td>45</td>
+        <td>pattern-matching</td>
+        <td class="pregunta">¿Qué es una cláusula de guarda (when) en un patrón de switch?</td>
+        <td class="respuesta"><details><summary>Una **cláusula *when*** (guard) en un patrón de `case` dentro de un bloque `switch` es un …</summary>Una **cláusula *when*** (guard) en un patrón de `case` dentro de un bloque `switch` es un **expresión condicional** asociada a un caso que actúa como filtro adicional para determinar cuándo ese caso se ejecuta.
+
+La sintaxis es:
+```java
+case &lt;pattern&gt; [when &lt;condicional&gt;]
+```
+Donde `&lt;condicional&gt;` es una expresión booleana que se evalúa **solo si el valor coincide con los patrones del caso**.
+
+[4]
+
+---
+*Nota*: En este contexto, solo se especifica que la guard (*when*) es una expresión que se evalúa tras el patrón, pero no hay ejemplos concretos de cómo afecta a la ejecución del `switch`.</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">2.7101</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">383.4 s</td>
+      </tr>
+      <tr class="ok" data-categoria="pattern-matching" data-correcta="true">
+        <td>46</td>
+        <td>pattern-matching</td>
+        <td class="pregunta">¿Un patrón de switch puede coincidir explícitamente con el valor null?</td>
+        <td class="respuesta"><details><summary>Sí, un patrón de `case` puede incluir explícitamente el valor **null** mediante la cláusul…</summary>Sí, un patrón de `case` puede incluir explícitamente el valor **null** mediante la cláusula `case null` en el bloque de un `switch`.
+
+[6]
+
+---
+*Nota:* En los casos donde el contexto menciona *case patterns*, estos no incluyen directamente el valor `null`, pero sí permiten que se aplique un caso asociado a él cuando el selector sea `null`. Por ejemplo, un `case null` dentro de un bloque de `switch` coincide explícitamente con ese valor.</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">1.8142</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">420.0 s</td>
+      </tr>
+      <tr class="bad" data-categoria="pattern-matching" data-correcta="false">
+        <td>47</td>
+        <td>pattern-matching</td>
+        <td class="pregunta">¿Se pueden anidar patrones de registro dentro de otros patrones de registro?</td>
+        <td class="respuesta"><details><summary>No encontré información suficientemente relevante en la base de conocimiento para responde…</summary>No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.</details></td>
+        <td>responde</td>
+        <td>rechaza</td>
+        <td class="centro">❌</td>
+        <td class="num">0.0077</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>INSUFICIENTE</td>
+        <td class="num">19.5 s</td>
+      </tr>
+      <tr class="bad" data-categoria="pattern-matching" data-correcta="false">
+        <td>48</td>
+        <td>pattern-matching</td>
+        <td class="pregunta">¿Qué ventaja tiene deconstruir un objeto con un patrón frente a llamar a sus métodos de acceso manualmente?</td>
+        <td class="respuesta"><details><summary>No encontré información suficientemente relevante en la base de conocimiento para responde…</summary>No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.</details></td>
+        <td>responde</td>
+        <td>rechaza</td>
+        <td class="centro">❌</td>
+        <td class="num">0.0035</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>INSUFICIENTE</td>
+        <td class="num">15.5 s</td>
+      </tr>
+      <tr class="bad" data-categoria="unnamed" data-correcta="false">
+        <td>49</td>
+        <td>unnamed</td>
+        <td class="pregunta">¿Qué es una variable no nombrada representada con guion bajo _?</td>
+        <td class="respuesta"><details><summary>No encontré información suficientemente relevante en la base de conocimiento para responde…</summary>No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.</details></td>
+        <td>responde</td>
+        <td>rechaza</td>
+        <td class="centro">❌</td>
+        <td class="num">0.0383</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>INSUFICIENTE</td>
+        <td class="num">17.7 s</td>
+      </tr>
+      <tr class="ok" data-categoria="unnamed" data-correcta="true">
+        <td>50</td>
+        <td>unnamed</td>
+        <td class="pregunta">¿En qué contexto es útil una variable no nombrada dentro de un bloque catch?</td>
+        <td class="respuesta"><details><summary>En el contexto proporcionado, **una variable no nombrada** en un `catch` sirve como identi…</summary>En el contexto proporcionado, **una variable no nombrada** en un `catch` sirve como identificador automáticamente generado para manejar excepciones cuando el bloque `try-with-resources` usa una declaración de recurso sin asignación explícita a una variable.
+
+La regla específica dice que, si el recurso se declara como `{VariableModifier} R`, se traduce internamente como:
+
+```java
+Throwable #primaryExc = null;
+catch (Throwable #t) {
+    #primaryExc = #t;
+    throw #t;
+}
+```
+Donde `#t` es un nombre automático generado para capturar la excepción [1][3].
+
+---
+*Nota*: No hay restricciones adicionales en el contexto que prohíban usar variables no nombradas en `catch` aquí, pero sí hay limitaciones sobre cómo pueden usarse nombres en otros contextos (como formal parameters o recursos múltiples) según [2].</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">0.7430</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">386.4 s</td>
+      </tr>
+      <tr class="ok" data-categoria="unnamed" data-correcta="true">
+        <td>51</td>
+        <td>unnamed</td>
+        <td class="pregunta">¿Se pueden usar patrones no nombrados al deconstruir un record pattern?</td>
+        <td class="respuesta"><details><summary>No hay información explícita en el contexto proporcionado sobre si los **patrones no nombr…</summary>No hay información explícita en el contexto proporcionado sobre si los **patrones no nombrados** (como `var` o `_`) pueden usarse dentro de una lista de componentes de un *record pattern*. Sin embargo, las reglas indican lo siguiente:
+
+- El **match-all pattern (`_`)** puede aparecer directamente en la lista de componentes de un *record pattern* y no declara variables [2].
+- Los **pattern variables no nombrados** (ej. `var`) sí son permitidos como parte del componente de un *record pattern*, pero solo cuando están declarados dentro de un tipo patrón (*type pattern*) y cumplen con sus restricciones (ej.: deben estar en una posición válida dentro de un *component pattern list*) [2].
+
+Por tanto, **no está prohibido usar patrones no nombrados** (como `var` o `_`) dentro de un *record pattern*, siempre que se ajusten a las reglas específicas para cada tipo de patrón.
+
+---
+**Respuesta concreta:**
+Sí, los patrones no nombrados como `var` (para variables anónimas) y el *match-all pattern* (`_`) pueden usarse al descomponer un *record pattern*, siempre que:
+- `var` esté dentro de un *type pattern* válido en el contexto de un *component pattern list* [2].
+- El *match-all pattern* (`_`) aparezca directamente en la lista de componentes del *record pattern* [2].</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">0.3628</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">518.9 s</td>
+      </tr>
+      <tr class="bad" data-categoria="arrays" data-correcta="false">
+        <td>52</td>
+        <td>arrays</td>
+        <td class="pregunta">¿Qué significa que los arrays en Java sean covariantes?</td>
+        <td class="respuesta"><details><summary>No encontré información suficientemente relevante en la base de conocimiento para responde…</summary>No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.</details></td>
+        <td>responde</td>
+        <td>rechaza</td>
+        <td class="centro">❌</td>
+        <td class="num">1.0634</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">111.0 s</td>
+      </tr>
+      <tr class="ok" data-categoria="arrays" data-correcta="true">
+        <td>53</td>
+        <td>arrays</td>
+        <td class="pregunta">¿Cuándo se lanza una ArrayStoreException?</td>
+        <td class="respuesta"><details><summary>Se lanza **una `ArrayStoreException`** cuando se intenta asignar un valor que no es compat…</summary>Se lanza **una `ArrayStoreException`** cuando se intenta asignar un valor que no es compatible con el tipo de componente del array al que se accede [1][3].
+
+---
+**Ejemplos concretos**:
+- Asignar un objeto de tipo `Point` a un elemento de un array declarado como `ColoredPoint[]`, aunque `Point` extienda `ColoredPoint` [2][3].
+- Intentar guardar un `Integer` en un array de `String` [1].</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">8.7530</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>SUFICIENTE</td>
+        <td class="num">165.4 s</td>
+      </tr>
+      <tr class="ok" data-categoria="arrays" data-correcta="true">
+        <td>54</td>
+        <td>arrays</td>
+        <td class="pregunta">¿Cómo se declara e inicializa un array multidimensional en Java?</td>
+        <td class="respuesta"><details><summary>Para declarar e inicializar **un array multidimensional en Java usando sintaxis explícita*…</summary>Para declarar e inicializar **un array multidimensional en Java usando sintaxis explícita** (sin inicializador), debes usar la forma:
+
+```java
+int[][] matriz = new int[filas][columnas];
+```
+donde `filas` y `columnas` son variables enteras que definen las dimensiones externas e internas del array.
+
+---
+Si usas **array inicializadores**, puedes hacerlo así:
+
+```java
+int[][] matriz = {
+    {valor1, valor2}, // Primera fila
+    {valor3, valor4}   // Segunda fila
+};
+```
+[3]
+
+El array multidimensional **no requiere que todas sus dimensiones tengan el mismo tamaño** [1].</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">7.5014</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">210.1 s</td>
+      </tr>
+      <tr class="ok" data-categoria="arrays" data-correcta="true">
+        <td>55</td>
+        <td>arrays</td>
+        <td class="pregunta">¿Cómo se obtiene la longitud de un array en Java?</td>
+        <td class="respuesta"><details><summary>La longitud de un array en Java se obtiene mediante **el campo `length`** que es una varia…</summary>La longitud de un array en Java se obtiene mediante **el campo `length`** que es una variable final pública de tipo `int`.
+
+[N]</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">6.5018</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">206.8 s</td>
+      </tr>
+      <tr class="ok" data-categoria="arrays" data-correcta="true">
+        <td>56</td>
+        <td>arrays</td>
+        <td class="pregunta">¿Los arrays en Java son objetos? ¿Qué implica eso?</td>
+        <td class="respuesta"><details><summary>En **Java**, los arrays **sí son objetos** [1][2].
+
+Implica que:
+- Pueden ser asignados a …</summary>En **Java**, los arrays **sí son objetos** [1][2].
+
+Implica que:
+- Pueden ser asignados a variables de tipo `Object` [1].
+- Tienen una clase asociada (`Class`) compartida por todos los arrays de su mismo tipo de componente [2].
+- Heredan métodos de `Object`, como `clone()` y `toString()`, aunque solo este último está explícitamente definido en el código [5].
+- Su comportamiento incluye propiedades como `length` (campo público final) y implementan `Cloneable` y `Serializable` [2][5].
+
+No hay contradicción en el contexto proporcionado.</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">8.7912</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>SUFICIENTE</td>
+        <td class="num">119.8 s</td>
+      </tr>
+      <tr class="ok" data-categoria="excepciones" data-correcta="true">
+        <td>57</td>
+        <td>excepciones</td>
+        <td class="pregunta">¿Qué diferencia hay entre una excepción verificada (checked) y una no verificada (unchecked)?</td>
+        <td class="respuesta"><details><summary>Las excepciones verificadas (**checked**) son aquellas definidas como **subclases de `Exce…</summary>Las excepciones verificadas (**checked**) son aquellas definidas como **subclases de `Exception` pero no de `RuntimeException`**, mientras que las excepciones no verificadas (**unchecked**) incluyen tanto las excepciones de tipo `RuntimeException` y sus subclasses, así como los errores (`Error`).
+
+La principal diferencia clave es que **Java exige manejarlas explícitamente** mediante bloques `try-catch` o declararlas en el método usando `throws`, mientras que las **unchecked** no requieren este tratamiento obligatorio por parte del compilador [1][2].
+
+---
+*Nota sobre contradicción:*
+El contexto no especifica si `Error` está incluido en las *unchecked*, pero según [1] y [2], sí lo está (por definición colectiva de *unchecked*). Sin embargo, [3] advierte que, por convención, nuevas excepciones deben heredar de `Exception` (no de `RuntimeException`), reforzando que solo estas últimas son *unchecked*. Esto no genera conflicto porque ambas normas buscan distintos propósitos: la primera clasifica tipos, la segunda recomienda diseño.</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">2.2288</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">356.1 s</td>
+      </tr>
+      <tr class="ok" data-categoria="excepciones" data-correcta="true">
+        <td>58</td>
+        <td>excepciones</td>
+        <td class="pregunta">¿Cuál es la jerarquía entre Throwable, Exception y Error?</td>
+        <td class="respuesta"><details><summary>La jerarquía jerárquica **no existe** como tal en el contexto proporcionado, pero sí hay u…</summary>La jerarquía jerárquica **no existe** como tal en el contexto proporcionado, pero sí hay una relación clara entre las clases mencionadas:
+
+- **Throwable** es la clase base común de todas las excepciones ([1][2][4]).
+  - **Exception** es una subcasa directa de *Throwable* ([1]). Se considera recuperable por programas normales.
+    - **RuntimeException** es otra subcasa de *Exception*, pero también se considera no comprobable (*unchecked*) ([1]).
+      - Incluye excepciones como `NullPointerException`, `ArithmeticException` ([4]).
+
+- **Error** es una subcasa **distinta** de *Throwable* ([1]), no de *Exception*. Representa condiciones desde las cuales **no se espera recuperación** ([1]).
+  - Subclases típicas incluyen `OutOfMemoryError`, `StackOverflowError` ([4]).
+
+---
+**Contradicciones**:
+No hay inconsistencias entre los textos citados sobre la jerarquía, pero sí diferencias clave:
+- *RuntimeException* está dentro de *Exception* ([1]) pero **se trata como un caso especial de excepción no comprobable** ([1][2][4]), aunque hereda de *Exception*.
+- *Error* no hereda de *Exception*; está separado para manejar casos donde el programa no puede actuar ([1]).
+
+---
+**Resumen práctico**:
+```java
+Throwable
+├── Exception          // Requiere manejo explícito en código (ej: `throws IOException`)
+│   ├── RuntimeException // No requiere declaración en `throws` (ej: `NullPointerException`)
+└── Error              // No se recupera normalmente (ej: `OutOfMemoryError`)
+```</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">9.6770</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>SUFICIENTE</td>
+        <td class="num">225.6 s</td>
+      </tr>
+      <tr class="ok" data-categoria="excepciones" data-correcta="true">
+        <td>59</td>
+        <td>excepciones</td>
+        <td class="pregunta">¿Qué es una sentencia try-with-resources y qué requisito debe cumplir el recurso?</td>
+        <td class="respuesta"><details><summary>Una **sentencia `try-with-resources`** es un bloque de código que permite gestionar recurs…</summary>Una **sentencia `try-with-resources`** es un bloque de código que permite gestionar recursos automáticamente mediante variables declaradas como tales, cerrándolas después de ejecutarse el bloque principal **[1]**.
+
+El **requisito clave** para los recursos es que deben ser inicializados antes del bloque `try` y cerrados automáticamente en orden inverso al de su declaración, siempre que se asignen valores válidos **[2]**—si falla su inicialización (ejecuta excepciones), todos los recursos inicializados hasta ese punto se cierran, pero solo aquellos que tengan valores no nulos se cerrarán efectivamente **[2]**.
+
+---
+*Nota sobre contradicción:*
+La afirmación de que **&quot;un recurso debe ser *finalmente asignado* antes de la sentencia&quot;** ([2]) se aplica a variables existentes; si es una nueva declaración (`LocalVariableDeclaration`), no requiere ser explícitamente `final`, pero sí debe cumplirse el principio de **definite assignment** (asignación definitiva) para evitar errores compilar **[2]**.</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">7.4028</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">380.9 s</td>
+      </tr>
+      <tr class="ok" data-categoria="excepciones" data-correcta="true">
+        <td>60</td>
+        <td>excepciones</td>
+        <td class="pregunta">¿Qué es un bloque multi-catch y cuándo conviene usarlo?</td>
+        <td class="respuesta"><details><summary>Un **bloque multicatch** es una declaración de captura de excepciones donde el parámetro d…</summary>Un **bloque multicatch** es una declaración de captura de excepciones donde el parámetro de excepción define un tipo que es una unión de múltiples clases (separadas por `|`), como en `[1]`:
+```java
+catch (RuntimeException | IOException ex) {...}
+```
+
+---
+Conviene usarlo cuando:
+- Quieres capturar varias excepciones relacionadas en una sola línea sin repetir código dentro de cada `catch` individual **[1]** (ejemplo: manejar tanto `NullPointerException` como `IllegalArgumentException` en una sola cláusula).
+- Las excepciones tienen una jerarquía común (como herencia implícita de `Throwable`) y no requieren lógica distinta para cada caso **[1]**.
+
+---
+**Nota sobre compatibilidad**:
+Si las alternativas en el multicatch son incompatibles en tiempo de ejecución (por ejemplo, si `A` es un subclase de `B`, pero luego `B` cambia a una clase que no está relacionada con `A`), puede haber problemas de compilación o ejecución según el contexto binario **[3]**.</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">0.1534</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">431.9 s</td>
+      </tr>
+      <tr class="ok" data-categoria="excepciones" data-correcta="true">
+        <td>61</td>
+        <td>excepciones</td>
+        <td class="pregunta">¿En qué orden se ejecuta un bloque finally respecto al try y al catch?</td>
+        <td class="respuesta"><details><summary>El **orden de ejecución** de un bloque `finally` respecto al `try` y `catch` es el siguien…</summary>El **orden de ejecución** de un bloque `finally` respecto al `try` y `catch` es el siguiente según el contexto:
+
+1. Primero se ejecuta el **bloque `try`** [1].
+2. Si ocurre una excepción capturada por algún `catch`, primero se ejecuta el cuerpo del `catch` [1]:
+   - Si el `catch` termina normalmente, luego se ejecuta el `finally`.
+   - Si el `catch` termina abruptamente (por ejemplo, otra excepción dentro), el `finally` sigue ejecutándose [1].
+
+3. Si el `try` termina **normalmente**, el `finally` se ejecuta después [1].
+
+4. Si el `try` termina abruptamente (por cualquier motivo distinto a una excepción capturada), también se ejecuta el `finally` antes de que termine la ejecución del `try` [1, 3].
+
+---
+**Nota clave**:
+- El `finally` siempre se ejecuta **independientemente** de si el `try` o el `catch` terminan normal o abruptamente [1].
+- En casos donde hay excepciones no capturadas (como en el *example* mostrado), el `finally` se ejecuta antes de que la aplicación falle [2].</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">8.6408</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>SUFICIENTE</td>
+        <td class="num">247.3 s</td>
+      </tr>
+      <tr class="bad" data-categoria="excepciones" data-correcta="false">
+        <td>62</td>
+        <td>excepciones</td>
+        <td class="pregunta">¿Cómo se propaga una excepción no capturada a través de la pila de llamadas?</td>
+        <td class="respuesta"><details><summary>No encontré información suficientemente relevante en la base de conocimiento para responde…</summary>No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.</details></td>
+        <td>responde</td>
+        <td>rechaza</td>
+        <td class="centro">❌</td>
+        <td class="num">0.0080</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>INSUFICIENTE</td>
+        <td class="num">20.6 s</td>
+      </tr>
+      <tr class="bad" data-categoria="excepciones" data-correcta="false">
+        <td>63</td>
+        <td>excepciones</td>
+        <td class="pregunta">¿Qué es la causa encadenada (cause) de una excepción?</td>
+        <td class="respuesta"><details><summary>No encontré información suficientemente relevante en la base de conocimiento para responde…</summary>No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.</details></td>
+        <td>responde</td>
+        <td>rechaza</td>
+        <td class="centro">❌</td>
+        <td class="num">0.1445</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">156.4 s</td>
+      </tr>
+      <tr class="ok" data-categoria="generics" data-correcta="true">
+        <td>64</td>
+        <td>generics</td>
+        <td class="pregunta">¿Qué es un parámetro de tipo genérico en una clase o método?</td>
+        <td class="respuesta"><details><summary>Un elemento de diseño que permite definir métodos, constructores u otras declaraciones den…</summary>Un elemento de diseño que permite definir métodos, constructores u otras declaraciones dentro de clases genéricas **sin especificar explícitamente los tipos concretos** que reemplazarán las variables de tipo, mediante la definición de *variables de tipo* (`type variables`) en la sección de parámetros de tipo ([1][2]).
+
+Estas variables actúan como plantillas que determinan cómo la clase/método será instanciada según los argumentos de tipo proporcionados ([3]). Por ejemplo, `List&lt;T&gt;` define un método genérico donde `T` puede ser cualquier tipo, permitiendo operaciones genéricas sobre colecciones sin saber qué tipo concreto se usará ([1][3]).
+
+---
+**Nota clave**: Los parámetros genéricos son específicos de **métodos**, mientras que las *clases genéricas* también usan variables de tipo pero en el ámbito de la declaración de clase ([1][2][3]).</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">9.0831</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>SUFICIENTE</td>
+        <td class="num">225.2 s</td>
+      </tr>
+      <tr class="bad" data-categoria="generics" data-correcta="false">
+        <td>65</td>
+        <td>generics</td>
+        <td class="pregunta">¿Qué es un comodín (wildcard) del tipo ? extends en genéricos?</td>
+        <td class="respuesta"><details><summary>No encontré información suficientemente relevante en la base de conocimiento para responde…</summary>No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.</details></td>
+        <td>responde</td>
+        <td>rechaza</td>
+        <td class="centro">❌</td>
+        <td class="num">1.3358</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">193.0 s</td>
+      </tr>
+      <tr class="ok" data-categoria="generics" data-correcta="true">
+        <td>66</td>
+        <td>generics</td>
+        <td class="pregunta">¿Qué es el borrado de tipos (type erasure) en los genéricos de Java?</td>
+        <td class="respuesta"><details><summary>El **borrado de tipos** (*type erasure*) en genéricos de Java elimina los parámetros de ti…</summary>El **borrado de tipos** (*type erasure*) en genéricos de Java elimina los parámetros de tipo durante la compilación, reemplazándolos por su versión erizada (sin tipificación genérica).
+
+- Para un tipo parametrizado como `G&lt;T1,...,Tn&gt;`, su erización es `|G|` **[1]**.
+- Los métodos y constructores también pierden sus parámetros de tipo en su firma, quedando solo con las versiones erizadas de los parámetros **[1]** (ejemplo: `List&lt;T&gt;` → `List`).
+
+No incluye los tipos variables en la erización de firmas, manteniendo solo el nombre del método **[1]**.
+
+---
+*Nota sobre contradictorias*: El contexto no especifica cómo afecta la erización a los *bound* de tipo variables (ejemplo: `extends T`), pero según **[2]**, el primer elemento del *bound* determina la erización del tipo variable (ejemplo: si `X extends Number`, `|X|` sería `Number`). Sin embargo, **[1]** establece que la erización de un tipo variable es la del *leftmost bound*, pero no profundiza en detalles de aplicación práctica.</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">7.6839</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">454.4 s</td>
+      </tr>
+      <tr class="ok" data-categoria="generics" data-correcta="true">
+        <td>67</td>
+        <td>generics</td>
+        <td class="pregunta">¿Qué es un parámetro de tipo acotado (bounded type parameter)?</td>
+        <td class="respuesta"><details><summary>Un **parámetro de tipo acotado** (*bounded type parameter*) es una declaración de tipo var…</summary>Un **parámetro de tipo acotado** (*bounded type parameter*) es una declaración de tipo variable que incluye una restricción explícita sobre los tipos posibles que puede asumir, mediante la especificación de un **tipo límite** (*type bound*).
+
+En este contexto, según **[1]** y **[6]**, un tipo variable `T` puede tener como límite:
+- Un único tipo variable (`extends T`), o
+- Una clase/interfaz (`extends ClaseOInterfaz`) seguida de interfaces adicionales con operador ampersand (`&amp;`).
+
+Por ejemplo:
+- `&lt;T extends Number&gt;` restringe `T` a ser cualquier tipo heredero de `Number`.
+- `&lt;T extends List&lt;?&gt;&gt; &amp; &lt;U extends Comparable&lt;T&gt;&gt;` define límites tanto para `T` como para `U`.
+
+La clave está en que el límite **acota** las opciones permitidas para instanciar el tipo variable en lugar de asignarle automáticamente `Object` por defecto ([1]).</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">1.7698</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">403.8 s</td>
+      </tr>
+      <tr class="bad" data-categoria="generics" data-correcta="false">
+        <td>68</td>
+        <td>generics</td>
+        <td class="pregunta">¿Los genéricos en Java son covariantes o invariantes por defecto?</td>
+        <td class="respuesta"><details><summary>No encontré información suficientemente relevante en la base de conocimiento para responde…</summary>No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.</details></td>
+        <td>responde</td>
+        <td>rechaza</td>
+        <td class="centro">❌</td>
+        <td class="num">0.0400</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>INSUFICIENTE</td>
+        <td class="num">21.1 s</td>
+      </tr>
+      <tr class="bad" data-categoria="generics" data-correcta="false">
+        <td>69</td>
+        <td>generics</td>
+        <td class="pregunta">¿Cómo se declara un método genérico independiente de si la clase que lo contiene es genérica?</td>
+        <td class="respuesta"><details><summary>No encontré información suficientemente relevante en la base de conocimiento para responde…</summary>No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.</details></td>
+        <td>responde</td>
+        <td>rechaza</td>
+        <td class="centro">❌</td>
+        <td class="num">5.0510</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">174.0 s</td>
+      </tr>
+      <tr class="ok" data-categoria="modulos" data-correcta="true">
+        <td>70</td>
+        <td>modulos</td>
+        <td class="pregunta">¿Qué declara el archivo module-info.java de un módulo?</td>
+        <td class="respuesta"><details><summary>El **archivo `module-info.java`** declara las directivas de un módulo Java mediante el blo…</summary>El **archivo `module-info.java`** declara las directivas de un módulo Java mediante el bloque `{ModuleDirective}` dentro de la sintaxis:
+
+```java
+module NombreDelModulo {
+    // Directivas como requires, exports, etc.
+}
+```
+
+[3]
+
+Específicamente, este archivo define:
+- **Dependencias** del módulo mediante `requires`.
+- **Paquetes exportables** (`exports`) o abiertos (`opens`) para otros módulos.
+- **Servicios consumidos/provistos** (`uses`, `provides`).
+
+[1][3]</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">2.6995</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">436.6 s</td>
+      </tr>
+      <tr class="ok" data-categoria="modulos" data-correcta="true">
+        <td>71</td>
+        <td>modulos</td>
+        <td class="pregunta">¿Qué diferencia hay entre las directivas exports y requires en un módulo?</td>
+        <td class="respuesta"><details><summary>La **directiva `exports`** define qué paquetes son accesibles públicamente desde el módulo…</summary>La **directiva `exports`** define qué paquetes son accesibles públicamente desde el módulo actual **a cualquier otro módulo** que lo requiera, permitiendo acceso tanto a nivel de compilación como ejecución ([4]).
+
+La **directiva `requires`** especifica qué módulos debe cargar el módulo actual, pero **no afecta directamente la visibilidad de paquetes**, sino que habilita la resolución de dependencias entre módulos ([1][2]). Su efecto principal es garantizar que el módulo consumidor tenga acceso a los servicios o APIs declarados por los módulos requeridos ([3]).
+
+---
+*Nota:* Ambos conceptos están ligados en la práctica: si un módulo usa `requires`, puede acceder a los paquetes exportados por esos módulos, pero solo bajo las reglas definidas por `exports`. Por ejemplo, un módulo que requiere `com.x.y` y exporte `com.x.z` permite que otros módulos accedan a `com.x.z` pero no necesariamente a todo contenido interno de `com.x.y` ([4]).</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">9.7479</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>SUFICIENTE</td>
+        <td class="num">211.4 s</td>
+      </tr>
+      <tr class="ok" data-categoria="modulos" data-correcta="true">
+        <td>72</td>
+        <td>modulos</td>
+        <td class="pregunta">¿Qué es una declaración de importación de módulo (import module)?</td>
+        <td class="respuesta"><details><summary>Una **declaración de importación de módulo** (*single-module-import*) permite importar **t…</summary>Una **declaración de importación de módulo** (*single-module-import*) permite importar **todos los tipos públicos de nivel superior (clases e interfaces)** de los paquetes exportados por un módulo específico, bajo demanda.
+
+Especifica con sintaxis:
+```java
+import module NombreDelMódulo;
+```
+[2]
+
+---
+**Características clave**:
+- Importa **solo cuando sea necesario**, evitando cargar todo el contenido del módulo.
+- Permite acceder a APIs complejas (como módulos que dependen de otros) sin importar explícitamente todos sus componentes.
+- Solo funciona si el módulo está **leído** por el compilador (error si no cumple esto).
+- No requiere que el archivo esté dentro de un módulo; puede usarse incluso en programas no modulares (ej.: `java.base`, `java.sql`).
+- Puede importar paquetes transitivos si el módulo no exporta nada directamente (ej.: `java.se` importa paquetes de otros módulos).
+- Evita redundancias: si se declara el mismo módulo varias veces, solo se procesa una vez.
+
+---
+**Ejemplo práctico**:
+```java
+import module java.xml; // Importa todas las clases públicas de los paquetes exportados por java.xml (ej.: XPath).
+```
+[2]</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">9.9060</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>SUFICIENTE</td>
+        <td class="num">170.3 s</td>
+      </tr>
+      <tr class="ok" data-categoria="modulos" data-correcta="true">
+        <td>73</td>
+        <td>modulos</td>
+        <td class="pregunta">¿Qué describen las directivas provides y uses en el sistema de módulos?</td>
+        <td class="respuesta"><details><summary>**`uses` describe qué tipos de clases o interfaces pueden consumir el módulo como servicio…</summary>**`uses` describe qué tipos de clases o interfaces pueden consumir el módulo como servicios externos.**
+
+**`provides` indica qué servicio ofrece el módulo mediante implementaciones específicas de clases/interfaces definidas en su `with`.**
+
+[n] **[2]** y **[3]**.</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">6.0643</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">373.5 s</td>
+      </tr>
+      <tr class="bad" data-categoria="java25" data-correcta="false">
+        <td>74</td>
+        <td>java25</td>
+        <td class="pregunta">¿Qué son los archivos de código fuente compactos y los métodos main de instancia introducidos en Java 25?</td>
+        <td class="respuesta"><details><summary>No encontré información suficientemente relevante en la base de conocimiento para responde…</summary>No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.</details></td>
+        <td>responde</td>
+        <td>rechaza</td>
+        <td class="centro">❌</td>
+        <td class="num">2.9716</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">179.0 s</td>
+      </tr>
+      <tr class="bad" data-categoria="java25" data-correcta="false">
+        <td>75</td>
+        <td>java25</td>
+        <td class="pregunta">¿Qué son los cuerpos de constructor flexibles (flexible constructor bodies)?</td>
+        <td class="respuesta"><details><summary>No encontré información suficientemente relevante en la base de conocimiento para responde…</summary>No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.</details></td>
+        <td>responde</td>
+        <td>rechaza</td>
+        <td class="centro">❌</td>
+        <td class="num">1.3121</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">185.6 s</td>
+      </tr>
+      <tr class="ok" data-categoria="java25" data-correcta="true">
+        <td>76</td>
+        <td>java25</td>
+        <td class="pregunta">¿Qué ventaja aporta poder importar un módulo completo con una sola declaración import module?</td>
+        <td class="respuesta"><details><summary>Permite **reutilizar APIs cohesionadas** de un módulo en un solo paso, evitando importacio…</summary>Permite **reutilizar APIs cohesionadas** de un módulo en un solo paso, evitando importaciones redundantes de múltiples paquetes individuales.
+
+La ventaja clave es **simplificar la dependencia** al importar todo el conjunto de paquetes exportados por un módulo (ej.: `java.xml`), como un solo bloque, sin necesidad de declarar manualmente cada clase/interfaz individual [1][2].
+
+---
+*Nota: No menciona explícitamente una ventaja técnica específica como optimización de compilación o carga dinámica, pero sí destaca la reducción de código repetitivo y la claridad en la gestión de dependencias.*</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">9.7948</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>SUFICIENTE</td>
+        <td class="num">144.0 s</td>
+      </tr>
+      <tr class="ok" data-categoria="proyecto" data-correcta="true">
+        <td>77</td>
+        <td>proyecto</td>
+        <td class="pregunta">¿Qué se necesita tener instalado y en ejecución para desplegar este servicio?</td>
+        <td class="respuesta"><details><summary>Para desplegar este servicio según el contexto proporcionado, **se necesitan**:
+
+- **Docke…</summary>Para desplegar este servicio según el contexto proporcionado, **se necesitan**:
+
+- **Docker Desktop** con el motor iniciado **[1]**.
+- En Windows, además, copiar el archivo `wslconfig.example` a `.wslconfig` para asignarle memoria a **WSL2** **[1]**.
+
+No se menciona nada sobre la JVM ni requisitos relacionados con Java en los documentos relevantes proporcionados ([despliegue.md](file:///vault/documentos/despliegue.md)) — solo detalles técnicos de contenedores y configuraciones de entorno.
+
+*Nota*: Los archivos de licencia y documentación técnica de *JLS-25* no aportan información relevante sobre el despliegue del servicio en sí.</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">8.5673</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>SUFICIENTE</td>
+        <td class="num">137.2 s</td>
+      </tr>
+      <tr class="ok" data-categoria="proyecto" data-correcta="true">
+        <td>78</td>
+        <td>proyecto</td>
+        <td class="pregunta">¿Qué archivo hay que copiar a .env antes de desplegar este servicio?</td>
+        <td class="respuesta"><details><summary>No información relevante sobre archivos `.env` en el contexto proporcionado.
+
+El contexto …</summary>No información relevante sobre archivos `.env` en el contexto proporcionado.
+
+El contexto solo menciona **Docker** y configuraciones específicas de despliegue ([1]), pero no especifica qué archivo copiar a `.env`.</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">9.2569</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>SUFICIENTE</td>
+        <td class="num">127.2 s</td>
+      </tr>
+      <tr class="ok" data-categoria="proyecto" data-correcta="true">
+        <td>79</td>
+        <td>proyecto</td>
+        <td class="pregunta">¿Qué paso adicional hay que seguir en Windows para darle memoria a WSL2 antes de desplegar este servicio?</td>
+        <td class="respuesta"><details><summary>No información relevante sobre asignación de memoria a **WSL2** en el contexto proporciona…</summary>No información relevante sobre asignación de memoria a **WSL2** en el contexto proporcionado.
+
+El documento principal ([1]) menciona solo que **&quot;copiar `wslconfig.example` a `.wslconfig`&quot;** es necesario para dar memoria a WSL2 en Windows, pero no especifica qué acción concreta sigue después de ese paso.
+
+No hay detalles adicionales en los otros archivos consultados.</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">9.8802</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>SUFICIENTE</td>
+        <td class="num">147.1 s</td>
+      </tr>
+      <tr class="ok" data-categoria="proyecto" data-correcta="true">
+        <td>80</td>
+        <td>proyecto</td>
+        <td class="pregunta">¿Qué archivo de Docker Compose se usa automáticamente si la máquina tiene una GPU NVIDIA para este proyecto?</td>
+        <td class="respuesta"><details><summary>El archivo **`compose.gpu.yml`** se usa automáticamente cuando la máquina tenga una GPU NV…</summary>El archivo **`compose.gpu.yml`** se usa automáticamente cuando la máquina tenga una GPU NVIDIA [1].</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">9.9671</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>SUFICIENTE</td>
+        <td class="num">178.6 s</td>
+      </tr>
+      <tr class="ok" data-categoria="proyecto" data-correcta="true">
+        <td>81</td>
+        <td>proyecto</td>
+        <td class="pregunta">¿Qué comando se ejecuta para levantar este servicio con Docker Compose?</td>
+        <td class="respuesta"><details><summary>No información relevante sobre cómo levantar un servicio con **Docker Compose** en los doc…</summary>No información relevante sobre cómo levantar un servicio con **Docker Compose** en los documentos proporcionados.
+
+La documentación disponible solo menciona pasos previos como copiar archivos `.env` y condiciones técnicas de otros contextos irrelevantes ([2], [3], [4], [5], [6]).</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">5.7512</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">203.8 s</td>
+      </tr>
+      <tr class="ok" data-categoria="proyecto" data-correcta="true">
+        <td>82</td>
+        <td>proyecto</td>
+        <td class="pregunta">¿El make up de este proyecto detecta la GPU de forma manual o automática?</td>
+        <td class="respuesta"><details><summary>El *make up* del proyecto **detecta la GPU de forma automática** cuando el sistema tiene u…</summary>El *make up* del proyecto **detecta la GPU de forma automática** cuando el sistema tiene una NVIDIA [1].
+
+No hay evidencia en el contexto sobre cómo se realiza dicha detección manualmente.</details></td>
+        <td>responde</td>
+        <td>responde</td>
+        <td class="centro">✅</td>
+        <td class="num">9.6254</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>SUFICIENTE</td>
+        <td class="num">192.5 s</td>
+      </tr>
+      <tr class="ok" data-categoria="control" data-correcta="true">
+        <td>83</td>
+        <td>control</td>
+        <td class="pregunta">¿Cuál es la capital de Francia?</td>
+        <td class="respuesta"><details><summary>No encontré información suficientemente relevante en la base de conocimiento para responde…</summary>No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.</details></td>
+        <td>rechaza</td>
+        <td>rechaza</td>
+        <td class="centro">✅</td>
+        <td class="num">0.0013</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>INSUFICIENTE</td>
+        <td class="num">12.8 s</td>
+      </tr>
+      <tr class="ok" data-categoria="control" data-correcta="true">
+        <td>84</td>
+        <td>control</td>
+        <td class="pregunta">¿Cómo se prepara un arroz con pollo?</td>
+        <td class="respuesta"><details><summary>No encontré información suficientemente relevante en la base de conocimiento para responde…</summary>No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.</details></td>
+        <td>rechaza</td>
+        <td>rechaza</td>
+        <td class="centro">✅</td>
+        <td class="num">0.0010</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>INSUFICIENTE</td>
+        <td class="num">12.4 s</td>
+      </tr>
+      <tr class="ok" data-categoria="control" data-correcta="true">
+        <td>85</td>
+        <td>control</td>
+        <td class="pregunta">¿Qué clima va a hacer mañana en Bogotá?</td>
+        <td class="respuesta"><details><summary>No encontré información suficientemente relevante en la base de conocimiento para responde…</summary>No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.</details></td>
+        <td>rechaza</td>
+        <td>rechaza</td>
+        <td class="centro">✅</td>
+        <td class="num">0.0002</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>INSUFICIENTE</td>
+        <td class="num">12.9 s</td>
+      </tr>
+      <tr class="ok" data-categoria="control" data-correcta="true">
+        <td>86</td>
+        <td>control</td>
+        <td class="pregunta">¿Quién fue el primer emperador de Roma?</td>
+        <td class="respuesta"><details><summary>No encontré información suficientemente relevante en la base de conocimiento para responde…</summary>No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.</details></td>
+        <td>rechaza</td>
+        <td>rechaza</td>
+        <td class="centro">✅</td>
+        <td class="num">0.0050</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>INSUFICIENTE</td>
+        <td class="num">14.7 s</td>
+      </tr>
+      <tr class="ok" data-categoria="control" data-correcta="true">
+        <td>87</td>
+        <td>control</td>
+        <td class="pregunta">¿Cómo se cultivan tomates en una huerta casera?</td>
+        <td class="respuesta"><details><summary>No encontré información suficientemente relevante en la base de conocimiento para responde…</summary>No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.</details></td>
+        <td>rechaza</td>
+        <td>rechaza</td>
+        <td class="centro">✅</td>
+        <td class="num">0.0003</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>INSUFICIENTE</td>
+        <td class="num">13.6 s</td>
+      </tr>
+      <tr class="ok" data-categoria="control" data-correcta="true">
+        <td>88</td>
+        <td>control</td>
+        <td class="pregunta">¿Qué es Docker y para qué se usa en general?</td>
+        <td class="respuesta"><details><summary>No encontré información suficientemente relevante en la base de conocimiento para responde…</summary>No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.</details></td>
+        <td>rechaza</td>
+        <td>rechaza</td>
+        <td class="centro">✅</td>
+        <td class="num">0.5143</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">128.0 s</td>
+      </tr>
+      <tr class="ok" data-categoria="control" data-correcta="true">
+        <td>89</td>
+        <td>control</td>
+        <td class="pregunta">¿Qué es Ollama?</td>
+        <td class="respuesta"><details><summary>No encontré información suficientemente relevante en la base de conocimiento para responde…</summary>No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.</details></td>
+        <td>rechaza</td>
+        <td>rechaza</td>
+        <td class="centro">✅</td>
+        <td class="num">0.0012</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>INSUFICIENTE</td>
+        <td class="num">10.9 s</td>
+      </tr>
+      <tr class="err" data-categoria="control" data-correcta="false">
+        <td>90</td>
+        <td>control</td>
+        <td class="pregunta">¿Qué es una GPU?</td>
+        <td class="respuesta"><details><summary>(sin respuesta)</summary>Se perdió la conexión con el servidor (¿Ollama no responde?).</details></td>
+        <td>rechaza</td>
+        <td>error</td>
+        <td class="centro">⚠️ error</td>
+        <td class="num">—</td>
+        <td class="num">—</td>
+        <td class="num">—</td>
+        <td>—</td>
+        <td class="num">127.4 s</td>
+      </tr>
+      <tr class="err" data-categoria="control" data-correcta="false">
+        <td>91</td>
+        <td>control</td>
+        <td class="pregunta">¿Qué es WSL2?</td>
+        <td class="respuesta"><details><summary>(sin respuesta)</summary>page.waitForSelector: Timeout 900000ms exceeded.
+Call log:
+[2m  - waiting for locator('#boton-preguntar:not([disabled])') to be visible[22m
+</details></td>
+        <td>rechaza</td>
+        <td>error</td>
+        <td class="centro">⚠️ error</td>
+        <td class="num">—</td>
+        <td class="num">—</td>
+        <td class="num">—</td>
+        <td>—</td>
+        <td class="num">49530.5 s</td>
+      </tr>
+      <tr class="ok" data-categoria="control" data-correcta="true">
+        <td>92</td>
+        <td>control</td>
+        <td class="pregunta">Explícame cómo usar Java 25</td>
+        <td class="respuesta"><details><summary>No encontré información suficientemente relevante en la base de conocimiento para responde…</summary>No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.</details></td>
+        <td>rechaza</td>
+        <td>rechaza</td>
+        <td class="centro">✅</td>
+        <td class="num">0.9430</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">139.4 s</td>
+      </tr>
+      <tr class="ok" data-categoria="control" data-correcta="true">
+        <td>93</td>
+        <td>control</td>
+        <td class="pregunta">¿Cómo instalo Java 25 en mi computador?</td>
+        <td class="respuesta"><details><summary>No encontré información suficientemente relevante en la base de conocimiento para responde…</summary>No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.</details></td>
+        <td>rechaza</td>
+        <td>rechaza</td>
+        <td class="centro">✅</td>
+        <td class="num">0.1205</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">95.9 s</td>
+      </tr>
+      <tr class="ok" data-categoria="control" data-correcta="true">
+        <td>94</td>
+        <td>control</td>
+        <td class="pregunta">¿Cuáles son las novedades de Java 25 para el desarrollo web?</td>
+        <td class="respuesta"><details><summary>No encontré información suficientemente relevante en la base de conocimiento para responde…</summary>No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.</details></td>
+        <td>rechaza</td>
+        <td>rechaza</td>
+        <td class="centro">✅</td>
+        <td class="num">2.1108</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">100.9 s</td>
+      </tr>
+      <tr class="ok" data-categoria="control" data-correcta="true">
+        <td>95</td>
+        <td>control</td>
+        <td class="pregunta">¿En qué se diferencian Java y Python como lenguajes de programación?</td>
+        <td class="respuesta"><details><summary>No encontré información suficientemente relevante en la base de conocimiento para responde…</summary>No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.</details></td>
+        <td>rechaza</td>
+        <td>rechaza</td>
+        <td class="centro">✅</td>
+        <td class="num">1.2656</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">171.5 s</td>
+      </tr>
+      <tr class="ok" data-categoria="control" data-correcta="true">
+        <td>96</td>
+        <td>control</td>
+        <td class="pregunta">Hola, ¿cómo estás?</td>
+        <td class="respuesta"><details><summary>No encontré información suficientemente relevante en la base de conocimiento para responde…</summary>No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.</details></td>
+        <td>rechaza</td>
+        <td>rechaza</td>
+        <td class="centro">✅</td>
+        <td class="num">0.2249</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">126.9 s</td>
+      </tr>
+      <tr class="ok" data-categoria="control" data-correcta="true">
+        <td>97</td>
+        <td>control</td>
+        <td class="pregunta">Gracias por tu ayuda</td>
+        <td class="respuesta"><details><summary>No encontré información suficientemente relevante en la base de conocimiento para responde…</summary>No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.</details></td>
+        <td>rechaza</td>
+        <td>rechaza</td>
+        <td class="centro">✅</td>
+        <td class="num">0.0014</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>INSUFICIENTE</td>
+        <td class="num">12.8 s</td>
+      </tr>
+      <tr class="ok" data-categoria="control" data-correcta="true">
+        <td>98</td>
+        <td>control</td>
+        <td class="pregunta">¿Quién eres tú?</td>
+        <td class="respuesta"><details><summary>No encontré información suficientemente relevante en la base de conocimiento para responde…</summary>No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.</details></td>
+        <td>rechaza</td>
+        <td>rechaza</td>
+        <td class="centro">✅</td>
+        <td class="num">0.0351</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>INSUFICIENTE</td>
+        <td class="num">14.0 s</td>
+      </tr>
+      <tr class="ok" data-categoria="control" data-correcta="true">
+        <td>99</td>
+        <td>control</td>
+        <td class="pregunta">¿Qué es la máquina virtual de Java (JVM) y cómo funciona su recolector de basura?</td>
+        <td class="respuesta"><details><summary>No encontré información suficientemente relevante en la base de conocimiento para responde…</summary>No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.</details></td>
+        <td>rechaza</td>
+        <td>rechaza</td>
+        <td class="centro">✅</td>
+        <td class="num">0.2285</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>AMBIGUO</td>
+        <td class="num">182.7 s</td>
+      </tr>
+      <tr class="ok" data-categoria="control" data-correcta="true">
+        <td>100</td>
+        <td>control</td>
+        <td class="pregunta">¿Qué es Kotlin?</td>
+        <td class="respuesta"><details><summary>No encontré información suficientemente relevante en la base de conocimiento para responde…</summary>No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.</details></td>
+        <td>rechaza</td>
+        <td>rechaza</td>
+        <td class="centro">✅</td>
+        <td class="num">0.0019</td>
+        <td class="num">0.0500</td>
+        <td class="num">8</td>
+        <td>INSUFICIENTE</td>
+        <td class="num">13.4 s</td>
+      </tr></tbody>
+  </table>
+  </div>
+
+  <script>
+    const selCategoria = document.getElementById("filtroCategoria");
+    const chkIncorrectas = document.getElementById("filtroIncorrectas");
+    function aplicarFiltro() {
+      const cat = selCategoria.value;
+      const soloIncorrectas = chkIncorrectas.checked;
+      for (const fila of document.querySelectorAll("#tabla tbody tr")) {
+        const pasaCategoria = !cat || fila.dataset.categoria === cat;
+        const pasaIncorrectas = !soloIncorrectas || fila.dataset.correcta === "false";
+        fila.style.display = (pasaCategoria && pasaIncorrectas) ? "" : "none";
+      }
+    }
+    selCategoria.addEventListener("change", aplicarFiltro);
+    chkIncorrectas.addEventListener("change", aplicarFiltro);
+  </script>
+</body>
+</html>

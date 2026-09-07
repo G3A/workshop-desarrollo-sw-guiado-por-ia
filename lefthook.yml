@@ -1,0 +1,29 @@
+# lefthook busca su config en la raiz del repositorio git (este monorepo), no en la carpeta de
+# cada proyecto -- por eso este archivo vive aca y no en base-conocimiento/, y cada comando usa
+# `root:` para acotarse a esa subcarpeta (glob + root filtran: un commit que no toque
+# base-conocimiento/ no dispara nada de esto). Ver validacion-workshop/f2-preparar-proyecto.md
+# para el detalle de este hallazgo.
+
+pre-commit:
+  parallel: true
+  # Merges y rebases repiten commits que ya pasaron estos checks; un conflicto en curso es un
+  # mal momento para que un formateador bloquee.
+  skip:
+    - merge
+    - rebase
+  commands:
+    base-conocimiento-format:
+      root: "base-conocimiento/"
+      glob: "*.java"
+      run: sh ./mvnw -q spotless:check
+      fail_text: "Style: run `make -C base-conocimiento format` and re-stage."
+
+pre-push:
+  commands:
+    base-conocimiento-check:
+      root: "base-conocimiento/"
+      run: make check
+      fail_text: "`make check` failed in base-conocimiento/. Fix it before pushing."
+
+# Escape hatch de emergencia: LEFTHOOK=0 git commit ...
+# Existe a proposito -- un gate sin salida termina desinstalado, no saltado.

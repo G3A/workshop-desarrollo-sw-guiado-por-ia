@@ -1,0 +1,23 @@
+<!--
+Placeholders:
+  {{PROJECT_NAME}}
+-->
+
+# Diseño — {{PROJECT_NAME}}
+
+## Sistema de diseño
+
+<!-- TODO: tokens, tipografía, escalas de color. Enlaza a Figma / Storybook si existen. -->
+
+## Patrones de componentes
+
+<!-- TODO: cómo se organizan los componentes, convenciones de nombres, primitivas compartidas. -->
+
+## Principios de UX
+
+<!-- TODO: 3-5 viñetas que guían las decisiones de diseño (ej. "preferir defaults sobre opciones", "nunca bloquear en async"). -->
+
+## Docs relacionados
+
+- [Usuario objetivo](./target-user.md)
+- [Arquitectura](./architecture.md)
