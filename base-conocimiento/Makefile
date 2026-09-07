@@ -190,6 +190,23 @@ ifeq ($(KB_DOCLING_GPU),0)
 GPU_DOCLING := no
 endif
 
+## KB_DOCLING_GPU=1 pisa el umbral, y eso puede costar la GPU entera. Se marca
+## aqui para poder avisarlo, porque el sintoma no se parece en nada a la causa.
+##
+## Medido en un equipo real (RTX 3060 Laptop, 6144 MiB): con esta variable a 1 en
+## el archivo de entorno, `make` encadena compose.docling-gpu.yml pese a estar por
+## debajo de KB_VRAM_DOCLING_GPU. docling toma VRAM y NO la suelta entre
+## conversiones (bug conocido sin fix, ADR-0010), asi que cuando Ollama va a
+## cargar sus modelos ya no queda sitio y cae a 100% CPU -- los DOS, incluido
+## bge-m3, que con 1.2 GB cabria de sobra en 6 GB.
+##
+## Lo que se ve es "todo va lentisimo" y un `ollama ps` diciendo 100% CPU, con
+## `make gpu-check` informando "Perfil de compose: GPU", la GPU correctamente
+## reservada en el contenedor y `nvidia-smi` funcionando dentro. Nada apunta a
+## docling. Diagnosticarlo costo varias rondas.
+DOCLING_GPU_FORZADO := $(if $(and $(filter 1,$(KB_DOCLING_GPU)),$(filter-out 0,$(GPU_VRAM_MIB))),$(shell [ "$(GPU_VRAM_MIB)" -lt "$(KB_VRAM_DOCLING_GPU)" ] && echo si),)
+
+
 ## Sin GPU no hay nada que repartir: los embeddings van a CPU igual, pero por la via
 ## normal de Ollama, no con el modelo -cpu fijado.
 ifndef HAY_GPU
@@ -364,6 +381,18 @@ ifeq ($(GPU_EMB_FIJADO),si)
 	@echo "        deteccion. Comentalo para que make elija segun el hardware."
 endif
 	@echo ""
+ifeq ($(DOCLING_GPU_FORZADO),si)
+	@echo ""
+	@echo "  ATENCION: KB_DOCLING_GPU=1 mete docling en la GPU con solo $(GPU_VRAM_MIB) MiB,"
+	@echo "  por debajo del umbral de $(KB_VRAM_DOCLING_GPU) MiB. docling NO libera la VRAM entre"
+	@echo "  conversiones (ADR-0010), asi que puede quedarse con la tarjeta y dejar"
+	@echo "  a Ollama SIN sitio -- se cae a 100% CPU en silencio, sin ningun error."
+	@echo ""
+	@echo "  Si las consultas van lentisimas, comprueba el reparto real:"
+	@echo "      docker exec kb-ollama ollama ps      (mira la columna PROCESSOR)"
+	@echo "  Para revertirlo, quita KB_DOCLING_GPU de tu archivo de entorno o:"
+	@echo "      KB_DOCLING_GPU=0 make down && KB_DOCLING_GPU=0 make up"
+endif
 	@echo "  Detalle y umbrales: make gpu-check"
 else
 	@echo "Perfil activo: CPU (compose.yml) -- sin GPU NVIDIA activa"
@@ -389,7 +418,7 @@ gpu-check:  ## Diagnostica que hardware vio make y como repartio la GPU
 	@echo "== Reparto de la tarjeta =="
 	@echo "  LLM                      : $(if $(HAY_GPU),GPU,CPU)"
 	@echo "  Embeddings               : $(if $(filter gpu,$(GPU_EMBEDDINGS)),GPU,CPU)   (umbral KB_VRAM_EMBEDDINGS_GPU=$(KB_VRAM_EMBEDDINGS_GPU) MiB)"
-	@echo "  Extraccion PDF (docling) : $(if $(filter si,$(GPU_DOCLING)),GPU,CPU)   (umbral KB_VRAM_DOCLING_GPU=$(KB_VRAM_DOCLING_GPU) MiB)"
+	@echo "  Extraccion PDF (docling) : $(if $(filter si,$(GPU_DOCLING)),GPU,CPU)   (umbral KB_VRAM_DOCLING_GPU=$(KB_VRAM_DOCLING_GPU) MiB)$(if $(filter si,$(DOCLING_GPU_FORZADO)),  <-- FORZADO por debajo del umbral,)"
 	@echo "  Reranker                 : CPU   (build CPU de ONNX Runtime, no lo cambia ninguna variable)"
 	@echo "  KB_EMBEDDINGS_MODELO     : $(if $(filter si,$(GPU_EMB_FIJADO)),fijado en tu .env -- manda eso,$(KB_EMBEDDINGS_MODELO) (elegido por make))"
 	@echo ""
@@ -404,6 +433,18 @@ gpu-check:  ## Diagnostica que hardware vio make y como repartio la GPU
 	@echo "  Todo eso se puede forzar:  KB_GPU=1|0   KB_DOCLING_GPU=1|0"
 	@echo "                             KB_VRAM_EMBEDDINGS_GPU=...   KB_VRAM_DOCLING_GPU=..."
 	@echo ""
+ifeq ($(DOCLING_GPU_FORZADO),si)
+	@echo ""
+	@echo "  ATENCION: KB_DOCLING_GPU=1 mete docling en la GPU con solo $(GPU_VRAM_MIB) MiB,"
+	@echo "  por debajo del umbral de $(KB_VRAM_DOCLING_GPU) MiB. docling NO libera la VRAM entre"
+	@echo "  conversiones (ADR-0010), asi que puede quedarse con la tarjeta y dejar"
+	@echo "  a Ollama SIN sitio -- se cae a 100% CPU en silencio, sin ningun error."
+	@echo ""
+	@echo "  Si las consultas van lentisimas, comprueba el reparto real:"
+	@echo "      docker exec kb-ollama ollama ps      (mira la columna PROCESSOR)"
+	@echo "  Para revertirlo, quita KB_DOCLING_GPU de tu archivo de entorno o:"
+	@echo "      KB_DOCLING_GPU=0 make down && KB_DOCLING_GPU=0 make up"
+endif
 	@echo "  Si la tarjeta aparece arriba pero el perfil dice CPU, fallo la deteccion, no"
 	@echo "  el hardware: levanta con  KB_GPU=1 make up"
 
