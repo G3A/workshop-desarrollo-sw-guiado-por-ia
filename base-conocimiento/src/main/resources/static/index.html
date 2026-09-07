@@ -827,6 +827,81 @@
     white-space: pre-wrap;
   }
   .texto-original.oculto { display: none; }
+
+  /* "Traducir" sobre un turno (alternativa B) */
+  .boton-traducir-turno {
+    flex: none;
+    opacity: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    border: 1px solid var(--borde);
+    border-radius: 6px;
+    background: var(--bg-elevado);
+    color: var(--texto-atenuado);
+    font-size: 0.78rem;
+    line-height: 1;
+    padding: 0.2rem 0.45rem;
+    cursor: pointer;
+  }
+  .boton-traducir-turno svg { width: 0.95rem; height: 0.95rem; }
+  .boton-traducir-turno:hover, .boton-traducir-turno:focus-visible { opacity: 1; color: var(--acento); border-color: var(--acento); }
+  .mensaje-usuario:hover .boton-traducir-turno, .turno:hover .acciones-turno .boton-traducir-turno { opacity: 1; }
+  .acciones-turno { display: flex; gap: 0.4rem; margin: 0.35rem 0 0; }
+  .acciones-turno:empty { display: none; }
+  .traducciones-turno { display: flex; flex-direction: column; gap: 0.5rem; }
+  .traducciones-turno:empty { display: none; }
+  .traducciones-pregunta { align-items: flex-end; }
+  .traducciones-pregunta .turno-traducido { max-width: 34rem; }
+  .turno-traducido {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    margin: 0.5rem 0 0;
+    padding: 0.55rem 0.8rem;
+    border-left: 3px solid var(--acento);
+    background: var(--bg-elevado);
+    border-radius: 0 10px 10px 0;
+  }
+  .turno-traducido .traduccion-idiomas { margin: 0; }
+  .turno-traducido .texto-traducido { white-space: pre-wrap; }
+  .turno-traducido .texto-traducido.oculto { display: none; }
+  .ocultar-traduccion {
+    align-self: flex-start;
+    border: none;
+    background: none;
+    padding: 0;
+    color: var(--acento);
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .popover-traducir {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 0.4rem 0 0;
+    padding: 0.7rem 0.85rem;
+    max-width: 28rem;
+    border: 1px solid var(--borde);
+    border-radius: 12px;
+    background: var(--bg-elevado);
+    box-shadow: var(--sombra);
+  }
+  .mensaje-usuario + .popover-traducir { align-self: flex-end; }
+  .botones-popover { display: flex; gap: 0.5rem; }
+  .boton-cancelar {
+    border: 1px solid var(--borde);
+    border-radius: 8px;
+    padding: 0.45rem 0.9rem;
+    background: transparent;
+    color: var(--texto);
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+  .error-popover { margin: 0; font-size: 0.83rem; color: var(--error); }
+  .error-popover.oculto { display: none; }
   #pregunta {
     flex: 1 1 auto;
     border: none;

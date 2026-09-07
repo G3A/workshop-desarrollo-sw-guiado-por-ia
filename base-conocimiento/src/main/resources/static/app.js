@@ -570,6 +570,16 @@
         pintarTurnoDeTraduccionGuardado(turno, registro);
       }
     }
+    if (Array.isArray(registro.traducciones) && registro.traducciones.length) {
+      turno.traduccionesDatos = registro.traducciones.slice();
+      turno.traduccionesDatos.forEach((t) => {
+        const bloque = crearBloqueTraducido(turno, t.ambito, t);
+        if (bloque) {
+          bloque.querySelector(".texto-traducido").textContent = t.texto || "";
+          bloque.classList.add("listo");
+        }
+      });
+    }
     if (registro.error) {
       turno.estado.textContent = registro.estadoError || "La respuesta quedó incompleta.";
       turno.estado.classList.add("error");
@@ -860,6 +870,11 @@
   function nuevoTurno(pregunta, opciones) {
     const tipo = (opciones && opciones.tipo) || "pregunta";
     const esAccion = tipo !== "pregunta";
+    // "Traducir" por turno (alternativa B): sobre lo que escribio la persona
+    // siempre, y sobre la respuesta cuando es prosa. No sobre un turno que ya es
+    // una traduccion (hallazgo 11) ni sobre preguntas/ideas, que no son texto.
+    const esTraduccion = tipo === "traduccion-documentos" || tipo === "traduccion-texto";
+    const traducibleRespuesta = tipo === "pregunta" || tipo === "resumen" || tipo === "sintesis";
     if (bienvenida) {
       bienvenida.classList.add("oculto");
     }
@@ -867,12 +882,14 @@
     turno.className = "turno turno-tipo-" + tipo;
     turno.innerHTML =
       '<div class="mensaje mensaje-usuario">' +
+      (esTraduccion ? "" : botonTraducirTurno("pregunta")) +
       botonCopiar(escaparHtml(pregunta), esAccion ? "Copiar etiqueta" : "Copiar pregunta") +
       '<div class="burbuja">' +
       (esAccion ? `<span class="etiqueta-turno">${escaparHtml(ETIQUETA_TURNO[tipo] || "")}</span>` : "") +
       `<span class="texto-burbuja">${escaparHtml(pregunta)}</span>` +
       "</div>" +
       "</div>" +
+      '<div class="traducciones-turno traducciones-pregunta" data-ambito="pregunta"></div>' +
       '<div class="mensaje mensaje-asistente">' +
       '<div class="avatar-asistente">KB</div>' +
       '<div class="contenido-asistente">' +
@@ -881,6 +898,8 @@
       '<div class="turno-eleccion oculto"></div>' +
       '<div class="turno-cobertura oculto"></div>' +
       '<div class="turno-respuesta"></div>' +
+      (traducibleRespuesta ? '<div class="acciones-turno">' + botonTraducirTurno("respuesta") + "</div>" : "") +
+      '<div class="traducciones-turno" data-ambito="respuesta"></div>' +
       '<div class="turno-estructurado oculto"></div>' +
       '<div class="turno-traduccion oculto"></div>' +
       (esAccion ? "" :
@@ -917,9 +936,11 @@
       });
     }
     turno.scrollIntoView({ behavior: "smooth", block: "start" });
-    return {
+    const objeto = {
       raiz: turno,
       tipo: tipo,
+      // Traducciones pedidas con "Traducir" sobre este turno (alternativa B).
+      traduccionesDatos: [],
       textoBurbuja: turno.querySelector(".texto-burbuja"),
       estado: turno.querySelector(".turno-estado"),
       reformulacion: turno.querySelector(".turno-reformulacion"),
@@ -949,6 +970,20 @@
       // el "fin" de ese primer stream no cierra el turno ni lo guarda.
       eligiendo: false,
     };
+    turnosPorRaiz.set(turno, objeto);
+    return objeto;
+  }
+
+  // Del elemento .turno al objeto que lo maneja: lo necesita "Traducir" por
+  // turno, que llega por un clic delegado en #historial.
+  const turnosPorRaiz = new WeakMap();
+
+  function botonTraducirTurno(ambito) {
+    return `<button type="button" class="boton-traducir-turno" data-ambito="${ambito}" ` +
+      'title="Traducir a otro idioma" aria-label="Traducir a otro idioma">' +
+      '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<path d="M3 5h8"/><path d="M7 3v2"/><path d="M4 12c2.5-1 4.5-3.5 5-7"/><path d="M6 8c1 2 2.5 3.5 4 4"/><path d="M11 16l3-7 3 7"/><path d="M12.2 14h3.6"/></svg>' +
+      "<span>Traducir</span></button>";
   }
 
   /**
@@ -1832,6 +1867,143 @@
     verOriginal.textContent = abierto ? "Ocultar original" : "Ver original";
   });
 
+  // ---------- "Traducir" sobre un turno ya escrito (B) ----------
+
+  historial.addEventListener("click", (evento) => {
+    const boton = evento.target.closest(".boton-traducir-turno");
+    if (!boton) {
+      return;
+    }
+    const turno = turnosPorRaiz.get(boton.closest(".turno"));
+    if (turno) {
+      abrirPopoverTraducir(turno, boton.dataset.ambito, boton);
+    }
+  });
+
+  historial.addEventListener("click", (evento) => {
+    const ocultar = evento.target.closest(".ocultar-traduccion");
+    if (!ocultar) {
+      return;
+    }
+    const texto = ocultar.parentElement.querySelector(".texto-traducido");
+    const oculto = texto.classList.toggle("oculto");
+    ocultar.textContent = oculto ? "Mostrar" : "Ocultar";
+  });
+
+  function abrirPopoverTraducir(turno, ambito, ancla) {
+    historial.querySelectorAll(".popover-traducir").forEach((p) => p.remove());
+    const popover = document.createElement("div");
+    popover.className = "popover-traducir";
+    const selector = window.kbIdiomas
+      ? window.kbIdiomas.crearSelector({ destino: leerPreferencia("kb.acciones.destino-chat", "en") })
+      : null;
+    if (selector) {
+      popover.appendChild(selector.elemento);
+    }
+    const botones = document.createElement("div");
+    botones.className = "botones-popover";
+    botones.innerHTML =
+      '<button type="button" class="boton-primario">Traducir</button>' +
+      '<button type="button" class="boton-cancelar">Cancelar</button>';
+    popover.appendChild(botones);
+    const error = document.createElement("p");
+    error.className = "error-popover oculto";
+    popover.appendChild(error);
+    // Bajo la burbuja (ambito pregunta) o bajo la fila de acciones de la respuesta.
+    const contenedor = ambito === "pregunta"
+      ? turno.raiz.querySelector(".mensaje-usuario")
+      : ancla.parentElement;
+    contenedor.insertAdjacentElement("afterend", popover);
+    botones.querySelector(".boton-cancelar").addEventListener("click", () => popover.remove());
+    botones.querySelector(".boton-primario").addEventListener("click", () => {
+      const idiomas = selector ? selector.valores() : { origen: null, destino: "en" };
+      traducirTurno(turno, ambito, popover, idiomas);
+    });
+  }
+
+  function crearBloqueTraducido(turno, ambito, datos) {
+    const contenedor = turno.raiz.querySelector(`.traducciones-turno[data-ambito="${ambito}"]`);
+    if (!contenedor) {
+      return null;
+    }
+    const bloque = document.createElement("div");
+    bloque.className = "turno-traducido";
+    bloque.innerHTML =
+      `<p class="traduccion-idiomas">${escaparHtml(cabeceraIdiomas(datos))}</p>` +
+      '<button type="button" class="ocultar-traduccion">Ocultar</button>' +
+      '<div class="texto-traducido"></div>';
+    contenedor.appendChild(bloque);
+    return bloque;
+  }
+
+  function cabeceraIdiomas(datos) {
+    const origen = datos.origen
+      ? nombreIdioma(datos.origen)
+      : (datos.idiomaDetectado ? nombreIdioma(datos.idiomaDetectado) + " (detectado)" : "Detectando el origen");
+    return origen + " → " + nombreIdioma(datos.destino);
+  }
+
+  function traducirTurno(turno, ambito, popover, idiomas) {
+    const texto = ambito === "pregunta" ? turno.textoBurbuja.textContent : turno.respuesta.textContent;
+    const error = popover.querySelector(".error-popover");
+    const mostrarError = (mensaje) => {
+      error.textContent = mensaje;
+      error.classList.remove("oculto");
+      popover.querySelectorAll("button").forEach((b) => { b.disabled = false; });
+    };
+    if (!texto.trim()) {
+      mostrarError("No hay texto que traducir.");
+      return;
+    }
+    if (conversacionActualId != null && streamsActivos.has(conversacionActualId)) {
+      mostrarError("Espera a que termine la acción en curso.");
+      return;
+    }
+    guardarPreferencia("kb.acciones.destino-chat", idiomas.destino);
+    if (window.kbIdiomas) {
+      window.kbIdiomas.recordar(idiomas.destino);
+    }
+    const datos = { ambito: ambito, origen: idiomas.origen, destino: idiomas.destino, idiomaDetectado: null, texto: "" };
+    const bloque = crearBloqueTraducido(turno, ambito, datos);
+    error.classList.add("oculto");
+    popover.querySelectorAll("button").forEach((b) => { b.disabled = true; });
+    const conversacionId = conversacionActualId;
+    fijarBotonEnviar(true);
+    traducirPorFetch(
+      { texto: texto, origen: idiomas.origen || "auto", destino: idiomas.destino },
+      turno,
+      {
+        alDetectar: (codigo) => {
+          datos.idiomaDetectado = codigo;
+          bloque.querySelector(".traduccion-idiomas").textContent = cabeceraIdiomas(datos);
+        },
+        alToken: (fragmento) => {
+          datos.texto += fragmento;
+          bloque.querySelector(".texto-traducido").textContent = datos.texto;
+        },
+        alTerminar: async (huboError, mensaje) => {
+          fijarBotonEnviar(false);
+          if (huboError) {
+            bloque.remove();
+            mostrarError(mensaje);
+            return;
+          }
+          bloque.classList.add("listo");
+          popover.remove();
+          turno.traduccionesDatos.push(datos);
+          if (turno.registroId != null) {
+            try {
+              await kbHistorialDb.actualizarTurno(turno.registroId, { traducciones: turno.traduccionesDatos });
+            } catch (persistencia) {
+              // Sin IndexedDB: la traduccion se ve en esta sesion, no sobrevive a un reload.
+            }
+          }
+        },
+      },
+      conversacionId,
+      () => {});
+  }
+
   /**
    * POST /api/acciones/traducir-texto leido con fetch: EventSource no sabe hacer
    * POST y una respuesta larga no cabe en una URL. Se registra en streamsActivos
@@ -1981,6 +2153,7 @@
         cobertura: turno.coberturaDatos,
         resultado: turno.resultadoDatos,
         documentos: turno.documentosDatos,
+        traducciones: turno.traduccionesDatos,
         error: huboError,
         estadoError: estadoError,
         duracionMs: duracionMs == null ? null : duracionMs,
