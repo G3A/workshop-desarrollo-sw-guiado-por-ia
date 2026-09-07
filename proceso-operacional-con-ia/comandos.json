@@ -1,6 +1,6 @@
 {
   "meta": {
-    "version": "1.0.0",
+    "version": "1.1.0",
     "descripcion": "Fuente única de verdad del contenido narrativo de cada paso (el .bpmn solo aporta el flujo y una línea técnica por nodo en su documentation). Versión pública, sin marca de ninguna empresa, centrada en GitHub y GitHub Actions.",
     "bpmn": "proceso-operacional-con-ia.bpmn",
     "clases": {
@@ -273,7 +273,7 @@
       "cmd": "echo \"¿el mapeo de costuras encontró algo que exige tocar producción?\"",
       "ramas": {"si": "bi2", "no": "bo1"},
       "porque": "A veces preparar las pruebas revela que una costura solo se puede cortar cambiando código de producción (no solo agregando pruebas). Eso ya no es preparación — es trabajo real que merece su propio issue, no colarse sin que nadie lo vea.",
-      "guiaPasos": "<p>Si el mapeo de costuras (paso anterior) encontró algo así, regístralo como issue en vez de arreglarlo de paso. Si no encontró nada, sigues directo al ciclo por issue.</p>",
+      "guiaPasos": "<p>Si el mapeo de costuras (paso anterior) encontró algo así, regístralo como issue en vez de arreglarlo de paso. Si no encontró nada, sigues al ciclo por issue, que empieza preguntando si el requisito ya es un issue o todavía es un documento.</p>",
       "madurez": "1"
     },
     "bi2": {
@@ -284,6 +284,27 @@
       "porque": "Un issue etiquetado es visible para todo el equipo y entra al backlog priorizable — a diferencia de un comentario suelto o un \"ya lo arreglo después\" que nadie vuelve a ver.",
       "guiaPasos": "<p>Con esto, la preparación del proyecto queda cerrada. El siguiente paso arranca el ciclo por issue (bloque C), que se repite una vez por cada issue del sprint.</p>",
       "madurez": "1"
+    },
+    "GR": {
+      "clase": "T",
+      "esGateway": true,
+      "semantica": "idempotent",
+      "cmd": "gh issue list --search \"{TEMA}\" --state open",
+      "inputs": [{"name": "TEMA", "label": "Palabras clave del requisito", "type": "text", "placeholder": "ej. resumir documentos seleccionados"}],
+      "ramas": {"si": "bo1", "no": "r1"},
+      "porque": "El ciclo por issue asume que el trabajo ya está expresado como un issue con criterios de aceptación. Muchas veces no es así: lo que llega es un documento de negocio (un Word, un PDF, un correo largo) que alguien tiene que convertir en issue explorando el repo a mano. Hacer explícita esa bifurcación evita que ese trabajo de traducción quede invisible, o que se salte y el issue nazca vago.",
+      "guiaPasos": "<p>Busca si ya existe un issue para este requisito. Si existe, sigues a <b>«Tomar issue del sprint»</b>. Si lo que tienes es un documento de requisitos (o un pedido en lenguaje natural que todavía no es un issue), sigues a <b>«Convertir requisito en spec y tareas»</b>, que lo convierte con el agente y termina justo donde este ciclo empieza.</p>",
+      "madurez": "3"
+    },
+    "r1": {
+      "clase": "S",
+      "semantica": "guarded",
+      "requires": "Un documento de requisitos (Word, PDF, Excel, Markdown o texto plano) que todavía no es un issue (GR, rama \"no\").",
+      "slash": "/sdlc-ia:requirement-to-spec-java {RUTA_DOCUMENTO}",
+      "inputs": [{"name": "RUTA_DOCUMENTO", "label": "Ruta al documento de requisitos (o el pedido en texto)", "type": "text", "placeholder": "ej. docs/requisitos/acciones-sobre-documentos.docx"}],
+      "porque": "Es la versión reproducible de la exploración a mano que hace quien escribe un issue: la skill real <code>requirement-to-spec-java</code> de <code>instrumentacion-java-ia/sdlc-ia/</code> lee el documento, recorre el repo y produce una especificación y un desglose de tareas del tamaño de un commit cada una. Corre <b>antes</b> de tomar un issue, sobre un documento que todavía nadie aprobó — y por eso su límite es estricto: <b>nunca escribe código, nunca abre PR, nunca toca git</b>. Es el espejo de <code>github-plan-build</code> (c1), que sí empuja ramas y abre PRs una vez que el plan quedó aprobado.",
+      "guiaPasos": "<p>Corre el comando con la ruta al documento (si el pedido llegó como texto, pégalo como argumento). La skill pasa por seis fases, y te pide decisiones solo en la tercera:</p><ol><li><b>Descubrimiento silencioso</b>: convierte el documento a Markdown si hace falta (<code>pandoc</code> para Word; PDF y Excel con fidelidad reducida), lee <code>AGENTS.md</code>, <code>docs/architecture.md</code> y los ADRs, detecta qué controladores REST, entidades y migraciones toca el requisito, y cita archivo y línea de la documentación que el cambio dejaría falsa.</li><li><b>Prerrequisitos</b>: reporta qué encontró (<code>pandoc</code>, <code>gh auth status</code>). No instala nada.</li><li><b>Acordar el alcance</b>: máximo cuatro preguntas por ronda, sin jerga. Siempre revisa seis categorías: impacto en contratos públicos, cruce contra la base de datos (solo si hay datos tabulares y un servidor MCP), documentación desactualizada, adjuntos faltantes (los reporta, no los adivina), ambigüedades (actores, disparadores, forma de los datos, casos borde) y criterios de validación en forma doble: qué prueba que se cumplió y qué probaría que no. Al final pregunta el destino: <b>GitHub</b> (un issue padre con un sub-issue nativo por tarea) o <b>archivo local</b> (<code>docs/specs/&lt;slug&gt;/spec.md</code> y <code>tasks.md</code>). Nunca lo asume.</li><li><b>Aplicar</b>: escribe el destino elegido. Las tareas van en orden de construcción: esquema, servicio, endpoint, interfaz, y la documentación al final.</li><li><b>Verificar</b>: vuelve a consultar GitHub para confirmar que cada sub-issue apunta al padre, o que ambos archivos existen y se enlazan.</li><li><b>Reportar</b>: cuatro secciones siempre presentes: preguntado, respondido (decisiones y supuestos), fuera de alcance y no leído.</li></ol><p>Lo que sale de acá es el issue que <b>«Tomar issue del sprint»</b> espera: cada decisión que tomaste queda escrita como <i>Decisión</i>, y cada hueco que nadie resolvió queda como <i>Supuesto</i> declarado, que el plan de <b>c1</b> tiene que poder detectar.</p><p class=\"tip\">Si la característica tiene interfaz, pide primero mockups con alternativas y elige una antes de correr la skill: una decisión de UX tomada viendo opciones concretas ahorra un desglose de tareas que después se descarta.</p><p class=\"tip\">Cierra con el paso siguiente ya resuelto: <code>/sdlc-ia:github-plan-build &lt;número del issue padre&gt;</code>. Los sub-issues quedan abiertos y sin asignar a propósito: es c1 quien los toma.</p>",
+      "madurez": "3"
     },
     "bo1": {
       "clase": "T",
