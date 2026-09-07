@@ -171,6 +171,48 @@ vacío en vez de fallar, así que la ingesta corre sobre cero documentos y esa r
 Para ver qué hay realmente ingerido, `scripts/diagnostico-ingesta.sql` o el panel
 <http://localhost:8080/admin.html>.
 
+
+### Si `make up` falla con «offline mode»
+
+El primer `make up` compila la aplicación dentro de Docker, y eso tarda: unos **11 minutos** solo
+en bajar el árbol de dependencias de Maven. No está colgado.
+
+Ese trabajo se guarda en un *cache mount* de BuildKit (`id=maven-repo`), no en la imagen. Y ahí está
+la trampa, porque el **cache de capas** y el **cache mount** tienen vidas separadas:
+
+- La capa que corre `dependency:go-offline` se marca `CACHED` y sobrevive.
+- El contenido del mount —los `.jar` de verdad— lo puede vaciar el recolector de basura de
+  BuildKit cuando necesita espacio, sin avisar.
+
+Cuando coinciden esas dos cosas, `go-offline` **no se vuelve a ejecutar** (su capa está cacheada) y
+la etapa de compilación arranca en modo offline sin un solo artefacto:
+
+```
+#14 [deps 6/6] RUN ... dependency:go-offline
+#14 CACHED                                      <- no se ejecutó
+
+#18 [build 2/2] RUN ... ./mvnw -o -B -q clean package -DskipTests
+[ERROR] Cannot access central (https://repo.maven.apache.org/maven2) in offline mode
+        y el artefacto ... has not been downloaded from it before
+```
+
+El nombre del artefacto varía según cuál pida Maven primero, así que **parece un problema de
+dependencias del proyecto y no lo es**. La solución:
+
+```bash
+make cache-reciclar     # invalida el cache de build; vuelve a tardar ~11 min
+make up
+```
+
+Los nueve `up` detectan esa firma en el log y te lo dicen solos cuando ocurre, con el comando ya
+escrito. Ojo con lo que cuesta: `cache-reciclar` corre `docker builder prune -f`, que se lleva el
+cache de build de **todos** los proyectos de la máquina — BuildKit no permite podar un mount suelto
+por su id. No toca imágenes, contenedores ni volúmenes de datos.
+
+**Cuándo aparece:** casi siempre tras un `git pull`. Con el mount ya desalojado, el build sigue
+funcionando mientras nada invalide la capa de compilación; el fallo asoma en cuanto cambia `src/`,
+que es justo lo que hace actualizar el repo.
+
 ## Reparto de la GPU
 
 `make` mira la tarjeta con `nvidia-smi` —VRAM, Compute Capability y versión del driver— y decide
