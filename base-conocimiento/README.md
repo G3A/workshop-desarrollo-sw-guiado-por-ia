@@ -171,6 +171,87 @@ vacío en vez de fallar, así que la ingesta corre sobre cero documentos y esa r
 Para ver qué hay realmente ingerido, `scripts/diagnostico-ingesta.sql` o el panel
 <http://localhost:8080/admin.html>.
 
+
+### Si una consulta falla: modelo ausente o corrupto
+
+Los dos se ven igual desde la interfaz —la respuesta se corta— y los dos vienen de Ollama, pero se
+arreglan distinto. Para saber cuál es:
+
+```bash
+make capturar-error     # deja scripts/error-api.txt con la causa
+```
+
+| Lo que dice el log | Qué pasa | Cómo se arregla |
+|---|---|---|
+| `404: model '…' not found` | El modelo del perfil no está descargado. Cada perfil sirve el suyo y se baja aparte | `make pull-<perfil>` |
+| `500: an error was encountered while running the model: unexpected EOF` | El modelo **sí** está, pero su archivo quedó truncado o dañado — una descarga interrumpida | Borrarlo y volver a bajarlo, abajo |
+
+`make health` también lista los modelos que faltan, pero **no** detecta los corruptos: para Ollama el
+blob existe y solo revienta al leerlo para inferir.
+
+Un modelo corrupto no se arregla repitiendo el `pull` a secas: con el manifiesto ya presente, Ollama
+puede dar el blob dañado por bueno. Hay que borrarlo primero, lo que fuerza la descarga y la
+verificación completas. Con Ministral como ejemplo:
+
+```bash
+docker exec kb-ollama ollama rm hf.co/mistralai/Ministral-3-3B-Instruct-2512-GGUF:Q4_K_M
+make pull-ministral
+make health
+make up-ministral
+```
+
+Para otro perfil, cambia el nombre del modelo por el que lista la tabla de [Perfiles de
+modelo](#perfiles-de-modelo) y el `pull-` por el suyo. Los nombres exactos, tal como los tiene
+Ollama:
+
+```bash
+docker exec kb-ollama ollama list
+```
+
+Si se repite en el mismo modelo, sospecha de la descarga —son entre 2 y 3.5 GB, y un corte deja
+exactamente este síntoma— o del disco.
+
+### Si `make up` falla con «offline mode»
+
+El primer `make up` compila la aplicación dentro de Docker, y eso tarda: unos **11 minutos** solo
+en bajar el árbol de dependencias de Maven. No está colgado.
+
+Ese trabajo se guarda en un *cache mount* de BuildKit (`id=maven-repo`), no en la imagen. Y ahí está
+la trampa, porque el **cache de capas** y el **cache mount** tienen vidas separadas:
+
+- La capa que corre `dependency:go-offline` se marca `CACHED` y sobrevive.
+- El contenido del mount —los `.jar` de verdad— lo puede vaciar el recolector de basura de
+  BuildKit cuando necesita espacio, sin avisar.
+
+Cuando coinciden esas dos cosas, `go-offline` **no se vuelve a ejecutar** (su capa está cacheada) y
+la etapa de compilación arranca en modo offline sin un solo artefacto:
+
+```
+#14 [deps 6/6] RUN ... dependency:go-offline
+#14 CACHED                                      <- no se ejecutó
+
+#18 [build 2/2] RUN ... ./mvnw -o -B -q clean package -DskipTests
+[ERROR] Cannot access central (https://repo.maven.apache.org/maven2) in offline mode
+        y el artefacto ... has not been downloaded from it before
+```
+
+El nombre del artefacto varía según cuál pida Maven primero, así que **parece un problema de
+dependencias del proyecto y no lo es**. La solución:
+
+```bash
+make cache-reciclar     # invalida el cache de build; vuelve a tardar ~11 min
+make up
+```
+
+Los nueve `up` detectan esa firma en el log y te lo dicen solos cuando ocurre, con el comando ya
+escrito. Ojo con lo que cuesta: `cache-reciclar` corre `docker builder prune -f`, que se lleva el
+cache de build de **todos** los proyectos de la máquina — BuildKit no permite podar un mount suelto
+por su id. No toca imágenes, contenedores ni volúmenes de datos.
+
+**Cuándo aparece:** casi siempre tras un `git pull`. Con el mount ya desalojado, el build sigue
+funcionando mientras nada invalide la capa de compilación; el fallo asoma en cuanto cambia `src/`,
+que es justo lo que hace actualizar el repo.
+
 ## Reparto de la GPU
 
 `make` mira la tarjeta con `nvidia-smi` —VRAM, Compute Capability y versión del driver— y decide
@@ -408,12 +489,19 @@ no descarga nada de nuevo.
 
 ### Por qué `--build` no repite el build completo cada vez
 
-`up` y `up-bonsai` corren `docker compose ... up --build` (`up-ministral` no reconstruye nada — ya
-no hay ningún servicio propio con imagen para ese perfil), pero eso solo le pide a Docker que
-**revise** si algo cambió — con el cache de capas intacto, un `make down` seguido de
-`make up-bonsai` reconstruye `api` (Maven) y `llama-server` (el fork CUDA de Bonsai) en unos pocos
-segundos, no en los ~15-20 minutos que tarda la primera vez (medido en vivo: 4.4s y 3.2s
-respectivamente, todo `CACHED`, con `docker compose build` sobre ambos servicios).
+**Los nueve arranques** (`up`, `gpu-up`, `up-bonsai` y los seis perfiles de Ollama) corren
+`docker compose ... up -d --build`. Es a propósito y uniforme: hasta que lo fue, seis de los nueve
+levantaban sin reconstruir, y un `git pull` seguido de `make up-ministral` te dejaba corriendo
+**código viejo sin un solo aviso** — el contenedor levanta sano, la interfaz responde, y el
+comportamiento sigue siendo el de antes del pull. La asimetría se justificaba en que esos perfiles
+solo cambian variables de entorno y el modelo que sirve Ollama, no la imagen; pero esa premisa se
+rompe en cuanto alguien toca código y prueba otro perfil, que es justo lo que se hace al comparar
+modelos.
+
+`--build` solo le pide a Docker que **revise** si algo cambió. Con el cache de capas intacto, un
+`make down` seguido de `make up-bonsai` reconstruye `api` (Maven) y `llama-server` (el fork CUDA de
+Bonsai) en unos pocos segundos, no en los ~15-20 minutos que tarda la primera vez (medido en vivo:
+4.4s y 3.2s respectivamente, todo `CACHED`, con `docker compose build` sobre ambos servicios).
 
 Lo que sí invalida ese cache y fuerza a repetir el build largo:
 
