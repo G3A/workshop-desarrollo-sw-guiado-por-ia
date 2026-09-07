@@ -1,8 +1,9 @@
 /**
  * El adaptador web: una página HTML/JavaScript sin build, servida como estáticos, más REST y SSE.
- * Solo conoce {@link co.g3a.baseconocimiento.orquestacion.Consultar} y el vocabulario de {@link
- * co.g3a.baseconocimiento.compartido.Dominio} — una prueba de ArchUnit verifica que no llegue a
- * {@code recuperacion}, {@code ingesta}, {@code modelos} ni {@code llm}.
+ * Solo conoce las dos fachadas, {@link co.g3a.baseconocimiento.orquestacion.Consultar} (el RAG) y
+ * {@link co.g3a.baseconocimiento.acciones.Acciones} (acciones sobre documentos elegidos), y el
+ * vocabulario de {@link co.g3a.baseconocimiento.compartido.Dominio} — una prueba de ArchUnit
+ * verifica que no llegue a {@code recuperacion}, {@code ingesta}, {@code modelos} ni {@code llm}.
  *
  * <p>Muestra resultados de texto completo al instante (vía {@code Consultar.previsualizar})
  * mientras el pipeline completo de siete etapas corre detrás, y transmite la síntesis por SSE con
