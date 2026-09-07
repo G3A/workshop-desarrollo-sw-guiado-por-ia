@@ -85,6 +85,13 @@ public interface Acciones {
       Mono<Object> resultado) {}
 
   /**
+   * Lo que {@link ResultadoEstructurado#resultado()} emite cuando no hubo nada que estructurar
+   * (ningun documento existe, o el servidor esta ocupado): un mensaje fijo, no un error — es el
+   * equivalente del texto fijo que las acciones en streaming emiten en su lugar.
+   */
+  record SinResultado(String mensaje) {}
+
+  /**
    * Lo que pasa mientras se traducen documentos, en un solo flujo ordenado para que el adaptador lo
    * mapee a eventos SSE sin coordinar dos streams. Por documento: {@link IdiomaDetectado} (solo si
    * el origen era «detectar»), luego {@link Omitido} o una secuencia de {@link Progreso} y {@link
