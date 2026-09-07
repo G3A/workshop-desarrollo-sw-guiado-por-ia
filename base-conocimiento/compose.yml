@@ -105,6 +105,33 @@ services:
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-kb}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-kb}
       SPRING_AI_OLLAMA_BASE_URL: http://ollama:11434
+      # El otro extremo de la misma decision que la linea de arriba: a que backend
+      # habla la aplicacion. Su ausencia aqui era un agujero real, no una omision
+      # inocua, porque el default de application.yml es http://localhost:8081 --
+      # el puerto de `llama-server`, que solo existe en el perfil Bonsai. En el
+      # perfil base ese localhost es el propio contenedor kb-api, donde no
+      # escucha nadie.
+      #
+      # Consecuencia medida en vivo: los tres componentes que hablan por la API
+      # compatible con OpenAI fallaban a la vez, y solo se veia en los logs --
+      # ninguno tumba el arranque ni ensucia /actuator/health:
+      #
+      #   PlanificadorOpenAi        : Fallo al planificar, se usa search_unified
+      #   ReformuladorOpenAi        : Fallo al reformular, se usa la original
+      #   VerificadorGroundingOpenAi: Fallo al verificar grounding, SE RECHAZA
+      #                               POR PRECAUCION
+      #     com.openai.errors.OpenAIIoException: Request failed
+      #
+      # Ese tercero es Orquestador:388: al no poder consultar al LLM el
+      # verificador rechaza, y TODA respuesta se vuelve el MENSAJE_SIN_INFORMACION
+      # ("No encontre informacion suficientemente relevante"). Con Ollama y
+      # gemma3:4b perfectamente sanos, porque nadie les estaba hablando.
+      #
+      # Los otros nueve perfiles ya la fijaban en su propio compose (los de Ollama
+      # a esta misma URL, Bonsai a http://llama-server:8080). El base era el unico
+      # que se quedaba con el default -- mismo patron que el tope-por-documento
+      # que se corrigio antes.
+      SPRING_AI_OPENAI_BASE_URL: ${SPRING_AI_OPENAI_BASE_URL:-http://ollama:11434/v1}
       ARCONIA_DOCLING_BASE_URL: http://docling-serve:5001
       # Acota cada llamada HTTP individual de ExtractorDocling (submit de la
       # tarea, cada poll de estado, fetch del resultado) -- NO la conversion
