@@ -2,6 +2,7 @@ package co.g3a.baseconocimiento.web;
 
 import co.g3a.baseconocimiento.compartido.Dominio.Cita;
 import co.g3a.baseconocimiento.compartido.Dominio.Filtros;
+import co.g3a.baseconocimiento.compartido.Dominio.IdiomaRespuesta;
 import co.g3a.baseconocimiento.compartido.Dominio.Pregunta;
 import co.g3a.baseconocimiento.compartido.Dominio.ProyectoId;
 import co.g3a.baseconocimiento.orquestacion.Consultar;
@@ -60,11 +61,21 @@ class ChatController {
    * GET, no POST: {@code EventSource} del navegador solo sabe hacer GET, por eso la pregunta viaja
    * en query params y no en un cuerpo JSON.
    *
-   * <p>Hasta cuatro tipos de evento, en orden: {@code citas} (una vez, con las fuentes que la etapa
-   * 5 ya resolvió), {@code reformulacion} (solo si el {@code Reformulador} cambió el texto de
-   * búsqueda — omitido en el caso normal, no uno vacío), {@code token} (varias veces, el texto de
-   * la síntesis a medida que Ollama lo genera) y {@code fin} (una vez, para que el cliente cierre
-   * la conexión en vez de esperar más).
+   * <p>Hasta cinco tipos de evento, en orden: {@code citas} (una vez, con las fuentes que la etapa
+   * 5 ya resolvió), {@code reformulacion} (solo si se buscó con un texto distinto de la pregunta —
+   * omitido en el caso normal, no uno vacío), {@code token} (varias veces, el texto de la síntesis
+   * a medida que Ollama lo genera), {@code queryLogId} (una vez, cuando la respuesta ya quedó
+   * registrada) y {@code fin} (una vez, para que el cliente cierre la conexión en vez de esperar
+   * más).
+   *
+   * <p><b>La reformulación se negocia en dos llamadas.</b> Con {@code proponer=true}, si la
+   * búsqueda con la pregunta tal cual no alcanza y el {@code Reformulador} tiene al menos dos
+   * alternativas, el stream trae un único evento {@code reformulaciones} (un arreglo JSON de
+   * consultas) seguido de {@code fin}, sin citas ni tokens: la página se las muestra a la persona
+   * junto con la elección de idioma, y vuelve a llamar con {@code busqueda=<la elegida>} (o la
+   * pregunta original, si prefirió no reformular) e {@code idioma=es|original}. Esa segunda llamada
+   * busca con ese texto sin volver a reformular. Con una sola alternativa se responde de inmediato
+   * con ella; sin {@code proponer} ni {@code busqueda} se reformula sola, como en Teams.
    *
    * <p><b>Cada token va como string JSON, no como texto crudo.</b> El estándar SSE le quita al
    * valor de un campo {@code data:} un único espacio inicial (es la convención para el delimitador
@@ -72,17 +83,37 @@ class ChatController {
    * servicio", antes de cada palabra nueva) — sin este escape, ese espacio se confunde con el
    * delimitador y el navegador lo descarta. Verificado en vivo con Playwright: sin el escape, la
    * respuesta llegaba como <i>"Paradesplegarelservicio..."</i>, sin ningún espacio entre palabras.
+   *
+   * @param idioma {@code "original"} = responder en el idioma de las fuentes; cualquier otra cosa
+   *     (o ausente) = español
    */
   @GetMapping(value = "/api/chat", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
   Flux<ServerSentEvent<Object>> chat(
       @RequestParam @NotBlank String q,
       @RequestParam(required = false) String projectId,
       @RequestParam(required = false) String documentos,
-      @RequestParam(required = false) Long conversacionId) {
+      @RequestParam(required = false) Long conversacionId,
+      @RequestParam(required = false, defaultValue = "false") boolean proponer,
+      @RequestParam(required = false) String busqueda,
+      @RequestParam(required = false) String idioma) {
     Filtros filtros = Filtros.conDocumentos(documentosDe(documentos));
     Consultar.RespuestaEnStreaming resultado =
         consultar.responderEnStreaming(
-            new Pregunta(q), proyectoDe(projectId), filtros, conversacionId);
+            new Pregunta(q),
+            proyectoDe(projectId),
+            filtros,
+            conversacionId,
+            preferenciasDe(proponer, busqueda, idioma));
+
+    if (!resultado.reformulacionesPropuestas().isEmpty()) {
+      // Mismo escape que los tokens: JSON. Un arreglo de strings libres del LLM.
+      return Flux.just(
+          ServerSentEvent.builder()
+              .event("reformulaciones")
+              .<Object>data(Json.escribir(resultado.reformulacionesPropuestas()))
+              .build(),
+          ServerSentEvent.builder().event("fin").<Object>data("").build());
+    }
 
     Flux<ServerSentEvent<Object>> eventoCitas =
         Flux.just(
@@ -222,6 +253,27 @@ class ChatController {
     boolean registrado =
         consultar.registrarFeedback(feedback.queryLogId(), feedback.util(), feedback.comentario());
     return registrado ? ResponseEntity.ok().build() : ResponseEntity.badRequest().build();
+  }
+
+  /**
+   * {@code busqueda} manda sobre {@code proponer}: si la persona ya eligió con qué buscar, no tiene
+   * sentido volver a proponerle alternativas.
+   */
+  private static Consultar.Preferencias preferenciasDe(
+      boolean proponer, String busqueda, String idioma) {
+    Consultar.ModoReformulacion modo;
+    if (busqueda != null && !busqueda.isBlank()) {
+      modo = new Consultar.ModoReformulacion.Elegida(busqueda);
+    } else if (proponer) {
+      modo = new Consultar.ModoReformulacion.Proponer();
+    } else {
+      modo = new Consultar.ModoReformulacion.Automatica();
+    }
+    IdiomaRespuesta idiomaRespuesta =
+        "original".equalsIgnoreCase(idioma)
+            ? IdiomaRespuesta.ORIGINAL_DEL_CORPUS
+            : IdiomaRespuesta.ESPANOL;
+    return new Consultar.Preferencias(modo, idiomaRespuesta);
   }
 
   private static ProyectoId proyectoDe(String projectId) {

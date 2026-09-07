@@ -30,7 +30,14 @@ camino — detalle completo en [`docs/architecture.md`](docs/architecture.md#pip
   suficiente; en la zona ambigua, `VerificadorGrounding` hace un juicio aparte contra el LLM antes
   de dejar sintetizar.
 - **Reintenta una vez, con la consulta reescrita**: si la búsqueda original no alcanza, `Reformulador`
-  reescribe la pregunta al vocabulario probable de la fuente y repite el mismo plan de herramientas.
+  propone hasta tres reescrituras con estrategias distintas (término formal de la fuente,
+  descomposición en el concepto más concreto, sinónimos oficiales), viendo como pistas los
+  fragmentos que la primera búsqueda ya encontró, para usar el vocabulario real de la fuente en
+  vez de adivinarlo. En la UI web, si hay dos o
+  más, la persona elige con cuál buscar, la edita a mano si ninguna sirve, o se queda con su
+  pregunta tal cual, y decide si quiere la respuesta en el idioma original de las fuentes en vez
+  de español; con una sola se responde de inmediato. En Teams y `/api/ask` se aplica la primera sola y se repite el mismo plan de
+  herramientas.
 - **Sabe cuándo no sabe**: si tras eso sigue sin evidencia suficiente, corta con un mensaje fijo sin
   gastar la llamada de síntesis.
 
@@ -563,31 +570,46 @@ liviano. `db`, `ollama` y `docling-serve` sí se detienen y se vuelven a crear e
 perfil, pero sus datos viven en volúmenes de `KB_DATA_DIR` que ese `down` no toca — tarda segundos,
 no descarga nada de nuevo.
 
-### Por qué `--build` no repite el build completo cada vez
+### Cuándo se reconstruye la imagen (y cuándo no)
 
-**Los nueve arranques** (`up`, `gpu-up`, `up-bonsai` y los seis perfiles de Ollama) corren
-`docker compose ... up -d --build`. Es a propósito y uniforme: hasta que lo fue, seis de los nueve
-levantaban sin reconstruir, y un `git pull` seguido de `make up-ministral` te dejaba corriendo
-**código viejo sin un solo aviso** — el contenedor levanta sano, la interfaz responde, y el
-comportamiento sigue siendo el de antes del pull. La asimetría se justificaba en que esos perfiles
-solo cambian variables de entorno y el modelo que sirve Ollama, no la imagen; pero esa premisa se
-rompe en cuanto alguien toca código y prueba otro perfil, que es justo lo que se hace al comparar
-modelos.
+**Nunca hace falta pedir el build a mano.** Los nueve arranques (`up`, `gpu-up`, `up-bonsai` y los
+seis perfiles de Ollama) corren `docker compose ... up -d --build`. Es a propósito y uniforme: hasta
+que lo fue, seis de los nueve levantaban sin reconstruir, y un `git pull` seguido de
+`make up-ministral` te dejaba corriendo **código viejo sin un solo aviso** — el contenedor levanta
+sano, la interfaz responde, y el comportamiento sigue siendo el de antes del pull. La asimetría se
+justificaba en que esos perfiles solo cambian variables de entorno y el modelo que sirve Ollama, no
+la imagen; pero esa premisa se rompe en cuanto alguien toca código y prueba otro perfil, que es
+justo lo que se hace al comparar modelos.
 
-`--build` solo le pide a Docker que **revise** si algo cambió. Con el cache de capas intacto, un
-`make down` seguido de `make up-bonsai` reconstruye `api` (Maven) y `llama-server` (el fork CUDA de
-Bonsai) en unos pocos segundos, no en los ~15-20 minutos que tarda la primera vez (medido en vivo:
-4.4s y 3.2s respectivamente, todo `CACHED`, con `docker compose build` sobre ambos servicios).
+`--build` no significa «compila todo otra vez»: solo le pide a Docker que **revise** si algo cambió,
+comparando el contexto de build con su cache de capas. Lo que pasa depende de qué cambió:
 
-Lo que sí invalida ese cache y fuerza a repetir el build largo:
+| Qué cambió desde el último build | Qué hace el `up` |
+|---|---|
+| Nada en el código | No compila. Termina en segundos, todo `CACHED`, y levanta la misma imagen (medido en vivo: 4.4 s para `api`, 3.2 s para `llama-server`). |
+| `src/`, `pom.xml`, `mvnw` o `.mvn/` | Recompila `api` (Maven dentro de Docker) y levanta el binario nuevo. Es el caso de un `git pull` o un cambio de rama: basta con volver a correr el mismo `make up-<perfil>`. |
+| `Dockerfile.bonsai` o `entrypoint-bonsai.sh` | Recompila el fork CUDA de Bonsai, ~20 min (ver [ADR-0009](docs/adrs/0009-bonsai-8b-integracion-pospuesta.md)). |
+| Nada, pero corriste `docker builder prune` o Docker Desktop liberó espacio por presión de disco | Vuelve a hacer el build largo: el cache de build es finito y compite con el de otros proyectos de la misma máquina. |
 
-- Cambiar `pom.xml`, `mvnw`, `.mvn/` o `src/` — invalida la etapa de dependencias/compilación de `api`.
-- Cambiar `Dockerfile.bonsai` o `entrypoint-bonsai.sh` — invalida la compilación del fork CUDA
-  (~20 min, ver [ADR-0009](docs/adrs/0009-bonsai-8b-integracion-pospuesta.md)).
-- Correr `docker builder prune`, o que Docker Desktop libere espacio solo por presión de disco — el
-  cache de build es finito y compite con el de otros proyectos en la misma máquina.
+Nada de esto lo dispara un `down`/`up-<perfil>` normal.
 
-Nada de esto lo dispara un `down`/`up-bonsai` normal.
+Tres cosas que se confunden con «construir» y no lo son:
+
+- `make cache-reciclar` **no construye nada**: vacía el cache de BuildKit y te manda a correr el
+  `up` de nuevo (ver «Si `make up` falla con «offline mode»»).
+- `make -n <target>` **no ejecuta nada**: es un ensayo que solo imprime los comandos que correría.
+  Sirve para ver qué `-f` y qué flags arma un target, no para levantar ni construir.
+- `make restart` sí reconstruye, pero solo `api` (`up -d --build api`); no toca `db`, `ollama` ni
+  `docling-serve`.
+
+Si aun así sospechas que estás corriendo una imagen vieja, compara la fecha de la imagen con tu
+último commit y, si hace falta, fuerza un build desde cero:
+
+```bash
+docker image inspect base-conocimiento-api:latest --format '{{.Created}}'
+git log -1 --format=%ci
+docker compose <tus -f> build --no-cache api && make up-<perfil>
+```
 
 ## Dónde vive cada cosa
 

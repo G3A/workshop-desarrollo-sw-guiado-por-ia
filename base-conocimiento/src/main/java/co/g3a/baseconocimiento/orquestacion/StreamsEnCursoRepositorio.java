@@ -88,6 +88,18 @@ class StreamsEnCursoRepositorio {
         .update();
   }
 
+  /**
+   * Borra la fila: la pregunta quedó esperando que la persona elija una reformulación (ver {@code
+   * Consultar.ModoReformulacion.Proponer}), así que no hay respuesta en curso ni terminada que
+   * recuperar tras un F5. Dejarla en "en_curso" haría que la UI sondeara para siempre; marcarla
+   * "completo" con texto vacío la mostraría como una respuesta en blanco.
+   */
+  void descartar(long conversacionId) {
+    jdbc.sql("DELETE FROM streams_en_curso WHERE conversacion_id = :conversacionId")
+        .param("conversacionId", conversacionId)
+        .update();
+  }
+
   Optional<Estado> buscar(long conversacionId) {
     return jdbc.sql(
             """
