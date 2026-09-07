@@ -25,6 +25,11 @@
   const botonTraducirDocumentos = document.getElementById("boton-traducir-documentos");
   const contenedorIdiomaResultado = document.getElementById("selector-idioma-resultado");
   const contenedorIdiomasDocumentos = document.getElementById("selector-idiomas-documentos");
+  // El traductor del chat: el modo traducir de la barra de entrada (alternativa A).
+  const botonModoTraducir = document.getElementById("boton-modo-traducir");
+  const barraTraducir = document.getElementById("barra-traducir");
+  const contenedorIdiomasChat = document.getElementById("selector-idiomas-chat");
+  const inputPill = formulario;
 
   // Esta vista previa (Señal 1: FTS) matchea por raíz de palabra, no por
   // significado: si la pregunta no comparte vocabulario con el documento
@@ -272,6 +277,13 @@
     evento.preventDefault();
     const pregunta = campoPregunta.value.trim();
     if (!pregunta || (conversacionActualId != null && streamsActivos.has(conversacionActualId))) {
+      return;
+    }
+    // Modo traducir (issue #38, alternativa A): lo que se envia se traduce, no se
+    // busca en la base. No necesita documentos tildados.
+    if (modoTraducir) {
+      traducirTextoDelChat(pregunta);
+      campoPregunta.value = "";
       return;
     }
     if (documentosDisponibles.length && documentosActivosActuales.length === 0) {
@@ -1683,7 +1695,15 @@
 
   /** Repinta un turno de traduccion guardado: filas, textos y enlaces de descarga. */
   function pintarTurnoDeTraduccionGuardado(turno, registro) {
-    if (turno.tipo !== "traduccion-documentos" || !registro.resultado) {
+    if (!registro.resultado) {
+      return;
+    }
+    if (turno.tipo === "traduccion-texto") {
+      turno.resultadoDatos = registro.resultado;
+      renderTraduccionDeTexto(turno);
+      return;
+    }
+    if (turno.tipo !== "traduccion-documentos") {
       return;
     }
     turno.resultadoDatos = registro.resultado;
@@ -1692,6 +1712,231 @@
       turno.estado.classList.add("completado");
     }
     renderTraduccion(turno, !registro.error);
+  }
+
+  // ---------- El traductor del chat: modo traducir (A) ----------
+
+  let modoTraducir = false;
+  const selectorIdiomasChat =
+    window.kbIdiomas && contenedorIdiomasChat
+      ? window.kbIdiomas.crearSelector({ destino: leerPreferencia("kb.acciones.destino-chat", "en") })
+      : null;
+  if (selectorIdiomasChat) {
+    contenedorIdiomasChat.appendChild(selectorIdiomasChat.elemento);
+  }
+  const PLACEHOLDER_PREGUNTA = campoPregunta.placeholder;
+
+  // El modo NO se persiste: se apaga al recargar, y mientras esta activo la barra
+  // de arriba lo dice con todas las letras, para que nadie reciba una traduccion
+  // cuando esperaba una respuesta (supuesto 9 del issue #38).
+  function fijarModoTraducir(activo) {
+    modoTraducir = !!activo;
+    if (barraTraducir) {
+      barraTraducir.classList.toggle("oculto", !modoTraducir);
+    }
+    if (botonModoTraducir) {
+      botonModoTraducir.setAttribute("aria-pressed", modoTraducir ? "true" : "false");
+      botonModoTraducir.title = modoTraducir
+        ? "Modo traducir activo: vuelve a preguntar"
+        : "Modo traducir: traduce lo que escribas en vez de buscarlo";
+    }
+    inputPill.classList.toggle("modo-traducir", modoTraducir);
+    campoPregunta.placeholder = modoTraducir ? "Escribe lo que quieres traducir…" : PLACEHOLDER_PREGUNTA;
+    boton.setAttribute("aria-label", modoTraducir ? "Traducir" : "Preguntar");
+    boton.title = modoTraducir ? "Traducir" : "";
+  }
+  if (botonModoTraducir) {
+    botonModoTraducir.addEventListener("click", () => {
+      fijarModoTraducir(!modoTraducir);
+      campoPregunta.focus();
+    });
+  }
+
+  async function traducirTextoDelChat(texto) {
+    const idiomas = selectorIdiomasChat ? selectorIdiomasChat.valores() : { origen: null, destino: "en" };
+    guardarPreferencia("kb.acciones.destino-chat", idiomas.destino);
+    if (window.kbIdiomas) {
+      window.kbIdiomas.recordar(idiomas.destino);
+    }
+    const proyecto = campoProyecto.value.trim() || "default";
+    if (conversacionActualId == null) {
+      try {
+        conversacionActualId = await kbHistorialDb.crearConversacion(texto, documentosActivosNormalizados());
+        await cargarListaConversaciones();
+      } catch (error) {
+        // Sin IndexedDB: se traduce igual, solo no persiste.
+      }
+    }
+    const conversacionId = conversacionActualId;
+    fijarBotonEnviar(true);
+    const turno = nuevoTurno(texto, { tipo: "traduccion-texto" });
+    turno.resultadoDatos = { origen: idiomas.origen, destino: idiomas.destino, idiomaDetectado: null, original: texto };
+    renderTraduccionDeTexto(turno);
+    const inicioTurno = Date.now();
+    const detenerContador = iniciarContador(turno.estado, "Traduciendo al " + nombreIdioma(idiomas.destino).toLowerCase());
+    traducirPorFetch(
+      { texto: texto, origen: idiomas.origen || "auto", destino: idiomas.destino },
+      turno,
+      {
+        alDetectar: (codigo) => {
+          turno.resultadoDatos.idiomaDetectado = codigo;
+          renderTraduccionDeTexto(turno);
+          detenerContador();
+          turno.estado.textContent = "Traduciendo…";
+        },
+        alToken: (fragmento) => { turno.respuesta.textContent += fragmento; },
+        alTerminar: (huboError, mensaje) => {
+          detenerContador();
+          if (huboError) {
+            turno.estado.textContent = mensaje;
+            turno.estado.classList.add("error");
+            cerrarStreaming(conversacionId, turno, detenerContador);
+            guardarTurno(texto, proyecto, turno, true, mensaje, conversacionId);
+            return;
+          }
+          const duracionMs = Date.now() - inicioTurno;
+          cerrarStreaming(conversacionId, turno, detenerContador, duracionMs);
+          guardarTurno(texto, proyecto, turno, false, null, conversacionId, duracionMs);
+        },
+      },
+      conversacionId,
+      detenerContador);
+  }
+
+  /** "Español (detectado) → Inglés", mas "Ver original" con el texto de partida. */
+  function renderTraduccionDeTexto(turno) {
+    const datos = turno.resultadoDatos;
+    if (!turno.traduccion || !datos) {
+      return;
+    }
+    const origen = datos.origen
+      ? nombreIdioma(datos.origen)
+      : (datos.idiomaDetectado ? nombreIdioma(datos.idiomaDetectado) + " (detectado)" : "Detectando el origen");
+    const abierto = turno.traduccion.querySelector(".texto-original:not(.oculto)") != null;
+    turno.traduccion.innerHTML =
+      `<p class="traduccion-idiomas">${escaparHtml(origen)} → ${escaparHtml(nombreIdioma(datos.destino))}</p>` +
+      (datos.original
+        ? `<button type="button" class="ver-original">${abierto ? "Ocultar original" : "Ver original"}</button>` +
+          `<div class="texto-original${abierto ? "" : " oculto"}">${escaparHtml(datos.original)}</div>`
+        : "");
+    turno.traduccion.classList.remove("oculto");
+  }
+
+  historial.addEventListener("click", (evento) => {
+    const verOriginal = evento.target.closest(".ver-original");
+    if (!verOriginal) {
+      return;
+    }
+    const original = verOriginal.nextElementSibling;
+    const abierto = original.classList.toggle("oculto") === false;
+    verOriginal.textContent = abierto ? "Ocultar original" : "Ver original";
+  });
+
+  /**
+   * POST /api/acciones/traducir-texto leido con fetch: EventSource no sabe hacer
+   * POST y una respuesta larga no cabe en una URL. Se registra en streamsActivos
+   * con la misma forma que un EventSource (close = abortar), asi borrar la
+   * conversacion, el doble envio y el "⋯" de la lista se comportan igual
+   * (hallazgo 8 de la revision del plan).
+   */
+  function traducirPorFetch(cuerpo, turno, callbacks, conversacionId, detenerContador) {
+    const controlador = new AbortController();
+    // Un cuelgue del servidor no tiene "error" nativo como en EventSource: tope duro.
+    const tope = setTimeout(() => controlador.abort(), 10 * 60 * 1000);
+    streamsActivos.set(conversacionId, {
+      fuente: { close: () => { clearTimeout(tope); controlador.abort(); } },
+      turno: turno,
+      detenerContador: detenerContador,
+    });
+    actualizarControlAcciones();
+    cargarListaConversaciones();
+
+    (async () => {
+      let terminoBien = false;
+      let mensajeError = "La traducción se interrumpió.";
+      try {
+        const respuesta = await fetch("/api/acciones/traducir-texto", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(cuerpo),
+          signal: controlador.signal,
+        });
+        const eventos = await leerSse(respuesta.body, (evento, dato) => {
+          if (evento === "idioma-detectado") {
+            callbacks.alDetectar(JSON.parse(dato));
+          } else if (evento === "token") {
+            callbacks.alToken(JSON.parse(dato));
+          } else if (evento === "error-servidor" || evento === "error-cliente") {
+            mensajeError = JSON.parse(dato);
+          } else if (evento === "fin") {
+            terminoBien = true;
+          }
+        });
+        if (!respuesta.ok) {
+          // El 400 llega con su motivo como evento error-cliente (ya leido arriba);
+          // cualquier otro estado, con lo que haya.
+          terminoBien = false;
+          if (mensajeError === "La traducción se interrumpió.") {
+            mensajeError = "El servidor rechazó la traducción (HTTP " + respuesta.status + ").";
+          }
+        } else if (!eventos.vioFin && !terminoBien) {
+          mensajeError = "La traducción se interrumpió antes de terminar.";
+        }
+      } catch (error) {
+        mensajeError = controlador.signal.aborted
+          ? "La traducción se canceló."
+          : "Se perdió la conexión con el servidor (¿Ollama no responde?).";
+      }
+      clearTimeout(tope);
+      streamsActivos.delete(conversacionId);
+      callbacks.alTerminar(!terminoBien, mensajeError);
+    })();
+  }
+
+  /**
+   * Parser SSE minimo sobre un ReadableStream: acumula en un buffer y consume
+   * solo hasta el ultimo "\n\n" completo (un chunk TCP puede cortar a mitad de
+   * un evento, hallazgo 9), acepta "\r\n" y el espacio opcional tras "data:".
+   */
+  async function leerSse(cuerpo, alEvento) {
+    const lector = cuerpo.getReader();
+    const decodificador = new TextDecoder();
+    let buffer = "";
+    let vioFin = false;
+    const procesar = (bloque) => {
+      let evento = "message";
+      const datos = [];
+      bloque.split("\n").forEach((linea) => {
+        if (linea.startsWith("event:")) {
+          evento = linea.slice(6).trim();
+        } else if (linea.startsWith("data:")) {
+          datos.push(linea.slice(5).replace(/^ /, ""));
+        }
+      });
+      if (evento === "fin") {
+        vioFin = true;
+      }
+      alEvento(evento, datos.join("\n"));
+    };
+    for (;;) {
+      const { value, done } = await lector.read();
+      if (done) {
+        break;
+      }
+      buffer += decodificador.decode(value, { stream: true }).replace(/\r\n/g, "\n");
+      let corte;
+      while ((corte = buffer.indexOf("\n\n")) >= 0) {
+        const bloque = buffer.slice(0, corte);
+        buffer = buffer.slice(corte + 2);
+        if (bloque.trim()) {
+          procesar(bloque);
+        }
+      }
+    }
+    if (buffer.trim()) {
+      procesar(buffer);
+    }
+    return { vioFin: vioFin };
   }
 
   function cerrarStreaming(conversacionId, turno, detenerContador, duracionMs) {

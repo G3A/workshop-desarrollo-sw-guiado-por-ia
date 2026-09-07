@@ -773,6 +773,60 @@
     box-shadow: var(--sombra);
   }
   .input-pill:focus-within { border-color: var(--acento); }
+  .input-pill.modo-traducir { border-color: var(--acento); }
+  .boton-modo-traducir {
+    flex: none;
+    width: 2rem;
+    height: 2rem;
+    margin-left: -0.5rem;
+    border: 1px solid transparent;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--texto-atenuado);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .boton-modo-traducir svg { width: 1.15rem; height: 1.15rem; }
+  .boton-modo-traducir:hover, .boton-modo-traducir:focus-visible { color: var(--acento); border-color: var(--borde); }
+  .boton-modo-traducir[aria-pressed="true"] { background: var(--acento); color: var(--acento-texto); }
+  .barra-traducir {
+    max-width: 46rem;
+    margin: 0 auto 0.5rem;
+    padding: 0.55rem 0.9rem;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0.8rem;
+    flex-wrap: wrap;
+    border: 1px solid var(--acento);
+    border-radius: 12px;
+    background: var(--bg-elevado);
+    box-shadow: var(--sombra);
+  }
+  .barra-traducir.oculto { display: none; }
+  .barra-traducir p { margin: 0 0 0.25rem; font-size: 0.8rem; color: var(--texto-atenuado); }
+  .ver-original {
+    align-self: flex-start;
+    border: none;
+    background: none;
+    padding: 0;
+    color: var(--acento);
+    font: inherit;
+    font-size: 0.83rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .ver-original:hover { text-decoration: underline; }
+  .texto-original {
+    padding: 0.5rem 0.75rem;
+    border-left: 3px solid var(--borde);
+    color: var(--texto-atenuado);
+    font-size: 0.9rem;
+    white-space: pre-wrap;
+  }
+  .texto-original.oculto { display: none; }
   #pregunta {
     flex: 1 1 auto;
     border: none;
@@ -1029,7 +1083,15 @@
       </div>
 
       <div class="barra-entrada">
+        <div id="barra-traducir" class="barra-traducir oculto">
+          <div id="selector-idiomas-chat"></div>
+          <p>Modo traducir: lo que envíes se traduce, no se busca en la base.</p>
+        </div>
         <form id="formulario" class="input-pill">
+          <button type="button" id="boton-modo-traducir" class="boton-modo-traducir" aria-pressed="false"
+                  title="Modo traducir: traduce lo que escribas en vez de buscarlo" aria-label="Modo traducir">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h8"/><path d="M7 3v2"/><path d="M4 12c2.5-1 4.5-3.5 5-7"/><path d="M6 8c1 2 2.5 3.5 4 4"/><path d="M11 16l3-7 3 7"/><path d="M12.2 14h3.6"/></svg>
+          </button>
           <input id="pregunta" type="text" placeholder="Pregunta algo, por ejemplo: ¿Cómo se despliega el servicio?" autocomplete="off" required>
           <button type="submit" id="boton-preguntar" aria-label="Preguntar">➤</button>
         </form>
