@@ -128,7 +128,60 @@ class ChatController {
     Flux<ServerSentEvent<Object>> eventoFin =
         Flux.just(ServerSentEvent.builder().event("fin").<Object>data("").build());
 
-    return Flux.concat(eventoCitas, eventoReformulacion, eventosTexto, eventoQueryLogId, eventoFin);
+    // El .onErrorResume NO es defensivo: sin el, un fallo aguas arriba deja al
+    // usuario sin ninguna explicacion. La cabecera "text/event-stream" ya se
+    // envio cuando el Flux revienta, asi que Spring no puede escribir su
+    // respuesta de error encima y lo dice en los logs -- "No converter for
+    // [class java.util.LinkedHashMap] with preset Content-Type
+    // 'text/event-stream' / Ignoring exception, response committed already".
+    // La conexion se corta sin mas, el navegador solo ve un EventSource caido, y
+    // la causa real se queda enterrada en `docker logs kb-api`.
+    //
+    // Medido en vivo con el modelo del perfil sin descargar: 36 lineas de
+    // "404: model '...' not found" en el contenedor, y en pantalla nada mas que
+    // "Se perdio la conexion con el servidor". Convertir el error en un evento
+    // SSE mas mantiene el stream valido hasta el final y deja que la pagina
+    // diga QUE fallo.
+    return Flux.concat(eventoCitas, eventoReformulacion, eventosTexto, eventoQueryLogId, eventoFin)
+        .onErrorResume(
+            error ->
+                Flux.just(
+                    ServerSentEvent.builder()
+                        // NO se llama "error": en EventSource ese nombre es el del evento nativo de
+                        // fallo de conexion, que llega SIN data. Un addEventListener("error") en el
+                        // cliente recibiria los dos y el JSON.parse reventaria en el caso nativo.
+                        .event("error-servidor")
+                        .<Object>data(Json.escribir(mensajeDeError(error)))
+                        .build()));
+  }
+
+  /**
+   * Traduce la excepcion a algo que se pueda leer en pantalla.
+   *
+   * <p>Se baja hasta la causa raiz porque lo que llega arriba suele ser un {@code
+   * CompletionException} envolviendo lo unico informativo. No se inspeccionan tipos del cliente de
+   * OpenAI a proposito: este paquete solo depende de {@code Consultar} y {@code compartido} — ese
+   * limite lo verifica {@code ArquitecturaTest} en cada build —, asi que la unica pista disponible
+   * es el texto, y con el basta para los dos casos que de verdad aparecen.
+   */
+  private static String mensajeDeError(Throwable error) {
+    Throwable raiz = error;
+    while (raiz.getCause() != null && raiz.getCause() != raiz) {
+      raiz = raiz.getCause();
+    }
+    String detalle =
+        raiz.getMessage() == null ? raiz.getClass().getSimpleName() : raiz.getMessage();
+
+    // Con diferencia el fallo mas comun al estrenar un perfil: cada uno sirve su
+    // propio modelo y se descarga aparte, con su `make pull-<perfil>`. Sin esta
+    // pista el 404 no dice que hacer, y `make health` -- que si lo lista -- solo
+    // lo sabe quien ya conoce el comando.
+    if (detalle.contains("not found") && detalle.contains("model")) {
+      return "El modelo configurado no esta descargado en Ollama. Corre `make health` para ver"
+          + " cuales faltan, y el `make pull-...` del perfil que estas usando. Detalle: "
+          + detalle;
+    }
+    return "La respuesta se interrumpio: " + detalle;
   }
 
   /**
