@@ -31,11 +31,13 @@ class ArquitecturaTest {
   }
 
   @Test
-  @DisplayName("Los adaptadores son piel: no conocen el retrieval, solo la fachada")
+  @DisplayName("Los adaptadores son piel: no conocen el retrieval, solo las fachadas")
   void losAdaptadoresNoConocenElNucleo() {
     // Este es EL contrato del proyecto. La UI web, el bot de Teams y el filtro de
     // seguridad deben poder reemplazarse sin tocar una linea de recuperacion, y para
     // eso no pueden saber que existen cuatro senales, un RRF, un cross-encoder ni un LLM.
+    // Hay dos puertas, no una: `orquestacion.Consultar` (el RAG) y `acciones.Acciones`
+    // (resumir, sintetizar, preguntas, ideas y traducir sobre documentos elegidos).
     //
     // allowEmptyShould en false: los tres paquetes ya existen, asi que la regla debe
     // morder de verdad, no nacer verde por vacia.
@@ -46,7 +48,36 @@ class ArquitecturaTest {
         .dependOnClassesThat()
         .resideInAnyPackage(
             RAIZ + ".recuperacion..", RAIZ + ".ingesta..", RAIZ + ".modelos..", RAIZ + ".llm..")
-        .because("los adaptadores solo pueden cruzar la fachada Consultar")
+        .because("los adaptadores solo pueden cruzar las fachadas Consultar y Acciones")
+        .allowEmptyShould(false)
+        .check(clases);
+  }
+
+  @Test
+  @DisplayName("Acciones es independiente del RAG: no conoce el pipeline ni los adaptadores")
+  void accionesNoConoceElRagNiLosAdaptadores() {
+    // Issue #38, ADR-0013: las acciones sobre documentos elegidos (resumir, sintetizar,
+    // preguntas, ideas, traducir) comparten con el RAG solo el vault indexado (SQL propio
+    // sobre `documents`/`chunks`) y el cliente del LLM (`llm`). Ni planner, ni
+    // retrieval, ni umbral de relevancia, ni `query_log`: si `acciones` importara algo
+    // de `orquestacion`, la independencia que promete la fachada seria solo una frase.
+    //
+    // allowEmptyShould en false: nace rojo hasta que el paquete exista, y muerde desde
+    // el primer commit del modulo.
+    noClasses()
+        .that()
+        .resideInAPackage(RAIZ + ".acciones..")
+        .should()
+        .dependOnClassesThat()
+        .resideInAnyPackage(
+            RAIZ + ".orquestacion..",
+            RAIZ + ".recuperacion..",
+            RAIZ + ".ingesta..",
+            RAIZ + ".modelos..",
+            RAIZ + ".web..",
+            RAIZ + ".teams..",
+            RAIZ + ".seguridad..")
+        .because("acciones solo comparte con el RAG el vault indexado y el modulo llm")
         .allowEmptyShould(false)
         .check(clases);
   }
@@ -61,6 +92,7 @@ class ArquitecturaTest {
         .that()
         .resideInAnyPackage(
             RAIZ + ".orquestacion..",
+            RAIZ + ".acciones..",
             RAIZ + ".recuperacion..",
             RAIZ + ".ingesta..",
             RAIZ + ".modelos..",
@@ -111,6 +143,7 @@ class ArquitecturaTest {
         .dependOnClassesThat()
         .resideInAnyPackage(
             RAIZ + ".orquestacion..",
+            RAIZ + ".acciones..",
             RAIZ + ".recuperacion..",
             RAIZ + ".ingesta..",
             RAIZ + ".modelos..",
