@@ -1,2 +1,6 @@
 # instrument-agent-java: el audit log completo de tool_input, nunca se commitea.
 logs/
+
+# Informe generado por `make capturar-error`: es una salida, no fuente.
+# Se sube a mano cuando hace falta compartirlo (puede traer datos del entorno).
+base-conocimiento/scripts/error-api.txt
