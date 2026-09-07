@@ -1,0 +1,214 @@
+name: base-conocimiento
+
+# Infraestructura como codigo. Todo lo pesado y persistente vive bajo KB_DATA_DIR,
+# que por defecto es ./.data — es decir, junto al repo. Como el repo esta en D:,
+# esto mantiene C: libre sin depender de configuracion del host.
+#
+# Perfil base: TODO EN CPU. Reproducible en cualquier maquina sin GPU.
+# `make up` detecta sola una GPU NVIDIA (via nvidia-smi) y agrega compose.gpu.yml
+# cuando la encuentra -- no hace falta invocar este override a mano. Si preferis
+# hacerlo vos mismo (o forzarlo pese a que la deteccion falle):
+#   docker compose -f compose.yml -f compose.gpu.yml up -d
+
+services:
+  db:
+    image: pgvector/pgvector:pg18-trixie
+    container_name: kb-db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-baseconocimiento}
+      POSTGRES_USER: ${POSTGRES_USER:-kb}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kb}
+    volumes:
+      # OJO: PostgreSQL 18 movio PGDATA a /var/lib/postgresql/18/docker y declara
+      # el VOLUME en /var/lib/postgresql. Montar en /var/lib/postgresql/data
+      # (lo correcto hasta la 17) hace que los datos NO persistan, en silencio.
+      - ${KB_DATA_DIR:-./.data}/postgres:/var/lib/postgresql
+    ports:
+      # Puerto alto a proposito: es normal tener otros Postgres corriendo en la
+      # maquina, y un 5432 ocupado hace fallar el `up` entero. Dentro de la red
+      # de compose la api sigue hablando al 5432 del contenedor.
+      - "${POSTGRES_PORT:-55432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-kb} -d ${POSTGRES_DB:-baseconocimiento}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: kb-ollama
+    environment:
+      # Mantener los modelos cargados entre consultas: con un solo gemma3:4b
+      # no hay intercambio, pero si el modelo se descarga cada 5 min la
+      # primera consulta despues de una pausa paga la recarga completa.
+      OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:-1h}
+      OLLAMA_NUM_PARALLEL: ${OLLAMA_NUM_PARALLEL:-2}
+    volumes:
+      - ${KB_DATA_DIR:-./.data}/ollama:/root/.ollama
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 30s
+    restart: unless-stopped
+
+  # ADR-0010: Docling es Python, no hay variante embebida en el proceso Java --
+  # docling-serve corre como cuarto servicio, hablado por HTTP desde `api`
+  # (arconia-docling-spring-boot-starter). Imagen CPU: perfil base de este
+  # compose sigue siendo reproducible sin GPU.
+  docling-serve:
+    image: quay.io/docling-project/docling-serve-cpu:latest
+    container_name: kb-docling-serve
+    environment:
+      DOCLING_SERVE_ENABLE_UI: "0"
+      # DOCLING_SERVE_MAX_SYNC_WAIT (default de docling-serve: 120s) NO se
+      # fija aca a proposito: solo acota POST /v1/convert/source (el endpoint
+      # SINCRONICO). ExtractorDocling usa la API async (POST
+      # /v1/convert/source/batch + polling), justamente para que un documento
+      # de cientos de paginas (medido en vivo: un PDF de 892 paginas y
+      # jls25.pdf, la especificacion de Java SE 25, ~900 paginas, ninguno
+      # terminaba nunca con la version sincrona) no dependa de ningun timeout
+      # fijo -- ver ADR-0010.
+    volumes:
+      # Cache de los modelos de layout/OCR que docling-serve descarga la
+      # primera vez: sin este volumen, cada `docker compose up` los repite.
+      - ${KB_DATA_DIR:-./.data}/docling:/root/.cache
+    ports:
+      - "${DOCLING_SERVE_PORT:-5001}:5001"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:5001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: kb-api
+    depends_on:
+      db:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+      docling-serve:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-baseconocimiento}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-kb}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-kb}
+      SPRING_AI_OLLAMA_BASE_URL: http://ollama:11434
+      # El otro extremo de la misma decision que la linea de arriba: a que backend
+      # habla la aplicacion. Su ausencia aqui era un agujero real, no una omision
+      # inocua, porque el default de application.yml es http://localhost:8081 --
+      # el puerto de `llama-server`, que solo existe en el perfil Bonsai. En el
+      # perfil base ese localhost es el propio contenedor kb-api, donde no
+      # escucha nadie.
+      #
+      # Consecuencia medida en vivo: los tres componentes que hablan por la API
+      # compatible con OpenAI fallaban a la vez, y solo se veia en los logs --
+      # ninguno tumba el arranque ni ensucia /actuator/health:
+      #
+      #   PlanificadorOpenAi        : Fallo al planificar, se usa search_unified
+      #   ReformuladorOpenAi        : Fallo al reformular, se usa la original
+      #   VerificadorGroundingOpenAi: Fallo al verificar grounding, SE RECHAZA
+      #                               POR PRECAUCION
+      #     com.openai.errors.OpenAIIoException: Request failed
+      #
+      # Ese tercero es Orquestador:388: al no poder consultar al LLM el
+      # verificador rechaza, y TODA respuesta se vuelve el MENSAJE_SIN_INFORMACION
+      # ("No encontre informacion suficientemente relevante"). Con Ollama y
+      # gemma3:4b perfectamente sanos, porque nadie les estaba hablando.
+      #
+      # Los otros nueve perfiles ya la fijaban en su propio compose (los de Ollama
+      # a esta misma URL, Bonsai a http://llama-server:8080). El base era el unico
+      # que se quedaba con el default -- mismo patron que el tope-por-documento
+      # que se corrigio antes.
+      SPRING_AI_OPENAI_BASE_URL: ${SPRING_AI_OPENAI_BASE_URL:-http://ollama:11434/v1}
+      ARCONIA_DOCLING_BASE_URL: http://docling-serve:5001
+      # Acota cada llamada HTTP individual de ExtractorDocling (submit de la
+      # tarea, cada poll de estado, fetch del resultado) -- NO la conversion
+      # completa, que ya no depende de este valor gracias a la API async (ver
+      # ADR-0010). 60s da margen de sobra sobre los ~10s que tarda cada poll.
+      DOCLING_SERVE_TIMEOUT: ${DOCLING_SERVE_TIMEOUT:-60s}
+      KB_LLM_MODELO: ${KB_LLM_MODELO:-gemma3:4b}
+      KB_EMBEDDINGS_MODELO: ${KB_EMBEDDINGS_MODELO:-bge-m3}
+      KB_API_TOKEN: ${KB_API_TOKEN:-}
+      # F8: cada cuanto se releva sola la ingesta, sin correr ningun comando.
+      KB_INGESTA_RELEVO_INTERVALO_MS: ${KB_INGESTA_RELEVO_INTERVALO_MS:-900000}
+      # F9: apagado por defecto -- ver el comentario junto a kb.ingesta.carga-habilitada
+      # en application.yml sobre por que tambien exige KB_VAULT_MODO=rw abajo.
+      KB_INGESTA_CARGA_HABILITADA: ${KB_INGESTA_CARGA_HABILITADA:-false}
+      KB_TEAMS_HABILITADO: ${KB_TEAMS_HABILITADO:-false}
+      KB_TEAMS_EMULATOR: ${KB_TEAMS_EMULATOR:-true}
+      KB_TEAMS_APP_ID: ${KB_TEAMS_APP_ID:-}
+      KB_TEAMS_APP_PASSWORD: ${KB_TEAMS_APP_PASSWORD:-}
+      # F6: los 3 conectores restantes, deshabilitados por defecto.
+      KB_GRAPH_HABILITADO: ${KB_GRAPH_HABILITADO:-false}
+      KB_GRAPH_TENANT_ID: ${KB_GRAPH_TENANT_ID:-}
+      KB_GRAPH_CLIENT_ID: ${KB_GRAPH_CLIENT_ID:-}
+      KB_GRAPH_CLIENT_SECRET: ${KB_GRAPH_CLIENT_SECRET:-}
+      KB_GRAPH_TEAM_ID: ${KB_GRAPH_TEAM_ID:-}
+      KB_GRAPH_CHANNEL_ID: ${KB_GRAPH_CHANNEL_ID:-}
+      KB_AZDO_HABILITADO: ${KB_AZDO_HABILITADO:-false}
+      KB_AZDO_ORG: ${KB_AZDO_ORG:-}
+      KB_AZDO_PROYECTO: ${KB_AZDO_PROYECTO:-}
+      KB_AZDO_PAT: ${KB_AZDO_PAT:-}
+      KB_AZDO_WIKI: ${KB_AZDO_WIKI:-}
+      KB_RERANKER_RUTA: /models/reranker
+      # Recuperacion: los mismos dos valores que fijan los siete perfiles de
+      # modelo (compose.ministral.yml y hermanos, compose.bonsai.yml). El perfil
+      # base -- este archivo solo, `make up` -- era el UNICO de los ocho que se
+      # quedaba con los defaults de application.yml, y es justo el que se corre
+      # primero siguiendo el README.
+      #
+      # tope-por-documento acota cuantos chunks de un mismo documento sobreviven
+      # la fusion RRF antes del reranker (RrfFusion.limitarPorDiversidad). El
+      # default 3 esta pensado para dar diversidad entre VARIOS documentos; con
+      # un corpus dominado por uno solo hace lo contrario, censura al unico que
+      # importa. Medido con el corpus de ejemplo de este repo: jls25.pdf es el
+      # 99.5% de los chunks (1060 de 1065), asi que de 1060 candidatos posibles
+      # solo 3 llegaban al cross-encoder y preguntas cuya respuesta SI estaba
+      # ingerida ("cuales son los tipos primitivos en Java") caian en
+      # Orquestador:369 con INSUFICIENTE, sin un solo error en los logs.
+      #
+      # El 20 no es un numero nuevo: sale del hallazgo 65 (sesion 17), que contra
+      # las 32 preguntas que se rechazaban de mas midio 28/32 mejoradas via
+      # /api/search y ninguna regresion entre las 68 que ya respondian bien.
+      KB_RECUPERACION_TOPE_POR_DOCUMENTO: ${KB_RECUPERACION_TOPE_POR_DOCUMENTO:-20}
+      # Va de la mano del tope: con mas candidatos reales llegando a la sintesis,
+      # expandir cada fragmento con sus 2 chunks vecinos (hasta 3x tokens, ver
+      # Orquestador.construirContexto) arriesga desbordar el contexto justo
+      # cuando por fin hay material bueno que sintetizar.
+      KB_EXPANDIR_VECINOS: ${KB_EXPANDIR_VECINOS:-false}
+      # Distinta de KB_VAULT_DIR (esa es la ruta del HOST que se monta abajo).
+      # Dentro del contenedor el vault siempre queda en /vault, con las
+      # subcarpetas documentos/ y repos/ (ver kb.ingesta.vault-dir). Sin esta
+      # linea el default relativo "../../vault" resolveria dentro del contenedor
+      # contra WORKDIR y NO contra el /vault montado abajo -- la ingesta y
+      # search_code buscarian en una carpeta vacia, en silencio.
+      KB_VAULT_RUTA: /vault
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--XX:MaxRAMPercentage=60}
+    volumes:
+      # Solo lectura por defecto -- decision consciente (ver kb.ingesta.carga-habilitada
+      # en application.yml), no un flag cosmetico. KB_VAULT_MODO=rw en .env es el
+      # unico interruptor: sin eso, KB_INGESTA_CARGA_HABILITADA=true igual falla al
+      # escribir, con un error de E/S explicito.
+      - ${KB_VAULT_DIR:-../../vault}:/vault:${KB_VAULT_MODO:-ro}
+      - ${KB_DATA_DIR:-./.data}/models:/models
+    ports:
+      - "${KB_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+    restart: unless-stopped

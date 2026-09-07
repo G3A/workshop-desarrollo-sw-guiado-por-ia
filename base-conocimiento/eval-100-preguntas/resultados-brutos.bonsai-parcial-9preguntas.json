@@ -1,0 +1,110 @@
+[
+  {
+    "id": 1,
+    "categoria": "tipos",
+    "pregunta": "¿Cuáles son los ocho tipos primitivos definidos en el lenguaje Java?",
+    "esperado": "responde",
+    "respuesta": "Los ocho tipos primitivos definidos en el lenguaje Java son: [1] byte, [2] short, [3] int, [4] long, [5] char, [6] float, [7] double y [8] boolean.",
+    "estadoFinal": "",
+    "error": null,
+    "inicio": "2026-08-05T19:50:41.498Z",
+    "fin": "2026-08-05T19:56:27.698Z",
+    "elapsedMs": 346200
+  },
+  {
+    "id": 2,
+    "categoria": "tipos",
+    "pregunta": "¿Qué diferencia hay entre un tipo primitivo y un tipo de referencia en Java?",
+    "esperado": "responde",
+    "respuesta": "",
+    "estadoFinal": "Se perdió la conexión con el servidor (¿Ollama no responde?).",
+    "error": "Se perdió la conexión con el servidor (¿Ollama no responde?).",
+    "inicio": "2026-08-05T19:56:27.700Z",
+    "fin": "2026-08-05T19:56:50.837Z",
+    "elapsedMs": 23137
+  },
+  {
+    "id": 3,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es una conversión de ensanchamiento (widening) entre tipos primitivos?",
+    "esperado": "responde",
+    "respuesta": "Una conversión de ensanchamiento (widening) entre tipos primitivos es cuando un valor de un tipo más pequeño se convierte en un tipo más grande, manteniendo exactamente la magnitud numérica original. Esto ocurre en casos específicos como:\n\n- Desde un tipo integral a otro integral\n- Desde un tipo byte, short o char a un tipo flotante\n- Desde un tipo integral a un tipo flotante\n- Desde un tipo flotante a un tipo double\n\nEn estos casos, no se pierden información sobre el valor global, aunque puede haber pérdida de precisión en algunas conversiones. Por ejemplo, convertir un `int` a un `float` o un `long` a un `float` o un `double` puede resultar en una pérdida de algunos bits significativos, pero el resultado será correctamente redondeado según la política de redondeo cercana.",
+    "estadoFinal": "",
+    "error": null,
+    "inicio": "2026-08-05T19:56:50.840Z",
+    "fin": "2026-08-05T20:01:47.957Z",
+    "elapsedMs": 297117
+  },
+  {
+    "id": 4,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es el autoboxing y cuándo ocurre de forma automática?",
+    "esperado": "responde",
+    "respuesta": "No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.",
+    "estadoFinal": "",
+    "error": null,
+    "inicio": "2026-08-05T20:01:47.959Z",
+    "fin": "2026-08-05T20:02:21.802Z",
+    "elapsedMs": 33843
+  },
+  {
+    "id": 5,
+    "categoria": "tipos",
+    "pregunta": "¿Qué representa el tipo null y a qué tipos de referencia se puede asignar?",
+    "esperado": "responde",
+    "respuesta": "El tipo null representa la ausencia de un valor, y solo contiene un valor, el null reference. Se puede asignar a cualquier tipo de referencia, resultando en una referencia nula de ese tipo. [1]",
+    "estadoFinal": "",
+    "error": null,
+    "inicio": "2026-08-05T20:02:21.805Z",
+    "fin": "2026-08-05T20:07:32.382Z",
+    "elapsedMs": 310577
+  },
+  {
+    "id": 6,
+    "categoria": "tipos",
+    "pregunta": "¿Qué significa que un método tenga tipo de retorno void?",
+    "esperado": "responde",
+    "respuesta": "Un método con tipo de retorno void no devuelve ningún valor a su invocante. [2]",
+    "estadoFinal": "",
+    "error": null,
+    "inicio": "2026-08-05T20:07:32.383Z",
+    "fin": "2026-08-05T20:12:09.780Z",
+    "elapsedMs": 277397
+  },
+  {
+    "id": 7,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es un tipo genérico parametrizado, por ejemplo List<String>?",
+    "esperado": "responde",
+    "respuesta": "No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.",
+    "estadoFinal": "",
+    "error": null,
+    "inicio": "2026-08-05T20:12:09.782Z",
+    "fin": "2026-08-05T20:12:39.496Z",
+    "elapsedMs": 29714
+  },
+  {
+    "id": 8,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es un literal de tipo long y cómo se distingue de un literal int en el código fuente?",
+    "esperado": "responde",
+    "respuesta": "Un literal de tipo long es un número que termina con la letra L o l (ell), como 0x100000000L o 2_147_483_648L. Se distingue de un literal int porque el former indica que el valor representa un tipo long, mientras que el posterior representa un tipo int. [1]",
+    "estadoFinal": "",
+    "error": null,
+    "inicio": "2026-08-05T20:12:39.498Z",
+    "fin": "2026-08-05T20:19:27.801Z",
+    "elapsedMs": 408303
+  },
+  {
+    "id": 9,
+    "categoria": "variables",
+    "pregunta": "¿Qué diferencia hay entre una variable local declarada con var y una declarada con un tipo explícito?",
+    "esperado": "responde",
+    "respuesta": "Una variable local declarada con var tiene su tipo determinado por el inicializador, mientras que una variable local con un tipo explícito tiene su tipo definido directamente en la declaración. [2]",
+    "estadoFinal": "",
+    "error": null,
+    "inicio": "2026-08-05T20:19:27.803Z",
+    "fin": "2026-08-05T20:27:50.039Z",
+    "elapsedMs": 502236
+  }
+]

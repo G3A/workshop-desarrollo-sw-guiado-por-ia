@@ -1,0 +1,31 @@
+<!--
+Placeholders:
+  {{PROJECT_NAME}}
+  {{BUSINESS_SUMMARY}}     — 1-2 sentence answer from the interview
+  {{WHO_PAYS}}             — from the interview (if captured)
+-->
+
+# Business Context
+
+## What {{PROJECT_NAME}} is
+
+{{BUSINESS_SUMMARY}}
+
+## Who pays for this
+
+{{WHO_PAYS}}
+
+<!-- TODO: expand with revenue model, contract types, or pricing if applicable. -->
+
+## Ecosystem
+
+<!-- TODO: list sibling products, upstream data sources, downstream consumers. Delete this section if the product is standalone. -->
+
+## Brand voice / tone
+
+<!-- TODO: 3-5 bullets describing how the product talks to users. Delete if not relevant to agent decisions. -->
+
+## Related docs
+
+- [Target user](./target-user.md) — who uses the product and what they care about (if generated).
+- [Architecture](./architecture.md) — how the system is built.

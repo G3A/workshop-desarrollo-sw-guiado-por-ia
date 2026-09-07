@@ -1,0 +1,122 @@
+[
+  {
+    "id": 1,
+    "categoria": "tipos",
+    "pregunta": "¿Cuáles son los ocho tipos primitivos definidos en el lenguaje Java?",
+    "esperado": "responde",
+    "respuesta": "byte [1], short [1], int [1], long [1], char [1], float [1], double [1]",
+    "estadoFinal": "Respondido en 5:04",
+    "error": null,
+    "inicio": "2026-08-22T00:43:42.590Z",
+    "fin": "2026-08-22T00:48:48.026Z",
+    "elapsedMs": 305436
+  },
+  {
+    "id": 2,
+    "categoria": "tipos",
+    "pregunta": "¿Qué diferencia hay entre un tipo primitivo y un tipo de referencia en Java?",
+    "esperado": "responde",
+    "respuesta": "[n] jls25.pdf\n\nUna diferencia fundamental entre un tipo primitivo y un tipo de referencia en Java es que los tipos primitivos representan valores directos como int, float o boolean, mientras que los tipos de referencia representan direcciones o referencias a objetos (como clases o interfaces). Los tipos primitivos no pueden ser nulos, mientras que los tipos de referencia sí pueden apuntar a un valor nulo. Además, los tipos primitivos son inmutables y tienen un tamaño fijo definido por el lenguaje, mientras que los tipos de referencia pueden referenciar cualquier instancia de una clase o interfaz específica.",
+    "estadoFinal": "Respondido en 4:18",
+    "error": null,
+    "inicio": "2026-08-22T00:48:48.028Z",
+    "fin": "2026-08-22T00:53:06.554Z",
+    "elapsedMs": 258526
+  },
+  {
+    "id": 3,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es una conversión de ensanchamiento (widening) entre tipos primitivos?",
+    "esperado": "responde",
+    "respuesta": "[1] Una conversión de ensanchamiento (widening) entre tipos primitivos es un proceso en el que se convierte un tipo de menor precisión a uno de mayor precisión sin perder información sobre la magnitud del valor numérico. Por ejemplo, se puede convertir byte a short, int, long, float o double sin perder información.\n\n[2] Las conversiones de ensanchamiento entre tipos primitivos incluyen:\n\n- byte a short, int, long, float o double\n- short a int, long, float o double\n- char a int, long, float o double\n- int a long, float o double\n- long a float o double\n\nEstas conversiones no pierden información sobre la magnitud del valor numérico en los siguientes casos:\n\n- Entre tipos integrales\n- De byte, short o char a un tipo de punto flotante\n- De int a double\n- De long a float o double\n\nSin embargo, una conversión de ensanchamiento desde int a float o desde long a float (o double) puede resultar en pérdida de precisión, ya que el valor convertido puede perder algunos de los bits menos significativos. En tales casos, el resultado es una versión correctamente redondeada del valor entero utilizando la política de redondeo hacia el número más cercano (round to nearest).\n\n[3] Una conversión de ensanchamiento de un tipo integral a otro simplemente amplía la representación en dos's complemento para llenar el formato más ancho.\n\n[4] Una conversión de ensanchamiento de char a un tipo integral T simplemente extiende la representación del valor de char en cero para llenar el formato más ancho.\n\n[5] Las conversiones de ensanchamiento entre tipos primitivos se definen como:\n\n- byte a char\n- short a int, y luego int a char\n\nSi cualquier expresión es de tipo int (no una constante), el promedio tipo es int, y las demás expresiones que no son de tipo int pasan por conversión de ensanchamiento a int.\n\nSi alguna expresión es de tipo short, y todas las demás son de tipo short o constantes de tipo int representables en short, el promedio tipo es short, y los valores de byte pasan por conversión de ensanchamiento a short, y los de int pasan por conversión de estre",
+    "estadoFinal": "Respondido en 3:55",
+    "error": null,
+    "inicio": "2026-08-22T00:53:06.556Z",
+    "fin": "2026-08-22T00:57:01.981Z",
+    "elapsedMs": 235425
+  },
+  {
+    "id": 4,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es el autoboxing y cuándo ocurre de forma automática?",
+    "esperado": "responde",
+    "respuesta": "[5] Autoboxing es el proceso automático de conversión entre tipos primitivos y sus tipos correspondientes de referencia en objetos. Ocurre cuando un valor de tipo primitivo (como int, double, etc.) se utiliza en una expresión donde se espera un objeto de su tipo equivalente de referencia (como Integer, Double, etc.). Este proceso es llamado boxing cuando se convierte un valor primitivo a su tipo de referencia correspondiente y desboxing cuando se convierte del tipo de referencia de vuelta al tipo primitivo. Las ocho conversiones de autoboxing mencionadas en el contexto son:\n\n- Desde Boolean a boolean\n- Desde Byte a byte\n- Desde Short a short\n- Desde Character a char\n- Desde Integer a int\n- Desde Long a long\n- Desde Float a float\n- Desde Double a double\n\n[6] El autoboxing ocurre automáticamente cuando un valor de tipo primitivo se utiliza en una expresión donde se espera un objeto de su tipo equivalente de referencia. Por ejemplo, si tienes una variable Integer y deseas pasar un valor int, el compilador realizará la conversión correspondiente sin necesidad de hacerlo manualmente. Esto facilita el uso de colecciones que aceptan tipos de referencia (como ArrayList<Object>) al almacenar valores primitivos.",
+    "estadoFinal": "Respondido en 6:56",
+    "error": null,
+    "inicio": "2026-08-22T00:57:01.984Z",
+    "fin": "2026-08-22T01:03:58.314Z",
+    "elapsedMs": 416330
+  },
+  {
+    "id": 5,
+    "categoria": "tipos",
+    "pregunta": "¿Qué representa el tipo null y a qué tipos de referencia se puede asignar?",
+    "esperado": "responde",
+    "respuesta": "[1] The null type tiene un valor único, el referencia nula, representado por la palabra clave null, que se forma a partir de caracteres ASCII.\n\nA null literal es siempre del tipo null (§4.1).\n\n[2] Los contextos de asignación permiten que el valor de una expresión sea asignado a una variable; el tipo de la expresión debe convertirse al tipo de la variable.\n\nLos contextos de asignación permiten usar uno de los siguientes:\n\n- Una conversión de identidad (§5.1.1)\n- Una conversión amplia de primitivo (§5.1.2)\n- Una conversión amplia de referencia (§5.1.5)\n- Una conversión amplia de referencia seguida por una conversión de desempaquisto\n\n- Una conversión amplia de referencia seguida por una conversión de desempaquisto, luego seguida por una conversión amplia de primitivo\n- Una conversión de desempaquisto (§5.1.8)\n- Una conversión de desempaquisto seguida por una conversión amplia de primitivo\n\nSi, después de aplicar las conversiones anteriores, el tipo resultante es un tipo genérico sin parámetros (§4.8), se puede aplicar una conversión no verificada en tiempo de compilación.\n\nAdemás, si la expresión es una expresión constante (§15.29) del tipo byte, short, char o int:\n\n- Se permite una conversión estrecha si la variable es del tipo byte, short o char y el valor del literal constante se puede representar en ese tipo.\n- Se permite una conversión estrecha seguida de una conversión de desempaquisto si la variable es del tipo Byte, Short o Character y el valor del literal constante se puede representar en byte, short o char respectivamente.\n\nLa asignación de un valor del tipo null (la referencia nula es el único valor) a cualquier tipo de referencia resulta en una referencia nula de ese tipo. Es un error en tiempo de compilación si la cadena de conversiones contiene dos tipos genéricos que no son subtipos (§4.10).\n\nUn ejemplo de cadena ilógica sería:\n\n```\nComparable<Integer>, Comparable, Comparable<String>\n```\n\nEl primer grupo de tres elementos de la cadena está relacionado por convers",
+    "estadoFinal": "Respondido en 3:35",
+    "error": null,
+    "inicio": "2026-08-22T01:03:58.316Z",
+    "fin": "2026-08-22T01:07:34.006Z",
+    "elapsedMs": 215690
+  },
+  {
+    "id": 6,
+    "categoria": "tipos",
+    "pregunta": "¿Qué significa que un método tenga tipo de retorno void?",
+    "esperado": "responde",
+    "respuesta": "[3] Un tipo de retorno void indica que el método no devuelve ningún valor. Esto significa que el método puede realizar operaciones o cambios internos sin necesidad de proporcionar un resultado específico a través de una variable o expresión. En Java, cuando se declara un método con el tipo de retorno void, se está diciendo al compilador y a otros desarrolladores que este método no produce ningún valor que pueda ser utilizado fuera del método mismo. Esto es común para métodos que realizan acciones como inicializar variables, modificar estados internos o interactuar con dispositivos externos (por ejemplo, escritura en un archivo o redirección de una salida).",
+    "estadoFinal": "Respondido en 4:01",
+    "error": null,
+    "inicio": "2026-08-22T01:07:34.008Z",
+    "fin": "2026-08-22T01:11:35.590Z",
+    "elapsedMs": 241582
+  },
+  {
+    "id": 7,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es un tipo genérico parametrizado, por ejemplo List<String>?",
+    "esperado": "responde",
+    "respuesta": "**Summary**\n\nThe document discusses how Java’s type system—specifically its handling of generics and raw types—can lead to *heap pollution*. Heap pollution occurs when a variable that is declared with a specific generic type ends up holding a reference to an object whose actual class or array element type differs from the declared type. This situation arises because:\n\n1. **Type Erasure**: At runtime, all generic types are erased to their non-generic counterparts (e.g., `List<String>` becomes `ArrayList<Object>`). Consequently, there is no compile‑time information about the specific type arguments used during instantiation.\n\n2. **Unchecked Warnings and Aliasing**: If a program performs operations that involve raw types or aliases an array of a non‑reifiable element type through an array variable of a supertype (e.g., `Object[]`), it can lead to situations where the runtime value does not match the declared generic type.\n\n3. **Examples**:\n   - The code snippet:\n\n     ```java\n     List l = new ArrayList<Number>(); \n     List<String> ls = l; // Unchecked warning\n     ```\n\n     Compiles without warnings because Java’s static type checking only checks at compile time, but the runtime behavior may differ if `l` holds a reference to an object not of type `List<String>`.\n\n   - Another example:\n\n     ```java\n     static void m(List<String>... stringLists) {\n         Object[] array = stringLists;\n         List<Integer> tmpList = Arrays.asList(42);\n         array[0] = tmpList; // Heap pollution: now a component refers to List<Integer>\n         String s = stringLists[0].get(0); // ClassCastException at runtime\n     }\n     ```\n\n     Here, the aliasing of `Object[]` with an array containing `List<String>` elements allows a later assignment (`array[0] = tmpList`) that changes the element type to `List<Integer>`, causing heap pollution. The unchecked warning is not issued because static analysis cannot guarantee at runtime that such an operation will occur.\n\n4. **Implications**:\n   - Because Java does not enforce reified generics, developers must be cautious when working with raw types or generic arrays.\n   - Unchecked warnings are a safety mechanism to alert programmers about potential heap pollution, but they do not prevent the actual runtime error (e.g., `ClassCastException`).\n\n5. **Mitigation**:\n   - Use explicit type parameters instead of raw types where possible.\n   - Avoid",
+    "estadoFinal": "Respondido en 3:21",
+    "error": null,
+    "inicio": "2026-08-22T01:11:35.593Z",
+    "fin": "2026-08-22T01:14:56.536Z",
+    "elapsedMs": 200943
+  },
+  {
+    "id": 8,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es un literal de tipo long y cómo se distingue de un literal int en el código fuente?",
+    "esperado": "responde",
+    "respuesta": "[5] Un literal de tipo long se distingue de un literal int en el código fuente por el sufijo ASCII mayúscula L o l al final del número. Por ejemplo, 2147483648L es un literal de tipo long mientras que 2147483648 es un literal de tipo int (jls25.pdf).",
+    "estadoFinal": "Respondido en 7:06",
+    "error": null,
+    "inicio": "2026-08-22T01:14:56.539Z",
+    "fin": "2026-08-22T01:22:03.566Z",
+    "elapsedMs": 427027
+  },
+  {
+    "id": 9,
+    "categoria": "variables",
+    "pregunta": "¿Qué diferencia hay entre una variable local declarada con var y una declarada con un tipo explícito?",
+    "esperado": "responde",
+    "respuesta": "[1] Una variable local declarada con var tiene su tipo determinado dinámicamente a partir del valor de inicialización, mientras que una variable declarada con un tipo explícito tiene su tipo especificado al momento de la declaración.\n\n[2] Las variables declaradas con var pueden tener tipos que incluyen capturas (type variables), lo cual no es posible cuando se declara el tipo explícitamente.",
+    "estadoFinal": "Respondido en 6:41",
+    "error": null,
+    "inicio": "2026-08-22T01:22:03.568Z",
+    "fin": "2026-08-22T01:28:45.358Z",
+    "elapsedMs": 401790
+  },
+  {
+    "id": 10,
+    "categoria": "variables",
+    "pregunta": "¿Qué es el ámbito (scope) de una variable local?",
+    "esperado": "responde",
+    "respuesta": "El ámbito (scope) de una variable local es el bloque en el que fue declarada, comenzando desde la propia inicialización y incluyendo cualquier declarador adicional a su derecha. Esto significa que la variable solo es accesible dentro del contexto del bloque donde se definió, siguiendo las reglas específicas para cada tipo de declaración (por ejemplo, en un bucle for, incluye el ForInit, Expression y ForUpdate partes). Además, si una variable local tiene el mismo nombre que otra variable más a la izquierda o superior en el árbol de declaraciones, se produce lo conocido como \"shadowing\" o ocultación, donde la variable local oculta temporalmente a la anterior. Una vez que termina el bloque donde fue declarada, la variable local ya no existe y no puede ser accedida fuera de ese ámbito. [1]",
+    "estadoFinal": "Respondido en 3:36",
+    "error": null,
+    "inicio": "2026-08-22T01:28:45.361Z",
+    "fin": "2026-08-22T01:32:22.013Z",
+    "elapsedMs": 216652
+  }
+]

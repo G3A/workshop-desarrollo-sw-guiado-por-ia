@@ -1,0 +1,122 @@
+[
+  {
+    "id": 1,
+    "categoria": "tipos",
+    "pregunta": "¿Cuáles son los ocho tipos primitivos definidos en el lenguaje Java?",
+    "esperado": "responde",
+    "respuesta": "Los ocho tipos primitivos definidos en Java son:\nbyte, short [1], int [1], long [1], float [1], double [1], char [1] y boolean [1].",
+    "estadoFinal": "Respondido en 6:42",
+    "error": null,
+    "inicio": "2026-08-22T20:33:12.107Z",
+    "fin": "2026-08-22T20:39:55.463Z",
+    "elapsedMs": 403356
+  },
+  {
+    "id": 3,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es una conversión de ensanchamiento (widening) entre tipos primitivos?",
+    "esperado": "responde",
+    "respuesta": "Una **conversión de ensanchamiento** entre tipos primitivos es una transformación que **aumenta el tamaño del espacio de almacenamiento** de un valor sin perder su magnitud exacta en ciertos casos, según lo definido en [1]:\n\n- Ejemplos válidos:\n  - `byte` → `short`, `int`, `long`, `float`, o `double`.\n  - `char` → `int`, `long`, `float`, o `double`.\n  - `int` → `long`, `float`, o `double`.\n\n[1] **No especifica** qué pasa en casos como `byte` a `short` (aunque [2] menciona que puede combinar con conversiones de estrechamiento), pero según [3], si hay un contexto binario entre tipos integrales, la prioridad es el ensanchamiento cuando ambos operadores son del mismo tipo o compatible.\n\n---\n**Contradicción detectada**:\n- En [1], se afirma que **no pierde información** en conversiones de `byte` a `short`, pero en [2] se describe un caso híbrido (*widening + narrowing*) para `byte` → `char`. Esto implica que, aunque el ensanchamiento primario no siempre es puro (ej. si hay pérdida de precisión), la definición técnica de *ensanchamiento* en sí **no genera excepciones** ([1]).\n\n---\n**Ejemplo clave**:\nEl código del ejemplo [1] muestra que al convertir `int` a `float`, se pierde precisión, pero **nunca ocurre una excepción** ([1]).",
+    "estadoFinal": "Respondido en 3:45",
+    "error": null,
+    "inicio": "2026-08-22T20:40:11.403Z",
+    "fin": "2026-08-22T20:43:57.466Z",
+    "elapsedMs": 226063
+  },
+  {
+    "id": 4,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es el autoboxing y cuándo ocurre de forma automática?",
+    "esperado": "responde",
+    "respuesta": "No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.",
+    "estadoFinal": "Respondido en 49 s",
+    "error": null,
+    "inicio": "2026-08-22T20:43:57.469Z",
+    "fin": "2026-08-22T20:44:46.971Z",
+    "elapsedMs": 49502
+  },
+  {
+    "id": 5,
+    "categoria": "tipos",
+    "pregunta": "¿Qué representa el tipo null y a qué tipos de referencia se puede asignar?",
+    "esperado": "responde",
+    "respuesta": "El tipo **null** representa la ausencia de referencia a un objeto [1].\n\nSe puede asignar una expresión del tipo *null* a cualquier **tipo de referencia** (clase, interfaz o array), resultando en una referencia nula (*null reference*) de ese tipo [1]. No incluye tipos primitivos como `byte`, `int`, etc. [3].\n\nNo hay contradicción entre las fuentes proporcionadas.",
+    "estadoFinal": "Respondido en 2:42",
+    "error": null,
+    "inicio": "2026-08-22T20:44:46.977Z",
+    "fin": "2026-08-22T20:47:29.964Z",
+    "elapsedMs": 162987
+  },
+  {
+    "id": 6,
+    "categoria": "tipos",
+    "pregunta": "¿Qué significa que un método tenga tipo de retorno void?",
+    "esperado": "responde",
+    "respuesta": "Un método con tipo de retorno **void** [3] significa que la declaración del método **no especifica un valor devuelto**, es decir, no hay una expresión que se asigne al resultado de su ejecución.\n\n[4] añade que:\n- Un `return` sin expresión en un método declarado como `void` es válido y simplemente transfiere el control a quien invoca al método.\n- Es error compilar un `return` con valor en un método declarado `void`.",
+    "estadoFinal": "Respondido en 5:11",
+    "error": null,
+    "inicio": "2026-08-22T20:47:29.971Z",
+    "fin": "2026-08-22T20:52:42.314Z",
+    "elapsedMs": 312343
+  },
+  {
+    "id": 7,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es un tipo genérico parametrizado, por ejemplo List<String>?",
+    "esperado": "responde",
+    "respuesta": "No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.",
+    "estadoFinal": "Respondido en 59 s",
+    "error": null,
+    "inicio": "2026-08-22T20:52:42.321Z",
+    "fin": "2026-08-22T20:53:42.735Z",
+    "elapsedMs": 60414
+  },
+  {
+    "id": 8,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es un literal de tipo long y cómo se distingue de un literal int en el código fuente?",
+    "esperado": "responde",
+    "respuesta": "Un literal de tipo **long** es un número entero que termina con la letra **L o l** (ejemplo: `42L`).\nSe distingue de un literal **int** porque, aunque ambos son literales enteros en decimal u otras bases, el sufijo **L/l** lo convierte en un valor de tipo más grande.\n\n[3] y [1].",
+    "estadoFinal": "Respondido en 7:42",
+    "error": null,
+    "inicio": "2026-08-22T20:53:42.742Z",
+    "fin": "2026-08-22T21:01:26.034Z",
+    "elapsedMs": 463292
+  },
+  {
+    "id": 9,
+    "categoria": "variables",
+    "pregunta": "¿Qué diferencia hay entre una variable local declarada con var y una declarada con un tipo explícito?",
+    "esperado": "responde",
+    "respuesta": "No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.",
+    "estadoFinal": "Respondido en 41 s",
+    "error": null,
+    "inicio": "2026-08-22T21:01:26.036Z",
+    "fin": "2026-08-22T21:02:07.926Z",
+    "elapsedMs": 41890
+  },
+  {
+    "id": 10,
+    "categoria": "variables",
+    "pregunta": "¿Qué es el ámbito (scope) de una variable local?",
+    "esperado": "responde",
+    "respuesta": "El ámbito de una **variable local** en Java depende del contexto de su declaración:\n\n- En un bloque (`{}`) o declaración de variables locales, el ámbito es desde la inicialización hasta el final del bloque [1].\n- En el `ForInit` de una declaración `for`, incluye: su propio inicializador, cualquier declarador adicional a la derecha en ese apartado, las partes **Expression** y **ForUpdate**, y el contenido del bucle (`Statement`) asociado [1].\n\nSi no hay más contexto que especifique un ámbito concreto, solo se aplica lo general de los bloques.",
+    "estadoFinal": "Respondido en 3:52",
+    "error": null,
+    "inicio": "2026-08-22T21:02:07.930Z",
+    "fin": "2026-08-22T21:06:01.096Z",
+    "elapsedMs": 233166
+  },
+  {
+    "id": 2,
+    "categoria": "tipos",
+    "pregunta": "¿Qué diferencia hay entre un tipo primitivo y un tipo de referencia en Java?",
+    "esperado": "responde",
+    "respuesta": "",
+    "estadoFinal": "Se perdió la conexión con el servidor (¿Ollama no responde?).",
+    "error": "Se perdió la conexión con el servidor (¿Ollama no responde?).",
+    "inicio": "2026-08-22T21:06:48.425Z",
+    "fin": "2026-08-22T21:07:02.912Z",
+    "elapsedMs": 14487
+  }
+]

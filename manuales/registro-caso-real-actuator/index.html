@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Caso real — TODO de Actuator corregido de punta a punta</title>
+  <style>
+    :root {
+      --bg: #0f1320; --panel: #161b2c; --card: #1d2336; --line: #2a3350;
+      --txt: #e6e9f2; --muted: #97a0bd; --accent: #5b8cff; --ok: #36c275;
+      --warn: #e6a23c; --code: #0b0e18; --rojo: #ff6b7a; --resalte: #f43f6b;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--txt); }
+    body {
+      display: flex; flex-direction: column; min-height: 100vh;
+      font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+      font-size: 14px; line-height: 1.5;
+    }
+    a { color: var(--accent); }
+    code, .mono { font-family: ui-monospace, "Cascadia Code", "Consolas", monospace; }
+
+    header { padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+    .hbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; max-width: 880px; margin: 0 auto; }
+    header .title { font-weight: 700; font-size: 15px; line-height: 1.25; }
+    header .title small { display: block; color: var(--muted); font-weight: 400; font-size: 11px; }
+
+    main { flex: 1 1 auto; width: 100%; max-width: 880px; margin: 0 auto; padding: 32px 16px 64px; }
+    .eyebrow { font-family: ui-monospace, "Cascadia Code", "Consolas", monospace; font-size: 12px;
+      text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 10px; }
+    h1 { font-size: 26px; line-height: 1.25; margin: 0 0 14px; }
+    .lead { color: var(--muted); font-size: 15px; line-height: 1.6; max-width: 68ch; margin: 0 0 20px; }
+    p { line-height: 1.6; }
+
+    h2 { font-size: 18px; margin: 46px 0 8px; border-bottom: 1px solid var(--line);
+      padding-bottom: 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    h3 { font-size: 15px; margin: 24px 0 6px; }
+    .escena { background: rgba(91,140,255,.15); color: var(--accent);
+      border: 1px solid rgba(91,140,255,.4); border-radius: 6px; padding: 2px 10px;
+      font-size: .8rem; font-weight: 600; }
+
+    .nav-links { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px;
+      font-weight: 600; margin: 0 0 22px; }
+
+    /* ── FOTOGRAMA (marco numerado con captura real) ── */
+    .foto { position: relative; margin: 26px 0 6px; }
+    .foto .fnum { position: absolute; top: -13px; left: -8px; z-index: 2;
+      background: var(--resalte); color: #fff; border-radius: 999px; min-width: 2em;
+      height: 2em; line-height: 2em; text-align: center; font-weight: 700; font-size: .9rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,.5); padding: 0 6px; }
+    .foto .fnum::before { content: "▶ "; }
+    .shot { border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
+      box-shadow: 0 2px 12px rgba(0,0,0,.35); background: var(--card); }
+    .shot .barra { background: var(--panel); border-bottom: 1px solid var(--line);
+      padding: 7px 12px; font-size: .78rem; color: var(--muted); display: flex; gap: 8px;
+      align-items: center; }
+    .shot .barra .puntos { display: inline-flex; gap: 5px; flex: 0 0 auto; }
+    .shot .barra .puntos i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .shot .barra .puntos i:nth-child(1) { background: #f87171; }
+    .shot .barra .puntos i:nth-child(2) { background: #fbbf24; }
+    .shot .barra .puntos i:nth-child(3) { background: #34d399; }
+    .shot .barra .url { font-family: ui-monospace, "Cascadia Code", "Consolas", monospace; }
+    .shot .cuerpo { padding: 0; line-height: 0; }
+    .shot .cuerpo img { display: block; width: 100%; height: auto; }
+    .real { display: inline-flex; align-items: center; gap: 5px; font-size: .72rem;
+      font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ok);
+      background: rgba(54,194,117,.1); border: 1px solid rgba(54,194,117,.4);
+      border-radius: 999px; padding: 2px 9px; margin-left: auto; }
+    .real::before { content: "●"; font-size: .6rem; }
+    .accion { background: rgba(91,140,255,.07); border: 1px solid rgba(91,140,255,.25);
+      border-top: none; border-radius: 0 0 10px 10px; padding: 9px 14px; font-size: .9rem;
+      color: var(--txt); }
+    .accion b { color: var(--accent); }
+
+    /* Terminal con SALIDA REAL (texto verbatim, no bitmap) */
+    .term { background: var(--code); color: #cdd6f4; border-radius: 10px 10px 0 0;
+      font-family: ui-monospace, "Cascadia Code", "Consolas", monospace; font-size: .82rem;
+      overflow-x: auto; border: 1px solid var(--line); border-bottom: none; }
+    .term .tbar { background: #070911; color: #8b93b3; padding: 7px 12px; font-size: .75rem;
+      border-radius: 10px 10px 0 0; display: flex; gap: 8px; align-items: center;
+      border-bottom: 1px solid var(--line); }
+    .term pre { margin: 0; padding: 14px 16px; white-space: pre-wrap; word-break: break-word; }
+    .term .ok-line { color: #a6e3a1; }
+    .term .dim { color: #7f849c; }
+    .foto .term + .accion { border-radius: 0 0 10px 10px; }
+
+    .nota { background: rgba(230,162,60,.07); border: 1px solid rgba(230,162,60,.3);
+      border-left: 3px solid var(--warn); border-radius: 8px; padding: 10px 14px;
+      margin: 16px 0; font-size: .92rem; color: var(--txt); }
+    .hallazgo { background: rgba(255,107,122,.07); border: 1px solid rgba(255,107,122,.3);
+      border-left: 3px solid var(--rojo); border-radius: 8px; padding: 10px 14px;
+      margin: 16px 0; font-size: .92rem; color: var(--txt); }
+    .ok-box { background: rgba(54,194,117,.07); border: 1px solid rgba(54,194,117,.3);
+      border-left: 3px solid var(--ok); border-radius: 8px; padding: 10px 14px;
+      margin: 16px 0; font-size: .92rem; color: var(--txt); }
+
+    table { border-collapse: collapse; width: 100%; margin: 16px 0; font-size: .88rem;
+      background: var(--card); }
+    th, td { border: 1px solid var(--line); padding: 8px 10px; text-align: left;
+      vertical-align: top; color: var(--txt); }
+    th { background: var(--panel); color: var(--muted); }
+    .reg code { background: var(--code); }
+    main code { background: var(--code); border: 1px solid var(--line); border-radius: 4px;
+      padding: 1px 5px; font-size: .9em; color: var(--txt); }
+    .term code { background: transparent; padding: 0; border: none; }
+    .diff-add { color: #a6e3a1; }
+    .diff-rem { color: #f38ba8; }
+
+    footer { padding: 14px 16px; border-top: 1px solid var(--line); }
+    footer p { max-width: 860px; margin: 0 auto; color: var(--muted); font-size: 11px; }
+
+    @media (prefers-color-scheme: light) {
+      /* Página con identidad oscura fija a propósito — coherente con las capturas reales
+         (GitHub/terminal son oscuros en este caso) y con el resto del monorepo. */
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="hbar">
+      <div class="title">Método Arkandia
+        <small>caso real, de punta a punta — sin actuar</small>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <p class="eyebrow">caso real</p>
+    <h1>De un TODO desactualizado a un PR mergeado — un ciclo real, fotograma a fotograma</h1>
+    <p class="lead">Esta página documenta una ejecución real del
+      <a href="../../proceso-operacional-con-ia/">proceso operacional con IA</a> sobre
+      <code>base-conocimiento</code>, un servicio Java/Spring real de este monorepo — no un mockup.
+      Cada captura de esta página es una <b>captura de pantalla real</b>, tomada en el momento en
+      que ocurrió cada paso; el contenido de código y terminal es <b>texto real</b>, copiado tal
+      cual salió. Nada de esto es actuado.</p>
+    <nav class="nav-links">
+      <a href="../../proceso-operacional-con-ia/">← Ver el proceso completo</a>
+      <a href="https://github.com/G3A/workshop-desarrollo-sw-guiado-por-ia/issues/5">Issue #5 real →</a>
+      <a href="https://github.com/G3A/workshop-desarrollo-sw-guiado-por-ia/pull/6">PR #6 real →</a>
+    </nav>
+
+    <h2>El caso</h2>
+    <p><code>base-conocimiento/docs/infrastructure.md</code> tenía, en su sección
+      <b>Observabilidad</b>, un TODO que decía literalmente: <i>"no hay evidencia en el repo de que
+      [los endpoints de Actuator] estén expuestos"</i>. Es un doc generado por la skill
+      <code>agent-context-java</code> hace unas semanas — y el código lo superó: revisando
+      <code>application.yml:101-108</code> se confirma que los endpoints <b>sí</b> están expuestos
+      (<code>health</code>, <code>info</code>, <code>metrics</code>). El mismo hallazgo ya estaba
+      anotado en <code>docs/claims-ledger.md:16</code> como pendiente de resolver. Caso chico,
+      real, verificable — perfecto para mostrar el ciclo completo sin arriesgar nada del RAG.</p>
+
+    <!-- ═══════════ FRAME 1 ═══════════ -->
+    <h2><span class="escena">bo1</span>Tomar el hallazgo → issue real de GitHub</h2>
+    <p>El hallazgo no se inventó: es la comparación directa entre lo que dice el doc y lo que dice
+      el código.</p>
+
+    <table>
+      <tr><th></th><th>Dice el doc</th><th>Dice el código</th></tr>
+      <tr>
+        <td><code>docs/infrastructure.md:68-70</code></td>
+        <td>"no hay evidencia... de que sus endpoints estén expuestos"</td>
+        <td><code>application.yml:101-108</code> — <code>exposure.include: health,info,metrics</code></td>
+      </tr>
+    </table>
+
+    <p>Con esa evidencia se abrió el issue real con <code>gh issue create</code> — mismo flujo que
+      documenta el nodo <code>bo1</code> del proceso.</p>
+
+    <div class="foto"><span class="fnum">1</span>
+      <div class="shot">
+        <div class="barra"><span class="puntos"><i></i><i></i><i></i></span>
+          <span class="url">github.com/G3A/workshop-desarrollo-sw-guiado-por-ia/issues/5</span>
+          <span class="real">captura real</span></div>
+        <div class="cuerpo"><img src="./assets/shots/01-issue-creado.png" alt="Issue #5 real, recién creado, con el contexto, el problema y el alcance del hallazgo"></div>
+      </div>
+      <div class="accion"><b>Qué se hizo:</b> <code>gh issue create</code> con el contexto completo
+        (qué dice el doc, qué dice el código, qué hace falta) — el issue nace con evidencia, no con
+        una frase suelta.</div>
+    </div>
+
+    <!-- ═══════════ FRAME 2 ═══════════ -->
+    <h2><span class="escena">c4a · c2</span>Rama, plan e implementación en Claude Code</h2>
+    <p>Rama <code>feature/5-doc-actuator-observabilidad</code> desde <code>dev</code>. El cambio es
+      chico (2 archivos de documentación) así que el "plan" fue directo: corregir el texto de
+      Observabilidad con la cita exacta a <code>application.yml</code>, y actualizar la fila del
+      hallazgo en <code>claims-ledger.md</code> de "confirmada (queda como TODO)" a "corregida".</p>
+
+    <div class="foto"><span class="fnum">2</span>
+      <div class="shot">
+        <div class="barra"><span class="puntos"><i></i><i></i><i></i></span>
+          Claude Code — editor, diff real de los dos archivos <span class="real">captura real</span></div>
+        <div class="cuerpo"><img src="./assets/shots/02-claude-code-fix.png" alt="Captura real del editor de Claude Code mostrando el diff aplicado a infrastructure.md y claims-ledger.md"></div>
+      </div>
+      <div class="accion"><b>Qué se hizo:</b> <code>Edit</code> sobre los dos archivos, con la línea
+        exacta del código (<code>application.yml:101-108</code>) citada en el propio doc corregido
+        — para que la próxima persona que lo lea no tenga que confiar, pueda verificar.</div>
+    </div>
+
+    <!-- ═══════════ FRAME 3 ═══════════ -->
+    <h2><span class="escena">c3</span>Verificar — el gate local real</h2>
+    <p>Cambio de solo documentación, pero el gate corrió igual: el hook <code>pre-push</code> de
+      Lefthook ejecuta <code>make check</code> sobre <code>base-conocimiento</code> en cada push, sin
+      excepción para docs. Esta es la <b>salida real</b>, verbatim, del momento en que se pusheó la
+      rama — no un resumen.</p>
+
+    <div class="foto"><span class="fnum">3</span>
+      <div class="term">
+        <div class="tbar">git push — hook pre-push (Lefthook) · salida real, sin editar</div>
+        <pre><span class="dim">[INFO] Running co.g3a.baseconocimiento.recuperacion.RrfFusionTest
+[WARNING] Tests run: 2, Failures: 0, Errors: 0, Skipped: 2, Time elapsed: 0.007 s
+[INFO]
+[INFO] Results:
+[INFO]</span>
+<span class="ok-line">[INFO] Tests run: 122, Failures: 0, Errors: 0, Skipped: 2</span>
+<span class="dim">[INFO]
+[INFO] ------------------------------------------------------------------------</span>
+<span class="ok-line">[INFO] BUILD SUCCESS</span>
+<span class="dim">[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  01:08 min</span>
+<span class="ok-line">OK -- the repo is green</span>
+<span class="dim">✔️ base-conocimiento-check (91.83 seconds)</span></pre>
+      </div>
+      <div class="accion"><b>Qué se hizo:</b> nada manual — el hook corrió solo al pushear.
+        <b>122 tests, 0 failures, BUILD SUCCESS</b>, en 91.83 s. El gate nunca se saltea porque "es
+        solo un doc": si algo rompiera, el push se hubiera bloqueado ahí mismo.</div>
+    </div>
+
+    <!-- ═══════════ FRAME 4 ═══════════ -->
+    <h2><span class="escena">p1</span>Abrir el PR real</h2>
+    <p><code>gh pr create --base dev</code>, con <code>Closes #5</code> en el body y el resumen de
+      qué cambió y por qué — mismo patrón que ya usa este monorepo.</p>
+
+    <div class="foto"><span class="fnum">4</span>
+      <div class="shot">
+        <div class="barra"><span class="puntos"><i></i><i></i><i></i></span>
+          <span class="url">github.com/.../pull/6</span>
+          <span class="real">captura real</span></div>
+        <div class="cuerpo"><img src="./assets/shots/03-pr-abierto.png" alt="PR #6 real, hacia dev, con Closes #5 y el resumen en el body"></div>
+      </div>
+      <div class="accion"><b>Qué se hizo:</b> PR abierto hacia <code>dev</code> desde
+        <code>feature/5-doc-actuator-observabilidad</code>, con <code>Closes #5</code> y el resumen
+        en el body — contenido real, sin cambios desde que se abrió. <i>(Esta captura se tomó
+        después del merge, por eso el badge de arriba ya dice "Merged" — el fotograma 6 muestra ese
+        paso en detalle.)</i></div>
+    </div>
+
+    <!-- ═══════════ FRAME 5 ═══════════ -->
+    <h2><span class="escena">G5</span>CI en verde</h2>
+    <p>GitHub Actions corre <code>make ci</code> en cada push/PR — el mismo <code>make check</code>
+      del hook local, más el escaneo de secretos. Se esperó con <code>gh pr checks --watch</code>
+      hasta que terminara.</p>
+
+    <div class="foto"><span class="fnum">5</span>
+      <div class="shot">
+        <div class="barra"><span class="puntos"><i></i><i></i><i></i></span>
+          <span class="url">github.com/.../pull/6/checks</span>
+          <span class="real">captura real</span></div>
+        <div class="cuerpo"><img src="./assets/shots/04-ci-verde.png" alt="Checks del PR #6 real, en verde, succeeded en 2m 12s"></div>
+      </div>
+      <div class="accion"><b>Qué se hizo:</b> esperar — <code>check succeeded now in 2m 12s</code>.
+        Las 10 "annotations" que muestra son de Checkstyle, no bloqueante (deuda de brownfield ya
+        documentada en <code>AGENTS.md</code>), no algo que introdujo este cambio.</div>
+    </div>
+
+    <!-- ═══════════ FRAME 6 ═══════════ -->
+    <h2><span class="escena">mg</span>Merge real</h2>
+    <p><code>gh pr merge --merge</code> hacia <code>dev</code>.</p>
+
+    <div class="foto"><span class="fnum">6</span>
+      <div class="shot">
+        <div class="barra"><span class="puntos"><i></i><i></i><i></i></span>
+          <span class="url">github.com/.../pull/6</span>
+          <span class="real">captura real</span></div>
+        <div class="cuerpo"><img src="./assets/shots/05-pr-mergeado.png" alt="Timeline real del PR #6: merged commit 65f9071 into dev, 2 checks passed, mención automática del issue #5 y borrado de la rama"></div>
+      </div>
+      <div class="accion"><b>Resultado:</b> <code>merged commit 65f9071 into dev</code>, "2 checks
+        passed", y GitHub enlazó solo la mención al issue #5 (por el <code>Closes #5</code> en el
+        body) — aunque, como se ve en el hallazgo de abajo, mencionar no es lo mismo que cerrar.</div>
+    </div>
+
+    <!-- ═══════════ HALLAZGO REAL ═══════════ -->
+    <h2>Hallazgo real: el issue no se auto-cerró</h2>
+    <p>Acá el caso real enseñó algo que un caso inventado no hubiera mostrado: <code>Closes #5</code>
+      en el body del PR <b>no cerró el issue al mergear</b>.</p>
+
+    <div class="hallazgo"><b>Por qué:</b> el auto-close de GitHub por <code>Closes #N</code> solo
+      dispara cuando el PR mergea al <b>default branch del repositorio</b> — acá <code>main</code>,
+      confirmado con <code>gh repo view --json defaultBranchRef</code>. Este PR mergeó a
+      <code>dev</code>, que no es el default branch, así que el issue quedó abierto y hubo que
+      cerrarlo a mano con <code>gh issue close 5 --comment "..."</code>, dejando explicado el
+      porqué en el propio comentario de cierre.</div>
+
+    <div class="foto"><span class="fnum">7</span>
+      <div class="shot">
+        <div class="barra"><span class="puntos"><i></i><i></i><i></i></span>
+          <span class="url">github.com/.../issues/5</span>
+          <span class="real">captura real</span></div>
+        <div class="cuerpo"><img src="./assets/shots/06-issue-cerrado.png" alt="Issue #5 real con badge Closed y el comentario de cierre explicando por qué el auto-close no disparó"></div>
+      </div>
+      <div class="accion"><b>Resultado:</b> issue #5 cerrado a mano, con el motivo documentado — no
+        silenciosamente, para que quien lo lea después no piense que se olvidó. <i>(El timeline
+        también muestra un "reopened" y un "closed" de hace 1 minuto: son de retomar esta misma
+        captura para corregirla, no del ciclo original — se dejan visibles a propósito, en vez de
+        recortarlos, porque documentan lo que dice esta misma página: real, sin editar.)</i></div>
+    </div>
+
+    <div class="nota"><b>Repos con más de una rama de integración (<code>main</code> + <code>dev</code>):</b>
+      no confíes en el auto-close si el flujo del equipo mergea a algo distinto del default branch —
+      verificalo una vez con <code>gh repo view --json defaultBranchRef</code> y ajustá el checklist
+      del equipo (Step J del ciclo de entrega: "postear resumen y actualizar estado" cubre
+      exactamente este caso).</div>
+
+    <!-- ═══════════ CIERRE ═══════════ -->
+    <h2>El cierre: qué se capturó de cada paso del proceso</h2>
+    <p>El <a href="../../proceso-operacional-con-ia/">proceso completo</a> tiene 46 pasos en 6
+      carriles. Esta tabla es honesta sobre qué de ese proceso quedó capturado acá y qué no:</p>
+
+    <table>
+      <tr><th>Paso del proceso</th><th>Qué se capturó acá</th></tr>
+      <tr><td><code>bo1</code> Tomar el issue</td><td>Captura real — fotograma 1</td></tr>
+      <tr><td><code>c1</code> Planificar</td><td>Sin captura — el cambio fue chico, el plan quedó en el body del issue</td></tr>
+      <tr><td><code>c4a</code> Crear rama · <code>c2</code> Ejecutar</td><td>Captura real del diff en Claude Code — fotograma 2</td></tr>
+      <tr><td><code>c3</code> Verificación 4 capas</td><td>Salida real de terminal (texto verbatim) — fotograma 3</td></tr>
+      <tr><td><code>c4b</code>/<code>c4c</code> Commit + push</td><td>Sin captura aparte — visible en el mismo push que disparó el fotograma 3</td></tr>
+      <tr><td><code>p1</code> Abrir PR</td><td>Captura real — fotograma 4</td></tr>
+      <tr><td><code>G5</code> CI en verde</td><td>Captura real — fotograma 5</td></tr>
+      <tr><td><code>cr</code>/<code>G6</code> Revisión</td><td>No aplica — repo de un solo colaborador, sin reviewer que asignar</td></tr>
+      <tr><td><code>mg</code> Merge</td><td>Captura real — fotograma 6</td></tr>
+      <tr><td><code>cd1</code>/<code>G8</code> CD a staging</td><td>No aplica — <code>base-conocimiento</code> no tiene despliegue automático a staging, solo CI</td></tr>
+      <tr><td><code>c5</code> Retrospectiva</td><td>Esta misma sección + el hallazgo del auto-close</td></tr>
+    </table>
+
+    <div class="ok-box"><b>Lo que esto demuestra:</b> el ciclo completo (issue real → rama →
+      implementación → gate local → PR → CI real → merge → cierre) corre de punta a punta sobre un
+      repo real, sin atajos ni datos inventados — y el proceso mismo produjo un hallazgo que no
+      estaba en el guion (el auto-close a una rama no-default). Eso es lo que un caso real aporta
+      que un mockup no puede.</div>
+  </main>
+
+  <footer>
+    <p>Caso real ejecutado sobre <code>base-conocimiento</code> en este monorepo — issue, PR, CI y
+      merge verificables en GitHub (<a href="https://github.com/G3A/workshop-desarrollo-sw-guiado-por-ia/issues/5">#5</a>,
+      <a href="https://github.com/G3A/workshop-desarrollo-sw-guiado-por-ia/pull/6">#6</a>). Todas las
+      capturas de esta página son reales, tomadas durante la ejecución; el texto de terminal es
+      salida real, no editada más allá del recorte de líneas repetidas. Estilo inspirado en la
+      capacitación interna "Cómo registrar" del CoE de intempo — recreado desde cero para este repo
+      público, sin datos ni identidad de esa organización.</p>
+  </footer>
+</body>
+</html>

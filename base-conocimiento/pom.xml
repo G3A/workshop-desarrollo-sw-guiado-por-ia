@@ -1,0 +1,331 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>4.1.0</version>
+    <relativePath/>
+  </parent>
+
+  <groupId>co.g3a</groupId>
+  <artifactId>base-conocimiento</artifactId>
+  <version>0.1.0-SNAPSHOT</version>
+  <name>base-conocimiento</name>
+  <description>Base de conocimiento interna con recuperacion hibrida, 100% local</description>
+
+  <properties>
+    <!-- JDK 25 LTS: coincide con los tags eclipse-temurin:25 del Dockerfile (deps,
+         build y runtime). Boot 4.1 lo soporta plenamente (linea base 17). -->
+    <java.version>25</java.version>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+    <!-- Versiones fijadas, sin rangos: ver plan, riesgo "Spring AI 2.0 y Modulith 2.1 son recientes" -->
+    <spring-modulith.version>2.1.0</spring-modulith.version>
+    <spring-ai.version>2.0.0</spring-ai.version>
+    <onnxruntime.version>1.28.0</onnxruntime.version>
+    <djl-tokenizers.version>0.36.0</djl-tokenizers.version>
+    <pgvector.version>0.1.6</pgvector.version>
+    <arconia.version>0.29.0</arconia.version>
+    <jgit.version>7.7.1.202607240634-r</jgit.version>
+    <archunit.version>1.4.2</archunit.version>
+    <!-- Fijado en 1.9.3 a proposito, NO en la ultima: 1.10.0 traia una inyeccion de
+         prompt oculta (ANSI) contra agentes de IA que le pedia borrar los tests de
+         jqwik; 1.10.1 la reemplazo por una version visible que sigue imprimiendo
+         "Disregard previous instructions..." en cada corrida (ver
+         https://lwn.net/Articles/1075317/). jqwik.hideAntiAiClause solo oculta el
+         mensaje en una terminal interactiva (escape ANSI), no lo saca de stdout ni
+         de los logs de CI, asi que no resuelve nada por si solo. No subir de 1.9.x
+         sin revisar antes las release notes de esa version en concreto. -->
+    <jqwik.version>1.9.3</jqwik.version>
+    <wiremock.version>3.13.2</wiremock.version>
+    <!-- Boot 4.1 ya no importa el BOM de Testcontainers: hay que declararlo -->
+    <testcontainers.version>2.0.5</testcontainers.version>
+
+    <!-- Sin BOM propio: versiones resueltas contra Maven Central al instrumentar (control 3) -->
+    <spotless.version>3.9.0</spotless.version>
+    <google-java-format.version>1.35.0</google-java-format.version>
+    <maven-checkstyle-plugin.version>3.6.0</maven-checkstyle-plugin.version>
+  </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.springframework.modulith</groupId>
+        <artifactId>spring-modulith-bom</artifactId>
+        <version>${spring-modulith.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.springframework.ai</groupId>
+        <artifactId>spring-ai-bom</artifactId>
+        <version>${spring-ai.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.testcontainers</groupId>
+        <artifactId>testcontainers-bom</artifactId>
+        <version>${testcontainers.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>io.arconia</groupId>
+        <artifactId>arconia-bom</artifactId>
+        <version>${arconia.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <dependencies>
+    <!-- Web y observabilidad -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-validation</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-actuator</artifactId>
+    </dependency>
+
+    <!-- Persistencia: JdbcClient sobre Postgres. El retrieval hibrido va en SQL a mano. -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-jdbc</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+      <scope>runtime</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.pgvector</groupId>
+      <artifactId>pgvector</artifactId>
+      <version>${pgvector.version}</version>
+    </dependency>
+    <!-- OJO: en Spring Boot 4 las autoconfiguraciones se partieron en modulos.
+         `flyway-core` por si solo NO cablea nada: la app arranca contra una base
+         vacia y sin protestar. Este modulo es el que aporta el autoconfig. -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-flyway</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.flywaydb</groupId>
+      <artifactId>flyway-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.flywaydb</groupId>
+      <artifactId>flyway-database-postgresql</artifactId>
+      <scope>runtime</scope>
+    </dependency>
+
+    <!-- Modulith: fronteras entre modulos verificadas en el pipeline -->
+    <dependency>
+      <groupId>org.springframework.modulith</groupId>
+      <artifactId>spring-modulith-starter-core</artifactId>
+    </dependency>
+
+    <!-- Spring AI: no se usa VectorStore ni sus abstracciones RAG, solo los ChatModel/EmbeddingModel.
+         Ollama sigue sirviendo bge-m3 (embeddings); OpenAI le habla a llama-server (Bonsai 8B,
+         ADR-0009, prototipo de la rama worktree-experimento+bonsai-llama-server) para el resto del
+         pipeline. El Destilador (Teams, F6) se queda en Ollama, ver DestiladorOllama. -->
+    <dependency>
+      <groupId>org.springframework.ai</groupId>
+      <artifactId>spring-ai-starter-model-ollama</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.ai</groupId>
+      <artifactId>spring-ai-starter-model-openai</artifactId>
+    </dependency>
+
+    <!-- Cross-encoder local: Ollama no sirve rerankers -->
+    <dependency>
+      <groupId>com.microsoft.onnxruntime</groupId>
+      <artifactId>onnxruntime</artifactId>
+      <version>${onnxruntime.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>ai.djl.huggingface</groupId>
+      <artifactId>tokenizers</artifactId>
+      <version>${djl-tokenizers.version}</version>
+    </dependency>
+
+    <!-- Ingesta: Docling (docling-serve, cuarto contenedor, ADR-0010) para PDF/DOCX/PPTX,
+         y recorrido de repos -->
+    <dependency>
+      <groupId>io.arconia</groupId>
+      <artifactId>arconia-docling-spring-boot-starter</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.jgit</groupId>
+      <artifactId>org.eclipse.jgit</artifactId>
+      <version>${jgit.version}</version>
+    </dependency>
+
+    <!-- Validacion del JWT de Bot Connector contra el JWKS de Bot Framework.
+         Se usa la libreria, NO el starter: no queremos que Security bloquee toda la app. -->
+    <dependency>
+      <groupId>org.springframework.security</groupId>
+      <artifactId>spring-security-oauth2-jose</artifactId>
+    </dependency>
+
+    <!-- Pruebas -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!-- Boot 4 partio tambien los slices de prueba: `@WebMvcTest` ya no viene
+         con `spring-boot-starter-test`, y ademas se mudo de paquete
+         (org.springframework.boot.webmvc.test.autoconfigure, no
+         org.springframework.boot.test.autoconfigure.web.servlet). -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-webmvc-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.modulith</groupId>
+      <artifactId>spring-modulith-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-testcontainers</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!-- Testcontainers 2.0 renombro todos sus modulos: `postgresql` paso a ser
+         `testcontainers-postgresql`. Los nombres viejos ya no existen. -->
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-postgresql</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!-- Testcontainers 2.0 lo usa en tiempo de ejecucion pero no lo arrastra:
+         sin esto falla con NoClassDefFoundError al instanciar el cliente de Docker. -->
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-lang3</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.tngtech.archunit</groupId>
+      <artifactId>archunit-junit5</artifactId>
+      <version>${archunit.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>net.jqwik</groupId>
+      <artifactId>jqwik</artifactId>
+      <version>${jqwik.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <!-- Dobla el JWKS y el token endpoint de Bot Framework para probar la
+         validacion del JWT de F5 sin depender de login.botframework.com real. -->
+    <dependency>
+      <groupId>org.wiremock</groupId>
+      <artifactId>wiremock-standalone</artifactId>
+      <version>${wiremock.version}</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+        <configuration>
+          <!-- Jar por capas: al reconstruir solo se repone la capa de aplicacion -->
+          <layers>
+            <enabled>true</enabled>
+          </layers>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <compilerArgs>
+            <arg>-Xlint:all</arg>
+            <arg>-Werror</arg>
+          </compilerArgs>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>com.diffplug.spotless</groupId>
+        <artifactId>spotless-maven-plugin</artifactId>
+        <version>${spotless.version}</version>
+        <configuration>
+          <java>
+            <includes>
+              <include>src/main/java/**/*.java</include>
+              <include>src/test/java/**/*.java</include>
+            </includes>
+            <googleJavaFormat>
+              <version>${google-java-format.version}</version>
+            </googleJavaFormat>
+            <removeUnusedImports/>
+            <importOrder/>
+          </java>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>check</goal>
+            </goals>
+            <phase>verify</phase>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-checkstyle-plugin</artifactId>
+        <version>${maven-checkstyle-plugin.version}</version>
+        <configuration>
+          <configLocation>${maven.multiModuleProjectDirectory}/checkstyle.xml</configLocation>
+          <suppressionsLocation>${maven.multiModuleProjectDirectory}/checkstyle-suppressions.xml</suppressionsLocation>
+          <failOnViolation>true</failOnViolation>
+          <violationSeverity>error</violationSeverity>
+          <includeTestSourceDirectory>true</includeTestSourceDirectory>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>check</goal>
+            </goals>
+            <phase>verify</phase>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <includes>
+            <include>**/*Test.java</include>
+            <include>**/*Tests.java</include>
+            <include>**/*Properties.java</include>
+          </includes>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>

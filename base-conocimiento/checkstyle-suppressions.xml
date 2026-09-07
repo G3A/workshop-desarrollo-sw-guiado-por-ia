@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<!DOCTYPE suppressions PUBLIC
+  "-//Checkstyle//DTD SuppressionFilter Configuration 1.2//EN"
+  "https://checkstyle.org/dtds/suppressions_1_2.dtd">
+<suppressions>
+  <!-- One WireMock stub body is a single-line JSON text block with escaped \n sequences
+       (real fixture data, not code) that legitimately exceeds 120 chars. -->
+  <suppress
+      checks="LineLength"
+      files="ConectorAzureDevOpsTest\.java"
+      lines="134"/>
+</suppressions>

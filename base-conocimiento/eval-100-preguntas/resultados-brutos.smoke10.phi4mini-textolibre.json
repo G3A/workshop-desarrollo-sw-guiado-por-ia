@@ -1,0 +1,122 @@
+[
+  {
+    "id": 1,
+    "categoria": "tipos",
+    "pregunta": "¿Cuáles son los ocho tipos primitivos definidos en el lenguaje Java?",
+    "esperado": "responde",
+    "respuesta": "Los ocho tipos primitivos definidos en el lenguaje Java son: boolean, char, double, float, int, long, short y byte. [n] -- La información se encuentra en los fragmentos del contexto 3 y 5.",
+    "estadoFinal": "Respondido en 5:58",
+    "error": null,
+    "inicio": "2026-08-22T01:32:41.055Z",
+    "fin": "2026-08-22T01:38:39.316Z",
+    "elapsedMs": 358261
+  },
+  {
+    "id": 2,
+    "categoria": "tipos",
+    "pregunta": "¿Qué diferencia hay entre un tipo primitivo y un tipo de referencia en Java?",
+    "esperado": "responde",
+    "respuesta": "La diferencia entre un tipo primitivo y un tipo de referencia en Java es que los tipos primitivos no comparten estado con otros valores primitivos, mientras que los tipos de referencia pueden referenciar objetos o arrays, lo cual puede llevar al concepto de polución del montón si se usan tipos genéricos sin cuidado. [n]",
+    "estadoFinal": "Respondido en 3:55",
+    "error": null,
+    "inicio": "2026-08-22T01:38:39.320Z",
+    "fin": "2026-08-22T01:42:35.267Z",
+    "elapsedMs": 235947
+  },
+  {
+    "id": 3,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es una conversión de ensanchamiento (widening) entre tipos primitivos?",
+    "esperado": "responde",
+    "respuesta": "Una conversión de ensanchamiento entre tipos primitivos es una operación que convierte un tipo más grande en uno más pequeño, preservando la información. Ejemplos incluyen:\n\n- byte a short , int , long , float o double\n- char a int , long , float o double\n- int a long , float o double\n- long a float o double\n\nEstas conversions no pierden información sobre el tamaño general de un valor numérico, pero pueden perder precisión. Ejemplo: la conversión de int a float puede resultar en una pérdida de algunos bits menos significativos del valor original.\n\n[2] jls25.pdf (file:///vault/documentos/jls25.pdf)\n- Si cualquier expresión es de tipo int y no es una constante (§15.29), entonces el tipo promovido es int, y otras expresiones que no son de tipo int se convierten mediante una conversión primitiva de ensanchamiento a int.\n- De lo contrario, si alguna expresión es de tipo short, y todas las demás expresiones son del mismo tipo o constantes con un valor representable en el tipo short, entonces el tipo promovido es short, y los bytes se convierten por medio de una conversión primitiva de ensanchamiento a short.\n- De lo contrario, si alguna expresión es de tipo byte, y todas las demás expresiones son del mismo tipo o constantes con un valor representable en el tipo byte, entonces el tipo promovido es byte, y los int se convierten por medio de una conversión primitiva de ensanchamiento a byte.\n- De lo contrario, si alguna expresión es de tipo char, y todas las demás expresiones son del mismo tipo o constantes con un valor representable en el tipo char, entonces el tipo promovido es char, y los int se convierten por medio de una conversión primitiva de ensanchamiento a char.\n- De lo contrario, el tipo promovido es int, y todas las otras expresiones se convierten mediante una conversión primitiva de ensanchamiento a int.\n\n[3] jls25.pdf (file:///vault/documentos/jls25.pdf)\nUna conversión de referencia de ensanchamiento existe desde cualquier tipo de referencia S al tipo de referencia T siempre que S sea un subtipo de T (§4.10).\n\nEstas conversions no requieren ninguna acción especial en tiempo de ejecución y, por lo tanto, nunca lanzan una excepción en tiempo de ejecución. Consisten simplemente en considerar un objeto como teniendo otro tipo de",
+    "estadoFinal": "Respondido en 4:10",
+    "error": null,
+    "inicio": "2026-08-22T01:42:35.269Z",
+    "fin": "2026-08-22T01:46:46.233Z",
+    "elapsedMs": 250964
+  },
+  {
+    "id": 4,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es el autoboxing y cuándo ocurre de forma automática?",
+    "esperado": "responde",
+    "respuesta": "No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.",
+    "estadoFinal": "Respondido en 4:14",
+    "error": null,
+    "inicio": "2026-08-22T01:46:46.236Z",
+    "fin": "2026-08-22T01:51:01.406Z",
+    "elapsedMs": 255170
+  },
+  {
+    "id": 5,
+    "categoria": "tipos",
+    "pregunta": "¿Qué representa el tipo null y a qué tipos de referencia se puede asignar?",
+    "esperado": "responde",
+    "respuesta": "La referencia nula puede asignarse a cualquier tipo de referencia. [1]",
+    "estadoFinal": "Respondido en 2:34",
+    "error": null,
+    "inicio": "2026-08-22T01:51:01.408Z",
+    "fin": "2026-08-22T01:53:35.905Z",
+    "elapsedMs": 154497
+  },
+  {
+    "id": 6,
+    "categoria": "tipos",
+    "pregunta": "¿Qué significa que un método tenga tipo de retorno void?",
+    "esperado": "responde",
+    "respuesta": "No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.",
+    "estadoFinal": "Respondido en 2:28",
+    "error": null,
+    "inicio": "2026-08-22T01:53:35.908Z",
+    "fin": "2026-08-22T01:56:04.633Z",
+    "elapsedMs": 148725
+  },
+  {
+    "id": 7,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es un tipo genérico parametrizado, por ejemplo List<String>?",
+    "esperado": "responde",
+    "respuesta": "The provided text delves into Java's handling and implications surrounding the use of wildcards (generics) versus non-generic, \"raw\" references in collections like `List`. It explains how generics improve type safety by allowing specific typing at compile time but also introduces complexities when interfacing with legacy code that doesn't utilize generic types.\n\nKey points include:\n\n1. **Generics and Type Safety**: Generics allow specifying the exact data type a collection can hold, improving runtime efficiency through better memory management (e.g., using `ArrayList` instead of an untyped array).\n\n2. **Raw Types in Java 5+**:\n   - Raw types are essentially non-generic versions that ignore generic parameters.\n   - They were introduced to maintain compatibility with pre-Java Generics code.\n\n3. **Compile-Time Warnings and Errors for Raw Types Usage**: \n   - Using raw collections can lead to unchecked warnings because the compiler cannot guarantee type safety at compile time without knowing specific types (e.g., `List<?>`).\n   - Certain operations involving generics may result in heap pollution, where a variable ends up holding an unexpected object due to incorrect casting or assignment.\n\n4. **Examples and Implications**:\n   - Example provided shows how using raw collections can lead to unchecked warnings.\n   - The text also explains that even if no compile-time warning occurs (e.g., from older Java versions), there might still be runtime issues like heap pollution, which is why it's crucial for programmers not just relying on the absence of errors but ensuring correctness through good practices.\n\n5. **Best Practices**:\n   - Avoid using raw types unless absolutely necessary.\n   - Prefer generics to ensure type safety and avoid potential pitfalls in code interfacing with legacy systems or newer generic collections like `ArrayList`.\n\n6. **Future Directions for Java Generics**: \n   - The text hints at possible future restrictions on the use of raw types, encouraging developers towards more modern practices.\n\nIn summary:\n- Raw references (`?`) are less type-safe compared to generics.\n- Using them can lead to unchecked warnings and potential runtime issues like heap pollution due to incorrect casting or assignments involving generic collections. \n- Best practice is always using parameterized (generic) classes for better compile-time safety, unless interfacing with legacy code that doesn't support these features.\n\nUnderstanding this helps in writing safer Java applications by leveraging the full power of generics while being cautious about potential pitfalls when dealing with raw types and older non-generic collections.",
+    "estadoFinal": "Respondido en 5:39",
+    "error": null,
+    "inicio": "2026-08-22T01:56:04.635Z",
+    "fin": "2026-08-22T02:01:43.820Z",
+    "elapsedMs": 339185
+  },
+  {
+    "id": 8,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es un literal de tipo long y cómo se distingue de un literal int en el código fuente?",
+    "esperado": "responde",
+    "respuesta": "No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.",
+    "estadoFinal": "Respondido en 3:22",
+    "error": null,
+    "inicio": "2026-08-22T02:02:45.452Z",
+    "fin": "2026-08-22T02:06:08.574Z",
+    "elapsedMs": 203122
+  },
+  {
+    "id": 9,
+    "categoria": "variables",
+    "pregunta": "¿Qué diferencia hay entre una variable local declarada con var y una declarada con un tipo explícito?",
+    "esperado": "responde",
+    "respuesta": "No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.",
+    "estadoFinal": "Respondido en 2:23",
+    "error": null,
+    "inicio": "2026-08-22T02:06:08.576Z",
+    "fin": "2026-08-22T02:08:32.209Z",
+    "elapsedMs": 143633
+  },
+  {
+    "id": 10,
+    "categoria": "variables",
+    "pregunta": "¿Qué es el ámbito (scope) de una variable local?",
+    "esperado": "responde",
+    "respuesta": "El ámbito de una variable local declarada en un bloque es el resto del bloque, comenzando con la inicializador propia y incluyendo cualquier otro declarador al derecho en la declaración de variables locales [1]. El ámbito de una variable local declarada en el ForInit parte de un bucle básico for incluye su propio inicializador, cualquier otro declarador al derecho en el ForInit parte del bucle, los partes Expression e Update del bucle y el Contenido del Statement [2]. El ámbito de una variable local declarada en la cabecera de un bucle mejorado es el contenido del Statement [3].\n\nEl ámbito de una variable local declarada en el recurso especificación de un try-with-resources se extiende desde la declaración hacia derecho sobre todo lo restante de la especificación de recursos y toda la bloque asociado con el try-with-resources [4]. El ámbito de una parámetro de excepción declarado en un catch clause de un try statement es el entero del block asociado al catch [5].\n\nEl tipo de una variable local declarada, formal parameter, exception parameter, local class o local interface se determina por su nombre simple y no puede ser determinado con solo nombres simples §6.2.\n\nNo está permitido declarar dentro del ámbito de una variable local, un parámetro formal, excepción parametro, clase local u interfaz local si esto dificultaría distinguir entre los entidades declaradas usando solo nombres simples [7].\n\nLa declaración de una variable local v se considera en el scope de la misma variable v a menos que sea declarada dentro de una clase o interface incluida por el scope de v. Lo mismo aplica para las variables locales C, parámetros excepcionales y clases u interfaces locales declarados dentro del scope de un catch clause [8].\n\nEl ámbito de una variable local declarada por un patrón se crea cuando el patrón coincide §14.30.2.\n\nUna variable local cesa a existir cuando su declaración ya no está en scope [9]. Si la inicialización de una variable local es dentro del scope de su propia declaración, pero aún no tiene valor y no puede ser utilizada (como ocurre con variables locales declaradas por un switch statement), entonces se produce un error al compilar §16. Definición de Asignación Definitiva.\n\nEl ámbito de una variable local declarada en el caso de que la inicialización pueda referirse a otra variable declarada anteriormente, y la invocación del método puede referirse a esa misma variable declarada previamente dentro del block se determina por los puntos programáticos donde la variable es definitivamente coinc",
+    "estadoFinal": "Respondido en 4:17",
+    "error": null,
+    "inicio": "2026-08-22T02:08:32.212Z",
+    "fin": "2026-08-22T02:12:49.882Z",
+    "elapsedMs": 257670
+  }
+]

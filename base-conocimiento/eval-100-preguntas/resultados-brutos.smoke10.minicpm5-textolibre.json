@@ -1,0 +1,122 @@
+[
+  {
+    "id": 1,
+    "categoria": "tipos",
+    "pregunta": "¿Cuáles son los ocho tipos primitivos definidos en el lenguaje Java?",
+    "esperado": "responde",
+    "respuesta": "[1] [2] [3] [4] [5] [6]\n\nSe ha proporcionado un contexto para analizar los ocho tipos primitivos definidos en el lenguaje Java. El texto contiene información sobre las primitive types, los tipos generales y los tipos de referencia, incluidos la definición de los tipos de primitive types específicos y su relación directa entre ellos. Además, incluye una explicación del comportamiento de los tipos de referencia, como el uso de clases, interfaces y el concepto de null. El texto también describe las reglas sobre la representación temporal de los tipos de primitive types y los tipos de argumentos. Sin embargo, no hay información detallada sobre los ocho tipos primitivos definidos en el lenguaje Java. Para identificar estos tipos, se necesita verificar la definición del texto proporcionado. Si hay más contexto que no se ha presentado, podría haberse incluyendo más tipos de primitive types. Sin embargo, según el contexto actual, solo se han mencionado los tipos de primitive types en los documentos [1] a [6]. Por lo tanto, los ocho tipos primitivos definidos en este contexto son: [1], [2], [3], [4], [5], [6].",
+    "estadoFinal": "Respondido en 2:20",
+    "error": null,
+    "inicio": "2026-08-22T21:54:26.969Z",
+    "fin": "2026-08-22T21:56:48.010Z",
+    "elapsedMs": 141041
+  },
+  {
+    "id": 3,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es una conversión de ensanchamiento (widening) entre tipos primitivos?",
+    "esperado": "responde",
+    "respuesta": "[1] jls25.pdf (file:///vault/documentos/jls25.pdf)\nThe widening primitive conversion process involves converting between integer and floating-point types while preserving information as much as possible. This process is crucial for maintaining the precision of numeric values in software applications.\n\nA widening primitive conversion from int to float, or long to float, may result in loss of precision because the resulting floating-point value will be a correctly rounded version of the integer value using round to nearest rounding policy (§15.4). This means that while the conversion might not lose all information, it can lead to rounding errors.\n\nA widening primitive conversion from int to double or long to double may also result in loss of precision, as the resulting floating-point value will be a correctly rounded version of the integer value. However, these conversions do not cause run-time exceptions because they are handled at compile time rather than runtime.\n\nThe process described in this context involves converting between primitive types while ensuring that the overall magnitude and range of numeric values are preserved to some extent. This is important for applications where precise numerical calculations need to be performed accurately.\n\n[2] jls25.pdf (file:///vault/documentos/jls25.pdf)\nThe widening primitive conversion process described in this context involves converting between integer and floating-point types while preserving information as much as possible. This process is crucial for maintaining the precision of numeric values in software applications.\n\nA widening primitive conversion from int to float, or long to float, may result in loss of precision because the resulting floating-point value will be a correctly rounded version of the integer value using round to nearest rounding policy (§15.4). This means that while the conversion might not lose all information, it can lead to rounding errors.\n\nA widening primitive conversion from int to double or long to double may also result in loss of precision, as the resulting floating-point value will be a correctly rounded version of the integer value. However, these conversions do not cause run-time exceptions because they are handled at compile time rather than runtime.\n\nThe process described in this context involves converting between primitive types while ensuring that the overall magnitude and range of numeric values are preserved to some extent. This is important for applications where precise numerical calculations need to be performed accurately.\n\n[3] jls25.pdf (file:///vault/documentos/jls25.pdf)\nThe widening primitive conversion process described in this context involves converting between integer and floating-point types while preserving information as much as possible. This process is crucial for maintaining",
+    "estadoFinal": "Respondido en 1:15",
+    "error": null,
+    "inicio": "2026-08-22T21:57:03.515Z",
+    "fin": "2026-08-22T21:58:19.498Z",
+    "elapsedMs": 75983
+  },
+  {
+    "id": 4,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es el autoboxing y cuándo ocurre de forma automática?",
+    "esperado": "responde",
+    "respuesta": "[1] jls25.pdf (file:///vault/documentos/jls25.pdf)\nThe following program combines enhanced for statements with auto-unboxing to translate a histogram into a frequency table:\n\n```\nMap<String, Integer> histogram = ...; double total = 0; for (int i : histogram.values()) total += i; for (Map.Entry<String, Integer> e : histogram.entrySet()) System.out.println(e.getKey() + \" \" + e.getValue() / total);\n}\n```\n\n[2] jls25.pdf (file:///vault/documentos/jls25.pdf)\nBoxing conversion treats expressions of a primitive type as expressions of a corresponding reference type. Specifically, the following nine conversions are called the boxing conversions:\n\n- From type boolean to type Boolean\n- From type byte to type Byte\n- From type short to type Short\n- From type char to type Character\n- From type int to type Integer\n- From type long to type Long\n- From type float to type Float\n- From type double to type Double\n- From the null type to the null type\n\nThis rule is necessary because the conditional operator (§15.25) applies boxing conversion to the types of its operands, and uses the result in further calculations.\n\nAt run time, boxing conversion proceeds as follows:\n\n- If p is a value of type boolean , then boxing conversion converts p into a reference r of class and type Boolean , such that r .booleanValue() == p\n- If p is a value of type byte , then boxing conversion converts p into a reference r of class and type Byte , such that r .byteValue() == p\n- ... (similar rules for other primitive types)\n\nIf the value p being boxed is the result of evaluating a constant expression (§15.29) of type boolean, byte, char, short, int, or long, and the result is true, false, an integer in the range -128 to 127 inclusive, or a character in the range '\\u0000' to '\\u007f' inclusive, then let a and b be the results of any two boxing conversions of p. It is always the case that a == b.\n\nIdeally, boxing a primitive value would always yield an identical reference. In practice, this may not be feasible using existing implementation techniques. The rule above is a pragmatic compromise, requiring that certain common values always be boxed into indistinguishable objects. The implementation may cache these, lazily or eagerly",
+    "estadoFinal": "Respondido en 2:04",
+    "error": null,
+    "inicio": "2026-08-22T21:58:19.502Z",
+    "fin": "2026-08-22T22:00:24.041Z",
+    "elapsedMs": 124539
+  },
+  {
+    "id": 5,
+    "categoria": "tipos",
+    "pregunta": "¿Qué representa el tipo null y a qué tipos de referencia se puede asignar?",
+    "esperado": "responde",
+    "respuesta": "[1] jls25.pdf (file:///vault/documentos/jls25.pdf)\nThe null type has one value, the null reference, represented by the null literal null , which is formed from ASCII characters.\n\nNullLiteral:\n\nnull\n\nA null literal is always of the null type (§4.1).\n\n[2] jls25.pdf (file:///vault/documentos/jls25.pdf)\nAssignment contexts allow the value of an expression to be assigned (§15.26) to a variable; the type of the expression must be converted to the type of the variable.\n\nAssignment contexts allow the use of one of the following:\n\n- an identity conversion (§5.1.1)\n- a widening primitive conversion (§5.1.2)\n- a widening reference conversion (§5.1.5)\n- a widening reference conversion followed by an unboxing conversion\n\n- a widening  reference  conversion  followed  by  an  unboxing  conversion,  then  followed  by  a  widening  primitive  conversion\n- a boxing  conversion (§5.1.7)\n- a boxing  conversion  followed  by  a  widening  reference  conversion\n- an unboxing  conversion (§5.1.8)\n- an unboxing  conversion  followed  by  a  widening  primitive  conversion\n\nIf, after the conversions listed above have been applied, the resulting type is a raw type (§4.8), an unchecked conversion (§5.1.9) may then be applied.\n\nIn addition, if the expression is a constant expression (§15.29) of type byte , short , char , or int :\n\n- A narrowing primitive conversion may be used if the variable is of type byte , short , or char , and the value of the constant expression is representable in the type of the variable.\n- A narrowing primitive conversion followed by a boxing conversion may be used if the variable is of type Byte , Short , or Character , and the value of the constant expression is representable in the type byte , short , or char respectively.\n\nThe compile-time narrowing of constant expressions means that code such as:\n\nis allowed. Without the narrowing, the fact that the integer literal 42 has type int would byte\n\n```\nbyte theAnswer = 42; mean that a cast to would be required:\n```\n\n```\nbyte theAnswer = (byte)42;  // cast is permitted but not required\n```",
+    "estadoFinal": "Respondido en 1:13",
+    "error": null,
+    "inicio": "2026-08-22T22:00:24.044Z",
+    "fin": "2026-08-22T22:01:37.319Z",
+    "elapsedMs": 73275
+  },
+  {
+    "id": 6,
+    "categoria": "tipos",
+    "pregunta": "¿Qué significa que un método tenga tipo de retorno void?",
+    "esperado": "responde",
+    "respuesta": "[1] jls25.pdf (file:///vault/documentos/jls25.pdf)\nChanging the result type of a method, or replacing a result type with void , or replacing void with  a  result  type,  has  the  combined  effect  of  deleting  the  old method and adding a new method with the new result type or newly void result (see §13.4.12).\n\nFor purposes of binary compatibility, adding or deleting a method or constructor m whose return type involves type variables (§4.4) or parameterized types (§4.5) is equivalent to the addition (respectively, deletion) of the an otherwise equivalent method whose return type is the erasure (§4.6) of the return type of m .\n\n[2] jls25.pdf (file:///vault/documentos/jls25.pdf)\nThe invocation type of a most specific accessible and applicable method is a method type (§8.2) which expresses the target types of the invocation arguments, the result (return type or void ) of the invocation, and the exception types of the invocation. It is determined as follows:\n\n- If the chosen method is generic and the method invocation does not provide explicit type arguments, the invocation type is inferred as specified in §18.5.2.\n\nIn this case, if the method invocation expression is a poly expression, then its compatibility with a target type is as determined by §18.5.2.1.\n\nTesting for compatibility with a target type may occur multiple times before making a final determination of the method invocation expression's target type and invocation type. For example, an enclosing method invocation expression may require testing the\n\n- deeper method invocation expression for compatibility with different methods' formal parameter types.\n\nIf the chosen method is generic and the method invocation provides explicit type arguments, let Pi be the type parameters of the method and let Ti be the explicit type arguments provided for the method invocation (1 ≤ i ≤ p ). Then:\n\n- If unchecked conversion was necessary for the method to be applicable, then the invocation type's parameter types are obtained by applying the substitution [ P1 := T1 , ..., Pp := Tp ] to the parameter types of the method's type, and the invocation type's return type and thrown types are given by the erasure of the return type and thrown types of the method's type.\n\n- If unchecked conversion was not necessary for the method to be applicable, then the invocation type is obtained by applying the substitution [ P",
+    "estadoFinal": "Respondido en 1:52",
+    "error": null,
+    "inicio": "2026-08-22T22:01:37.324Z",
+    "fin": "2026-08-22T22:03:29.472Z",
+    "elapsedMs": 112148
+  },
+  {
+    "id": 7,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es un tipo genérico parametrizado, por ejemplo List<String>?",
+    "esperado": "responde",
+    "respuesta": "No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.",
+    "estadoFinal": "Respondido en 39 s",
+    "error": null,
+    "inicio": "2026-08-22T22:03:29.474Z",
+    "fin": "2026-08-22T22:04:09.055Z",
+    "elapsedMs": 39581
+  },
+  {
+    "id": 8,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es un literal de tipo long y cómo se distingue de un literal int en el código fuente?",
+    "esperado": "responde",
+    "respuesta": "[2] jls25.pdf (file:///vault/documentos/jls25.pdf)\nSe distinguirán un literal de tipo longo de un literal de tipo entero si la última letra del tipo es L o l, mientras que cualquier otra letra indica un tipo entero de tipo int.",
+    "estadoFinal": "Respondido en 1:57",
+    "error": null,
+    "inicio": "2026-08-22T22:04:09.057Z",
+    "fin": "2026-08-22T22:06:07.006Z",
+    "elapsedMs": 117949
+  },
+  {
+    "id": 9,
+    "categoria": "variables",
+    "pregunta": "¿Qué diferencia hay entre una variable local declarada con var y una declarada con un tipo explícito?",
+    "esperado": "responde",
+    "respuesta": "No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.",
+    "estadoFinal": "Respondido en 37 s",
+    "error": null,
+    "inicio": "2026-08-22T22:06:07.010Z",
+    "fin": "2026-08-22T22:06:44.727Z",
+    "elapsedMs": 37717
+  },
+  {
+    "id": 10,
+    "categoria": "variables",
+    "pregunta": "¿Qué es el ámbito (scope) de una variable local?",
+    "esperado": "responde",
+    "respuesta": "[1] jls25.pdf (file:///vault/documentos/jls25.pdf)\nThe scope of a local variable declared in a block by a local variable declaration statement (§14.4) is the rest of the block, starting with the declaration's own initializer and including any further declarators to the right in the local variable declaration statement.\n\n[2] jls25.pdf (file:///vault/documentos/jls25.pdf)\n- a class Test\n- a class ( static ) variable x that is a member of the class Test\n- a class method main that is a member of the class Test\n- a parameter args of the main method\n- a local variable x of the main method\n\n[3] jls25.pdf (file:///vault/documentos/jls25.pdf)\nA local variable (§14.4), formal parameter (§8.4.1, §8.8.1, §15.27.1), exception parameter (§14.20), local class, or local interface (§14.3) can only be referred to using a simple name, not a qualified name (§6.2).\n\n[4] jls25.pdf (file:///vault/documentos/jls25.pdf)\nEach declarator in a local variable declaration declares one local variable. If the declarator includes an Identifier then this is the name of the local variable; otherwise the local variable is unnamed.\n\nIf the optional keyword final appears at the start of the declaration, the variable being declared is a final variable (§4.12.4).\n\nThe type of a local variable is determined by the rules in §10.2 and §15.2.\n\n[5] jls25.pdf (file:///vault/documentos/jls25.pdf)\nA local variable declared by a pattern is created and initialized when the pattern matches (§14.30). The scope of a pattern variable declaration is the part of the program that might be executed after the matching of a value against the pattern has succeeded.\n\n[6] jls25.pdf (file:///vault/documentos/jls25.pdf)\nThe initializer for x in Test1's main method is within the scope of the declaration of local variable x, but x does not have a value yet. The field x has been initialized to 0 when Test1 was first executed.\n\nIn Test2's main method, the expression (x=2)*2 uses the initializer",
+    "estadoFinal": "Respondido en 2:02",
+    "error": null,
+    "inicio": "2026-08-22T22:06:44.730Z",
+    "fin": "2026-08-22T22:08:47.262Z",
+    "elapsedMs": 122532
+  },
+  {
+    "id": 2,
+    "categoria": "tipos",
+    "pregunta": "¿Qué diferencia hay entre un tipo primitivo y un tipo de referencia en Java?",
+    "esperado": "responde",
+    "respuesta": "",
+    "estadoFinal": "Se perdió la conexión con el servidor (¿Ollama no responde?).",
+    "error": "Se perdió la conexión con el servidor (¿Ollama no responde?).",
+    "inicio": "2026-08-22T22:09:28.649Z",
+    "fin": "2026-08-22T22:09:46.770Z",
+    "elapsedMs": 18121
+  }
+]

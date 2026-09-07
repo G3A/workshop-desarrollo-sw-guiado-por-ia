@@ -1,0 +1,71 @@
+# Placeholders:
+#   {{SWEEP_COMMAND}}  — how this repo audits its dependencies. Resolution order, decided in
+#                        Phase 1: a `make audit` target if the Makefile has one; otherwise
+#                        `mvn -f <pom.xml> versions:display-dependency-updates` (always
+#                        available, reports newer releases); and only if
+#                        org.owasp:dependency-check-maven is ALREADY configured as a build
+#                        plugin in the pom, prefer `mvn -f <pom.xml> org.owasp:dependency-check-maven:check`
+#                        instead — it reports actual CVEs, not just "a newer version exists".
+#                        Take it from the repo, never invent it, and never install the OWASP
+#                        plugin yourself to get this option: its first run downloads and builds a
+#                        local CVE database, which turns this hook into the "slow SessionStart
+#                        looks like a broken tool" failure it exists to avoid.
+#
+# Hook 4 — dependency sweep. SessionStart, matcher "startup|resume".
+# Tells the agent what is outdated or vulnerable BEFORE it writes code against those packages.
+#
+# WHY STDOUT AND NOT JSON: for SessionStart, Claude Code treats a hook's stdout as plain text and
+# adds it to the conversation's context. That removes the only place in this hook set where a
+# script would have had to BUILD JSON with arbitrary content in it — and building JSON in bash,
+# escaping quotes and newlines out of a Maven log, is exactly where these scripts would break.
+#
+# WHY THE FINDINGS FILTER MATCHES TWO SHAPES: `versions:display-dependency-updates` prints
+# `old -> new` arrows; `dependency-check:check` prints CVE ids and severity words. Matching both
+# means the same script body works whichever command Phase 1 resolved, without a second
+# placeholder just for the pattern.
+#
+# WHY IT NEVER FAILS THE SESSION: a transitive advisory published overnight is not a reason for
+# the repo to stop working in the morning. It reports; the human decides.
+#
+# WHY IT MUST BE FAST: this runs before the first prompt of every session. A slow SessionStart is
+# indistinguishable from a tool that starts badly. The timeout in settings.json is the backstop,
+# not the plan — if the sweep regularly takes longer than a few seconds, move it out of
+# SessionStart and into CI, and say so.
+#
+# ---8<--- everything above this line is instructions for you; delete it ---8<---
+#!/usr/bin/env bash
+# `set -u` only. See the note in secret-read-guard.sh.
+set -u
+
+DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+. "$DIR/_lib.sh"
+
+hook_read_stdin
+
+ROOT="$(repo_root)"
+cd "$ROOT" || exit 0
+
+OUT="$({{SWEEP_COMMAND}} 2>&1)"
+STATUS=$?
+
+# A missing Makefile target, a reactor that will not resolve, a typo in the command — all of them
+# print nothing useful and exit non-zero, which without this check is INDISTINGUISHABLE from a
+# clean repository. Say so on stderr, where the user sees it, and still exit 0: this hook reports,
+# it never fails a session.
+if [ $STATUS -ne 0 ]; then
+  printf 'dependency-sweep: the audit command exited %s; no advisory report this session.\n' "$STATUS" >&2
+  printf '%s\n' "$OUT" | head -n 3 >&2
+  exit 0
+fi
+
+# Both commands can exit 0 whether or not they found anything, so the exit code says nothing. The
+# findings are lines carrying either shape: an update arrow, or a CVE/severity marker. No
+# findings, no output: a hook that prints "everything is fine" at every session start is noise
+# that trains people to skip it.
+FINDINGS="$(printf '%s\n' "$OUT" | grep -E -- '-> |CVE-[0-9]|(Critical|High|Medium|Low)' || true)"
+[ -z "$FINDINGS" ] && exit 0
+
+printf 'Dependency advisories for this repository (from a SessionStart hook, reported not enforced):\n\n'
+printf '%s\n' "$FINDINGS"
+printf '\nDo not add features on top of these without saying so.\n'
+exit 0

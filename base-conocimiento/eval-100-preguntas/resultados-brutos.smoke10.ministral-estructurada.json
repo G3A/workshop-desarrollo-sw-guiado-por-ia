@@ -1,0 +1,122 @@
+[
+  {
+    "id": 1,
+    "categoria": "tipos",
+    "pregunta": "¿Cuáles son los ocho tipos primitivos definidos en el lenguaje Java?",
+    "esperado": "responde",
+    "respuesta": "Los tipos primitivos definidos en Java incluyen los enteros: byte, short, int y long, así como el tipo de caracteres UTF-16 (char). [1] El tipo primitivo char representa valores de 16 bits que son números sin signo correspondientes a unidades de código UTF-16. [1] Los tipos primitivos numéricos de punto flotante en Java son float y double, los cuales se basan en estándares IEEE 754 con 32 bits y 64 bits respectivamente. [1] El tipo boolean tiene exactamente dos valores posibles: true y false. [1]",
+    "estadoFinal": "Respondido en 6:56",
+    "error": null,
+    "inicio": "2026-08-21T15:34:29.717Z",
+    "fin": "2026-08-21T15:41:26.920Z",
+    "elapsedMs": 417203
+  },
+  {
+    "id": 3,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es una conversión de ensanchamiento (widening) entre tipos primitivos?",
+    "esperado": "responde",
+    "respuesta": "La conversión de ensanchamiento (widening) entre tipos primitivos es un proceso que aumenta el tamaño del valor sin perder su magnitud exacta en ciertos casos, como cuando se pasa de un tipo integral a otro o desde byte, short o char hacia tipos de punto flotante. [1] Ejemplos específicos de conversiones de ensanchamiento incluyen: convertir un valor de `byte` a `short`, `int`, `long`, `float` o `double`, y similares para otros tipos primitivos como `short` a `int`, etc. [1] En conversiones entre tipos integrales (como de `char` a `int`), el valor no pierde información sobre su magnitud exacta, siempre que se realice un ensanchamiento sin pérdida de datos significativos en los bits representados. [1] Conversiones como `byte` a `float`, `short` a `double` o incluso `int` a `double` mantienen la representación exacta del valor numérico, siempre que no haya pérdida de precisión en el proceso. [1] Sin embargo, conversiones como `int` a `float`, `long` a `float` o `long` a `double` pueden causar pérdida de precisión, ya que los tipos de punto flotante no guardan la misma exactitud que los enteros. El resultado se redondea según las reglas IEEE 754. [1] El ejemplo proporcionado en el código muestra que al convertir un `int` grande a `float`, se pierde información (como -46), demostrando que no siempre hay preservación exacta, aunque no genera excepciones en tiempo de ejecución. [1] En conversiones de signo negativo a tipos integrales más amplios (como `int` a `long`), el valor se extiende usando representación en complemento a dos sin perder la información del valor original, pero manteniendo su signo. [1] La conversión de `char` a un tipo integral más amplio (como `int`) usa extensión cero para llenar el espacio adicional, preservando los bits menos significativos del carácter sin alterar su valor unsigned original. [1] Las conversiones de ensanchamiento nunca generan excepciones en tiempo de ejecución, a diferencia de las conversiones estrechas (narrowing) que sí pueden perder información y causar cambios significativos en el valor. [6]",
+    "estadoFinal": "Respondido en 4:26",
+    "error": null,
+    "inicio": "2026-08-21T15:45:08.083Z",
+    "fin": "2026-08-21T15:49:34.421Z",
+    "elapsedMs": 266338
+  },
+  {
+    "id": 5,
+    "categoria": "tipos",
+    "pregunta": "¿Qué representa el tipo null y a qué tipos de referencia se puede asignar?",
+    "esperado": "responde",
+    "respuesta": "El tipo *null* en Java representa una referencia que no apunta a ningún objeto específico; su único valor es la literal `null`. [1] La literal `null` siempre pertenece al tipo *null*, independientemente del contexto de asignación. [1] Un valor del tipo *null* puede ser asignado a cualquier variable de referencia, generando una referencia nula para ese tipo específico. [2] El tipo *null* no pertenece ni a los tipos primitivos ni a los tipos de referencia genéricos clásicos (clases e interfaces). [3] Una variable de un tipo genérico como `List<T>` puede recibir una referencia nula, pero no está garantizada la compatibilidad con objetos de otros tipos genéricos sin relación de herencia (ejemplo: `Heap pollution`). [5] No existe restricción sobre qué tipos de referencia pueden recibir una asignación de *null*, siempre que el destino sea un tipo de referencia válido. [2]",
+    "estadoFinal": "Respondido en 3:12",
+    "error": null,
+    "inicio": "2026-08-21T15:57:47.459Z",
+    "fin": "2026-08-21T16:00:59.760Z",
+    "elapsedMs": 192301
+  },
+  {
+    "id": 6,
+    "categoria": "tipos",
+    "pregunta": "¿Qué significa que un método tenga tipo de retorno void?",
+    "esperado": "responde",
+    "respuesta": "El tipo de retorno *void* en un método indica que este no devuelve ningún valor tangible al llamado, es decir, su ejecución finaliza sin asignar una salida explícita a la variable o contexto donde se invoca. [3] Un método declarado con `void` como tipo de retorno solo puede usar *return* sin expresiones (sin valor), ya que no requiere devolver un resultado para cumplir su propósito lógico. [4] Si una declaración de método tiene un retorno no-*void*, el compilador exige que la última instrucción dentro del cuerpo del método *devolva* un valor compatible con ese tipo declarado (ejemplo: `int`, `String`, etc.). [3] Un error de compilaría se produce si una función declarada como *void* intenta usar un *return* con expresión no vacía, pues esto implicaría violar su tipo de retorno explícito. [4]",
+    "estadoFinal": "Respondido en 6:02",
+    "error": null,
+    "inicio": "2026-08-21T16:00:59.763Z",
+    "fin": "2026-08-21T16:07:02.492Z",
+    "elapsedMs": 362729
+  },
+  {
+    "id": 7,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es un tipo genérico parametrizado, por ejemplo List<String>?",
+    "esperado": "responde",
+    "respuesta": "No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.",
+    "estadoFinal": "Respondido en 1:10",
+    "error": null,
+    "inicio": "2026-08-21T16:07:02.497Z",
+    "fin": "2026-08-21T16:08:13.616Z",
+    "elapsedMs": 71119
+  },
+  {
+    "id": 8,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es un literal de tipo long y cómo se distingue de un literal int en el código fuente?",
+    "esperado": "responde",
+    "respuesta": "Un literal de tipo `long` en Java se identifica por su sufijo 'L' o 'l', que indica que el número es de este tipo. [1] Los literales sin el sufijo 'L' o 'l' son considerados del tipo `int`, a menos que lleven ese sufijo para convertirlo en `long`. [2] El sufijo 'L' se prefiere sobre 'l' porque evita confusiones con el dígito '1', ya que la letra 'l' puede ser difícil de distinguir visualmente. [1] Un literal `int` máximo válido en decimal es **2,147,483,647** (que equivale a 2³¹ - 1), mientras que el límite para un literal `long` es **9,223,372,036,854,775,807L** (2⁶³ - 1). [3] Los literales binarios, hexadecimales y octales pueden representarse con sufijos 'L' para convertir su tipo a `long`, ampliando así el rango de valores permitidos. [3]",
+    "estadoFinal": "Respondido en 8:15",
+    "error": null,
+    "inicio": "2026-08-21T16:08:13.618Z",
+    "fin": "2026-08-21T16:16:29.443Z",
+    "elapsedMs": 495825
+  },
+  {
+    "id": 9,
+    "categoria": "variables",
+    "pregunta": "¿Qué diferencia hay entre una variable local declarada con var y una declarada con un tipo explícito?",
+    "esperado": "responde",
+    "respuesta": "No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.",
+    "estadoFinal": "Respondido en 48 s",
+    "error": null,
+    "inicio": "2026-08-21T16:16:29.445Z",
+    "fin": "2026-08-21T16:17:18.251Z",
+    "elapsedMs": 48806
+  },
+  {
+    "id": 4,
+    "categoria": "tipos",
+    "pregunta": "¿Qué es el autoboxing y cuándo ocurre de forma automática?",
+    "esperado": "responde",
+    "respuesta": "No encontré información suficientemente relevante en la base de conocimiento para responder esto. Prueba con otra formulación o verifica que el tema esté cubierto por las fuentes ingeridas.",
+    "estadoFinal": "Respondido en 4:01",
+    "error": null,
+    "inicio": "2026-08-21T16:28:10.104Z",
+    "fin": "2026-08-21T16:32:11.726Z",
+    "elapsedMs": 241622
+  },
+  {
+    "id": 2,
+    "categoria": "tipos",
+    "pregunta": "¿Qué diferencia hay entre un tipo primitivo y un tipo de referencia en Java?",
+    "esperado": "responde",
+    "respuesta": "",
+    "estadoFinal": "Se perdió la conexión con el servidor (¿Ollama no responde?).",
+    "error": "Se perdió la conexión con el servidor (¿Ollama no responde?).",
+    "inicio": "2026-08-21T16:53:37.884Z",
+    "fin": "2026-08-21T16:54:43.627Z",
+    "elapsedMs": 65743
+  },
+  {
+    "id": 10,
+    "categoria": "variables",
+    "pregunta": "¿Qué es el ámbito (scope) de una variable local?",
+    "esperado": "responde",
+    "respuesta": "",
+    "estadoFinal": "Se perdió la conexión con el servidor (¿Ollama no responde?).",
+    "error": "Se perdió la conexión con el servidor (¿Ollama no responde?).",
+    "inicio": "2026-08-21T16:54:43.633Z",
+    "fin": "2026-08-21T17:00:32.615Z",
+    "elapsedMs": 348982
+  }
+]

@@ -1,0 +1,23 @@
+# Normalizacion de fin de linea.
+# Sin esto, un clone en Windows deja mvnw y los .sh con CRLF, y el build de Docker
+# falla con "bad interpreter: /bin/sh^M" — un error que no dice lo que pasa.
+* text=auto eol=lf
+
+mvnw        text eol=lf
+*.sh        text eol=lf
+Dockerfile  text eol=lf
+Makefile    text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.sql       text eol=lf
+
+mvnw.cmd    text eol=crlf
+*.bat       text eol=crlf
+*.ps1       text eol=crlf
+
+*.jar       binary
+*.png       binary
+*.pdf       binary
+*.docx      binary
+*.pptx      binary
+*.onnx      binary

@@ -1,0 +1,24 @@
+# Huellas (fingerprints) de hallazgos de gitleaks confirmados como falsos positivos, una por
+# linea. NO pongas rutas de archivo aca -- una entrada por ruta ciega el escaneo a todo el
+# archivo, no solo al match puntual. Genera la huella con:
+#   gitleaks detect --source . --report-format json --report-path gitleaks-report.json
+# y copia el campo "Fingerprint" del hallazgo verificado.
+
+# La clave AWS ficticia que instrument-project-java/references/verification.md recomienda usar
+# como ejemplo para probar este mismo gate (deliberadamente distinta del ejemplo oficial de AWS,
+# que gitleaks ya allowlistea por defecto). No es un secreto real. No se repite el valor literal
+# aca ni en ningun otro doc -- cada vez que se cita tal cual, gitleaks lo marca como un hallazgo
+# nuevo en esa linea/commit, un efecto ya confirmado en la practica en esta misma validacion.
+dde0f47e3e776128410255db250804d836478b8e:instrumentacion-java-ia/sdlc-ia/skills/instrument-project-java/SKILL.md:aws-access-token:126
+dde0f47e3e776128410255db250804d836478b8e:instrumentacion-java-ia/sdlc-ia/skills/instrument-project-java/references/verification.md:aws-access-token:130
+
+# RERANKER_TOKENIZER_SHA256 en el Makefile: un checksum SHA-256 para verificar la descarga del
+# tokenizer (make pull-reranker), no un secreto -- "generic-api-key" disparo por el sustring
+# TOKEN en el nombre de la variable.
+50ca6286a6aa537e3383e7cc9020025e5ce3fd90:Makefile:generic-api-key:29
+
+# El efecto recursivo en si mismo: el primer intento de documentar el hallazgo de arriba cito la
+# clave completa en estos dos archivos, en el commit f857038. Ya corregido para no repetirla, pero
+# ese commit viejo ya esta empujado y no se reescribe -- estas dos entradas quedan para siempre.
+f8570382fd843ec5daed647ca3124e9d595e5096:base-conocimiento/.gitleaksignore:aws-access-token:7
+f8570382fd843ec5daed647ca3124e9d595e5096:validacion-workshop/f2-preparar-proyecto.md:aws-access-token:167

@@ -1,0 +1,294 @@
+spring:
+  application:
+    name: base-conocimiento
+
+  # Hilos virtuales: cubren el fan-out paralelo de las seis herramientas del
+  # executor sin un pool que dimensionar.
+  threads:
+    virtual:
+      enabled: true
+
+  task:
+    scheduling:
+      pool:
+        # Sin esto, TODOS los @Scheduled (relevo de fuentes, worker de
+        # embeddings, recalculo de term_stats) comparten el hilo unico que
+        # Spring Boot da por defecto: un relevo lento (Docling puede tardar
+        # hasta el read-timeout de mas abajo) bloquea el drenado de la cola de
+        # embeddings durante todo ese tiempo. Uno por cada @Scheduled de la app.
+        size: 4
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/baseconocimiento}
+    username: ${SPRING_DATASOURCE_USERNAME:kb}
+    password: ${SPRING_DATASOURCE_PASSWORD:kb}
+    hikari:
+      maximum-pool-size: 10
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+  ai:
+    # Con los starters de Ollama y OpenAI a la vez, cada uno autoconfigura su
+    # propio ChatModel/EmbeddingModel por defecto -- sin esta linea, Spring
+    # veria dos EmbeddingModel candidatos (ambiguo) para el unico bean que
+    # EmbeddingsOllama necesita. El lado chat no tiene un selector unico
+    # porque de verdad usa los dos proveedores a la vez (cada componente de
+    # llm/ arma su propio ChatClient.Builder a partir del ChatModel concreto
+    # que necesita, ver PlanificadorOpenAi/DestiladorOllama).
+    model:
+      embedding: ollama
+    ollama:
+      base-url: ${SPRING_AI_OLLAMA_BASE_URL:http://localhost:11434}
+      init:
+        # Los modelos se bajan con `make pull-models`, no al arrancar la app:
+        # un arranque que descarga 5 GB no es un arranque.
+        pull-model-strategy: never
+      # Spring AI 2.0 aplano estas propiedades: van directo bajo chat/embedding,
+      # SIN el nivel intermedio `options` que usaba la 1.x. `chat.options.model`
+      # se ignora en silencio; la app arranca igual, pero con el modelo por
+      # defecto de Ollama en vez del que pediste.
+      #
+      # Este chat.model ya NO es el modelo principal del pipeline (ver
+      # spring.ai.openai mas abajo): solo lo usa el Destilador (Teams, F6),
+      # que se quedo en Ollama -- ver ADR-0009.
+      chat:
+        model: "${KB_TEAMS_LLM_MODELO:gemma3:4b}"
+        temperature: 0.2
+      embedding:
+        model: "${KB_EMBEDDINGS_MODELO:bge-m3}"
+    openai:
+      # A diferencia de Ollama, OpenAI no aplano `chat.options` en la 2.0 --
+      # `chat.options.model` (con el nivel intermedio) es la ruta correcta aca.
+      base-url: ${SPRING_AI_OPENAI_BASE_URL:http://localhost:8081}
+      # llama-server no valida esta key -- Spring AI exige igual un valor no
+      # vacio, o falla el arranque con "OpenAI API key must be set."
+      api-key: ${SPRING_AI_OPENAI_API_KEY:sk-no-se-necesita}
+      # Por defecto son 60s (com.openai:openai-java, no un RestClient/WebClient
+      # de Spring -- un bean RestClient.Builder/WebClient.Builder propio NO
+      # alcanza a este cliente, verificado leyendo el bytecode de
+      # OpenAiChatAutoConfiguration en la 2.0.0). Medido en vivo: Bonsai en esta
+      # GPU (T600, sin los tensor cores de bits bajos que aprovecha en hardware
+      # mas nuevo) supera los 60s con contextos grandes, y el cliente cancelaba
+      # la tarea en `llama-server` para reintentar -- un bucle que nunca
+      # converge y deja la consulta colgada. 180s da margen de sobra sobre el
+      # peor caso medido (~75s con un contexto chico).
+      timeout: ${KB_LLM_TIMEOUT:180s}
+      # Con maxRetries por defecto (3) cada timeout se paga hasta 4 veces antes
+      # de que el fallback de Planificador/VerificadorGrounding entre a tallar.
+      # En 0 porque el cuello de botella es velocidad de computo de un
+      # contenedor local, no una falla de red transitoria -- reintentar no
+      # ayuda, solo multiplica la espera.
+      max-retries: ${KB_LLM_MAX_REINTENTOS:0}
+      chat:
+        options:
+          model: "${KB_LLM_MODELO:Bonsai-8B-Q1_0.gguf}"
+          temperature: 0.2
+
+  # index.html/app.js/admin.js cambian seguido en este proyecto (iteracion activa
+  # de UI); sin esto el navegador puede quedarse con una copia vieja en cache
+  # (solo hay Last-Modified, sin Cache-Control) y un link normal como "Volver
+  # al chat" la sirve sin ni pasar por el servidor. no-cache exige revalidar
+  # (If-Modified-Since) en cada carga, no "no guardar nada" -- sigue siendo
+  # barato porque el body no viaja de nuevo si no cambio.
+  web:
+    resources:
+      cache:
+        cachecontrol:
+          no-cache: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+arconia:
+  docling:
+    # ADR-0010: docling-serve como cuarto contenedor (compose.yml), no embebido
+    # en el proceso Java. En un ./mvnw suelto sin Docker hay que levantarlo
+    # aparte: docker compose up docling-serve.
+    base-url: ${ARCONIA_DOCLING_BASE_URL:http://localhost:5001}
+    # ExtractorDocling usa la API async de docling-serve (submit + polling,
+    # ver ADR-0010): este timeout acota cada llamada HTTP individual (submit
+    # de la tarea, cada poll de estado, fetch del resultado), NO la conversion
+    # completa -- por eso 60s alcanza incluso para documentos de cientos de
+    # paginas, que con la version sincrona anterior no terminaban nunca.
+    read-timeout: ${DOCLING_SERVE_TIMEOUT:60s}
+
+kb:
+  # Vacio = sin autenticacion. Con valor, se exige Authorization: Bearer <token>.
+  api-token: ${KB_API_TOKEN:}
+
+  llm:
+    # El modelo del Destilador (Teams, F6): el unico componente de `llm/` que
+    # se quedo en Ollama (ver spring.ai.openai mas arriba para el resto).
+    destilador-modelo: "${KB_TEAMS_LLM_MODELO:gemma3:4b}"
+    # gemma3 no trae modo "thinking" -- esta propiedad y disableThinking()
+    # (ver DestiladorOllama) nacieron por un problema real de qwen3:4b, el
+    # modelo original: minutos de razonamiento interno antes de cada
+    # respuesta, medido en vivo. Ya solo la usa el Destilador: Bonsai (el
+    # modelo del resto del pipeline desde ADR-0009) no tiene modo thinking,
+    # asi que no hace falta apagarselo.
+    thinking-habilitado: ${KB_LLM_THINKING_HABILITADO:false}
+
+    sintesis-estructurada:
+      # false (default): SintetizadorOpenAi, prosa libre con [n] incrustado --
+      # el sintetizador de produccion, sin cambios de comportamiento. true:
+      # SintetizadorEstructuradoOpenAi, salida JSON forzada ({afirmacion,
+      # fuente}) -- ver su javadoc. Pensado para modelos que en texto libre
+      # pegan el fragmento crudo en vez de redactar (ver docs/investigacion-
+      # vram-y-modelo-llm.md, sesiones 2-23); la UI en streaming pierde el
+      # efecto palabra-por-palabra con esta opcion (ver el mismo javadoc).
+      habilitada: ${KB_LLM_SINTESIS_ESTRUCTURADA_HABILITADA:false}
+
+  embeddings:
+    modelo: "${KB_EMBEDDINGS_MODELO:bge-m3}"
+    # Debe coincidir con vector(1024) en V1__esquema.sql.
+    # Cambiar de modelo exige una migracion nueva, no solo esta propiedad.
+    dimensiones: 1024
+
+  reranker:
+    ruta: ${KB_RERANKER_RUTA:./.data/models/reranker}
+
+  recuperacion:
+    # Pesos de RRF, no de las senales crudas: RRF combina RANGOS, no puntajes.
+    # Iguales por defecto porque el articulo no da razon para preferir una.
+    pesos:
+      fts: ${KB_RECUPERACION_PESO_FTS:1.0}
+      vector: ${KB_RECUPERACION_PESO_VECTOR:1.0}
+      idf: ${KB_RECUPERACION_PESO_IDF:1.0}
+      decaimiento: ${KB_RECUPERACION_PESO_DECAIMIENTO:1.0}
+    # k=60 es el valor del articulo (y el habitual en la literatura de RRF).
+    rrf-k: ${KB_RECUPERACION_RRF_K:60}
+    # Candidatos que sobreviven la fusion y llegan al reranker.
+    max-candidatos: ${KB_RECUPERACION_MAX_CANDIDATOS:20}
+    # Diversidad: ningun documento puede acaparar los candidatos.
+    tope-por-documento: ${KB_RECUPERACION_TOPE_POR_DOCUMENTO:3}
+    # Resultados finales tras el cross-encoder.
+    top-rerank: ${KB_RECUPERACION_TOP_RERANK:10}
+    # Cuantos candidatos por senal se piden a Postgres antes de fusionar.
+    candidatos-por-senal: ${KB_RECUPERACION_CANDIDATOS_POR_SENAL:50}
+    decaimiento:
+      # Vida media aproximada en dias del "interes" por un chunk: a los N dias
+      # su puntaje de la senal 4 cae a la mitad.
+      lambda-dias: ${KB_RECUPERACION_DECAIMIENTO_LAMBDA_DIAS:30}
+    terminos:
+      # term_stats se recalcula por lote, nunca en la consulta: recalcularlo en
+      # cada busqueda escanearia toda la tabla chunks por cada pregunta.
+      intervalo-ms: ${KB_RECUPERACION_TERMINOS_INTERVALO_MS:60000}
+      habilitado: ${KB_RECUPERACION_TERMINOS_HABILITADO:true}
+
+  orquestacion:
+    # Fragmentos que sobreviven la fusion entre herramientas (etapa 4) y llegan
+    # a la sintesis. No es el mismo tope que kb.recuperacion.top-rerank: ese es
+    # por herramienta: este es el total, ya deduplicado entre las que corrio
+    # el executor.
+    max-fragmentos-contexto: ${KB_MAX_FRAGMENTOS_CONTEXTO:10}
+    # Cada fragmento expande sus 2 chunks vecinos (ord-1/ord+1) para dar mas
+    # contexto a la sintesis. En false, el contexto son solo los fragmentos
+    # elegidos, sin vecinos -- hasta 3x menos tokens por fragmento, util con
+    # un contexto de LLM chico (ver KB_EXPANDIR_VECINOS en compose.bonsai.yml)
+    # para poder subir max-fragmentos-contexto sin superar el limite.
+    expandir-vecinos: ${KB_EXPANDIR_VECINOS:true}
+    # Carpeta que search_code recorre con ripgrep: la misma que
+    # kb.ingesta.vault-dir/repos (el conector de repos Git locales, F6, clona
+    # ahi). Vacia hasta que haya algun repo clonado: la herramienta no falla,
+    # solo no encuentra nada.
+    codigo-dir: ${kb.ingesta.vault-dir}/repos
+    herramientas:
+      search-code:
+        max-resultados: ${KB_CODIGO_MAX_RESULTADOS:15}
+      recent-commits:
+        limite: ${KB_RECENT_COMMITS_LIMITE:10}
+      subsystem-index:
+        limite: ${KB_SUBSYSTEM_INDEX_LIMITE:15}
+    # ADR-0008: puerta de relevancia antes de sintetizar. El umbral de rechazo
+    # interpola linealmente entre "piso" (corpus chico) y "techo" (corpus de
+    # al menos "chunks-referencia" fragmentos) porque el cross-encoder
+    # comprime sus puntajes cerca de cero cuando el corpus tiene poco
+    # contenido. Entre ese umbral y "techo-confianza", un solo score no
+    # alcanza a decidir (contraejemplo real documentado en el ADR) y se
+    # verifica con una llamada corta al LLM antes de sintetizar. Recalibrar
+    # todo esto con corpus reales.
+    umbral-relevancia:
+      habilitado: ${KB_UMBRAL_RELEVANCIA_HABILITADO:true}
+      piso: ${KB_UMBRAL_RELEVANCIA_PISO:0.003}
+      techo: ${KB_UMBRAL_RELEVANCIA_TECHO:0.05}
+      chunks-referencia: ${KB_UMBRAL_RELEVANCIA_CHUNKS_REFERENCIA:500}
+      techo-confianza: ${KB_UMBRAL_RELEVANCIA_TECHO_CONFIANZA:8.0}
+
+  web:
+    # Resultados de la vista previa instantanea (solo FTS) mientras la
+    # respuesta completa todavia esta en camino.
+    preview-limite: ${KB_WEB_PREVIEW_LIMITE:8}
+
+  ingesta:
+    # OJO: distinta de KB_VAULT_DIR (esa es la ruta en el HOST que el compose
+    # monta como bind mount). Esta es la ruta que la app ve DENTRO del
+    # contenedor, y compose.yml la fija a /vault. Documentos y repos Git
+    # locales viven en subcarpetas fijas debajo de esta raiz: vault-dir/documentos
+    # (ConectorDocumentosLocales) y vault-dir/repos (ConectorReposLocales,
+    # tambien usado por kb.orquestacion.codigo-dir mas arriba).
+    vault-dir: ${KB_VAULT_RUTA:../../vault}
+    worker:
+      intervalo-ms: ${KB_INGESTA_INTERVALO_MS:2000}
+      # false en pruebas de integracion que no levantan Ollama: sin esto, el
+      # worker programado intenta embeber igual y ensucia el log con errores
+      # de conexion que no tienen nada que ver con lo que la prueba verifica.
+      habilitado: ${KB_INGESTA_WORKER_HABILITADO:true}
+    relevo:
+      # F8: cada cuanto se vuelve a leer el vault/Teams/Azure DevOps sin
+      # que nadie corra `make ingest`. 15 min por defecto (uso real); el corpus
+      # de ejemplo del taller usa un valor bajo para que el efecto se vea.
+      intervalo-ms: ${KB_INGESTA_RELEVO_INTERVALO_MS:900000}
+      habilitado: ${KB_INGESTA_RELEVO_HABILITADO:true}
+    # F9: apagada por defecto. El bind mount de KB_VAULT_DIR es de solo lectura
+    # (ver compose.yml); habilitar esto EXIGE ademas montarlo de lectura y
+    # escritura -- es una decision consciente, no un flag cosmetico.
+    carga-habilitada: ${KB_INGESTA_CARGA_HABILITADA:false}
+
+  teams:
+    habilitado: ${KB_TEAMS_HABILITADO:false}
+    emulator: ${KB_TEAMS_EMULATOR:true}
+    app-id: ${KB_TEAMS_APP_ID:}
+    app-password: ${KB_TEAMS_APP_PASSWORD:}
+    # Constantes del protocolo Bot Connector, verificadas contra el codigo fuente
+    # actual del SDK (no memoria): login.botframework.com es la metadata OpenID
+    # de "a bot desde un canal"; login.microsoftonline.com/common es la que usa
+    # el Emulator cuando se le configuran credenciales. Solo se sobreescriben en
+    # pruebas, para apuntar a un WireMock local.
+    channel-metadata-url: https://login.botframework.com/v1/.well-known/openidconfiguration
+    emulator-metadata-url: https://login.microsoftonline.com/common/v2.0/.well-known/openid-configuration
+    token-url: https://login.microsoftonline.com/botframework.com/oauth2/v2.0/token
+    oauth-scope: https://api.botframework.com/.default
+
+  # Conector de Teams por Graph (F6) -- deshabilitado por defecto: exige un
+  # registro de app con permisos de Graph aprobados por un admin del tenant.
+  graph:
+    habilitado: ${KB_GRAPH_HABILITADO:false}
+    tenant-id: ${KB_GRAPH_TENANT_ID:}
+    client-id: ${KB_GRAPH_CLIENT_ID:}
+    client-secret: ${KB_GRAPH_CLIENT_SECRET:}
+    team-id: ${KB_GRAPH_TEAM_ID:}
+    channel-id: ${KB_GRAPH_CHANNEL_ID:}
+    # Solo se sobreescriben en pruebas, para apuntar a un WireMock local.
+    graph-base-url: https://graph.microsoft.com/v1.0
+    login-base-url: https://login.microsoftonline.com
+
+  # Conector de Azure DevOps (F6) -- deshabilitado por defecto: exige un PAT.
+  azdo:
+    habilitado: ${KB_AZDO_HABILITADO:false}
+    org: ${KB_AZDO_ORG:}
+    proyecto: ${KB_AZDO_PROYECTO:}
+    pat: ${KB_AZDO_PAT:}
+    wiki: ${KB_AZDO_WIKI:}
+    base-url: https://dev.azure.com
+
+logging:
+  level:
+    co.g3a.baseconocimiento: ${KB_LOG_LEVEL:INFO}

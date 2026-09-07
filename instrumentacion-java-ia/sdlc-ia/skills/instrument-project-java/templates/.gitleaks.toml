@@ -1,0 +1,24 @@
+# gitleaks -- secret detection (control 6).
+# Extends the default ruleset and adds this repo's own allowlist. A FALSE POSITIVE that is
+# punctual and verified (one concrete line/commit) does NOT go here: it goes by exact fingerprint
+# in a `.gitleaksignore` file at the repo root (gitleaks auto-loads it). Rule: narrow the finding,
+# never loosen detection broadly for one match.
+#
+# Usage: gitleaks detect --source . --config .gitleaks.toml
+#        gitleaks protect --staged --config .gitleaks.toml   (pre-commit)
+
+title = "gitleaks config"
+
+[extend]
+useDefault = true
+
+# Allowlist: example/fixture paths that do not carry real secrets.
+[allowlist]
+description = "Allowed paths and patterns"
+paths = [
+  '''(^|/)\.env\.(example|sample|template)$''',
+  '''(^|/)fixtures/''',
+  '''(^|/)test(s)?/''',
+  '''(^|/)src/test/resources/''',
+]
+# regexes = [ '''EXAMPLE_[A-Z0-9_]+''' ]
