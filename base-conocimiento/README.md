@@ -59,7 +59,7 @@ Estas son todas las herramientas, en orden. Solo las dos primeras son obligatori
 | 1 | **Docker Desktop** (con WSL2) | Todo corre en contenedores, incluido el build de la app | `winget install Docker.DockerDesktop` — luego ábrelo una vez y deja que termine de configurar WSL2 | `docker version` y `docker compose version` |
 | 2 | **Git for Windows** | Clonar el repo, y su `sh.exe` es el shell que usa `make` (ver abajo) | `winget install Git.Git` | `git --version` |
 | 3 | **GNU Make** | Los comandos de este README. Si no lo quieres, mira [Sin `make`](#sin-make) | `winget install ezwinports.make` | `make --version` |
-| 4 | **Driver NVIDIA** *(opcional)* | GPU para el LLM y los embeddings. Docker Desktop pasa la tarjeta a WSL2 solo, **no** hace falta instalar `nvidia-container-toolkit` a mano en Windows | [nvidia.com/drivers](https://www.nvidia.com/download/index.aspx) — para el perfil Bonsai hace falta **≥ 560** | `nvidia-smi` |
+| 4 | **Driver NVIDIA** *(opcional)* | GPU para el LLM y los embeddings. Docker Desktop pasa la tarjeta a WSL2 solo, **no** hace falta instalar `nvidia-container-toolkit` a mano en Windows | [nvidia.com/drivers](https://www.nvidia.com/download/index.aspx) — **≥ 550** o Ollama la ignora y cae a CPU en silencio; el perfil Bonsai necesita **≥ 560** | `nvidia-smi` |
 | 5 | **JDK 25** *(solo para desarrollar)* | Compilar y correr las pruebas fuera de Docker | `winget install EclipseAdoptium.Temurin.25.JDK` y apunta `JAVA_HOME` ahí | `make jdk-check` |
 | 6 | **gitleaks** *(solo para desarrollar)* | El gate de secretos (`make secrets`) | `winget install Gitleaks.Gitleaks` | `gitleaks version` |
 | 7 | **Node 20+** *(opcional)* | Solo para la evaluación de 100 preguntas (`eval-100-preguntas/`) | `winget install OpenJS.NodeJS.LTS` | `node --version` |
@@ -170,6 +170,163 @@ suficientemente relevante» a todo**, sin un solo error en los logs: el *bind mo
 vacío en vez de fallar, así que la ingesta corre sobre cero documentos y esa respuesta es correcta.
 Para ver qué hay realmente ingerido, `scripts/diagnostico-ingesta.sql` o el panel
 <http://localhost:8080/admin.html>.
+
+
+### Si Ollama corre en CPU teniendo GPU
+
+Síntoma: todo va lentísimo, las consultas dan *timeout* o mueren con
+`500: an error was encountered while running the model: unexpected EOF`, y sin embargo
+`make gpu-check` dice `Perfil de compose: GPU`. La comprobación que zanja no es esa:
+
+```powershell
+docker exec kb-ollama ollama ps       # mira la columna PROCESSOR
+```
+
+Si dice `100% CPU`, Ollama no está usando la tarjeta. Y **`make gpu-check` no lo detecta**: informa
+de lo que `make` decidió, no de lo que Ollama hizo.
+
+Que la GPU esté bien entregada al contenedor tampoco lo descarta. Estas tres comprobaciones pueden
+salir perfectas y Ollama seguir en CPU:
+
+```powershell
+docker inspect -f '{{json .HostConfig.DeviceRequests}}' kb-ollama   # reserva del dispositivo
+docker exec kb-ollama nvidia-smi                                    # la tarjeta se ve dentro
+make -n up-ministral                                                # el comando encadena compose.gpu.yml
+```
+
+**Quien decide es Ollama, y lo dice en su arranque:**
+
+```powershell
+docker logs kb-ollama | Select-String "driver too old|no compatible|inference compute"
+```
+
+| Lo que aparece | Qué pasa |
+|---|---|
+| `inference compute … library=CUDA … description="NVIDIA …"` | Ollama usa la tarjeta. Si aun así ves `100% CPU`, es reparto: mira la VRAM |
+| `NVIDIA driver too old … driver=546 required_driver="550 or newer"` | **Ollama descarta la GPU él mismo por versión de driver** |
+| `no compatible GPUs were discovered` | No la ve: CUDA no llega al contenedor |
+
+#### El driver mínimo de Ollama son 550
+
+Es un requisito aparte del de Bonsai (≥ 560) y no se parece a un fallo: Ollama no aborta, **cae a CPU
+en silencio** y deja `total_vram="0 B"`. Con un driver viejo, todo lo demás puede estar
+correcto —tarjeta reservada, `nvidia-smi` respondiendo dentro del contenedor, perfil GPU
+encadenado— y aun así no se usa.
+
+Tras actualizar el driver, **en este orden**:
+
+```powershell
+make down                    # 1. con Docker aún vivo
+wsl --shutdown               # 2. fuerza a WSL2 a recoger el driver nuevo
+# 3. abre Docker Desktop y espera a "Engine running"
+make up-ministral
+docker exec kb-ollama ollama ps
+```
+
+`wsl --shutdown` apaga la VM donde vive el motor de Docker: si lo corres **antes** del `make down`,
+te quedas sin demonio a mitad. Y si Docker Desktop no vuelve solo, ciérralo desde la bandeja del
+sistema y ábrelo otra vez.
+
+#### Hay dos drivers, y `gpu-check` solo ve uno
+
+```powershell
+nvidia-smi --query-gpu=driver_version --format=csv,noheader                    # Windows
+docker exec kb-ollama nvidia-smi --query-gpu=driver_version --format=csv,noheader   # contenedor
+```
+
+`make gpu-check` lee el de Windows. El que manda es el del contenedor, que llega por la VM de WSL2:
+hasta que esa VM se reinicia, **sigue exponiendo el driver viejo** aunque Windows ya tenga el nuevo.
+Si los dos números no coinciden, falta el `wsl --shutdown` de arriba.
+
+#### Y Ollama descubre la GPU una sola vez, al arrancar
+
+Un contenedor que lleva vivo desde antes de la actualización conserva su veredicto. `make up`
+reutiliza el contenedor si la configuración no cambió, así que no basta:
+
+```powershell
+docker rm -f kb-ollama
+make up-ministral
+```
+
+### Si una consulta falla: modelo ausente o corrupto
+
+Los dos se ven igual desde la interfaz —la respuesta se corta— y los dos vienen de Ollama, pero se
+arreglan distinto. Para saber cuál es:
+
+```bash
+make capturar-error     # deja scripts/error-api.txt con la causa
+```
+
+| Lo que dice el log | Qué pasa | Cómo se arregla |
+|---|---|---|
+| `404: model '…' not found` | El modelo del perfil no está descargado. Cada perfil sirve el suyo y se baja aparte | `make pull-<perfil>` |
+| `500: an error was encountered while running the model: unexpected EOF` | El modelo **sí** está, pero su archivo quedó truncado o dañado — una descarga interrumpida | Borrarlo y volver a bajarlo, abajo |
+
+`make health` también lista los modelos que faltan, pero **no** detecta los corruptos: para Ollama el
+blob existe y solo revienta al leerlo para inferir.
+
+Un modelo corrupto no se arregla repitiendo el `pull` a secas: con el manifiesto ya presente, Ollama
+puede dar el blob dañado por bueno. Hay que borrarlo primero, lo que fuerza la descarga y la
+verificación completas. Con Ministral como ejemplo:
+
+```bash
+docker exec kb-ollama ollama rm hf.co/mistralai/Ministral-3-3B-Instruct-2512-GGUF:Q4_K_M
+make pull-ministral
+make health
+make up-ministral
+```
+
+Para otro perfil, cambia el nombre del modelo por el que lista la tabla de [Perfiles de
+modelo](#perfiles-de-modelo) y el `pull-` por el suyo. Los nombres exactos, tal como los tiene
+Ollama:
+
+```bash
+docker exec kb-ollama ollama list
+```
+
+Si se repite en el mismo modelo, sospecha de la descarga —son entre 2 y 3.5 GB, y un corte deja
+exactamente este síntoma— o del disco.
+
+### Si `make up` falla con «offline mode»
+
+El primer `make up` compila la aplicación dentro de Docker, y eso tarda: unos **11 minutos** solo
+en bajar el árbol de dependencias de Maven. No está colgado.
+
+Ese trabajo se guarda en un *cache mount* de BuildKit (`id=maven-repo`), no en la imagen. Y ahí está
+la trampa, porque el **cache de capas** y el **cache mount** tienen vidas separadas:
+
+- La capa que corre `dependency:go-offline` se marca `CACHED` y sobrevive.
+- El contenido del mount —los `.jar` de verdad— lo puede vaciar el recolector de basura de
+  BuildKit cuando necesita espacio, sin avisar.
+
+Cuando coinciden esas dos cosas, `go-offline` **no se vuelve a ejecutar** (su capa está cacheada) y
+la etapa de compilación arranca en modo offline sin un solo artefacto:
+
+```
+#14 [deps 6/6] RUN ... dependency:go-offline
+#14 CACHED                                      <- no se ejecutó
+
+#18 [build 2/2] RUN ... ./mvnw -o -B -q clean package -DskipTests
+[ERROR] Cannot access central (https://repo.maven.apache.org/maven2) in offline mode
+        y el artefacto ... has not been downloaded from it before
+```
+
+El nombre del artefacto varía según cuál pida Maven primero, así que **parece un problema de
+dependencias del proyecto y no lo es**. La solución:
+
+```bash
+make cache-reciclar     # invalida el cache de build; vuelve a tardar ~11 min
+make up
+```
+
+Los nueve `up` detectan esa firma en el log y te lo dicen solos cuando ocurre, con el comando ya
+escrito. Ojo con lo que cuesta: `cache-reciclar` corre `docker builder prune -f`, que se lleva el
+cache de build de **todos** los proyectos de la máquina — BuildKit no permite podar un mount suelto
+por su id. No toca imágenes, contenedores ni volúmenes de datos.
+
+**Cuándo aparece:** casi siempre tras un `git pull`. Con el mount ya desalojado, el build sigue
+funcionando mientras nada invalide la capa de compilación; el fallo asoma en cuanto cambia `src/`,
+que es justo lo que hace actualizar el repo.
 
 ## Reparto de la GPU
 
@@ -408,12 +565,19 @@ no descarga nada de nuevo.
 
 ### Por qué `--build` no repite el build completo cada vez
 
-`up` y `up-bonsai` corren `docker compose ... up --build` (`up-ministral` no reconstruye nada — ya
-no hay ningún servicio propio con imagen para ese perfil), pero eso solo le pide a Docker que
-**revise** si algo cambió — con el cache de capas intacto, un `make down` seguido de
-`make up-bonsai` reconstruye `api` (Maven) y `llama-server` (el fork CUDA de Bonsai) en unos pocos
-segundos, no en los ~15-20 minutos que tarda la primera vez (medido en vivo: 4.4s y 3.2s
-respectivamente, todo `CACHED`, con `docker compose build` sobre ambos servicios).
+**Los nueve arranques** (`up`, `gpu-up`, `up-bonsai` y los seis perfiles de Ollama) corren
+`docker compose ... up -d --build`. Es a propósito y uniforme: hasta que lo fue, seis de los nueve
+levantaban sin reconstruir, y un `git pull` seguido de `make up-ministral` te dejaba corriendo
+**código viejo sin un solo aviso** — el contenedor levanta sano, la interfaz responde, y el
+comportamiento sigue siendo el de antes del pull. La asimetría se justificaba en que esos perfiles
+solo cambian variables de entorno y el modelo que sirve Ollama, no la imagen; pero esa premisa se
+rompe en cuanto alguien toca código y prueba otro perfil, que es justo lo que se hace al comparar
+modelos.
+
+`--build` solo le pide a Docker que **revise** si algo cambió. Con el cache de capas intacto, un
+`make down` seguido de `make up-bonsai` reconstruye `api` (Maven) y `llama-server` (el fork CUDA de
+Bonsai) en unos pocos segundos, no en los ~15-20 minutos que tarda la primera vez (medido en vivo:
+4.4s y 3.2s respectivamente, todo `CACHED`, con `docker compose build` sobre ambos servicios).
 
 Lo que sí invalida ese cache y fuerza a repetir el build largo:
 
