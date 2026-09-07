@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help up gpu-up gpu-check gpu-resumen docling-reciclar jdk-check up-bonsai down-bonsai up-ministral down-ministral up-qwen35 down-qwen35 up-nemotron down-nemotron up-granite41 down-granite41 up-phi4mini down-phi4mini up-qwen25 down-qwen25 down restart logs ps build test verify pull-models pull-reranker pull-bonsai-gguf pull-ministral pull-qwen35 pull-nemotron pull-granite41 pull-phi4mini pull-qwen25 pin-embeddings-cpu seed vault-init ingest ingest-repos ingest-teams ingest-azdo psql health verificar clean format lint secrets check ci hooks
+.PHONY: help up gpu-up gpu-check gpu-resumen docling-reciclar jdk-check up-bonsai down-bonsai up-ministral down-ministral up-qwen35 down-qwen35 up-nemotron down-nemotron up-granite41 down-granite41 up-phi4mini down-phi4mini up-qwen25 down-qwen25 down restart logs ps build test verify pull-models pull-reranker pull-bonsai-gguf pull-ministral pull-qwen35 pull-nemotron pull-granite41 pull-phi4mini pull-qwen25 pin-embeddings-cpu seed vault-init ingest ingest-repos ingest-teams ingest-azdo psql health verificar capturar-error clean format lint secrets check ci hooks
 
 
 
@@ -435,6 +435,12 @@ verificar:  ## Diagnostica por que responde "No encontre informacion" (usa PREGU
 	@# archivo, asi que no pasa por esa comprobacion: funciona en los tres casos.
 	@# Verificado forzando -ExecutionPolicy AllSigned.
 	@KB_PORT=$(KB_PORT) powershell -NoProfile -Command "& ([scriptblock]::Create((Get-Content -Raw 'scripts/verificar-respuesta-vacia.ps1'))) '$(PREGUNTA)'"
+
+LINEAS ?= 300
+capturar-error:  ## Vuelca la excepcion de kb-api a un archivo para compartir (usa LINEAS=1000)
+	@# Mismo rodeo que `verificar`: scriptblock en vez de `powershell -File`, para
+	@# no chocar con la politica de ejecucion. Ver el comentario de arriba.
+	@powershell -NoProfile -Command "& ([scriptblock]::Create((Get-Content -Raw 'scripts/capturar-error-api.ps1'))) -Lineas $(LINEAS)"
 
 health:  ## Reporte de salud detallado: db, ollama y modelos faltantes
 	@curl -fsS http://localhost:$(KB_PORT)/actuator/health | python -m json.tool 2>/dev/null \
