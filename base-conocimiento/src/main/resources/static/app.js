@@ -1735,6 +1735,7 @@
     }
     if (turno.tipo === "traduccion-texto") {
       turno.resultadoDatos = registro.resultado;
+      turno.estado.insertAdjacentElement("afterend", turno.traduccion);
       renderTraduccionDeTexto(turno);
       return;
     }
@@ -1806,6 +1807,8 @@
     fijarBotonEnviar(true);
     const turno = nuevoTurno(texto, { tipo: "traduccion-texto" });
     turno.resultadoDatos = { origen: idiomas.origen, destino: idiomas.destino, idiomaDetectado: null, original: texto };
+    // Los idiomas van arriba del texto traducido, como en los mockups.
+    turno.estado.insertAdjacentElement("afterend", turno.traduccion);
     renderTraduccionDeTexto(turno);
     const inicioTurno = Date.now();
     const detenerContador = iniciarContador(turno.estado, "Traduciendo al " + nombreIdioma(idiomas.destino).toLowerCase());
