@@ -3,6 +3,7 @@ package co.g3a.baseconocimiento.orquestacion;
 import co.g3a.baseconocimiento.compartido.Dominio.Cita;
 import co.g3a.baseconocimiento.compartido.Dominio.Filtros;
 import co.g3a.baseconocimiento.compartido.Dominio.Fragmento;
+import co.g3a.baseconocimiento.compartido.Dominio.IdiomaRespuesta;
 import co.g3a.baseconocimiento.compartido.Dominio.Pregunta;
 import co.g3a.baseconocimiento.compartido.Dominio.ProyectoId;
 import co.g3a.baseconocimiento.compartido.Dominio.Respuesta;
@@ -26,10 +27,10 @@ import reactor.core.publisher.SignalType;
  * ellas, expandir contexto, sintetizar y registrar.
  *
  * <p>Las etapas 1 a 5 (todo lo anterior a la síntesis) son las mismas sin importar si el resultado
- * final es bloqueante o en streaming — por eso {@link #prepararHastaContexto(Pregunta, ProyectoId)}
- * existe: {@link #ejecutar} (F3, para {@code /api/ask}) y {@link #ejecutarEnStreaming} (F4, para el
- * SSE del adaptador web) comparten esa preparación y solo difieren en cómo consumen el {@link Flux}
- * del {@link Sintetizador}.
+ * final es bloqueante o en streaming — por eso {@code prepararHastaContexto} existe: {@link
+ * #ejecutar} (F3, para {@code /api/ask}) y {@link #ejecutarEnStreaming} (F4, para el SSE del
+ * adaptador web) comparten esa preparación y solo difieren en cómo consumen el {@link Flux} del
+ * {@link Sintetizador}.
  *
  * <p>No implementa {@link Consultar} directamente — {@link Consultador} es esa fachada mínima. Esta
  * clase devuelve la traza completa de las siete etapas porque {@code OrquestacionController} la
@@ -64,6 +65,13 @@ class Orquestador {
   static final String MENSAJE_SERVIDOR_OCUPADO =
       "El servidor ya está atendiendo el máximo de consultas al mismo tiempo. "
           + "Esperá un momento y volvé a intentarlo.";
+
+  /**
+   * En modo {@link Consultar.ModoReformulacion.Proponer}, cuantas alternativas hacen falta para que
+   * valga la pena preguntarle a la persona: con una sola no hay elección posible, y se responde de
+   * inmediato con ella como en el modo automático.
+   */
+  static final int MIN_ALTERNATIVAS_PARA_ELEGIR = 2;
 
   private final Planificador planificador;
   private final Reformulador reformulador;
@@ -124,7 +132,10 @@ class Orquestador {
   /**
    * Todo lo que las etapas 1-5 producen, listo para que la síntesis (etapa 6) lo consuma. {@code
    * respuestaFija} no nulo (ADR-0008) significa que la etapa 4 decidió que el contexto no alcanza:
-   * la síntesis se salta por completo y ese texto es la respuesta.
+   * la síntesis se salta por completo y ese texto es la respuesta. {@code
+   * reformulacionesPropuestas} no vacía (solo con {@link Consultar.ModoReformulacion.Proponer})
+   * significa que la etapa 4 se detuvo a esperar que la persona elija: no hay síntesis ni
+   * respuesta.
    */
   private record PreSintesis(
       PlanDeHerramientas plan,
@@ -134,23 +145,27 @@ class Orquestador {
       String contexto,
       String respuestaFija,
       String consultaReformulada,
+      List<String> reformulacionesPropuestas,
       long inicioNanos) {}
 
   /**
-   * Bloqueante: espera a que la síntesis termine antes de devolver nada. Usado por {@code
-   * /api/ask}.
+   * Bloqueante: espera a que la síntesis termine antes de devolver nada. Usado por {@code /api/ask}
+   * y Teams — siempre con {@link Consultar.Preferencias#POR_DEFECTO}, porque ninguno de los dos
+   * tiene cómo pedirle a la persona que elija algo a mitad de camino.
    */
   EjecucionPipeline ejecutar(Pregunta pregunta, ProyectoId proyecto, Filtros filtros) {
     boolean cupoAdquirido = cupoConsultas.tryAcquire();
     try {
       PreSintesis pre =
           cupoAdquirido
-              ? prepararHastaContexto(pregunta, proyecto, filtros)
+              ? prepararHastaContexto(
+                  pregunta, proyecto, filtros, Consultar.Preferencias.POR_DEFECTO.reformulacion())
               : respuestaServidorOcupado();
 
       // Etapa 6: sintesis en streaming, coleccionada aqui porque este metodo
       // devuelve una respuesta completa, no un Flux.
-      String textoRespuesta = sintetizarBloqueante(pregunta, pre);
+      String textoRespuesta =
+          sintetizarBloqueante(pregunta, pre, Consultar.Preferencias.POR_DEFECTO.idioma());
 
       long latenciaMs = (System.nanoTime() - pre.inicioNanos()) / 1_000_000;
       // advertencias queda vacio a proposito: el prompt de sintesis exige señalar
@@ -190,7 +205,11 @@ class Orquestador {
    * llamador termine de consumirlo.
    */
   Consultar.RespuestaEnStreaming ejecutarEnStreaming(
-      Pregunta pregunta, ProyectoId proyecto, Filtros filtros, Long conversacionId) {
+      Pregunta pregunta,
+      ProyectoId proyecto,
+      Filtros filtros,
+      Long conversacionId,
+      Consultar.Preferencias preferencias) {
     // Antes que nada: si esta pagina se recarga al toque de preguntar, que
     // ya haya algo que encontrar via StreamsEnCursoRepositorio.buscar().
     if (conversacionId != null) {
@@ -200,8 +219,25 @@ class Orquestador {
     boolean cupoAdquirido = cupoConsultas.tryAcquire();
     PreSintesis pre =
         cupoAdquirido
-            ? prepararHastaContexto(pregunta, proyecto, filtros)
+            ? prepararHastaContexto(pregunta, proyecto, filtros, preferencias.reformulacion())
             : respuestaServidorOcupado();
+
+    // Modo Proponer y la busqueda original no alcanzo: no hay nada que
+    // sintetizar todavia. Se devuelven las alternativas y se suelta todo lo
+    // que la consulta tenia tomado -- el cupo (no hay Flux cuyo doFinally lo
+    // libere) y la fila de streams_en_curso (no hay respuesta que reconectar;
+    // ver StreamsEnCursoRepositorio.descartar). Nada va a query_log: no se
+    // respondio nada.
+    if (!pre.reformulacionesPropuestas().isEmpty()) {
+      if (cupoAdquirido) {
+        cupoConsultas.release();
+      }
+      if (conversacionId != null) {
+        streamsEnCurso.descartar(conversacionId);
+      }
+      return new Consultar.RespuestaEnStreaming(
+          List.of(), Flux.empty(), null, Mono.empty(), pre.reformulacionesPropuestas());
+    }
 
     if (conversacionId != null) {
       streamsEnCurso.actualizarCitas(conversacionId, pre.citas(), pre.consultaReformulada());
@@ -217,7 +253,7 @@ class Orquestador {
     Flux<String> textoBase =
         pre.respuestaFija() != null
             ? Flux.just(pre.respuestaFija())
-            : sintetizador.sintetizar(pregunta.texto(), pre.contexto());
+            : sintetizador.sintetizar(pregunta.texto(), pre.contexto(), preferencias.idioma());
     Flux<String> texto =
         textoBase
             .doOnNext(acumulado::append)
@@ -260,7 +296,7 @@ class Orquestador {
     // y el holder tiene el id real.
     Mono<Long> queryLogId = Mono.fromSupplier(queryLogIdHolder::get);
     return new Consultar.RespuestaEnStreaming(
-        pre.citas(), texto, pre.consultaReformulada(), queryLogId);
+        pre.citas(), texto, pre.consultaReformulada(), queryLogId, List.of());
   }
 
   /**
@@ -279,16 +315,17 @@ class Orquestador {
         "",
         MENSAJE_SERVIDOR_OCUPADO,
         null,
+        List.of(),
         System.nanoTime());
   }
 
-  private String sintetizarBloqueante(Pregunta pregunta, PreSintesis pre) {
+  private String sintetizarBloqueante(Pregunta pregunta, PreSintesis pre, IdiomaRespuesta idioma) {
     if (pre.respuestaFija() != null) {
       return pre.respuestaFija();
     }
     String texto =
         sintetizador
-            .sintetizar(pregunta.texto(), pre.contexto())
+            .sintetizar(pregunta.texto(), pre.contexto(), idioma)
             .collectList()
             .map(partes -> String.join("", partes))
             .block();
@@ -296,17 +333,35 @@ class Orquestador {
   }
 
   private PreSintesis prepararHastaContexto(
-      Pregunta pregunta, ProyectoId proyecto, Filtros filtros) {
+      Pregunta pregunta,
+      ProyectoId proyecto,
+      Filtros filtros,
+      Consultar.ModoReformulacion modoReformulacion) {
     long inicio = System.nanoTime();
     List<Long> documentosPermitidos = filtros.documentosPermitidos();
 
-    // Etapa 1: planificar.
+    // Etapa 1: planificar -- siempre sobre la pregunta original, aunque la
+    // busqueda vaya con otro texto: el plan elige herramientas segun de que
+    // trata la pregunta, y eso no cambia con la reformulacion.
     PlanDeHerramientas plan = planificador.planificar(pregunta.texto(), catalogo.descripciones());
 
-    // Etapas 2-3: ejecutar herramientas en paralelo con la pregunta tal cual, con fallas
-    // aisladas por herramienta.
+    // Con Elegida, la persona ya decidio con que texto buscar (puede ser la
+    // propia pregunta, si prefirio no reformular): se busca con eso y no se
+    // vuelve a pasar por el Reformulador -- si no, su eleccion quedaria pisada
+    // en silencio por una reformulacion automatica.
+    String consultaBusqueda = pregunta.texto();
+    String consultaReformuladaParaMostrar = null;
+    if (modoReformulacion instanceof Consultar.ModoReformulacion.Elegida elegida) {
+      consultaBusqueda = elegida.consultaDeBusqueda();
+      if (!consultaBusqueda.strip().equalsIgnoreCase(pregunta.texto().strip())) {
+        consultaReformuladaParaMostrar = consultaBusqueda;
+      }
+    }
+
+    // Etapas 2-3: ejecutar herramientas en paralelo, con fallas aisladas por
+    // herramienta.
     List<Executor.EjecucionHerramienta> ejecuciones =
-        executor.ejecutar(plan.herramientas(), pregunta.texto(), proyecto, documentosPermitidos);
+        executor.ejecutar(plan.herramientas(), consultaBusqueda, proyecto, documentosPermitidos);
 
     // Etapa 4: fusionar y deduplicar entre herramientas.
     List<Fragmento> fragmentos =
@@ -330,9 +385,32 @@ class Orquestador {
     // incondicional). Cubre tanto INSUFICIENTE (el caso que motivo el componente, ver
     // hallazgo 63: "autoboxing" vs. "boxing conversion") como AMBIGUO -- en ambos el score
     // ya senala que el texto original no encontro un candidato fuerte.
-    String consultaReformuladaParaMostrar = null;
-    if (umbral.decision() != UmbralRelevancia.Decision.SUFICIENTE) {
-      Reformulador.Reformulacion reformulacion = reformulador.reformular(pregunta.texto());
+    boolean puedeReformular =
+        !(modoReformulacion instanceof Consultar.ModoReformulacion.Elegida)
+            && umbral.decision() != UmbralRelevancia.Decision.SUFICIENTE;
+    if (puedeReformular) {
+      // Los fragmentos de la primera ronda, aunque no alcancen, ya son texto REAL
+      // de la fuente: le muestran al Reformulador con que palabras y en que
+      // idioma esta escrita, en vez de dejarlo adivinar (ver Reformulador).
+      Reformulador.Reformulacion reformulacion =
+          reformulador.reformular(pregunta.texto(), pistasDelCorpus(fragmentos));
+      if (modoReformulacion instanceof Consultar.ModoReformulacion.Proponer
+          && reformulacion.alternativas().size() >= MIN_ALTERNATIVAS_PARA_ELEGIR) {
+        // La persona elige: se corta aca, sin gastar la segunda ronda de
+        // herramientas ni la sintesis. Con una sola alternativa no hay nada
+        // que elegir y se responde de inmediato por el camino automatico de
+        // abajo (pedido explicito de producto); sin ninguna, tambien.
+        return new PreSintesis(
+            plan,
+            ejecuciones,
+            fragmentos,
+            List.of(),
+            "",
+            null,
+            null,
+            reformulacion.alternativas(),
+            inicio);
+      }
       if (reformulacion.reformulada()) {
         List<Executor.EjecucionHerramienta> reejecuciones =
             executor.ejecutar(
@@ -368,6 +446,7 @@ class Orquestador {
           "",
           MENSAJE_SIN_INFORMACION,
           consultaReformuladaParaMostrar,
+          List.of(),
           inicio);
     }
 
@@ -387,6 +466,7 @@ class Orquestador {
             "",
             MENSAJE_SIN_INFORMACION,
             consultaReformuladaParaMostrar,
+            List.of(),
             inicio);
       }
     }
@@ -399,7 +479,34 @@ class Orquestador {
         contexto,
         null,
         consultaReformuladaParaMostrar,
+        List.of(),
         inicio);
+  }
+
+  /**
+   * Cuántos fragmentos de la primera ronda se le muestran al Reformulador, y cuánto de cada uno.
+   */
+  static final int MAX_PISTAS = 5;
+
+  static final int LARGO_PISTA = 200;
+
+  /**
+   * Una línea por fragmento: título y el comienzo del texto, aplanado. Acotado a {@link
+   * #MAX_PISTAS} por {@link #LARGO_PISTA} caracteres para que quepa de sobra en el contexto del
+   * reformulador (unos 300 tokens) sin desplazar al prompt de sistema.
+   */
+  static List<String> pistasDelCorpus(List<Fragmento> fragmentos) {
+    return fragmentos.stream()
+        .limit(MAX_PISTAS)
+        .map(
+            f -> {
+              String texto = f.texto() == null ? "" : f.texto().replaceAll("\\s+", " ").strip();
+              if (texto.length() > LARGO_PISTA) {
+                texto = texto.substring(0, LARGO_PISTA) + "…";
+              }
+              return "[" + Citas.tituloDe(f) + "] " + texto;
+            })
+        .toList();
   }
 
   /**

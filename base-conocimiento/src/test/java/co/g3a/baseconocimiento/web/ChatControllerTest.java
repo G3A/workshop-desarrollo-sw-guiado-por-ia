@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
@@ -18,11 +19,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import co.g3a.baseconocimiento.compartido.Dominio.Cita;
+import co.g3a.baseconocimiento.compartido.Dominio.IdiomaRespuesta;
 import co.g3a.baseconocimiento.orquestacion.Consultar;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
@@ -72,10 +75,10 @@ class ChatControllerTest {
   @DisplayName("GET /api/chat transmite las citas y los tokens por SSE, en ese orden")
   void chatTransmiteCitasYTokensPorSse() throws Exception {
     Cita cita = new Cita("file:///doc1", "Doc 1", "extracto", "doc_section");
-    when(consultar.responderEnStreaming(any(), any(), any(), any()))
+    when(consultar.responderEnStreaming(any(), any(), any(), any(), any()))
         .thenReturn(
             new Consultar.RespuestaEnStreaming(
-                List.of(cita), Flux.just("Hola ", "mundo"), null, Mono.just(42L)));
+                List.of(cita), Flux.just("Hola ", "mundo"), null, Mono.just(42L), List.of()));
 
     MvcResult resultadoAsincronico =
         mockMvc
@@ -99,10 +102,10 @@ class ChatControllerTest {
   @DisplayName("GET /api/chat manda el evento queryLogId, despues de los tokens y antes de fin")
   void chatMandaElEventoQueryLogIdDespuesDeLosTokens() throws Exception {
     Cita cita = new Cita("file:///doc1", "Doc 1", "extracto", "doc_section");
-    when(consultar.responderEnStreaming(any(), any(), any(), any()))
+    when(consultar.responderEnStreaming(any(), any(), any(), any(), any()))
         .thenReturn(
             new Consultar.RespuestaEnStreaming(
-                List.of(cita), Flux.just("Hola"), null, Mono.just(7L)));
+                List.of(cita), Flux.just("Hola"), null, Mono.just(7L), List.of()));
 
     MvcResult resultadoAsincronico =
         mockMvc
@@ -129,10 +132,10 @@ class ChatControllerTest {
           + "(stream terminado en error/cancelado antes de completar)")
   void chatNoMandaQueryLogIdSiElMonoNuncaEmite() throws Exception {
     Cita cita = new Cita("file:///doc1", "Doc 1", "extracto", "doc_section");
-    when(consultar.responderEnStreaming(any(), any(), any(), any()))
+    when(consultar.responderEnStreaming(any(), any(), any(), any(), any()))
         .thenReturn(
             new Consultar.RespuestaEnStreaming(
-                List.of(cita), Flux.just("Hola"), null, Mono.empty()));
+                List.of(cita), Flux.just("Hola"), null, Mono.empty(), List.of()));
 
     MvcResult resultadoAsincronico =
         mockMvc
@@ -153,10 +156,14 @@ class ChatControllerTest {
           + "solo cuando el Reformulador cambio la consulta")
   void chatMandaElEventoReformulacionCuandoAplica() throws Exception {
     Cita cita = new Cita("file:///doc1", "Doc 1", "extracto", "doc_section");
-    when(consultar.responderEnStreaming(any(), any(), any(), any()))
+    when(consultar.responderEnStreaming(any(), any(), any(), any(), any()))
         .thenReturn(
             new Consultar.RespuestaEnStreaming(
-                List.of(cita), Flux.just("Respuesta."), "boxing conversion", Mono.just(1L)));
+                List.of(cita),
+                Flux.just("Respuesta."),
+                "boxing conversion",
+                Mono.just(1L),
+                List.of()));
 
     MvcResult resultadoAsincronico =
         mockMvc
@@ -169,6 +176,97 @@ class ChatControllerTest {
         .andExpect(status().isOk())
         .andExpect(content().string(containsString("event:reformulacion")))
         .andExpect(content().string(containsString("data:\"boxing conversion\"")));
+  }
+
+  @Test
+  @DisplayName(
+      "GET /api/chat con proponer=true: si hay reformulaciones propuestas, manda solo el evento "
+          + "reformulaciones (arreglo JSON) y fin, sin citas ni tokens")
+  void chatMandaLasReformulacionesPropuestasYCorta() throws Exception {
+    when(consultar.responderEnStreaming(any(), any(), any(), any(), any()))
+        .thenReturn(
+            new Consultar.RespuestaEnStreaming(
+                List.of(),
+                Flux.empty(),
+                null,
+                Mono.empty(),
+                List.of("boxing conversion", "autoboxing Java")));
+
+    MvcResult resultadoAsincronico =
+        mockMvc
+            .perform(get("/api/chat").param("q", "que es el autoboxing").param("proponer", "true"))
+            .andExpect(request().asyncStarted())
+            .andReturn();
+
+    String cuerpo =
+        mockMvc
+            .perform(asyncDispatch(resultadoAsincronico))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+
+    assertThat(cuerpo).contains("event:reformulaciones");
+    assertThat(cuerpo).contains("data:[\"boxing conversion\",\"autoboxing Java\"]");
+    assertThat(cuerpo).contains("event:fin");
+    assertThat(cuerpo).doesNotContain("event:citas").doesNotContain("event:token");
+    assertThat(cuerpo.indexOf("event:reformulaciones")).isLessThan(cuerpo.indexOf("event:fin"));
+
+    ArgumentCaptor<Consultar.Preferencias> preferencias =
+        ArgumentCaptor.forClass(Consultar.Preferencias.class);
+    verify(consultar).responderEnStreaming(any(), any(), any(), any(), preferencias.capture());
+    assertThat(preferencias.getValue().reformulacion())
+        .isInstanceOf(Consultar.ModoReformulacion.Proponer.class);
+  }
+
+  @Test
+  @DisplayName(
+      "GET /api/chat con busqueda e idioma=original: pide buscar con la consulta elegida y "
+          + "responder en el idioma del corpus")
+  void chatTraduceBusquedaEIdiomaAPreferencias() throws Exception {
+    when(consultar.responderEnStreaming(any(), any(), any(), any(), any()))
+        .thenReturn(
+            new Consultar.RespuestaEnStreaming(
+                List.of(), Flux.just("Boxing..."), "boxing conversion", Mono.just(3L), List.of()));
+
+    MvcResult resultadoAsincronico =
+        mockMvc
+            .perform(
+                get("/api/chat")
+                    .param("q", "que es el autoboxing")
+                    .param("busqueda", "boxing conversion")
+                    .param("idioma", "original")
+                    // busqueda manda sobre proponer: ya eligio, no hay que volver a proponer.
+                    .param("proponer", "true"))
+            .andExpect(request().asyncStarted())
+            .andReturn();
+    mockMvc.perform(asyncDispatch(resultadoAsincronico)).andExpect(status().isOk());
+
+    ArgumentCaptor<Consultar.Preferencias> preferencias =
+        ArgumentCaptor.forClass(Consultar.Preferencias.class);
+    verify(consultar).responderEnStreaming(any(), any(), any(), any(), preferencias.capture());
+    assertThat(preferencias.getValue().reformulacion())
+        .isEqualTo(new Consultar.ModoReformulacion.Elegida("boxing conversion"));
+    assertThat(preferencias.getValue().idioma()).isEqualTo(IdiomaRespuesta.ORIGINAL_DEL_CORPUS);
+  }
+
+  @Test
+  @DisplayName("GET /api/chat sin proponer ni busqueda usa las preferencias por defecto")
+  void chatSinParametrosNuevosUsaLasPreferenciasPorDefecto() throws Exception {
+    when(consultar.responderEnStreaming(any(), any(), any(), any(), any()))
+        .thenReturn(
+            new Consultar.RespuestaEnStreaming(
+                List.of(), Flux.just("Hola"), null, Mono.just(1L), List.of()));
+
+    MvcResult resultadoAsincronico =
+        mockMvc
+            .perform(get("/api/chat").param("q", "como se despliega"))
+            .andExpect(request().asyncStarted())
+            .andReturn();
+    mockMvc.perform(asyncDispatch(resultadoAsincronico)).andExpect(status().isOk());
+
+    verify(consultar)
+        .responderEnStreaming(any(), any(), any(), any(), eq(Consultar.Preferencias.POR_DEFECTO));
   }
 
   @Test
@@ -187,10 +285,10 @@ class ChatControllerTest {
     // eso va como string JSON (`data:" servicio"`, con la comilla como
     // primer caracter, no el espacio), y el cliente hace JSON.parse.
     Cita cita = new Cita("file:///doc1", "Doc 1", "extracto", "doc_section");
-    when(consultar.responderEnStreaming(any(), any(), any(), any()))
+    when(consultar.responderEnStreaming(any(), any(), any(), any(), any()))
         .thenReturn(
             new Consultar.RespuestaEnStreaming(
-                List.of(cita), Flux.just("Hola", " mundo"), null, Mono.just(2L)));
+                List.of(cita), Flux.just("Hola", " mundo"), null, Mono.just(2L), List.of()));
 
     MvcResult resultadoAsincronico =
         mockMvc

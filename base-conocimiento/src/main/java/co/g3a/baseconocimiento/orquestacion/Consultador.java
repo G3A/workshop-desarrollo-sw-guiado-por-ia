@@ -38,8 +38,13 @@ class Consultador implements Consultar {
 
   @Override
   public RespuestaEnStreaming responderEnStreaming(
-      Pregunta pregunta, ProyectoId proyecto, Filtros filtros, Long conversacionId) {
-    return orquestador.ejecutarEnStreaming(pregunta, proyecto, filtros, conversacionId);
+      Pregunta pregunta,
+      ProyectoId proyecto,
+      Filtros filtros,
+      Long conversacionId,
+      Preferencias preferencias) {
+    return orquestador.ejecutarEnStreaming(
+        pregunta, proyecto, filtros, conversacionId, preferencias);
   }
 
   @Override
