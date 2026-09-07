@@ -16,6 +16,15 @@
   const modalDocumentoTitulo = document.getElementById("modal-documento-titulo");
   const modalDocumentoCuerpo = document.getElementById("modal-documento-cuerpo");
   const modalDocumentoDescarga = document.getElementById("modal-documento-descarga");
+  // Acciones sobre los documentos tildados (issue #38): el control bajo la lista,
+  // su menu de cinco acciones y el sub-panel de Traducir.
+  const botonAcciones = document.getElementById("boton-acciones");
+  const botonAccionesTexto = document.getElementById("boton-acciones-texto");
+  const menuAcciones = document.getElementById("menu-acciones");
+  const submenuTraducir = document.getElementById("submenu-traducir");
+  const botonTraducirDocumentos = document.getElementById("boton-traducir-documentos");
+  const contenedorIdiomaResultado = document.getElementById("selector-idioma-resultado");
+  const contenedorIdiomasDocumentos = document.getElementById("selector-idiomas-documentos");
 
   // Esta vista previa (Señal 1: FTS) matchea por raíz de palabra, no por
   // significado: si la pregunta no comparte vocabulario con el documento
@@ -51,14 +60,213 @@
   let documentosDisponibles = [];
   let documentosActivosActuales = [];
 
+  // Topes del modulo de acciones (GET /api/acciones/limites): el control se
+  // deshabilita antes de que un 400 llegue como un corte de conexion, porque
+  // EventSource no puede leer el cuerpo de un 400. Defaults = los del servidor.
+  let limitesAcciones = { maxDocumentos: 10, maxCaracteresTexto: 8000 };
+
+  // Un selector para el idioma del resultado (resumir, sintetizar, preguntas,
+  // ideas) y otro, con origen, para Traducir documentos. Sin idiomas.js (no
+  // deberia pasar: va antes que este archivo) el menu sigue sin ellos.
+  const selectorIdiomaResultado =
+    window.kbIdiomas && contenedorIdiomaResultado
+      ? window.kbIdiomas.crearSelector({ soloDestino: true, destino: leerPreferencia("kb.acciones.idioma", "es") })
+      : null;
+  const selectorIdiomasDocumentos =
+    window.kbIdiomas && contenedorIdiomasDocumentos
+      ? window.kbIdiomas.crearSelector({ destino: leerPreferencia("kb.acciones.destino", "en") })
+      : null;
+  if (selectorIdiomaResultado) {
+    contenedorIdiomaResultado.appendChild(selectorIdiomaResultado.elemento);
+  }
+  if (selectorIdiomasDocumentos) {
+    contenedorIdiomasDocumentos.appendChild(selectorIdiomasDocumentos.elemento);
+  }
+
+  // Las acciones del menu se registran por nombre desde el codigo que las
+  // implementa (resumir/sintetizar/preguntas/ideas y traducir): el control no
+  // sabe que hace cada una, solo cuando puede ofrecerlas.
+  const accionesDelMenu = {};
+  function registrarAccion(nombre, ejecutar) {
+    accionesDelMenu[nombre] = ejecutar;
+  }
+
+  function leerPreferencia(clave, porDefecto) {
+    try {
+      return localStorage.getItem(clave) || porDefecto;
+    } catch (error) {
+      return porDefecto;
+    }
+  }
+  function guardarPreferencia(clave, valor) {
+    try {
+      localStorage.setItem(clave, valor);
+    } catch (error) {
+      // Sin almacenamiento: la preferencia dura la sesion.
+    }
+  }
+
   // Orden importa: cargarHistorialGuardado() abre la conversacion mas reciente
   // y reconcilia su seleccion de documentos guardada contra documentosDisponibles
   // -- si corriera antes de tener la lista, esa seleccion se pisaria con "todos".
   cargarProyectos()
     .then(cargarDocumentosDisponibles)
-    .then(cargarHistorialGuardado);
+    .then(cargarHistorialGuardado)
+    .then(cargarLimitesAcciones);
 
   campoProyecto.addEventListener("change", cargarDocumentosDisponibles);
+
+  // ---------- Control y menu de acciones sobre los documentos tildados ----------
+
+  async function cargarLimitesAcciones() {
+    try {
+      const respuesta = await fetch("/api/acciones/limites");
+      if (respuesta.ok) {
+        const limites = await respuesta.json();
+        if (limites && limites.maxDocumentos > 0) {
+          limitesAcciones = limites;
+        }
+      }
+    } catch (error) {
+      // Sin backend todavia: se quedan los defaults, que coinciden con los del servidor.
+    }
+    actualizarControlAcciones();
+  }
+
+  /**
+   * Los cuatro estados del control: sin seleccion (deshabilitado con ayuda),
+   * N seleccionados, menu abierto, y accion en curso (deshabilitado con spinner).
+   * Se llama en cada punto donde cambia la seleccion o donde hoy se toca el
+   * boton de enviar: la exclusion mutua es la misma que la del chat, sin un
+   * canal de estado aparte (hallazgo 8 de la revision del plan).
+   */
+  function actualizarControlAcciones() {
+    if (!botonAcciones) {
+      return;
+    }
+    const n = documentosActivosActuales.length;
+    // El boton de enviar ya modela "hay algo en curso en ESTA conversacion"
+    // (incluido el panel de reformulaciones esperando una eleccion): es la misma
+    // senal, no un canal de estado aparte.
+    const enCurso = boton.disabled || (conversacionActualId != null && streamsActivos.has(conversacionActualId));
+    let texto;
+    if (n === 0) {
+      texto = "Selecciona documentos para ver acciones";
+    } else if (n > limitesAcciones.maxDocumentos) {
+      texto = "Máximo " + limitesAcciones.maxDocumentos + " documentos por acción";
+    } else if (enCurso) {
+      texto = "Acción en curso…";
+    } else {
+      texto = "Acciones sobre " + n + (n === 1 ? " documento" : " documentos");
+    }
+    botonAccionesTexto.textContent = texto;
+    botonAcciones.disabled = n === 0 || n > limitesAcciones.maxDocumentos || enCurso;
+    botonAcciones.classList.toggle("en-curso", enCurso);
+    if (botonAcciones.disabled) {
+      cerrarMenuAcciones();
+    }
+    if (botonTraducirDocumentos) {
+      botonTraducirDocumentos.textContent = "Traducir " + n + (n === 1 ? " documento" : " documentos");
+    }
+  }
+
+  function fijarBotonEnviar(deshabilitado) {
+    boton.disabled = deshabilitado;
+    actualizarControlAcciones();
+  }
+
+  function abrirMenuAcciones() {
+    if (!menuAcciones || botonAcciones.disabled) {
+      return;
+    }
+    menuAcciones.classList.remove("oculto");
+    botonAcciones.setAttribute("aria-expanded", "true");
+  }
+
+  function cerrarMenuAcciones() {
+    if (!menuAcciones) {
+      return;
+    }
+    menuAcciones.classList.add("oculto");
+    if (submenuTraducir) {
+      submenuTraducir.classList.add("oculto");
+    }
+    if (botonAcciones) {
+      botonAcciones.setAttribute("aria-expanded", "false");
+    }
+  }
+
+  if (botonAcciones && menuAcciones) {
+    botonAcciones.addEventListener("click", () => {
+      if (menuAcciones.classList.contains("oculto")) {
+        abrirMenuAcciones();
+      } else {
+        cerrarMenuAcciones();
+      }
+    });
+    menuAcciones.querySelectorAll(".item-accion").forEach((item) => {
+      item.addEventListener("click", () => {
+        const accion = item.dataset.accion;
+        if (accion === "traducir") {
+          // El sub-panel de idiomas se despliega en el mismo menu; la accion
+          // arranca con su propio boton ("Traducir N documentos").
+          if (submenuTraducir) {
+            submenuTraducir.classList.toggle("oculto");
+          }
+          return;
+        }
+        cerrarMenuAcciones();
+        if (accionesDelMenu[accion]) {
+          accionesDelMenu[accion]();
+        }
+      });
+    });
+    if (botonTraducirDocumentos) {
+      botonTraducirDocumentos.addEventListener("click", () => {
+        cerrarMenuAcciones();
+        if (accionesDelMenu.traducir) {
+          accionesDelMenu.traducir();
+        }
+      });
+    }
+    // Clic fuera y Escape cierran el menu, como cualquier menu.
+    document.addEventListener("click", (evento) => {
+      if (!evento.target.closest("#acciones-documentos")) {
+        cerrarMenuAcciones();
+      }
+    });
+    document.addEventListener("keydown", (evento) => {
+      if (evento.key === "Escape") {
+        cerrarMenuAcciones();
+      }
+    });
+  }
+
+  /** Lo que la persona tildo, literal: aqui "[]" significa ninguno, no todos. */
+  function documentosSeleccionadosParaAccion() {
+    const documentos = documentosActivosActuales.slice();
+    if (!documentos.length) {
+      alert("Tilda al menos un documento.");
+      return null;
+    }
+    if (documentos.length > limitesAcciones.maxDocumentos) {
+      alert("Se pueden elegir hasta " + limitesAcciones.maxDocumentos + " documentos por acción.");
+      return null;
+    }
+    if (conversacionActualId != null && streamsActivos.has(conversacionActualId)) {
+      return null;
+    }
+    return documentos;
+  }
+
+  function idiomaDelResultado() {
+    const codigo = selectorIdiomaResultado ? selectorIdiomaResultado.valores().destino : "es";
+    guardarPreferencia("kb.acciones.idioma", codigo);
+    if (window.kbIdiomas) {
+      window.kbIdiomas.recordar(codigo);
+    }
+    return codigo;
+  }
 
   formulario.addEventListener("submit", (evento) => {
     evento.preventDefault();
@@ -84,7 +292,7 @@
       if (bienvenida) {
         bienvenida.classList.remove("oculto");
       }
-      boton.disabled = false;
+      fijarBotonEnviar(false);
       campoPregunta.value = "";
       campoPregunta.focus();
       // "Todos activos" por defecto para la conversacion nueva (no hereda lo
@@ -189,7 +397,7 @@
     } else {
       await reconectarSiHaceFalta(conversacionId, turnos);
     }
-    boton.disabled = !!streamsActivos.get(conversacionId);
+    fijarBotonEnviar(!!streamsActivos.get(conversacionId));
 
     await cargarListaConversaciones();
     historial.lastElementChild?.scrollIntoView({ behavior: "auto", block: "start" });
@@ -284,7 +492,7 @@
     // nada.
     activarFeedback(turno, estado.queryLogId);
     if (conversacionActualId === conversacionId) {
-      boton.disabled = false;
+      fijarBotonEnviar(false);
     }
     guardarTurno(
         estado.pregunta, proyecto || estado.projectId, turno, huboError,
@@ -319,7 +527,7 @@
       if (bienvenida) {
         bienvenida.classList.remove("oculto");
       }
-      boton.disabled = false;
+      fijarBotonEnviar(false);
     }
     cargarListaConversaciones();
   }
@@ -427,6 +635,7 @@
         ? "(" + documentosActivosActuales.length + "/" + documentosDisponibles.length + ")"
         : "";
     }
+    actualizarControlAcciones();
   }
 
   async function alCambiarSeleccionDocumentos() {
@@ -435,6 +644,7 @@
     if (contadorDocumentos) {
       contadorDocumentos.textContent = "(" + documentosActivosActuales.length + "/" + documentosDisponibles.length + ")";
     }
+    actualizarControlAcciones();
     if (conversacionActualId != null) {
       try {
         await kbHistorialDb.actualizarDocumentosActivos(conversacionActualId, documentosActivosNormalizados());
@@ -587,18 +797,18 @@
       abrirModalDocumento(enlace.dataset.uri, enlace.dataset.titulo);
       return;
     }
-    const boton = evento.target.closest(".boton-copiar");
-    if (!boton) {
+    const copiar = evento.target.closest(".boton-copiar");
+    if (!copiar) {
       return;
     }
     try {
-      await navigator.clipboard.writeText(boton.dataset.texto || "");
-      const original = boton.textContent;
-      boton.textContent = "✓";
-      boton.disabled = true;
+      await navigator.clipboard.writeText(copiar.dataset.texto || "");
+      const original = copiar.textContent;
+      copiar.textContent = "✓";
+      copiar.disabled = true;
       setTimeout(() => {
-        boton.textContent = original;
-        boton.disabled = false;
+        copiar.textContent = original;
+        copiar.disabled = false;
       }, 1200);
     } catch (error) {
       // Sin permiso de portapapeles o navegador viejo: no hay mucho mas que
@@ -754,7 +964,7 @@
     // este envio no se puede seguir refiriendo a ella.
     const conversacionId = conversacionActualId;
 
-    boton.disabled = true;
+    fijarBotonEnviar(true);
     const turno = nuevoTurno(pregunta);
     const inicioTurno = Date.now();
     const detenerContador = iniciarContador(turno.estado, "Buscando y analizando tu pregunta");
@@ -990,7 +1200,7 @@
         (turno.reformulacionTexto ? "Buscando como: “" + busqueda + "”" : "Buscando con tu pregunta tal cual") +
         (enIdiomaOriginal ? " · respuesta en el idioma original de las fuentes" : "");
       if (conversacionActualId === conversacionId) {
-        boton.disabled = true;
+        fijarBotonEnviar(true);
       }
       const detenerContador = iniciarContador(turno.estado, "Buscando y analizando tu pregunta");
       iniciarStreaming(pregunta, proyecto, turno, detenerContador, conversacionId, Date.now(), documentos, {
@@ -1013,7 +1223,7 @@
     // Solo toca el boton si el usuario sigue mirando esta conversacion: si ya
     // se fue a otra, el estado del boton depende de ESA, no de la que termino.
     if (conversacionActualId === conversacionId) {
-      boton.disabled = false;
+      fijarBotonEnviar(false);
     }
     if (turno.estado.textContent === "Redactando la respuesta…") {
       if (duracionMs != null) {
