@@ -90,6 +90,38 @@ class OllamaSaludTest {
     assertThat(indicador.health().getStatus()).isEqualTo(Status.DOWN);
   }
 
+  /**
+   * La accion decia SIEMPRE "corre `make pull-models`", y eso es falso justo cuando el indicador
+   * sirve de algo: pull-models descarga LLM y EMBEDDINGS del Makefile, fijos en gemma3:4b y bge-m3,
+   * nunca el modelo del perfil activo. Quien estrenaba up-granite41 corria pull-models, volvia a
+   * preguntar y seguia fallando con el mismo 404.
+   */
+  @Test
+  @DisplayName("La accion nombra el comando que descarga EXACTAMENTE lo que falta")
+  void laAccionDescargaLoQueFalta() {
+    Health salud = salud("granite4.1:3b", "gemma3:4b", "bge-m3");
+
+    assertThat(salud.getDetails().get("accion"))
+        .isEqualTo("docker exec kb-ollama ollama pull granite4.1:3b");
+  }
+
+  @Test
+  @DisplayName("Con varios faltantes, la accion los encadena todos")
+  void laAccionEncadenaVariosFaltantes() {
+    Health salud = salud("granite4.1:3b", "phi4-mini:3.8b", "bge-m3");
+
+    assertThat(salud.getDetails().get("accion").toString())
+        .contains("ollama pull granite4.1:3b")
+        .contains("ollama pull phi4-mini:3.8b");
+  }
+
+  @Test
+  @DisplayName("Sin faltantes la accion es 'ninguna'")
+  void sinFaltantesNoHayAccion() {
+    assertThat(salud("gemma3:4b", "gemma3:4b", "bge-m3").getDetails().get("accion"))
+        .isEqualTo("ninguna");
+  }
+
   @SuppressWarnings("unchecked")
   private static List<String> faltantes(Health salud) {
     return (List<String>) salud.getDetails().get("modelosFaltantes");
