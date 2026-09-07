@@ -5,9 +5,9 @@ import java.util.List;
 
 /**
  * La única puerta pública de {@code recuperacion}: el resto del módulo (repositorio, señales,
- * fusión) queda package-private a propósito, igual que {@code Consultar} es la única puerta de
- * {@code orquestacion}. Las herramientas {@code search_unified} y {@code search_docs} de F3 llaman
- * aquí, no a {@link Recuperador} directamente.
+ * fusión) queda package-private a propósito, igual que {@code Consultar} es la puerta de {@code
+ * orquestacion} y {@code Acciones} la de {@code acciones}. Las herramientas {@code search_unified}
+ * y {@code search_docs} de F3 llaman aquí, no a {@link Recuperador} directamente.
  */
 public interface Buscador {
 

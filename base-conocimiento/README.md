@@ -45,6 +45,21 @@ Es Agentic RAG **acotado**, no un agente abierto tipo ReAct: el conjunto de acci
 herramientas + 1 reformulación + 1 verificación) y el reintento es de una sola vuelta, no una
 planificación libre sin límite.
 
+## Acciones sobre los documentos que eliges
+
+Aparte de preguntar, la página de chat deja elegir documentos en la barra lateral y hacer cosas
+con ellos que no son una pregunta: **resumir** (un resumen por documento), **sintetizar** (un solo
+texto que cruza los documentos), **lluvia de preguntas**, **lluvia de ideas** y **traducir** (el
+documento completo, a cualquier idioma, con descarga en Markdown). El mismo traductor sirve dentro
+del chat: un modo traducir en la barra de entrada y «Traducir» sobre cualquier turno. Cada
+resultado es un turno más de la conversación y muestra cuánto de cada documento entró de verdad al
+modelo — un documento largo entra recortado y se marca «parcial», nunca en silencio.
+
+Todo eso vive en un módulo **independiente del RAG**: comparte solo el vault indexado y el cliente
+del LLM. Detalle en
+[`docs/architecture.md`](docs/architecture.md#acciones-sobre-documentos-seleccionados-apiacciones)
+y [ADR-0013](docs/adrs/0013-modulo-acciones-independiente-del-rag.md).
+
 ## Requisitos
 
 - Docker Desktop con WSL2
@@ -667,8 +682,8 @@ Framework Emulator alcanza con `KB_TEAMS_HABILITADO=true` y apuntarlo a
 
 `KB_API_TOKEN` vacío (el default) deja el API sin autenticación. Con un valor, `/api/ask`,
 `/api/search` y `/api/ingest/*` exigen `Authorization: Bearer <token>`. Quedan afuera a propósito
-`/api/chat` y `/api/preview` (la UI web no tiene login de persona en este MVP) y `/api/messages`
-(el Bot Connector valida su propio JWT). Detalle y decisiones pendientes en
+`/api/chat`, `/api/preview` y las siete rutas de `/api/acciones/*` (la UI web no tiene login de
+persona en este MVP) y `/api/messages` (el Bot Connector valida su propio JWT). Detalle y decisiones pendientes en
 [`docs/architecture.md`](docs/architecture.md).
 
 ## Documentación
