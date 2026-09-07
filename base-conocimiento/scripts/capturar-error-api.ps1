@@ -79,6 +79,66 @@ if ($detalle.Count -eq 0) {
     foreach ($l in $detalle) { $informe.Add($l.ToString()) }
 }
 
+# kb-api es el CLIENTE. Cuando el error dice "running the model", lo que fallo
+# ocurrio DENTRO de Ollama -- su proceso runner murio a media peticion, y eso
+# solo se ve en `docker logs kb-ollama`. Sin esta seccion el informe daba mil
+# vueltas sobre el mismo "unexpected EOF" del lado del cliente, que no dice por
+# que: costo una vuelta entera de diagnostico contra un equipo real.
+#
+# Las lineas que importan de Ollama no llevan la palabra ERROR, asi que el filtro
+# es distinto al de kb-api: se buscan las senales de que el runner se cayo o no
+# cabe en memoria.
+$hayOllama = $contenedores -contains "kb-ollama"
+$informe.Add("")
+$informe.Add("## Ollama (kb-ollama)")
+$informe.Add("")
+if (-not $hayOllama) {
+    $informe.Add("El contenedor kb-ollama no esta corriendo.")
+} else {
+    $logsOllama = docker logs kb-ollama --tail $Lineas 2>$null
+    $patronOllama = "error|failed|panic|signal|killed|out of memory|OOM|no space|EOF|" +
+                    "unable to|cannot|not enough|memory|offload|gpu layers|llama runner"
+    $trazaOllama = $logsOllama |
+        Select-String -Pattern $patronOllama |
+        Select-Object -Last 40
+    if ($trazaOllama.Count -eq 0) {
+        $informe.Add("Nada relevante en las ultimas $Lineas lineas de kb-ollama.")
+    } else {
+        foreach ($l in $trazaOllama) { $informe.Add($l.ToString()) }
+    }
+
+    # El reparto real del modelo: cuanto quedo en GPU y cuanto en CPU. Un
+    # "100% CPU" o un reparto raro explica por si solo un runner que muere.
+    $informe.Add("")
+    $informe.Add("### ollama ps (reparto del modelo cargado)")
+    $ps = docker exec kb-ollama ollama ps 2>$null
+    if ($LASTEXITCODE -eq 0 -and $null -ne $ps) {
+        foreach ($l in $ps) { $informe.Add($l.ToString()) }
+    } else {
+        $informe.Add("(no respondio)")
+    }
+}
+
+# La memoria es la causa mas comun de que el runner muera, y ninguna de las dos
+# mitades se ve desde dentro del contenedor: la VRAM de la tarjeta y el limite de
+# RAM que Docker Desktop le da a la VM de WSL2 (%USERPROFILE%\.wslconfig, el paso
+# manual que documenta el README).
+$informe.Add("")
+$informe.Add("### Memoria")
+$informe.Add("")
+$vram = nvidia-smi --query-gpu=name,memory.used,memory.total --format=csv,noheader 2>$null
+if ($LASTEXITCODE -eq 0 -and $null -ne $vram) {
+    foreach ($l in $vram) { $informe.Add("GPU: " + $l.ToString()) }
+} else {
+    $informe.Add("GPU: nvidia-smi no respondio (sin tarjeta, o fuera del PATH)")
+}
+$memDocker = docker info --format "{{.MemTotal}}" 2>$null
+if ($LASTEXITCODE -eq 0 -and $null -ne $memDocker) {
+    $gb = [math]::Round([double]$memDocker / 1GB, 1)
+    $informe.Add("RAM disponible para Docker (VM de WSL2): $gb GB")
+    $informe.Add("  Si parece poca, revisa %USERPROFILE%\.wslconfig -- ver wslconfig.example.")
+}
+
 # -Encoding utf8 explicito: Out-File y Set-Content escriben UTF-16 LE por defecto
 # en 5.1, y un informe en UTF-16 se ve como basura en GitHub y en cualquier otra
 # herramienta que lo lea.
