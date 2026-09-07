@@ -66,7 +66,7 @@ endif
 ## El sed recorta el comentario final, los espacios y las comillas envolventes, y
 ## se queda con la ULTIMA aparicion, que es la que gana en docker compose.
 KB_ENV_FILE ?= .env
-ENV_LEIDAS := KB_GPU KB_DOCLING_GPU KB_VRAM_EMBEDDINGS_GPU KB_VRAM_DOCLING_GPU KB_DATA_DIR KB_VAULT_DIR KB_PORT
+ENV_LEIDAS := KB_GPU KB_DOCLING_GPU KB_VRAM_EMBEDDINGS_GPU KB_VRAM_DOCLING_GPU KB_DATA_DIR KB_VAULT_DIR KB_PORT KB_LLM_MODELO
 ENV_PLAN := $(shell \
   for v in $(ENV_LEIDAS); do \
     val=""; \
@@ -85,6 +85,7 @@ ENV_KB_VRAM_DOCLING_GPU    := $(patsubst -,,$(word 4,$(ENV_PLAN)))
 ENV_KB_DATA_DIR            := $(patsubst -,,$(word 5,$(ENV_PLAN)))
 ENV_KB_VAULT_DIR           := $(patsubst -,,$(word 6,$(ENV_PLAN)))
 ENV_KB_PORT                := $(patsubst -,,$(word 7,$(ENV_PLAN)))
+ENV_KB_LLM_MODELO          := $(patsubst -,,$(word 8,$(ENV_PLAN)))
 
 ## Se le pasa a docker compose SOLO si el archivo existe: --env-file apuntando a
 ## un archivo ausente no es un no-op, aborta con "env file ... not found" -- y
@@ -94,7 +95,28 @@ ENV_FILE_FLAG := $(if $(wildcard $(KB_ENV_FILE)),--env-file $(KB_ENV_FILE),)
 
 COMPOSE           := docker compose $(ENV_FILE_FLAG)
 COMPOSE_GPU       := docker compose $(ENV_FILE_FLAG) -f compose.yml -f compose.gpu.yml
-LLM         ?= gemma3:4b
+## El modelo que descarga `pull-models`. Sale de KB_LLM_MODELO -- el mismo que
+## leen los compose y que usa el chat -- para que descargar y ejecutar no puedan
+## apuntar a modelos distintos.
+##
+## Antes era gemma3:4b a secas, sin relacion alguna con KB_LLM_MODELO: el Makefile
+## no mencionaba esa variable ni una vez. Con un perfil de Ollama configurado,
+## `make pull-models` seguia bajando gemma3:4b y la primera consulta fallaba con
+## un 404 del modelo que si hacia falta. Peor todavia porque el indicador de salud
+## mandaba justo ahi ("corre `make pull-models`"), asi que el consejo y el comando
+## se realimentaban.
+##
+## OJO con el alcance: esto NO convierte a pull-models en "descarga lo del perfil
+## que voy a levantar". El perfil lo elige el target que invocas DESPUES
+## (up-ministral, up-granite41...), y cada uno trae su modelo en su propio
+## compose, no en KB_LLM_MODELO. Lo que se arregla es que, cuando KB_LLM_MODELO
+## esta puesto -- en el entorno o en el archivo de entorno --, se respete en vez
+## de ignorarse en silencio. Para los demas perfiles sigue estando su
+## `make pull-<perfil>`.
+## El entorno se consulta ANTES que el archivo: LLM no se llama KB_LLM_MODELO, asi
+## que el `?=` no basta para que una variable de entorno lo pise sola -- hay que
+## mirarla explicitamente para mantener la precedencia del resto del Makefile.
+LLM         ?= $(if $(KB_LLM_MODELO),$(KB_LLM_MODELO),$(if $(ENV_KB_LLM_MODELO),$(ENV_KB_LLM_MODELO),gemma3:4b))
 EMBEDDINGS  ?= bge-m3
 KB_DATA_DIR ?= $(if $(ENV_KB_DATA_DIR),$(ENV_KB_DATA_DIR),./.data)
 # Mismo default que compose.yml, y con el mismo motivo: el vault vive FUERA del
@@ -577,7 +599,7 @@ docling-reciclar:  ## Reinicia docling-serve para liberar la VRAM que retiene en
 
 ## ---------------------------------------------------------------- modelos
 
-pull-models:  ## Descarga LLM, embeddings y reranker a KB_DATA_DIR (~5.5 GB, una sola vez)
+pull-models:  ## Descarga el modelo del chat (KB_LLM_MODELO, por defecto gemma3:4b), embeddings y reranker (~5.5 GB). Otros perfiles: make pull-<perfil>
 	$(COMPOSE_ACTIVO) exec ollama ollama pull $(LLM)
 	$(COMPOSE_ACTIVO) exec ollama ollama pull $(EMBEDDINGS)
 	$(MAKE) pull-reranker
