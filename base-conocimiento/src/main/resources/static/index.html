@@ -18,6 +18,7 @@
     --acento: #10a37f;
     --acento-texto: #ffffff;
     --error: #d1352b;
+    --advertencia: #b45309;
     --sombra: 0 2px 10px rgba(0, 0, 0, 0.06);
   }
   @media (prefers-color-scheme: dark) {
@@ -33,6 +34,7 @@
       --acento: #19c37d;
       --acento-texto: #0d0d0d;
       --error: #f2867a;
+      --advertencia: #f5b24a;
       --sombra: 0 2px 14px rgba(0, 0, 0, 0.35);
     }
   }
@@ -405,6 +407,101 @@
     white-space: pre-wrap;
   }
   .mensaje-usuario:hover .boton-copiar { opacity: 1; }
+  .etiqueta-turno {
+    display: inline-block;
+    margin-right: 0.45rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--acento);
+    vertical-align: middle;
+  }
+
+  /* ---------- Turnos de accion (issue #38): cobertura y resultados ---------- */
+  .turno-cobertura {
+    border: 1px solid var(--borde);
+    border-radius: 10px;
+    padding: 0.6rem 0.75rem;
+    margin: 0 0 0.75rem;
+    background: var(--bg-elevado);
+  }
+  .turno-cobertura.oculto, .turno-estructurado.oculto, .turno-traduccion.oculto { display: none; }
+  .turno-cobertura h3 {
+    margin: 0 0 0.4rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--texto-atenuado);
+  }
+  .turno-cobertura ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+  .turno-cobertura li { display: flex; align-items: center; gap: 0.5rem; font-size: 0.87rem; }
+  .turno-cobertura .numero { flex: none; min-width: 1.6rem; color: var(--texto-atenuado); }
+  .turno-cobertura .titulo-documento {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--acento);
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .turno-cobertura li.no-indexado .titulo-documento { color: var(--texto-atenuado); font-weight: 400; }
+  .turno-cobertura .titulo-documento:hover { text-decoration: underline; }
+  .insignia-cobertura {
+    flex: none;
+    font-size: 0.72rem;
+    padding: 0.1rem 0.55rem;
+    border-radius: 999px;
+    border: 1px solid currentColor;
+    white-space: nowrap;
+  }
+  .insignia-cobertura.completa { color: var(--acento); }
+  .insignia-cobertura.parcial { color: var(--advertencia); }
+  .insignia-cobertura.no-indexado { color: var(--texto-atenuado); }
+  .aviso-parcial { margin: 0.55rem 0 0; font-size: 0.83rem; color: var(--advertencia); }
+
+  .turno-estructurado { display: flex; flex-direction: column; gap: 0.8rem; margin: 0.2rem 0 0.4rem; }
+  .turno-estructurado .tema h4, .turno-estructurado .idea h4 { margin: 0 0 0.35rem; font-size: 0.92rem; }
+  .turno-estructurado .tema ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.35rem; }
+  .turno-estructurado .tema li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    padding: 0.45rem 0.7rem;
+    border: 1px solid var(--borde);
+    border-radius: 10px;
+    background: var(--bg-elevado);
+    font-size: 0.9rem;
+  }
+  .cita-n { color: var(--texto-atenuado); font-size: 0.8rem; }
+  .boton-preguntar {
+    flex: none;
+    border: 1px solid var(--acento);
+    border-radius: 999px;
+    padding: 0.2rem 0.7rem;
+    background: transparent;
+    color: var(--acento);
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .boton-preguntar:hover, .boton-preguntar:focus-visible { background: var(--acento); color: var(--acento-texto); }
+  .grilla-ideas { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 0.6rem; }
+  .idea {
+    position: relative;
+    padding: 0.7rem 2.1rem 0.7rem 0.85rem;
+    border: 1px solid var(--borde);
+    border-radius: 10px;
+    background: var(--bg-elevado);
+  }
+  .idea p { margin: 0; font-size: 0.87rem; color: var(--texto); }
+  .idea .boton-copiar { position: absolute; top: 0.55rem; right: 0.55rem; }
+  .idea:hover .boton-copiar { opacity: 1; }
+  .sin-resultado { margin: 0; color: var(--texto-atenuado); font-size: 0.9rem; }
 
   .mensaje-asistente { align-items: flex-start; }
   .avatar-asistente {
