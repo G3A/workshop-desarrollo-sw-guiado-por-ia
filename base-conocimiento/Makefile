@@ -376,37 +376,37 @@ down-bonsai:  ## Detiene el perfil Bonsai (mismos -f que up-bonsai, para no deja
 	$(COMPOSE_BONSAI) down
 
 up-ministral:  ## Levanta el perfil Ministral 3B (LLM via Ollama); corre make pull-ministral antes la primera vez
-	$(COMPOSE_MINISTRAL) up -d
+	$(COMPOSE_MINISTRAL) up -d --build
 
 down-ministral:  ## Detiene el perfil Ministral (mismos -f que up-ministral)
 	$(COMPOSE_MINISTRAL) down
 
 up-qwen35:  ## Levanta el perfil experimental Qwen3.5 4B (LLM via Ollama, fix de thinking integrado); corre make pull-qwen35 antes la primera vez
-	$(COMPOSE_QWEN35) up -d
+	$(COMPOSE_QWEN35) up -d --build
 
 down-qwen35:  ## Detiene el perfil Qwen3.5 (mismos -f que up-qwen35)
 	$(COMPOSE_QWEN35) down
 
 up-nemotron:  ## Levanta el perfil experimental Nemotron-mini 4B (LLM via Ollama, sin thinking); corre make pull-nemotron antes la primera vez
-	$(COMPOSE_NEMOTRON) up -d
+	$(COMPOSE_NEMOTRON) up -d --build
 
 down-nemotron:  ## Detiene el perfil Nemotron-mini (mismos -f que up-nemotron)
 	$(COMPOSE_NEMOTRON) down
 
 up-granite41:  ## Levanta el perfil experimental Granite 4.1 3B; corre make pull-granite41 antes la primera vez
-	$(COMPOSE_GRANITE41) up -d
+	$(COMPOSE_GRANITE41) up -d --build
 
 down-granite41:  ## Detiene el perfil Granite 4.1 (mismos -f que up-granite41)
 	$(COMPOSE_GRANITE41) down
 
 up-phi4mini:  ## Levanta el perfil experimental Phi-4 Mini 3.8B; corre make pull-phi4mini antes la primera vez
-	$(COMPOSE_PHI4MINI) up -d
+	$(COMPOSE_PHI4MINI) up -d --build
 
 down-phi4mini:  ## Detiene el perfil Phi-4 Mini (mismos -f que up-phi4mini)
 	$(COMPOSE_PHI4MINI) down
 
 up-qwen25:  ## Levanta el perfil experimental Qwen2.5 3B; corre make pull-qwen25 antes la primera vez
-	$(COMPOSE_QWEN25) up -d
+	$(COMPOSE_QWEN25) up -d --build
 
 down-qwen25:  ## Detiene el perfil Qwen2.5 (mismos -f que up-qwen25)
 	$(COMPOSE_QWEN25) down

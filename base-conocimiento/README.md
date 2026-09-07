@@ -408,12 +408,19 @@ no descarga nada de nuevo.
 
 ### Por qué `--build` no repite el build completo cada vez
 
-`up` y `up-bonsai` corren `docker compose ... up --build` (`up-ministral` no reconstruye nada — ya
-no hay ningún servicio propio con imagen para ese perfil), pero eso solo le pide a Docker que
-**revise** si algo cambió — con el cache de capas intacto, un `make down` seguido de
-`make up-bonsai` reconstruye `api` (Maven) y `llama-server` (el fork CUDA de Bonsai) en unos pocos
-segundos, no en los ~15-20 minutos que tarda la primera vez (medido en vivo: 4.4s y 3.2s
-respectivamente, todo `CACHED`, con `docker compose build` sobre ambos servicios).
+**Los nueve arranques** (`up`, `gpu-up`, `up-bonsai` y los seis perfiles de Ollama) corren
+`docker compose ... up -d --build`. Es a propósito y uniforme: hasta que lo fue, seis de los nueve
+levantaban sin reconstruir, y un `git pull` seguido de `make up-ministral` te dejaba corriendo
+**código viejo sin un solo aviso** — el contenedor levanta sano, la interfaz responde, y el
+comportamiento sigue siendo el de antes del pull. La asimetría se justificaba en que esos perfiles
+solo cambian variables de entorno y el modelo que sirve Ollama, no la imagen; pero esa premisa se
+rompe en cuanto alguien toca código y prueba otro perfil, que es justo lo que se hace al comparar
+modelos.
+
+`--build` solo le pide a Docker que **revise** si algo cambió. Con el cache de capas intacto, un
+`make down` seguido de `make up-bonsai` reconstruye `api` (Maven) y `llama-server` (el fork CUDA de
+Bonsai) en unos pocos segundos, no en los ~15-20 minutos que tarda la primera vez (medido en vivo:
+4.4s y 3.2s respectivamente, todo `CACHED`, con `docker compose build` sobre ambos servicios).
 
 Lo que sí invalida ese cache y fuerza a repetir el build largo:
 
