@@ -37,6 +37,13 @@ import org.springframework.http.HttpStatus;
  *       solo lectura y no exponen contenido del corpus (rutas/config el primero, nombres de
  *       proyecto el segundo, id+título de documento el tercero) — el resto de {@code /api/admin/*}
  *       (fuentes, reindexar, la cola, subir/borrar archivos) sigue exigiendo el token.
+ *   <li>{@code /api/acciones/*} (issue #38): las siete rutas exactas del menu de acciones sobre
+ *       documentos y del traductor del chat ({@code limites}, {@code resumir}, {@code sintetizar},
+ *       {@code preguntas}, {@code ideas}, {@code traducir-documentos}, {@code traducir-texto}).
+ *       Mismo {@code EventSource} sin cabeceras que {@code /api/chat}. Son rutas exactas, no un
+ *       prefijo: un tipo de accion inventado ({@code /api/acciones/inventar}) exige token y
+ *       responde 401 antes de que el controlador llegue a decir 404 — nada se filtra, solo cambia
+ *       el codigo.
  *   <li>{@code /api/vault/contenido} — el visor modal de citas de la página de chat, mismo motivo
  *       que {@code /api/chat}: sin sesión ni token. Acotado igual a solo lectura sobre archivos
  *       indexados de verdad (no cualquier archivo físicamente presente bajo el vault) — ver el
@@ -57,6 +64,13 @@ class ApiTokenFilter extends HttpFilter {
           "/api/chat",
           "/api/chat/estado",
           "/api/preview",
+          "/api/acciones/limites",
+          "/api/acciones/resumir",
+          "/api/acciones/sintetizar",
+          "/api/acciones/preguntas",
+          "/api/acciones/ideas",
+          "/api/acciones/traducir-documentos",
+          "/api/acciones/traducir-texto",
           "/api/admin/ayuda",
           "/api/admin/proyectos",
           "/api/admin/documentos",
