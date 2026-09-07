@@ -533,22 +533,36 @@
   }
 
   function pintarTurnoGuardado(registro) {
-    const turno = nuevoTurno(registro.pregunta);
+    // Los turnos guardados antes del issue #38 no tienen tipo: son preguntas.
+    const tipo = registro.tipo || "pregunta";
+    const turno = nuevoTurno(registro.pregunta, { tipo: tipo });
+    turno.registroId = registro.id;
     if (registro.reformulacion) {
       turno.reformulacion.textContent = "Buscando también como: “" + registro.reformulacion + "”";
     }
-    turno.previa.innerHTML = registro.previa && registro.previa.length
-      ? registro.previa.map((c) => itemCita(c, null)).join("")
-      : "<li>Sin resultados rápidos.</li>";
+    if (turno.previa) {
+      turno.previa.innerHTML = registro.previa && registro.previa.length
+        ? registro.previa.map((c) => itemCita(c, null)).join("")
+        : "<li>Sin resultados rápidos.</li>";
+    }
     turno.citas.innerHTML = registro.citas && registro.citas.length
       ? registro.citas.map((c, i) => itemCita(c, i + 1)).join("")
       : "<li>Sin citas.</li>";
     turno.respuesta.textContent = registro.respuesta || "";
+    if (tipo !== "pregunta") {
+      renderCobertura(turno, registro.cobertura || []);
+      if (tipo === "preguntas" || tipo === "ideas") {
+        renderEstructurado(turno, tipo, registro.resultado);
+      }
+      if (typeof pintarTurnoDeTraduccionGuardado === "function") {
+        pintarTurnoDeTraduccionGuardado(turno, registro);
+      }
+    }
     if (registro.error) {
       turno.estado.textContent = registro.estadoError || "La respuesta quedó incompleta.";
       turno.estado.classList.add("error");
     } else if (registro.duracionMs != null) {
-      turno.estado.textContent = "Respondido en " + formatearDuracion(registro.duracionMs);
+      turno.estado.textContent = (tipo === "pregunta" ? "Respondido en " : "Listo en ") + formatearDuracion(registro.duracionMs);
       turno.estado.classList.add("completado");
     }
   }
@@ -816,16 +830,36 @@
     }
   });
 
-  function nuevoTurno(pregunta) {
+  // Los turnos de accion (issue #38) llevan una etiqueta en la burbuja y ni
+  // feedback ni "Resultados rapidos": no son respuestas del RAG.
+  const ETIQUETA_TURNO = {
+    resumen: "Resumen",
+    sintesis: "Síntesis",
+    preguntas: "Preguntas",
+    ideas: "Ideas",
+    "traduccion-documentos": "Traducción",
+    "traduccion-texto": "Traducción",
+  };
+
+  /**
+   * opciones.tipo: "pregunta" (por defecto) o uno de ETIQUETA_TURNO. Un turno de
+   * accion se pinta con su etiqueta, el bloque de cobertura y sin feedback.
+   */
+  function nuevoTurno(pregunta, opciones) {
+    const tipo = (opciones && opciones.tipo) || "pregunta";
+    const esAccion = tipo !== "pregunta";
     if (bienvenida) {
       bienvenida.classList.add("oculto");
     }
     const turno = document.createElement("div");
-    turno.className = "turno";
+    turno.className = "turno turno-tipo-" + tipo;
     turno.innerHTML =
       '<div class="mensaje mensaje-usuario">' +
-      botonCopiar(escaparHtml(pregunta), "Copiar pregunta") +
-      `<div class="burbuja">${escaparHtml(pregunta)}</div>` +
+      botonCopiar(escaparHtml(pregunta), esAccion ? "Copiar etiqueta" : "Copiar pregunta") +
+      '<div class="burbuja">' +
+      (esAccion ? `<span class="etiqueta-turno">${escaparHtml(ETIQUETA_TURNO[tipo] || "")}</span>` : "") +
+      `<span class="texto-burbuja">${escaparHtml(pregunta)}</span>` +
+      "</div>" +
       "</div>" +
       '<div class="mensaje mensaje-asistente">' +
       '<div class="avatar-asistente">KB</div>' +
@@ -833,22 +867,26 @@
       '<p class="turno-reformulacion"></p>' +
       '<p class="turno-estado"></p>' +
       '<div class="turno-eleccion oculto"></div>' +
+      '<div class="turno-cobertura oculto"></div>' +
       '<div class="turno-respuesta"></div>' +
-      '<div class="turno-feedback oculto">' +
-      '<span>¿Te sirvió esta respuesta?</span>' +
-      '<button type="button" class="boton-feedback boton-feedback-si" ' +
-      'aria-label="Respuesta útil">👍</button>' +
-      '<button type="button" class="boton-feedback boton-feedback-no" ' +
-      'aria-label="Respuesta no útil">👎</button>' +
-      '<span class="turno-feedback-gracias oculto">¡Gracias!</span>' +
-      "</div>" +
-      '<details class="turno-detalle">' +
-      '<summary>Resultados rápidos ' +
-      `<button type="button" class="boton-info" title="${escaparHtml(TEXTO_INFO_PREVIA)}" ` +
-      'aria-label="Por qué la vista previa puede no mostrar nada">i</button>' +
-      "</summary>" +
-      '<ul class="turno-previa"></ul>' +
-      "</details>" +
+      '<div class="turno-estructurado oculto"></div>' +
+      '<div class="turno-traduccion oculto"></div>' +
+      (esAccion ? "" :
+        '<div class="turno-feedback oculto">' +
+        '<span>¿Te sirvió esta respuesta?</span>' +
+        '<button type="button" class="boton-feedback boton-feedback-si" ' +
+        'aria-label="Respuesta útil">👍</button>' +
+        '<button type="button" class="boton-feedback boton-feedback-no" ' +
+        'aria-label="Respuesta no útil">👎</button>' +
+        '<span class="turno-feedback-gracias oculto">¡Gracias!</span>' +
+        "</div>" +
+        '<details class="turno-detalle">' +
+        '<summary>Resultados rápidos ' +
+        `<button type="button" class="boton-info" title="${escaparHtml(TEXTO_INFO_PREVIA)}" ` +
+        'aria-label="Por qué la vista previa puede no mostrar nada">i</button>' +
+        "</summary>" +
+        '<ul class="turno-previa"></ul>' +
+        "</details>") +
       '<details class="turno-detalle">' +
       "<summary>Citas</summary>" +
       '<ol class="turno-citas"></ol>' +
@@ -869,9 +907,14 @@
     turno.scrollIntoView({ behavior: "smooth", block: "start" });
     return {
       raiz: turno,
+      tipo: tipo,
+      textoBurbuja: turno.querySelector(".texto-burbuja"),
       estado: turno.querySelector(".turno-estado"),
       reformulacion: turno.querySelector(".turno-reformulacion"),
       eleccion: turno.querySelector(".turno-eleccion"),
+      cobertura: turno.querySelector(".turno-cobertura"),
+      estructurado: turno.querySelector(".turno-estructurado"),
+      traduccion: turno.querySelector(".turno-traduccion"),
       previa: turno.querySelector(".turno-previa"),
       respuesta: turno.querySelector(".turno-respuesta"),
       citas: turno.querySelector(".turno-citas"),
@@ -883,6 +926,11 @@
       // IndexedDB tal cual se ve, sin tener que re-parsear el DOM.
       previaDatos: [],
       citasDatos: [],
+      coberturaDatos: [],
+      resultadoDatos: null,
+      documentosDatos: null,
+      // El id del registro en IndexedDB, para actualizarlo despues (traducciones).
+      registroId: null,
       reformulacionTexto: null,
       queryLogId: null,
       // true mientras el panel de reformulaciones espera que la persona elija:
@@ -1210,6 +1258,229 @@
     });
   }
 
+  // ---------- Resumir, sintetizar, preguntas e ideas: un turno por accion ----------
+
+  const ACCIONES = {
+    resumir: { tipo: "resumen", verbo: "Resumen de", trabajando: "redactando el resumen", redactando: "Redactando el resumen…" },
+    sintetizar: { tipo: "sintesis", verbo: "Síntesis de", trabajando: "redactando la síntesis", redactando: "Redactando la síntesis…" },
+    preguntas: { tipo: "preguntas", verbo: "Preguntas sobre", trabajando: "proponiendo preguntas", redactando: "Armando las preguntas…" },
+    ideas: { tipo: "ideas", verbo: "Ideas a partir de", trabajando: "proponiendo ideas", redactando: "Armando las ideas…" },
+  };
+  Object.keys(ACCIONES).forEach((accion) => registrarAccion(accion, () => ejecutarAccion(accion)));
+
+  /**
+   * Misma forma que la etiqueta del servidor (PresupuestoDeContexto.etiqueta): se
+   * pinta de inmediato y el evento "etiqueta" la reemplaza por la definitiva,
+   * con los titulos reales y sin los documentos que ya no existan.
+   */
+  function etiquetaProvisional(verbo, documentos) {
+    const titulos = documentos
+      .map((id) => (documentosDisponibles.find((d) => d.id === id) || {}).titulo)
+      .filter((t) => !!t);
+    if (!titulos.length) {
+      return verbo + " documentos seleccionados";
+    }
+    const primeros = titulos.slice(0, 3).join(", ");
+    const restantes = titulos.length - 3;
+    return verbo + " " + titulos.length + (titulos.length === 1 ? " documento: " : " documentos: ") +
+      primeros + (restantes > 0 ? " y " + restantes + " más" : "");
+  }
+
+  async function ejecutarAccion(accion) {
+    const documentos = documentosSeleccionadosParaAccion();
+    if (!documentos) {
+      return;
+    }
+    const definicion = ACCIONES[accion];
+    const idioma = idiomaDelResultado();
+    const proyecto = campoProyecto.value.trim() || "default";
+    const etiqueta = etiquetaProvisional(definicion.verbo, documentos);
+    if (conversacionActualId == null) {
+      try {
+        conversacionActualId = await kbHistorialDb.crearConversacion(etiqueta, documentosActivosNormalizados());
+        await cargarListaConversaciones();
+      } catch (error) {
+        // Sin IndexedDB: se ejecuta igual, solo no persiste.
+      }
+    }
+    const conversacionId = conversacionActualId;
+    fijarBotonEnviar(true);
+    const turno = nuevoTurno(etiqueta, { tipo: definicion.tipo });
+    turno.documentosDatos = documentos;
+    const inicioTurno = Date.now();
+    const detenerContador = iniciarContador(
+      turno.estado,
+      "Leyendo " + documentos.length + (documentos.length === 1 ? " documento y " : " documentos y ") + definicion.trabajando);
+    iniciarStreamingAccion(accion, documentos, idioma, proyecto, turno, detenerContador, conversacionId, inicioTurno);
+  }
+
+  function iniciarStreamingAccion(accion, documentos, idioma, proyecto, turno, detenerContador, conversacionId, inicioTurno) {
+    const definicion = ACCIONES[accion];
+    const url = "/api/acciones/" + accion + "?documentos=" + documentos.join(",") +
+      "&projectId=" + encodeURIComponent(proyecto) + "&idioma=" + encodeURIComponent(idioma);
+    // La "pregunta" con la que se guarda el turno: la etiqueta definitiva del
+    // servidor en cuanto llega, la provisional mientras tanto.
+    let etiqueta = turno.textoBurbuja.textContent;
+    const fuente = new EventSource(url);
+    streamsActivos.set(conversacionId, { fuente: fuente, turno: turno, detenerContador: detenerContador });
+    actualizarControlAcciones();
+
+    fuente.addEventListener("etiqueta", (evento) => {
+      etiqueta = JSON.parse(evento.data);
+      turno.textoBurbuja.textContent = etiqueta;
+    });
+    fuente.addEventListener("cobertura", (evento) => {
+      renderCobertura(turno, JSON.parse(evento.data));
+    });
+    fuente.addEventListener("citas", (evento) => {
+      const citas = JSON.parse(evento.data);
+      turno.citasDatos = citas;
+      turno.citas.innerHTML = citas.length
+        ? citas.map((c, i) => itemCita(c, i + 1)).join("")
+        : "<li>Sin citas.</li>";
+      detenerContador();
+      turno.estado.textContent = definicion.redactando;
+    });
+    fuente.addEventListener("token", (evento) => {
+      turno.respuesta.textContent += JSON.parse(evento.data);
+    });
+    fuente.addEventListener("resultado", (evento) => {
+      renderEstructurado(turno, definicion.tipo, JSON.parse(evento.data));
+    });
+    fuente.addEventListener("fin", () => {
+      const duracionMs = Date.now() - inicioTurno;
+      cerrarStreaming(conversacionId, turno, detenerContador, duracionMs);
+      guardarTurno(etiqueta, proyecto, turno, false, null, conversacionId, duracionMs);
+    });
+    fuente.addEventListener("error-servidor", (evento) => {
+      detenerContador();
+      turno.estado.textContent = JSON.parse(evento.data);
+      turno.estado.classList.add("error");
+      cerrarStreaming(conversacionId, turno, detenerContador);
+      guardarTurno(etiqueta, proyecto, turno, true, turno.estado.textContent, conversacionId);
+    });
+    fuente.onerror = () => {
+      detenerContador();
+      turno.estado.textContent = "No se pudo completar la acción (¿Ollama no responde?).";
+      turno.estado.classList.add("error");
+      cerrarStreaming(conversacionId, turno, detenerContador);
+      guardarTurno(etiqueta, proyecto, turno, true, turno.estado.textContent, conversacionId);
+    };
+  }
+
+  /**
+   * "Documentos usados": cuanto de cada documento entro de verdad al modelo.
+   * Los indexados llevan el mismo [n] que las citas; los que no existen en el
+   * proyecto quedan al final como "no indexado" en vez de desaparecer.
+   */
+  function renderCobertura(turno, cobertura) {
+    turno.coberturaDatos = cobertura || [];
+    if (!turno.cobertura) {
+      return;
+    }
+    if (!turno.coberturaDatos.length) {
+      turno.cobertura.classList.add("oculto");
+      turno.cobertura.innerHTML = "";
+      return;
+    }
+    let n = 0;
+    const parciales = [];
+    const filas = turno.coberturaDatos
+      .map((c) => {
+        const indexado = c.seccionesTotales > 0;
+        const titulo = escaparHtml(c.titulo || c.uri || "#" + c.documentoId);
+        if (!indexado) {
+          return `<li class="no-indexado"><span class="numero"></span><span class="titulo-documento">${titulo}</span>` +
+            '<span class="insignia-cobertura no-indexado">no indexado</span></li>';
+        }
+        n++;
+        const uri = c.uri || "";
+        const enlace = esUriDelVault(uri)
+          ? `<button type="button" class="enlace-cita titulo-documento" data-uri="${escaparHtml(uri)}" data-titulo="${titulo}">${titulo}</button>`
+          : (uri
+            ? `<a class="titulo-documento" href="${escaparHtml(uri)}" target="_blank" rel="noopener">${titulo}</a>`
+            : `<span class="titulo-documento">${titulo}</span>`);
+        const completa = c.seccionesIncluidas >= c.seccionesTotales && !c.primeraRecortada;
+        let insignia;
+        if (completa) {
+          insignia = `<span class="insignia-cobertura completa">${c.seccionesTotales}/${c.seccionesTotales} secciones</span>`;
+        } else if (c.primeraRecortada) {
+          insignia = `<span class="insignia-cobertura parcial">comienzo de la sección 1 de ${c.seccionesTotales} · parcial</span>`;
+        } else {
+          insignia = `<span class="insignia-cobertura parcial">primeras ${c.seccionesIncluidas} de ${c.seccionesTotales} secciones · parcial</span>`;
+        }
+        if (!completa) {
+          parciales.push(c);
+        }
+        return `<li><span class="numero">[${n}]</span>${enlace}${insignia}</li>`;
+      })
+      .join("");
+    const aviso = parciales.length
+      ? `<p class="aviso-parcial">${parciales.length} de ${turno.coberturaDatos.length} ` +
+        (parciales.length === 1
+          ? "documentos entró solo en parte: es más largo de lo que cabe en una sola lectura del modelo. Selecciónalo solo para cubrirlo entero."
+          : "documentos entraron solo en parte: son más largos de lo que cabe en una sola lectura del modelo. Selecciónalos de a uno para cubrirlos enteros.") +
+        "</p>"
+      : "";
+    turno.cobertura.innerHTML = "<h3>Documentos usados</h3><ol>" + filas + "</ol>" + aviso;
+    turno.cobertura.classList.remove("oculto");
+  }
+
+  /**
+   * Preguntas e ideas llegan de golpe como JSON (decision 11 del issue #38): la
+   * UI pinta desde datos, asi el boton "Preguntar" por pregunta y las tarjetas
+   * por idea salen exactas en vez de depender de que un modelo chico respete un
+   * formato de listas.
+   */
+  function renderEstructurado(turno, tipo, datos) {
+    turno.resultadoDatos = datos || null;
+    if (!turno.estructurado) {
+      return;
+    }
+    if (!datos || datos.mensaje) {
+      turno.estructurado.innerHTML = "";
+      turno.estructurado.classList.add("oculto");
+      if (datos && datos.mensaje) {
+        turno.respuesta.textContent = datos.mensaje;
+      }
+      return;
+    }
+    let html = "";
+    if (tipo === "preguntas") {
+      const temas = datos.temas || [];
+      html = temas.length
+        ? temas.map((t) =>
+            `<section class="tema"><h4>${escaparHtml(t.tema || "")}</h4><ul>` +
+            (t.preguntas || []).map((p) =>
+              `<li><span class="pregunta-texto">${escaparHtml(p.texto || "")} <span class="cita-n">[${Number(p.fuente) || "?"}]</span></span>` +
+              `<button type="button" class="boton-preguntar" data-pregunta="${escaparHtml(p.texto || "")}">Preguntar</button></li>`).join("") +
+            "</ul></section>").join("")
+        : '<p class="sin-resultado">El modelo no devolvió preguntas válidas. Vuelve a intentarlo.</p>';
+    } else {
+      const ideas = datos.ideas || [];
+      html = ideas.length
+        ? '<div class="grilla-ideas">' + ideas.map((i) =>
+            `<article class="idea"><h4>${escaparHtml(i.titulo || "")}</h4>` +
+            `<p>${escaparHtml(i.justificacion || "")} <span class="cita-n">[${Number(i.fuente) || "?"}]</span></p>` +
+            botonCopiar(escaparHtml((i.titulo || "") + ": " + (i.justificacion || "")), "Copiar idea") +
+            "</article>").join("") + "</div>"
+        : '<p class="sin-resultado">El modelo no devolvió ideas válidas. Vuelve a intentarlo.</p>';
+    }
+    turno.estructurado.innerHTML = html;
+    turno.estructurado.classList.remove("oculto");
+  }
+
+  // "Preguntar" solo rellena la barra de entrada: es el unico puente entre las
+  // acciones y el chat, y vive solo en la UI (supuesto 8 del issue #38).
+  historial.addEventListener("click", (evento) => {
+    const preguntar = evento.target.closest(".boton-preguntar");
+    if (!preguntar) {
+      return;
+    }
+    campoPregunta.value = preguntar.dataset.pregunta || "";
+    campoPregunta.focus();
+  });
+
   function cerrarStreaming(conversacionId, turno, detenerContador, duracionMs) {
     // Sin este close() explicito, EventSource interpreta el fin normal del
     // stream como una desconexion y reintenta solo contra la misma URL --
@@ -1225,30 +1496,39 @@
     if (conversacionActualId === conversacionId) {
       fijarBotonEnviar(false);
     }
-    if (turno.estado.textContent === "Redactando la respuesta…") {
-      if (duracionMs != null) {
-        turno.estado.textContent = "Respondido en " + formatearDuracion(duracionMs);
-        turno.estado.classList.add("completado");
-      } else {
-        turno.estado.textContent = "";
-      }
+    if (duracionMs != null) {
+      // "Respondido en" para el chat; los turnos de accion dicen "Listo en".
+      turno.estado.textContent =
+        (turno.tipo === "pregunta" ? "Respondido en " : "Listo en ") + formatearDuracion(duracionMs);
+      turno.estado.classList.add("completado");
+    } else if (turno.estado.textContent === "Redactando la respuesta…") {
+      turno.estado.textContent = "";
     }
   }
 
+  /**
+   * Devuelve el id del registro (o null sin IndexedDB) y lo deja en
+   * turno.registroId, para que "Traducir" sobre un turno pueda actualizarlo.
+   */
   async function guardarTurno(pregunta, proyecto, turno, huboError, estadoError, conversacionId, duracionMs) {
     try {
-      await kbHistorialDb.guardarTurno(conversacionId, {
+      const id = await kbHistorialDb.guardarTurno(conversacionId, {
+        tipo: turno.tipo,
         pregunta: pregunta,
         proyecto: proyecto,
         reformulacion: turno.reformulacionTexto,
         respuesta: turno.respuesta.textContent,
         previa: turno.previaDatos,
         citas: turno.citasDatos,
+        cobertura: turno.coberturaDatos,
+        resultado: turno.resultadoDatos,
+        documentos: turno.documentosDatos,
         error: huboError,
         estadoError: estadoError,
         duracionMs: duracionMs == null ? null : duracionMs,
         fecha: new Date().toISOString(),
       });
+      turno.registroId = id;
       // Bump-ea la conversacion al tope de la lista (y le saca el "⋯" de "generando"),
       // sin importar si es la que el usuario esta mirando ahora mismo.
       await cargarListaConversaciones();
