@@ -595,6 +595,49 @@
     color: var(--texto-atenuado);
   }
 
+  /* ---------- Selector de idiomas (idiomas.js) ---------- */
+  .selector-idiomas {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+  }
+  .selector-campo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    flex: 1 1 8rem;
+    min-width: 0;
+  }
+  .selector-campo span {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--texto-atenuado);
+  }
+  .selector-campo select {
+    width: 100%;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid var(--borde);
+    border-radius: 8px;
+    background: var(--bg-main);
+    color: var(--texto);
+    font-size: 0.83rem;
+  }
+  .selector-intercambiar {
+    flex: none;
+    width: 2rem;
+    height: 2rem;
+    border: 1px solid var(--borde);
+    border-radius: 8px;
+    background: var(--bg-elevado);
+    color: var(--texto);
+    font-size: 0.95rem;
+    cursor: pointer;
+  }
+  .selector-intercambiar:hover:not(:disabled) { border-color: var(--acento); color: var(--acento); }
+  .selector-intercambiar:disabled { opacity: 0.4; cursor: default; }
+
   /* ---------- Dialogo de ayuda ---------- */
   dialog {
     max-width: 480px;
@@ -778,6 +821,7 @@
 
   <script src="ayuda.js"></script>
   <script src="historial-db.js"></script>
+  <script src="idiomas.js"></script>
   <script src="app.js"></script>
   <script>
     kbAyuda.inicializar("boton-ayuda", "modal-ayuda", "contenido-ayuda");
