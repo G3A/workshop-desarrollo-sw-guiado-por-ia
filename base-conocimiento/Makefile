@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help up gpu-up gpu-check gpu-resumen docling-reciclar jdk-check up-bonsai down-bonsai up-ministral down-ministral up-qwen35 down-qwen35 up-nemotron down-nemotron up-granite41 down-granite41 up-phi4mini down-phi4mini up-qwen25 down-qwen25 down restart logs ps build test verify pull-models pull-reranker pull-bonsai-gguf pull-ministral pull-qwen35 pull-nemotron pull-granite41 pull-phi4mini pull-qwen25 pin-embeddings-cpu seed vault-init ingest ingest-repos ingest-teams ingest-azdo psql health verificar clean format lint secrets check ci hooks
+.PHONY: help up gpu-up gpu-check gpu-resumen docling-reciclar cache-reciclar jdk-check up-bonsai down-bonsai up-ministral down-ministral up-qwen35 down-qwen35 up-nemotron down-nemotron up-granite41 down-granite41 up-phi4mini down-phi4mini up-qwen25 down-qwen25 down restart logs ps build test verify pull-models pull-reranker pull-bonsai-gguf pull-ministral pull-qwen35 pull-nemotron pull-granite41 pull-phi4mini pull-qwen25 pin-embeddings-cpu seed vault-init ingest ingest-repos ingest-teams ingest-azdo psql health verificar capturar-error clean format lint secrets check ci hooks
 
 
 
@@ -42,15 +42,65 @@ $(warning make desde Git Bash.)
 endif
 endif
 
-COMPOSE           := docker compose
-COMPOSE_GPU       := docker compose -f compose.yml -f compose.gpu.yml
+## ---------------------------------------------------------------- archivo de entorno
+##
+## make NO carga el archivo de entorno solo -- eso lo hace docker compose. Hasta
+## que este bloque existio, eso significaba que un KB_DATA_DIR / KB_VAULT_DIR /
+## KB_PORT puesto ahi lo respetaba compose y lo ignoraba make, y las dos mitades
+## trabajaban sobre valores distintos EN SILENCIO:
+##
+##   - `make pull-bonsai-gguf` bajaba el GGUF a ./.data mientras el contenedor
+##     montaba otra carpeta -- y despues el chequeo de up-bonsai lo declaraba
+##     ausente estando descargado.
+##   - `make vault-init` copiaba el corpus a un vault que nadie monta, y la
+##     ingesta seguia encontrando cero documentos.
+##   - `make health` / `make ingest` consultaban el puerto equivocado.
+##
+## Una sola lectura del archivo, misma filosofia que GPU_PLAN mas abajo. Solo se
+## leen las variables que make necesita ANTES de invocar a docker compose; las
+## que solo consume el contenedor se quedan como estan, que ya funciona.
+##
+## Precedencia resultante, la misma que aplica docker compose:
+##   entorno / linea de comandos  >  archivo de entorno  >  default del Makefile
+##
+## El sed recorta el comentario final, los espacios y las comillas envolventes, y
+## se queda con la ULTIMA aparicion, que es la que gana en docker compose.
+KB_ENV_FILE ?= .env
+ENV_LEIDAS := KB_GPU KB_DOCLING_GPU KB_VRAM_EMBEDDINGS_GPU KB_VRAM_DOCLING_GPU KB_DATA_DIR KB_VAULT_DIR KB_PORT
+ENV_PLAN := $(shell \
+  for v in $(ENV_LEIDAS); do \
+    val=""; \
+    if [ -f "$(KB_ENV_FILE)" ]; then \
+      val=$$(sed -nE "s/^[[:space:]]*$$v=//p" "$(KB_ENV_FILE)" | tail -1 \
+            | sed -E "s/[[:space:]]+#.*$$//; s/^[[:space:]]*//; s/[[:space:]]*$$//; s/^\"(.*)\"$$/\1/"); \
+    fi; \
+    [ -n "$$val" ] || val="-"; \
+    printf "%s " "$$val"; \
+  done)
+
+ENV_KB_GPU                 := $(patsubst -,,$(word 1,$(ENV_PLAN)))
+ENV_KB_DOCLING_GPU         := $(patsubst -,,$(word 2,$(ENV_PLAN)))
+ENV_KB_VRAM_EMBEDDINGS_GPU := $(patsubst -,,$(word 3,$(ENV_PLAN)))
+ENV_KB_VRAM_DOCLING_GPU    := $(patsubst -,,$(word 4,$(ENV_PLAN)))
+ENV_KB_DATA_DIR            := $(patsubst -,,$(word 5,$(ENV_PLAN)))
+ENV_KB_VAULT_DIR           := $(patsubst -,,$(word 6,$(ENV_PLAN)))
+ENV_KB_PORT                := $(patsubst -,,$(word 7,$(ENV_PLAN)))
+
+## Se le pasa a docker compose SOLO si el archivo existe: --env-file apuntando a
+## un archivo ausente no es un no-op, aborta con "env file ... not found" -- y
+## arrancar sin archivo de entorno es un caso soportado, porque todos los compose
+## traen sus propios defaults.
+ENV_FILE_FLAG := $(if $(wildcard $(KB_ENV_FILE)),--env-file $(KB_ENV_FILE),)
+
+COMPOSE           := docker compose $(ENV_FILE_FLAG)
+COMPOSE_GPU       := docker compose $(ENV_FILE_FLAG) -f compose.yml -f compose.gpu.yml
 LLM         ?= gemma3:4b
 EMBEDDINGS  ?= bge-m3
-KB_DATA_DIR ?= ./.data
+KB_DATA_DIR ?= $(if $(ENV_KB_DATA_DIR),$(ENV_KB_DATA_DIR),./.data)
 # Mismo default que compose.yml, y con el mismo motivo: el vault vive FUERA del
 # repo. Se declara aca para que vault-init sepa donde copiar el corpus de ejemplo.
-KB_VAULT_DIR ?= ../../vault
-KB_PORT     ?= 8080
+KB_VAULT_DIR ?= $(if $(ENV_KB_VAULT_DIR),$(ENV_KB_VAULT_DIR),../../vault)
+KB_PORT     ?= $(if $(ENV_KB_PORT),$(ENV_KB_PORT),8080)
 
 # El pom compila a release 25. Se verifica en jdk-check, del que dependen los
 # targets que compilan -- Maven solo se entera despues de resolver dependencias.
@@ -83,14 +133,14 @@ JAVA_MINIMO := 25
 ##   se fuerza igual, y con 0 se apaga.
 ##
 ## Los dos umbrales son variables: si mides otra cosa en tu equipo, cambialos.
-KB_VRAM_EMBEDDINGS_GPU ?= 6144
-KB_VRAM_DOCLING_GPU    ?= 8192
+KB_VRAM_EMBEDDINGS_GPU ?= $(if $(ENV_KB_VRAM_EMBEDDINGS_GPU),$(ENV_KB_VRAM_EMBEDDINGS_GPU),6144)
+KB_VRAM_DOCLING_GPU    ?= $(if $(ENV_KB_VRAM_DOCLING_GPU),$(ENV_KB_VRAM_DOCLING_GPU),8192)
 
 ## Devuelve, en una sola linea: vram_mib cc driver_major embeddings docling cuda_tag emb_en_env
 ## Sin GPU (o sin nvidia-smi) devuelve la fila neutra "0 75 0 cpu no 12.6.0 ...".
 GPU_PLAN := $(shell \
   info=$$(nvidia-smi --query-gpu=memory.total,compute_cap,driver_version --format=csv,noheader,nounits 2>/dev/null | head -1); \
-  if grep -sqE '^[[:space:]]*KB_EMBEDDINGS_MODELO=' ".env"; then fijo=si; else fijo=no; fi; \
+  if grep -sqE '^[[:space:]]*KB_EMBEDDINGS_MODELO=' "$(KB_ENV_FILE)"; then fijo=si; else fijo=no; fi; \
   if [ -z "$$info" ]; then echo "0 75 0 cpu no 12.6.0 $$fijo"; exit 0; fi; \
   vram=$$(echo "$$info" | cut -d, -f1 | tr -cd '0-9'); \
   cc=$$(echo   "$$info" | cut -d, -f2 | tr -cd '0-9'); \
@@ -111,6 +161,16 @@ GPU_EMBEDDINGS := $(word 4,$(GPU_PLAN))
 GPU_DOCLING    := $(word 5,$(GPU_PLAN))
 GPU_CUDA_TAG   := $(word 6,$(GPU_PLAN))
 GPU_EMB_FIJADO := $(word 7,$(GPU_PLAN))
+
+## Estas dos se consultan con ifeq y no con ?=, asi que el valor del archivo de
+## entorno se aplica aca: ifndef respeta lo que venga del entorno o de la linea
+## de comandos, que es la precedencia que queremos.
+ifndef KB_GPU
+KB_GPU := $(ENV_KB_GPU)
+endif
+ifndef KB_DOCLING_GPU
+KB_DOCLING_GPU := $(ENV_KB_DOCLING_GPU)
+endif
 
 ## KB_GPU manda sobre la deteccion: KB_GPU=1 fuerza el perfil GPU, KB_GPU=0 lo apaga.
 ## Sigue existiendo como salida de emergencia, pero desde que el Makefile fija su
@@ -188,13 +248,13 @@ endif
 ## docling se decide aparte en `up`.
 PERFIL_GPU := $(if $(HAY_GPU),-f compose.gpu.yml,)
 
-COMPOSE_BONSAI    := docker compose -f compose.yml -f compose.gpu.yml -f compose.bonsai.yml
+COMPOSE_BONSAI    := docker compose $(ENV_FILE_FLAG) -f compose.yml -f compose.gpu.yml -f compose.bonsai.yml
 # Los que siguen se sirven desde el `ollama` de siempre, no de un llama-server
 # aparte -- ver compose.ministral.yml sobre por que se dejo de usar llama-server, y
 # compose.qwen35.yml sobre el estado experimental de ese perfil. Granite, Phi-4 y
 # Qwen2.5 son de la sesion 25 (piloto de 100 preguntas con sintesis estructurada
 # contra los candidatos descartados por "texto pegado").
-COMPOSE_MINISTRAL := docker compose -f compose.yml $(PERFIL_GPU) -f compose.ministral.yml
+COMPOSE_MINISTRAL := docker compose $(ENV_FILE_FLAG) -f compose.yml $(PERFIL_GPU) -f compose.ministral.yml
 COMPOSE_QWEN35    := docker compose -f compose.yml $(PERFIL_GPU) -f compose.qwen35.yml
 COMPOSE_NEMOTRON  := docker compose -f compose.yml $(PERFIL_GPU) -f compose.nemotron.yml
 COMPOSE_GRANITE41 := docker compose -f compose.yml $(PERFIL_GPU) -f compose.granite41.yml
@@ -229,12 +289,66 @@ help:  ## Muestra esta ayuda
 
 ## ---------------------------------------------------------------- infraestructura
 
+
+## ---------------------------------------------------------------- arranque con aviso
+##
+## Los nueve `up` no invocan a docker compose directamente: pasan por `arrancar`,
+## que vigila UN fallo concreto y lo traduce.
+##
+## El fallo: la etapa `deps` del Dockerfile corre `dependency:go-offline` sobre un
+## cache mount de BuildKit (id=maven-repo), y la etapa `build` compila con `-o`
+## (offline) confiando en que ahi esta todo. Pero la CAPA y el MOUNT tienen vidas
+## separadas: la capa se marca CACHED y sobrevive, mientras el GC de BuildKit
+## puede vaciar el mount cuando le hace falta espacio. Cuando eso pasa,
+## `go-offline` NO se vuelve a ejecutar -- su capa esta cacheada -- y la etapa 2
+## arranca sin un solo artefacto:
+##
+##   #14 [deps 6/6] RUN ... dependency:go-offline
+##   #14 CACHED                                      <- no se ejecuto
+##   #18 [build 2/2] RUN ... ./mvnw -o -B -q clean package -DskipTests
+##   [ERROR] Cannot access central ... in offline mode and the artifact
+##           com.google.errorprone:error_prone_annotations:jar:2.33.0
+##           has not been downloaded from it before.
+##
+## Ese mensaje no dice en ningun lado que la solucion sea reciclar el cache de
+## build, y el nombre del artefacto cambia segun cual pida Maven primero -- lo
+## que hace que parezca un problema de dependencias del proyecto, que no es.
+##
+## La salida se muestra en vivo (tee) y NO se decide por el codigo de salida
+## solo: se busca la firma del error en el log. El codigo se recoge aparte,
+## dentro del subshell, porque el estado de una tuberia es el del ultimo comando
+## (tee, siempre 0) y `set -o pipefail` no es portable a todas las sh.
+define arrancar
+log=$$(mktemp); est=$$(mktemp); \
+( $(1) up -d --build 2>&1; echo $$? > "$$est" ) | tee "$$log"; \
+codigo=$$(cat "$$est"); \
+if [ "$$codigo" != "0" ] && grep -qE "in offline mode and the artifact|has not been downloaded from it before" "$$log"; then \
+  echo ""; \
+  echo "  =================================================================="; \
+  echo "  El build fallo porque el cache de Maven quedo vacio, NO por una"; \
+  echo "  dependencia rota del proyecto."; \
+  echo ""; \
+  echo "  La capa de descarga sigue marcada CACHED, asi que no se reintenta"; \
+  echo "  sola. Hay que invalidarla:"; \
+  echo ""; \
+  echo "      make cache-reciclar"; \
+  echo "      make $@"; \
+  echo ""; \
+  echo "  La primera vez despues de eso tarda ~11 min en volver a bajar las"; \
+  echo "  dependencias. Las siguientes vuelven a ser segundos."; \
+  echo "  =================================================================="; \
+  echo ""; \
+fi; \
+rm -f "$$log" "$$est"; \
+exit $$codigo
+endef
+
 up:  ## Levanta los 4 servicios y reparte la GPU segun la tarjeta que detecte
-	$(COMPOSE_ACTIVO) up -d --build
+	@$(call arrancar,$(COMPOSE_ACTIVO))
 	@$(MAKE) --no-print-directory gpu-resumen
 
 gpu-up:  ## Fuerza el perfil GPU aunque la deteccion automatica no encuentre nvidia-smi
-	$(COMPOSE_GPU) up -d --build
+	@$(call arrancar,$(COMPOSE_GPU))
 	@$(MAKE) --no-print-directory gpu-resumen
 
 gpu-resumen:  ## Muestra en una pantalla que se llevo la GPU y que quedo en CPU
@@ -310,43 +424,43 @@ up-bonsai:  ## Levanta el perfil Bonsai-8B (LLM 1-bit via llama-server); requier
 		echo "  Descargalo una sola vez (~1.16 GB) con:  make pull-bonsai-gguf"; \
 		exit 1; \
 	fi
-	$(COMPOSE_BONSAI) up -d --build
+	@$(call arrancar,$(COMPOSE_BONSAI))
 
 down-bonsai:  ## Detiene el perfil Bonsai (mismos -f que up-bonsai, para no dejar contenedores huerfanos)
 	$(COMPOSE_BONSAI) down
 
 up-ministral:  ## Levanta el perfil Ministral 3B (LLM via Ollama); corre make pull-ministral antes la primera vez
-	$(COMPOSE_MINISTRAL) up -d
+	@$(call arrancar,$(COMPOSE_MINISTRAL))
 
 down-ministral:  ## Detiene el perfil Ministral (mismos -f que up-ministral)
 	$(COMPOSE_MINISTRAL) down
 
 up-qwen35:  ## Levanta el perfil experimental Qwen3.5 4B (LLM via Ollama, fix de thinking integrado); corre make pull-qwen35 antes la primera vez
-	$(COMPOSE_QWEN35) up -d
+	@$(call arrancar,$(COMPOSE_QWEN35))
 
 down-qwen35:  ## Detiene el perfil Qwen3.5 (mismos -f que up-qwen35)
 	$(COMPOSE_QWEN35) down
 
 up-nemotron:  ## Levanta el perfil experimental Nemotron-mini 4B (LLM via Ollama, sin thinking); corre make pull-nemotron antes la primera vez
-	$(COMPOSE_NEMOTRON) up -d
+	@$(call arrancar,$(COMPOSE_NEMOTRON))
 
 down-nemotron:  ## Detiene el perfil Nemotron-mini (mismos -f que up-nemotron)
 	$(COMPOSE_NEMOTRON) down
 
 up-granite41:  ## Levanta el perfil experimental Granite 4.1 3B; corre make pull-granite41 antes la primera vez
-	$(COMPOSE_GRANITE41) up -d
+	@$(call arrancar,$(COMPOSE_GRANITE41))
 
 down-granite41:  ## Detiene el perfil Granite 4.1 (mismos -f que up-granite41)
 	$(COMPOSE_GRANITE41) down
 
 up-phi4mini:  ## Levanta el perfil experimental Phi-4 Mini 3.8B; corre make pull-phi4mini antes la primera vez
-	$(COMPOSE_PHI4MINI) up -d
+	@$(call arrancar,$(COMPOSE_PHI4MINI))
 
 down-phi4mini:  ## Detiene el perfil Phi-4 Mini (mismos -f que up-phi4mini)
 	$(COMPOSE_PHI4MINI) down
 
 up-qwen25:  ## Levanta el perfil experimental Qwen2.5 3B; corre make pull-qwen25 antes la primera vez
-	$(COMPOSE_QWEN25) up -d
+	@$(call arrancar,$(COMPOSE_QWEN25))
 
 down-qwen25:  ## Detiene el perfil Qwen2.5 (mismos -f que up-qwen25)
 	$(COMPOSE_QWEN25) down
@@ -374,11 +488,39 @@ verificar:  ## Diagnostica por que responde "No encontre informacion" (usa PREGU
 	@# linea de comandos no puede pisar. Un scriptblock creado desde texto no es un
 	@# archivo, asi que no pasa por esa comprobacion: funciona en los tres casos.
 	@# Verificado forzando -ExecutionPolicy AllSigned.
-	@powershell -NoProfile -Command "& ([scriptblock]::Create((Get-Content -Raw 'scripts/verificar-respuesta-vacia.ps1'))) '$(PREGUNTA)'"
+	@KB_PORT=$(KB_PORT) powershell -NoProfile -Command "& ([scriptblock]::Create((Get-Content -Raw 'scripts/verificar-respuesta-vacia.ps1'))) '$(PREGUNTA)'"
+
+LINEAS ?= 300
+capturar-error:  ## Vuelca la excepcion de kb-api a un archivo para compartir (usa LINEAS=1000)
+	@# Mismo rodeo que `verificar`: scriptblock en vez de `powershell -File`, para
+	@# no chocar con la politica de ejecucion. Ver el comentario de arriba.
+	@powershell -NoProfile -Command "& ([scriptblock]::Create((Get-Content -Raw 'scripts/capturar-error-api.ps1'))) -Lineas $(LINEAS)"
 
 health:  ## Reporte de salud detallado: db, ollama y modelos faltantes
-	@curl -fsS http://localhost:$${KB_PORT:-8080}/actuator/health | python -m json.tool 2>/dev/null \
-	  || curl -fsS http://localhost:$${KB_PORT:-8080}/actuator/health
+	@curl -fsS http://localhost:$(KB_PORT)/actuator/health | python -m json.tool 2>/dev/null \
+	  || curl -fsS http://localhost:$(KB_PORT)/actuator/health
+
+cache-reciclar:  ## Vacia el cache de build de BuildKit; usalo cuando `up` avise de "offline mode"
+	@# Existe para UN fallo concreto, el que detecta `arrancar` (ver su comentario):
+	@# el cache mount de Maven (id=maven-repo) queda vacio mientras la capa que lo
+	@# llena sigue marcada CACHED, asi que `dependency:go-offline` no se reintenta
+	@# y la etapa 2 compila con -o sin artefactos. Invalidar el cache de build es
+	@# lo que fuerza a esa capa a volver a ejecutarse.
+	@#
+	@# `docker builder prune -f` se lleva TODO el cache de build, no solo el mount
+	@# de este proyecto -- BuildKit no permite podar un mount suelto por su id. Por
+	@# eso el target avisa de lo que cuesta antes de hacerlo, en vez de esconderlo:
+	@# el siguiente build de CUALQUIER proyecto de esta maquina tambien empieza de
+	@# cero.
+	@echo "Vaciando el cache de build de BuildKit."
+	@echo "  Ojo: se lleva el cache de TODOS los proyectos de esta maquina, no solo"
+	@echo "  el de este. El siguiente build aqui tarda ~11 min en rebajar las"
+	@echo "  dependencias de Maven; los de otros proyectos, lo que les toque."
+	@echo "  No toca imagenes, contenedores ni volumenes de datos."
+	@echo ""
+	@docker builder prune -f
+	@echo ""
+	@echo "Listo. Ahora: make up   (o el perfil que estuvieras levantando)"
 
 docling-reciclar:  ## Reinicia docling-serve para liberar la VRAM que retiene entre conversiones
 	@# docling-serve no libera la VRAM al terminar una conversion (docling-serve#233,
