@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,6 +22,17 @@ import org.springframework.web.client.RestClient;
  * pero la primera consulta falla". Por eso los modelos faltantes aparecen en el detalle de salud,
  * con el comando exacto para resolverlo.
  *
+ * <p>Se comprueban los tres que puede pedirle el producto: el del chat ({@code KB_LLM_MODELO}), el
+ * del destilador de Teams y el de embeddings. El del chat se comprueba SIEMPRE, sin mirar a que
+ * backend apunte la API compatible con OpenAI: es lo que hace que el indicador sirva en los nueve
+ * perfiles de Ollama, que son los que cambian ese modelo.
+ *
+ * <p>Contrapartida conocida, en el perfil Bonsai: ahi {@code KB_LLM_MODELO} es un GGUF que sirve
+ * {@code llama-server}, no Ollama, asi que aparecera como faltante aunque el perfil funcione. Es
+ * ruido acotado y visible; la alternativa -- condicionar la comprobacion al backend -- deja al
+ * indicador callado justo en el caso frecuente, que es estrenar un perfil de Ollama sin haber
+ * corrido su {@code make pull-...}.
+ *
  * <p>Aun asi el estado se reporta UP mientras Ollama responda. Marcarlo DOWN dejaria el contenedor
  * permanentemente enfermo antes del primer {@code make pull-models}, y el healthcheck de Docker
  * nunca pasaria.
@@ -36,15 +48,34 @@ class OllamaSalud implements HealthIndicator {
 
   OllamaSalud(
       @Value("${spring.ai.ollama.base-url:http://localhost:11434}") String urlBase,
-      // Ya no es el modelo principal del pipeline (ver ADR-0009): desde que
-      // Planificador/VerificadorGrounding/Sintetizador pasaron a hablarle a
-      // llama-server via OpenAI, el unico consumidor de Ollama para chat es
-      // el Destilador (Teams, F6).
+      // El modelo que sirve el chat: planificador, reformulador, verificador de
+      // grounding y sintetizador. Es KB_LLM_MODELO, y ANTES NO SE COMPROBABA.
+      //
+      // El indicador solo miraba `destilador-modelo` (el del destilador de Teams,
+      // F6) y los embeddings, con este razonamiento en su javadoc: desde ADR-0009
+      // el chat le habla a llama-server via OpenAI, asi que el unico consumidor de
+      // Ollama seria el destilador. Eso era cierto cuando Bonsai era el unico
+      // backend OpenAI; dejo de serlo cuando los nueve perfiles de Ollama pasaron a
+      // apuntar SPRING_AI_OPENAI_BASE_URL a http://ollama:11434/v1. El comentario
+      // documentaba por que algo era correcto, y no se actualizo cuando cambio lo
+      // de al lado.
+      //
+      // Sintoma medido: con `make up-granite41` (KB_LLM_MODELO=granite4.1:3b) sin
+      // el modelo descargado, `make health` reportaba "faltantes: ninguna" --
+      // comprobaba gemma3:4b, que si estaba. Y la primera consulta fallaba con un
+      // 404 de Ollama que nada habia anticipado.
+      //
+      // Se comprueba SIEMPRE, sin mirar a que backend apunte OpenAI. Ver la nota
+      // sobre el perfil Bonsai en el javadoc de la clase.
+      @Value("${spring.ai.openai.chat.options.model:}") String modeloChat,
       @Value("${kb.llm.destilador-modelo:gemma3:4b}") String modeloDestilador,
       @Value("${kb.embeddings.modelo:bge-m3}") String modeloEmbeddings) {
 
     this.urlBase = urlBase;
-    this.modelosRequeridos = Set.of(modeloDestilador, modeloEmbeddings);
+    this.modelosRequeridos =
+        Stream.of(modeloChat, modeloDestilador, modeloEmbeddings)
+            .filter(m -> m != null && !m.isBlank())
+            .collect(Collectors.toUnmodifiableSet());
 
     var fabrica = new SimpleClientHttpRequestFactory();
     fabrica.setConnectTimeout(Duration.ofSeconds(3));
@@ -80,18 +111,22 @@ class OllamaSalud implements HealthIndicator {
   }
 
   /**
-   * Ollama reporta {@code gemma3:4b} pero tambien acepta {@code gemma3} como alias. Se compara por
-   * nombre base para no reportar un falso faltante.
+   * Ollama reporta {@code bge-m3:latest} para lo que se pide como {@code bge-m3}. Se tolera esa
+   * equivalencia, y solo esa.
+   *
+   * <p>ANTES caia tambien a comparar el nombre base -- lo anterior al {@code :} -- para admitir el
+   * alias {@code gemma3} = {@code gemma3:4b}. Eso ignoraba la etiqueta ENTERA: con {@code
+   * granite4.1:8b} descargado, pedir {@code granite4.1:3b} se daba por presente, igual que
+   * cualquier otro tamano o cuantizacion. La etiqueta es justo lo que distingue un modelo que cabe
+   * en la tarjeta de uno que no, asi que tratarla como ruido convertia al indicador en un falso
+   * negativo silencioso.
+   *
+   * <p>Un requerido SIN etiqueta si equivale al {@code :latest} correspondiente, que es la
+   * convencion de Ollama y no pierde informacion.
    */
   private static boolean coincide(String disponible, String requerido) {
     return disponible.equals(requerido)
-        || disponible.equals(requerido + ":latest")
-        || base(disponible).equals(base(requerido));
-  }
-
-  private static String base(String nombre) {
-    int i = nombre.indexOf(':');
-    return i < 0 ? nombre : nombre.substring(0, i);
+        || (!requerido.contains(":") && disponible.equals(requerido + ":latest"));
   }
 
   private static List<String> nombresDe(RespuestaTags respuesta) {
