@@ -503,6 +503,33 @@
   .idea:hover .boton-copiar { opacity: 1; }
   .sin-resultado { margin: 0; color: var(--texto-atenuado); font-size: 0.9rem; }
 
+  .turno-traduccion { display: flex; flex-direction: column; gap: 0.6rem; margin: 0 0 0.5rem; }
+  .traduccion-idiomas { margin: 0; font-size: 0.83rem; color: var(--texto-atenuado); }
+  .filas-traduccion {
+    list-style: none;
+    margin: 0;
+    padding: 0.6rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    border: 1px solid var(--borde);
+    border-radius: 10px;
+    background: var(--bg-elevado);
+  }
+  .filas-traduccion li { display: flex; align-items: center; gap: 0.6rem; font-size: 0.87rem; }
+  .filas-traduccion .titulo-documento { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+  .filas-traduccion li.no-indexado .titulo-documento, .filas-traduccion li.omitido .titulo-documento { color: var(--texto-atenuado); font-weight: 400; }
+  .filas-traduccion .origen-detectado { flex: none; font-size: 0.75rem; color: var(--texto-atenuado); }
+  .filas-traduccion .estado-traduccion { flex: none; font-size: 0.78rem; color: var(--texto-atenuado); white-space: nowrap; }
+  .filas-traduccion li.listo .estado-traduccion { color: var(--acento); }
+  .filas-traduccion li.en-curso .estado-traduccion { color: var(--advertencia); }
+  .enlace-descarga { color: var(--acento); font-weight: 600; text-decoration: none; }
+  .enlace-descarga:hover { text-decoration: underline; }
+  .textos-traducidos { display: flex; flex-direction: column; gap: 0.8rem; }
+  .textos-traducidos h4 { margin: 0 0 0.3rem; font-size: 0.92rem; }
+  .texto-traducido { white-space: pre-wrap; }
+  .textos-traducidos:empty { display: none; }
+
   .mensaje-asistente { align-items: flex-start; }
   .avatar-asistente {
     flex: none;
