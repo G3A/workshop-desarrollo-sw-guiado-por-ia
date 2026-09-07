@@ -95,19 +95,39 @@ class OllamaSalud implements HealthIndicator {
               .toList();
 
       if (!faltantes.isEmpty()) {
-        log.warn("Ollama responde pero faltan modelos {}. Corre: make pull-models", faltantes);
+        log.warn("Ollama responde pero faltan modelos {}. {}", faltantes, accionPara(faltantes));
       }
 
       return Health.up()
           .withDetail("urlBase", urlBase)
           .withDetail("modelosDisponibles", disponibles)
           .withDetail("modelosFaltantes", faltantes)
-          .withDetail("accion", faltantes.isEmpty() ? "ninguna" : "corre `make pull-models`")
+          .withDetail("accion", faltantes.isEmpty() ? "ninguna" : accionPara(faltantes))
           .build();
 
     } catch (Exception e) {
       return Health.down(e).withDetail("urlBase", urlBase).build();
     }
+  }
+
+  /**
+   * El comando que descarga EXACTAMENTE lo que falta.
+   *
+   * <p>Antes decia siempre "corre `make pull-models`", y eso era falso para la mayoria de los casos
+   * en que este indicador sirve de algo: `pull-models` descarga LLM y EMBEDDINGS del Makefile, que
+   * estan fijos en {@code gemma3:4b} y {@code bge-m3}. Nunca el modelo del perfil activo. Quien
+   * estrenaba {@code up-granite41} y leia esa accion corria pull-models, volvia a preguntar, y
+   * seguia fallando con el mismo 404 -- con el indicador insistiendo en el mismo consejo inutil.
+   *
+   * <p>Se emite un `ollama pull` por modelo en vez de mapear cada uno a su `make
+   * pull-&lt;perfil&gt;`: esa tabla ya vive en el Makefile y duplicarla aqui la condenaria a
+   * desincronizarse en cuanto se anada un perfil. El comando directo es correcto siempre y no
+   * depende de nada externo.
+   */
+  private static String accionPara(List<String> faltantes) {
+    return faltantes.stream()
+        .map(m -> "docker exec kb-ollama ollama pull " + m)
+        .collect(Collectors.joining(" && "));
   }
 
   /**
