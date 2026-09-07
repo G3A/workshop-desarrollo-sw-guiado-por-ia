@@ -832,6 +832,23 @@
       guardarTurno(pregunta, proyecto, turno, false, null, conversacionId, duracionMs);
     });
 
+    // Evento "error" del servidor: la causa REAL, en vez de la conjetura de
+    // onerror. Hasta que ChatController lo emitio, un fallo aguas arriba (el
+    // modelo del perfil sin descargar, por ejemplo) cortaba el stream sin
+    // explicacion y aqui solo quedaba "Se perdio la conexion" -- que ademas
+    // culpaba a Ollama, que normalmente estaba perfectamente sano.
+    //
+    // El close() explicito es obligatorio: sin el, EventSource ve el fin del
+    // stream como una desconexion y REINTENTA la misma URL, repitiendo la
+    // pregunta que acaba de fallar (mismo motivo que documenta cerrarStreaming).
+    fuente.addEventListener("error-servidor", (evento) => {
+      detenerContador();
+      turno.estado.textContent = JSON.parse(evento.data);
+      turno.estado.classList.add("error");
+      cerrarStreaming(conversacionId, turno, detenerContador);
+      guardarTurno(pregunta, proyecto, turno, true, turno.estado.textContent, conversacionId);
+    });
+
     fuente.onerror = () => {
       detenerContador();
       turno.estado.textContent = "Se perdió la conexión con el servidor (¿Ollama no responde?).";
