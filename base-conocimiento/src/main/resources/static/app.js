@@ -1481,6 +1481,219 @@
     campoPregunta.focus();
   });
 
+  // ---------- Traducir documentos completos, bloque a bloque ----------
+
+  registrarAccion("traducir", traducirDocumentos);
+
+  function nombreIdioma(codigo) {
+    return window.kbIdiomas ? window.kbIdiomas.nombreDe(codigo) : (codigo || "");
+  }
+
+  async function traducirDocumentos() {
+    const documentos = documentosSeleccionadosParaAccion();
+    if (!documentos) {
+      return;
+    }
+    const idiomas = selectorIdiomasDocumentos ? selectorIdiomasDocumentos.valores() : { origen: null, destino: "en" };
+    guardarPreferencia("kb.acciones.destino", idiomas.destino);
+    if (window.kbIdiomas) {
+      window.kbIdiomas.recordar(idiomas.destino);
+    }
+    const proyecto = campoProyecto.value.trim() || "default";
+    const etiqueta = etiquetaProvisional("Traducción de", documentos);
+    if (conversacionActualId == null) {
+      try {
+        conversacionActualId = await kbHistorialDb.crearConversacion(etiqueta, documentosActivosNormalizados());
+        await cargarListaConversaciones();
+      } catch (error) {
+        // Sin IndexedDB: se traduce igual, solo no persiste.
+      }
+    }
+    const conversacionId = conversacionActualId;
+    fijarBotonEnviar(true);
+    const turno = nuevoTurno(etiqueta, { tipo: "traduccion-documentos" });
+    turno.documentosDatos = documentos;
+    // Todo lo que hace falta para pintar (y repintar tras un reload) la traduccion:
+    // idiomas pedidos, estado por documento y el texto traducido por documento.
+    turno.resultadoDatos = { origen: idiomas.origen, destino: idiomas.destino, documentos: [], estados: {}, textos: {} };
+    const inicioTurno = Date.now();
+    const detenerContador = iniciarContador(
+      turno.estado,
+      "Traduciendo " + documentos.length + (documentos.length === 1 ? " documento" : " documentos") + " al " + nombreIdioma(idiomas.destino).toLowerCase());
+    iniciarStreamingTraduccion(documentos, idiomas, proyecto, turno, detenerContador, conversacionId, inicioTurno);
+  }
+
+  function iniciarStreamingTraduccion(documentos, idiomas, proyecto, turno, detenerContador, conversacionId, inicioTurno) {
+    const url = "/api/acciones/traducir-documentos?documentos=" + documentos.join(",") +
+      "&projectId=" + encodeURIComponent(proyecto) +
+      "&origen=" + encodeURIComponent(idiomas.origen || "auto") +
+      "&destino=" + encodeURIComponent(idiomas.destino);
+    let etiqueta = turno.textoBurbuja.textContent;
+    const datos = turno.resultadoDatos;
+    const fuente = new EventSource(url);
+    streamsActivos.set(conversacionId, { fuente: fuente, turno: turno, detenerContador: detenerContador });
+    actualizarControlAcciones();
+
+    fuente.addEventListener("etiqueta", (evento) => {
+      etiqueta = JSON.parse(evento.data);
+      turno.textoBurbuja.textContent = etiqueta;
+    });
+    fuente.addEventListener("documentos", (evento) => {
+      datos.documentos = JSON.parse(evento.data);
+      datos.documentos.forEach((d) => {
+        datos.estados[d.documentoId] = { bloquesTotales: d.bloquesTotales, bloqueActual: 0, idioma: idiomas.origen, omitido: false };
+      });
+      renderTraduccion(turno);
+    });
+    fuente.addEventListener("idioma-detectado", (evento) => {
+      const e = JSON.parse(evento.data);
+      estadoDe(datos, e.documentoId).idioma = e.codigo;
+      renderTraduccion(turno);
+    });
+    fuente.addEventListener("documento-omitido", (evento) => {
+      const e = JSON.parse(evento.data);
+      const estado = estadoDe(datos, e.documentoId);
+      estado.omitido = true;
+      estado.idioma = e.codigo;
+      renderTraduccion(turno);
+    });
+    fuente.addEventListener("progreso", (evento) => {
+      const e = JSON.parse(evento.data);
+      const estado = estadoDe(datos, e.documentoId);
+      estado.bloqueActual = e.bloqueActual;
+      estado.bloquesTotales = e.bloquesTotales;
+      renderTraduccion(turno);
+    });
+    fuente.addEventListener("texto", (evento) => {
+      const e = JSON.parse(evento.data);
+      datos.textos[e.documentoId] = (datos.textos[e.documentoId] || "") + e.fragmento;
+      renderTextoTraducido(turno, e.documentoId);
+    });
+    fuente.addEventListener("fin", () => {
+      const duracionMs = Date.now() - inicioTurno;
+      cerrarStreaming(conversacionId, turno, detenerContador, duracionMs);
+      renderTraduccion(turno, true);
+      guardarTurno(etiqueta, proyecto, turno, false, null, conversacionId, duracionMs);
+    });
+    fuente.addEventListener("error-servidor", (evento) => {
+      detenerContador();
+      turno.estado.textContent = JSON.parse(evento.data);
+      turno.estado.classList.add("error");
+      cerrarStreaming(conversacionId, turno, detenerContador);
+      guardarTurno(etiqueta, proyecto, turno, true, turno.estado.textContent, conversacionId);
+    });
+    fuente.onerror = () => {
+      detenerContador();
+      turno.estado.textContent = "No se pudo completar la traducción (¿Ollama no responde?).";
+      turno.estado.classList.add("error");
+      cerrarStreaming(conversacionId, turno, detenerContador);
+      guardarTurno(etiqueta, proyecto, turno, true, turno.estado.textContent, conversacionId);
+    };
+  }
+
+  function estadoDe(datos, documentoId) {
+    if (!datos.estados[documentoId]) {
+      datos.estados[documentoId] = { bloquesTotales: 0, bloqueActual: 0, idioma: null, omitido: false };
+    }
+    return datos.estados[documentoId];
+  }
+
+  /**
+   * Una fila por documento (origen detectado, progreso por bloque, omitido o
+   * "Listo · Descargar .md") y, debajo, el texto traducido con un encabezado por
+   * documento que pone la UI: el nucleo emite solo la traduccion (hallazgo 25).
+   * `terminado` = ya llego "fin": los que no se omitieron quedan listos.
+   */
+  function renderTraduccion(turno, terminado) {
+    const datos = turno.resultadoDatos;
+    if (!turno.traduccion || !datos) {
+      return;
+    }
+    const encabezado =
+      '<p class="traduccion-idiomas">' +
+      escaparHtml(datos.origen ? nombreIdioma(datos.origen) : "Detectar el origen") +
+      " → " + escaparHtml(nombreIdioma(datos.destino)) + "</p>";
+    const filas = (datos.documentos || [])
+      .map((d) => {
+        const estado = estadoDe(datos, d.documentoId);
+        const titulo = escaparHtml(d.titulo || "#" + d.documentoId);
+        let detalle;
+        let clase = "";
+        if (!d.bloquesTotales) {
+          detalle = "no indexado";
+          clase = "no-indexado";
+        } else if (estado.omitido) {
+          detalle = "ya está en " + escaparHtml(nombreIdioma(estado.idioma).toLowerCase()) + ", se omitió";
+          clase = "omitido";
+        } else if (terminado || (datos.textos[d.documentoId] && estado.bloqueActual >= estado.bloquesTotales && turno.estado.classList.contains("completado"))) {
+          detalle = "Listo";
+          clase = "listo";
+        } else if (estado.bloqueActual > 0) {
+          detalle = "bloque " + estado.bloqueActual + " de " + estado.bloquesTotales;
+          clase = "en-curso";
+        } else {
+          detalle = "en espera";
+        }
+        const origen = estado.idioma
+          ? `<span class="origen-detectado">origen: ${escaparHtml(nombreIdioma(estado.idioma).toLowerCase())}</span>`
+          : "";
+        const descarga = clase === "listo"
+          ? ` · <a class="enlace-descarga" href="${urlDescargaMarkdown(d, datos)}" download="${escaparHtml(nombreArchivoMarkdown(d, datos))}">Descargar .md</a>`
+          : "";
+        return `<li class="${clase}"><span class="titulo-documento">${titulo}</span>${origen}` +
+          `<span class="estado-traduccion">${detalle}${descarga}</span></li>`;
+      })
+      .join("");
+    let textos = turno.traduccion.querySelector(".textos-traducidos");
+    const textosHtml = textos ? textos.innerHTML : "";
+    turno.traduccion.innerHTML =
+      encabezado + '<ol class="filas-traduccion">' + filas + "</ol>" +
+      '<div class="textos-traducidos">' + textosHtml + "</div>";
+    turno.traduccion.classList.remove("oculto");
+    Object.keys(datos.textos).forEach((id) => renderTextoTraducido(turno, Number(id)));
+  }
+
+  function renderTextoTraducido(turno, documentoId) {
+    const datos = turno.resultadoDatos;
+    const contenedor = turno.traduccion && turno.traduccion.querySelector(".textos-traducidos");
+    if (!contenedor) {
+      return;
+    }
+    let seccion = contenedor.querySelector(`[data-documento="${documentoId}"]`);
+    if (!seccion) {
+      const documento = (datos.documentos || []).find((d) => d.documentoId === documentoId) || {};
+      seccion = document.createElement("section");
+      seccion.dataset.documento = String(documentoId);
+      seccion.innerHTML = `<h4>${escaparHtml(documento.titulo || "#" + documentoId)}</h4><div class="texto-traducido"></div>`;
+      contenedor.appendChild(seccion);
+    }
+    seccion.querySelector(".texto-traducido").textContent = datos.textos[documentoId] || "";
+  }
+
+  // El .md se arma en el navegador con lo que llego (fuera de alcance guardarlo en
+  // el servidor): encabezado con el titulo, y el texto tal cual lo tradujo el modelo.
+  function nombreArchivoMarkdown(documento, datos) {
+    const base = String(documento.titulo || "documento").replace(/\.[a-z0-9]+$/i, "").replace(/[^\w.-]+/g, "-");
+    return base + "." + datos.destino + ".md";
+  }
+  function urlDescargaMarkdown(documento, datos) {
+    const contenido = "# " + (documento.titulo || "") + "\n\n" + (datos.textos[documento.documentoId] || "");
+    return "data:text/markdown;charset=utf-8," + encodeURIComponent(contenido);
+  }
+
+  /** Repinta un turno de traduccion guardado: filas, textos y enlaces de descarga. */
+  function pintarTurnoDeTraduccionGuardado(turno, registro) {
+    if (turno.tipo !== "traduccion-documentos" || !registro.resultado) {
+      return;
+    }
+    turno.resultadoDatos = registro.resultado;
+    turno.documentosDatos = registro.documentos || null;
+    if (!registro.error) {
+      turno.estado.classList.add("completado");
+    }
+    renderTraduccion(turno, !registro.error);
+  }
+
   function cerrarStreaming(conversacionId, turno, detenerContador, duracionMs) {
     // Sin este close() explicito, EventSource interpreta el fin normal del
     // stream como una desconexion y reintenta solo contra la misma URL --
