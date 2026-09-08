@@ -22,24 +22,45 @@ public interface Redactor {
 
   /**
    * Los seis niveles de la taxonomia de Bloom, en orden (sub-issue #61): las preguntas se generan
-   * nivel por nivel, y la descripcion es la que ve el modelo en su prompt.
+   * nivel por nivel. La descripcion y los ejemplos de arranque son los que ve el modelo en su
+   * prompt: a un modelo chico le hace falta ver como empieza una pregunta de cada nivel.
    */
   enum NivelBloom {
-    RECORDAR("recordar", "reconocer y recuperar hechos, terminos, datos y pasos tal como aparecen"),
-    COMPRENDER("comprender", "explicar con otras palabras, resumir, clasificar, dar ejemplos"),
-    APLICAR("aplicar", "usar lo que dice el documento en una situacion concreta o un caso nuevo"),
-    ANALIZAR("analizar", "descomponer, comparar, encontrar relaciones, causas y supuestos"),
-    EVALUAR("evaluar", "juzgar con criterios: ventajas, riesgos, decisiones y su justificacion"),
+    RECORDAR(
+        "recordar",
+        "reconocer y recuperar hechos, terminos, datos y pasos tal como aparecen",
+        "\"¿Qué es...?\", \"¿Cuál es el comando para...?\", \"¿Dónde se configura...?\""),
+    COMPRENDER(
+        "comprender",
+        "explicar con otras palabras, resumir, clasificar, dar ejemplos",
+        "\"¿Por qué hace falta...?\", \"¿Qué significa que...?\", \"¿Cómo se relaciona...?\""),
+    APLICAR(
+        "aplicar",
+        "usar lo que dice el documento en una situacion concreta o un caso nuevo",
+        "\"¿Cómo harías... si...?\", \"¿Qué pasaría si...?\", \"¿Qué pasos seguirías para...?\""),
+    ANALIZAR(
+        "analizar",
+        "descomponer, comparar, encontrar relaciones, causas y supuestos",
+        "\"¿Qué diferencia hay entre...?\", \"¿Por qué el documento supone...?\", \"¿Qué"
+            + " depende de...?\""),
+    EVALUAR(
+        "evaluar",
+        "juzgar con criterios: ventajas, riesgos, decisiones y su justificacion",
+        "\"¿Es mejor... o...? ¿Por qué?\", \"¿Qué riesgo tiene...?\", \"¿Cuándo no conviene...?\""),
     CREAR(
         "crear",
-        "proponer algo nuevo a partir del documento: un plan, una mejora, una alternativa");
+        "proponer algo nuevo a partir del documento: un plan, una mejora, una alternativa",
+        "\"¿Cómo diseñarías...?\", \"¿Qué alternativa propondrías a...?\", \"¿Qué agregarías"
+            + " para...?\"");
 
     private final String codigo;
     private final String descripcion;
+    private final String ejemplos;
 
-    NivelBloom(String codigo, String descripcion) {
+    NivelBloom(String codigo, String descripcion, String ejemplos) {
       this.codigo = codigo;
       this.descripcion = descripcion;
+      this.ejemplos = ejemplos;
     }
 
     public String codigo() {
@@ -48,6 +69,10 @@ public interface Redactor {
 
     public String descripcion() {
       return descripcion;
+    }
+
+    public String ejemplos() {
+      return ejemplos;
     }
   }
 
@@ -77,9 +102,12 @@ public interface Redactor {
 
   /**
    * Las preguntas de UN nivel de Bloom: por cada interrogativo 5W1H una como maximo, y solo si un
-   * documento la responde. Vacia si no hay o si el modelo no devolvio algo valido. Bloqueante.
+   * documento la responde. Solo cuentan los textos que son preguntas (con signo de interrogacion) y
+   * que no repiten ninguna de {@code yaFormuladas}, las de los niveles anteriores. Vacia si no hay
+   * o si el modelo no devolvio algo valido. Bloqueante.
    */
-  List<Pregunta> preguntar(String contexto, String idioma, NivelBloom nivel);
+  List<Pregunta> preguntar(
+      String contexto, String idioma, NivelBloom nivel, List<String> yaFormuladas);
 
   Ideas idear(String contexto, String idioma);
 

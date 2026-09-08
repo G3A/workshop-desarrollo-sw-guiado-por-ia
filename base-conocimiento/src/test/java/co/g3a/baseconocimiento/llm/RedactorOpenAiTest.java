@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.openai.errors.OpenAIIoException;
 import java.io.IOException;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -75,6 +76,29 @@ class RedactorOpenAiTest {
     assertThat(RedactorOpenAi.normalizarTipo("cuál")).isEqualTo("que");
     assertThat(RedactorOpenAi.normalizarTipo("tal vez")).isEmpty();
     assertThat(RedactorOpenAi.normalizarTipo(null)).isEmpty();
+  }
+
+  @Test
+  @DisplayName(
+      "depurar deja solo preguntas (con signo de interrogacion) y quita las repetidas, incluidas"
+          + " las de niveles anteriores aunque cambien acentos o puntuacion")
+  void depuraLasPreguntas() {
+    var crudas =
+        List.of(
+            new Redactor.Pregunta("Para desplegar se necesita Docker Desktop.", "que", 1),
+            new Redactor.Pregunta("¿Qué hace make up?", "que", 1),
+            new Redactor.Pregunta("  ¿Que hace make up?  ", "Qué", 1),
+            new Redactor.Pregunta("¿Dónde se copia .wslconfig?", "donde", 1),
+            new Redactor.Pregunta("¿Cómo se reparte la GPU?", "cómo", 1),
+            new Redactor.Pregunta(null, "que", 1));
+
+    List<Redactor.Pregunta> limpias =
+        RedactorOpenAi.depurar(crudas, List.of("¿Cómo se reparte la GPU?"));
+
+    assertThat(limpias)
+        .containsExactly(
+            new Redactor.Pregunta("¿Qué hace make up?", "que", 1),
+            new Redactor.Pregunta("¿Dónde se copia .wslconfig?", "donde", 1));
   }
 
   @Test

@@ -60,7 +60,10 @@ Dos decisiones derivadas que también cierran aquí:
   por interrogativo como máximo, solo si un documento la responde). El tope sale del método, no de
   una cuota arbitraria: hasta seis por nivel, y un nivel puede quedar vacío. Una llamada por nivel
   mantiene cada salida corta (cabe en el timeout en CPU) y deja emitir el resultado acumulado, así
-  la UI muestra lo que ya hay y por cuál nivel va.
+  la UI muestra lo que ya hay y por cuál nivel va. Lo que un modelo de 4B devuelve de más se quita
+  con reglas verificables, no con más prompt: solo cuentan los textos que terminan en signo de
+  interrogación (el modelo copiaba afirmaciones del documento) y cada nivel recibe las preguntas
+  ya formuladas y descarta las repetidas, con o sin acentos.
 
 ## Consecuencias
 

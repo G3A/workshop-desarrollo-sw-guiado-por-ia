@@ -13,6 +13,7 @@ import co.g3a.baseconocimiento.compartido.Dominio.ProyectoId;
 import co.g3a.baseconocimiento.llm.Redactor;
 import co.g3a.baseconocimiento.llm.Redactor.Nivel;
 import co.g3a.baseconocimiento.llm.Redactor.NivelBloom;
+import co.g3a.baseconocimiento.llm.Redactor.Pregunta;
 import co.g3a.baseconocimiento.llm.Redactor.Preguntas;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -173,28 +174,40 @@ class AccionesSobreDocumentos {
       // Un nivel de Bloom por llamada (sub-issue #61): cada una es corta y cabe en el
       // timeout en CPU, y el resultado sale acumulado nivel a nivel para que la UI
       // pinte lo que ya hay y diga por cual va. El ultimo Resultado es el completo.
-      case PREGUNTAS ->
-          Flux.fromArray(NivelBloom.values())
-              .concatMap(
-                  nivel ->
-                      Mono.fromCallable(
-                          () ->
-                              new Nivel(
-                                  nivel.codigo(), redactor.preguntar(contexto, idioma, nivel))))
-              .scan(
-                  List.<Nivel>of(),
-                  (acumulado, nivel) -> {
-                    List<Nivel> lista = new ArrayList<>(acumulado);
-                    lista.add(nivel);
-                    return List.copyOf(lista);
-                  })
-              .skip(1)
-              .<EventoAccion>map(niveles -> new Resultado(new Preguntas(niveles)));
+      case PREGUNTAS -> preguntasPorNivel(contexto, idioma);
       case IDEAS ->
           Mono.fromCallable(() -> redactor.idear(contexto, idioma))
               .<EventoAccion>map(Resultado::new)
               .flux();
     };
+  }
+
+  /**
+   * Un nivel de Bloom por llamada, en orden, y cada nivel recibe las preguntas ya formuladas para
+   * no repetirlas. La lista vive dentro de esta suscripcion: {@code accion} corre dentro de un
+   * {@code Flux.defer}, y {@code concatMap} garantiza que los niveles van uno detras de otro.
+   */
+  private Flux<EventoAccion> preguntasPorNivel(String contexto, String idioma) {
+    List<String> yaFormuladas = new ArrayList<>();
+    return Flux.fromArray(NivelBloom.values())
+        .concatMap(
+            nivel ->
+                Mono.fromCallable(
+                    () -> {
+                      List<Pregunta> preguntas =
+                          redactor.preguntar(contexto, idioma, nivel, List.copyOf(yaFormuladas));
+                      preguntas.forEach(p -> yaFormuladas.add(p.texto()));
+                      return new Nivel(nivel.codigo(), preguntas);
+                    }))
+        .scan(
+            List.<Nivel>of(),
+            (acumulado, nivel) -> {
+              List<Nivel> lista = new ArrayList<>(acumulado);
+              lista.add(nivel);
+              return List.copyOf(lista);
+            })
+        .skip(1)
+        .<EventoAccion>map(niveles -> new Resultado(new Preguntas(niveles)));
   }
 
   /** De a {@code porGrupo} notas consecutivas por grupo: asi el conteo de pasadas es exacto. */
