@@ -20,6 +20,7 @@ import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 /**
  * Las cuatro acciones que redactan a partir del contexto: resumir y sintetizar (prosa en
@@ -100,7 +101,12 @@ class AccionesSobreDocumentos {
   /** Solo con el cupo ya tomado: lo devuelve pase lo que pase. */
   private Flux<EventoAccion> conCupo(Tipo tipo, List<DocumentoPlanificado> plan, String idioma) {
     Map<Long, String> notas = new ConcurrentHashMap<>();
-    Flux<EventoAccion> lecturas = Flux.create(sink -> leer(plan, idioma, notas, sink));
+    // En su propio hilo: el bucle bloquea en cada llamada al LLM, y si corriera en el hilo
+    // que escribe el SSE, este no vaciaria nada hasta terminar todas las pasadas y el
+    // progreso llegaria de golpe al final (visto en vivo con la primera demo de #60).
+    Flux<EventoAccion> lecturas =
+        Flux.<EventoAccion>create(sink -> leer(plan, idioma, notas, sink))
+            .subscribeOn(Schedulers.boundedElastic());
     Flux<EventoAccion> accion =
         Flux.defer(() -> accion(tipo, PresupuestoDeContexto.contexto(plan, notas), idioma));
     return Flux.concat(lecturas, accion).doFinally(signal -> cupo.liberar());
