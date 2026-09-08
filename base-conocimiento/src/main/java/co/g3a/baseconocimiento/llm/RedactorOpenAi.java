@@ -77,13 +77,16 @@ class RedactorOpenAi implements Redactor {
           + REGLAS_COMUNES
           + """
 
-            Generas preguntas de UN solo nivel de la taxonomia de Bloom: "%s" (%s). Recorre los
-            seis interrogativos -- que, quien, cuando, donde, por que, como -- y para cada uno
-            formula UNA pregunta de ese nivel SOLO si algun documento la responde de verdad; si
-            no, omite ese interrogativo. Puede no quedar ninguna. Cada pregunta lleva "texto"
-            (completa, concreta, corta), "tipo" con el interrogativo usado (exactamente uno de:
-            que, quien, cuando, donde, por-que, como) y "fuente" con el numero n del documento
-            [n] que la responde. No repitas una pregunta con otro interrogativo y otras palabras.
+            Generas preguntas de UN solo nivel de la taxonomia de Bloom: "%s" (%s). Las
+            preguntas de este nivel suelen empezar como %s. Recorre los seis interrogativos --
+            que, quien, cuando, donde, por que, como -- y para cada uno formula UNA pregunta de
+            ese nivel SOLO si algun documento la responde de verdad; si no, omite ese
+            interrogativo. Puede no quedar ninguna. Cada "texto" es una PREGUNTA completa, corta
+            y concreta, que termina en signo de interrogacion: nunca una afirmacion ni una frase
+            copiada del documento. "tipo" es el interrogativo usado (exactamente uno de: que,
+            quien, cuando, donde, por-que, como) y "fuente" el numero n del documento [n] que la
+            responde. Preguntas ya formuladas en niveles anteriores, que NO debes repetir ni
+            reformular: %s
             """;
 
   private static final String SISTEMA_IDEAS =
@@ -281,24 +284,28 @@ class RedactorOpenAi implements Redactor {
   record PreguntasDeNivel(List<Pregunta> preguntas) {}
 
   @Override
-  public List<Pregunta> preguntar(String contexto, String idioma, NivelBloom nivel) {
+  public List<Pregunta> preguntar(
+      String contexto, String idioma, NivelBloom nivel, List<String> yaFormuladas) {
     try {
+      String evitar =
+          yaFormuladas.isEmpty() ? "ninguna todavia." : String.join(" | ", yaFormuladas);
       PreguntasDeNivel salida =
           estructurado
               .prompt()
               .system(
                   SISTEMA_PREGUNTAS.formatted(
-                      instruccionIdioma(idioma), nivel.codigo(), nivel.descripcion()))
+                      instruccionIdioma(idioma),
+                      nivel.codigo(),
+                      nivel.descripcion(),
+                      nivel.ejemplos(),
+                      evitar))
               .user("Documentos:\n\n" + contexto)
               .call()
               .entity(PreguntasDeNivel.class, spec -> spec.useProviderStructuredOutput());
       if (salida == null || salida.preguntas() == null) {
         return List.of();
       }
-      return salida.preguntas().stream()
-          .filter(p -> p != null && p.texto() != null && !p.texto().isBlank())
-          .map(p -> new Pregunta(p.texto().strip(), normalizarTipo(p.tipo()), p.fuente()))
-          .toList();
+      return depurar(salida.preguntas(), yaFormuladas);
     } catch (RuntimeException e) {
       if (esFalloDeInfraestructura(e)) {
         throw e;
@@ -311,6 +318,42 @@ class RedactorOpenAi implements Redactor {
           e.toString());
       return List.of();
     }
+  }
+
+  /**
+   * Lo que un modelo chico devuelve de mas, quitado con reglas verificables (visto en vivo con
+   * gemma3:4b): afirmaciones copiadas del documento en vez de preguntas, y la misma pregunta
+   * repetida en otro nivel o dos veces en el mismo. Solo queda lo que termina en signo de
+   * interrogacion y no coincide, sin acentos ni puntuacion, con una ya formulada.
+   */
+  static List<Pregunta> depurar(List<Pregunta> crudas, List<String> yaFormuladas) {
+    Set<String> vistas = new java.util.HashSet<>();
+    for (String texto : yaFormuladas) {
+      vistas.add(clave(texto));
+    }
+    List<Pregunta> limpias = new java.util.ArrayList<>();
+    for (Pregunta p : crudas) {
+      if (p == null || p.texto() == null) {
+        continue;
+      }
+      String texto = p.texto().strip();
+      if (!texto.endsWith("?") && !texto.endsWith("？")) {
+        continue;
+      }
+      if (!vistas.add(clave(texto))) {
+        continue;
+      }
+      limpias.add(new Pregunta(texto, normalizarTipo(p.tipo()), p.fuente()));
+    }
+    return List.copyOf(limpias);
+  }
+
+  private static String clave(String texto) {
+    return Normalizer.normalize(texto == null ? "" : texto, Normalizer.Form.NFD)
+        .replaceAll("\\p{M}", "")
+        .toLowerCase(Locale.ROOT)
+        .replaceAll("[^\\p{L}\\p{N}]+", " ")
+        .strip();
   }
 
   /**

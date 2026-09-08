@@ -236,7 +236,7 @@ class AccionesSobreDocumentosTest {
     when(repo.seccionesDe(any(), any())).thenReturn(List.of(seccion(1, 10, "A", "texto a")));
     Redactor redactor = mock(Redactor.class);
     when(redactor.resumir(anyString(), anyString())).thenReturn(Flux.just("ok"));
-    when(redactor.preguntar(anyString(), anyString(), any())).thenReturn(List.of());
+    when(redactor.preguntar(anyString(), anyString(), any(), any())).thenReturn(List.of());
     var cupo = new CupoDeAcciones(PROPIEDADES);
     var acciones = new AccionesSobreDocumentos(repo, redactor, cupo, PROPIEDADES);
 
@@ -305,10 +305,10 @@ class AccionesSobreDocumentosTest {
     Redactor redactor = mock(Redactor.class);
     var recordar = new Redactor.Pregunta("¿Qué hace make up?", "que", 1);
     var aplicar = new Redactor.Pregunta("¿Cómo lo usarías sin GPU?", "como", 1);
-    when(redactor.preguntar(anyString(), eq("pt"), any())).thenReturn(List.of());
-    when(redactor.preguntar(anyString(), eq("pt"), eq(Redactor.NivelBloom.RECORDAR)))
+    when(redactor.preguntar(anyString(), eq("pt"), any(), any())).thenReturn(List.of());
+    when(redactor.preguntar(anyString(), eq("pt"), eq(Redactor.NivelBloom.RECORDAR), any()))
         .thenReturn(List.of(recordar));
-    when(redactor.preguntar(anyString(), eq("pt"), eq(Redactor.NivelBloom.APLICAR)))
+    when(redactor.preguntar(anyString(), eq("pt"), eq(Redactor.NivelBloom.APLICAR), any()))
         .thenReturn(List.of(aplicar));
     var ideas = new Redactor.Ideas(List.of(new Redactor.Idea("Titulo", "porque", 1)));
     when(redactor.idear(anyString(), eq("es"))).thenReturn(ideas);
@@ -330,8 +330,21 @@ class AccionesSobreDocumentosTest {
     assertThat(completo.niveles().get(2).preguntas()).containsExactly(aplicar);
     assertThat(completo.niveles().get(5).preguntas()).isEmpty();
     for (Redactor.NivelBloom nivel : Redactor.NivelBloom.values()) {
-      verify(redactor).preguntar(anyString(), eq("pt"), eq(nivel));
+      verify(redactor).preguntar(anyString(), eq("pt"), eq(nivel), any());
     }
+    // Cada nivel recibe las preguntas ya formuladas: recordar no tiene ninguna, aplicar
+    // recibe la de recordar, y crear las dos.
+    verify(redactor)
+        .preguntar(anyString(), eq("pt"), eq(Redactor.NivelBloom.RECORDAR), eq(List.of()));
+    verify(redactor)
+        .preguntar(
+            anyString(), eq("pt"), eq(Redactor.NivelBloom.APLICAR), eq(List.of(recordar.texto())));
+    verify(redactor)
+        .preguntar(
+            anyString(),
+            eq("pt"),
+            eq(Redactor.NivelBloom.CREAR),
+            eq(List.of(recordar.texto(), aplicar.texto())));
     assertThat(cupo.intentarTomar()).isTrue();
     cupo.liberar();
 
