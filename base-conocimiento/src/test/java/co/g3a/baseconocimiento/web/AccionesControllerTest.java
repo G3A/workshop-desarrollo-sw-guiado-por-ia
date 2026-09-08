@@ -318,8 +318,17 @@ class AccionesControllerTest {
   @Test
   @DisplayName("Un idioma de tres letras o que el JDK no conoce es 400, como promete el mensaje")
   void idiomaSoloIso6391() throws Exception {
+    // El motivo viaja como evento SSE en un cuerpo asincrono: hay que despacharlo antes de
+    // leerlo, igual que en el400ExplicaElMotivo (sin esto el cuerpo esta vacio, y que a veces
+    // pase depende del tiempo: fallo en el CI del sandbox y no en el del monorepo).
+    MvcResult rechazo =
+        mockMvc
+            .perform(get("/api/acciones/resumir").param("documentos", "1").param("idioma", "ukr"))
+            .andExpect(status().isBadRequest())
+            .andExpect(request().asyncStarted())
+            .andReturn();
     mockMvc
-        .perform(get("/api/acciones/resumir").param("documentos", "1").param("idioma", "ukr"))
+        .perform(asyncDispatch(rechazo))
         .andExpect(status().isBadRequest())
         .andExpect(content().string(org.hamcrest.Matchers.containsString("dos letras")));
     mockMvc
