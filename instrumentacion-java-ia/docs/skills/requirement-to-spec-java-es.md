@@ -43,7 +43,11 @@ ramas y abre PRs, por diseño, una vez que un plan quedó aprobado).
    preguntan), barrido de ambigüedad (actores, disparadores, forma de los datos, casos borde —
    registrado como Decisión o Supuesto, mismo vocabulario que el Step A de `github-plan-build`), y
    criterios de validación en forma doble (qué prueba que se cumplió, qué probaría que no).
-   Siempre pregunta el destino (trackers detectados + "archivo local"), nunca lo asume.
+   Siempre pregunta el destino (trackers detectados + "archivo local"), nunca lo asume. Si el
+   destino es GitHub, pregunta también a qué milestone va, con «ninguno, queda en el backlog»
+   como primera opción: el milestone es el sprint en el proceso operacional de este taller, y
+   meter un issue en un sprint es una decisión de planificación de la persona, no de la skill.
+   El milestone elegido se aplica al padre y a cada sub-issue.
 4. **Aplicar** — según el destino elegido: en modo archivo, `docs/specs/<slug>/spec.md` +
    `docs/specs/<slug>/tasks.md`; en modo tracker, un issue de GitHub con un sub-issue nativo por
    tarea (`gh issue create --parent <n>`, reutiliza el mismo `gh` que ya usa `github-plan-build`,

@@ -162,12 +162,34 @@ Cannot be broken locally. Verify by inspection instead:
   `<java.version>`), never a hardcoded literal in the workflow;
 - calls `make ci` rather than restating the steps;
 - triggers on **every push, on every branch** — not only the default one;
-- on GitHub Actions, a second push to the same branch cancels the first (`concurrency` +
-  `cancel-in-progress`) — **Azure Pipelines has no equivalent**, do not claim it there;
-- a pull request inside the repository does not run the whole pipeline twice;
-- for Azure Repos, there is no `pr:` block — PR validation comes from the branch policy, and the
-  YAML file alone does nothing until it is wired through the Pipelines UI **and** added to a branch
-  policy. Report control 8 as **written but not yet active** for Azure DevOps.
+- a second push to the same branch cancels the first (`concurrency` + `cancel-in-progress`);
+- a pull request inside the repository does not run the whole workflow twice;
+- the workflow runs on the next push, but it is a report, not a gate, until a Ruleset on the
+  integration branch requires it as a status check — Phase 5 says so explicitly;
+- if control 9 was installed: the NVD cache step is present and the `make ci` step reads
+  `NVD_API_KEY` from a secret — never from a literal in the file.
+
+## Control 9 — Dependency vulnerabilities
+
+**Break:** add a **compile-scope** dependency with a well-known High CVE to `pom.xml` — test scope
+is skipped by design and would look like a broken gate. `commons-collections:commons-collections:3.2.1`
+(CVE-2015-7501, CVSS 9.8) is the classic choice; snapshot `pom.xml` first.
+
+```bash
+make sca
+```
+
+**Expect:** the build fails, naming the CVE and the artifact, with the threshold it crossed. The
+first run needs the NVD mirror — 20+ minutes without `NVD_API_KEY` in the environment, a few
+with it — so run `make sca` once on the clean tree *before* the break, both to pre-warm the mirror
+and to surface pre-existing findings. Restore `pom.xml` from the snapshot and confirm `make sca`
+passes again (or reports only the pre-existing findings you already triaged).
+
+`.github/dependabot.yml` cannot be broken locally. Verify by inspection: `version: 2`, one
+`maven` entry at `directory: "/"` (one per module directory on a multi-module repo only if the
+child POMs manage their own versions), one `github-actions` entry, a `schedule.interval`. On
+GitHub, the **Insights → Dependency graph → Dependabot** tab shows the file was picked up within
+minutes of the push; before that push it is a file, not a control.
 
 ---
 

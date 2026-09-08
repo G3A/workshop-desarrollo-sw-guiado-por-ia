@@ -1,4 +1,4 @@
-# Applying the eight controls
+# Applying the nine controls
 
 > Called from **Phase 3** of `SKILL.md`, after the scope questions are answered.
 
@@ -65,10 +65,70 @@ to build or read the test class. **Two cases:**
 
 ## 8 — CI
 
-`templates/ci/github-actions.yml.template` (primary), `templates/ci/azure-pipelines.yml.template`
-(secondary). Resolve and pin gitleaks once
+`templates/ci/github-actions.yml.template` → `.github/workflows/ci.yml`. GitHub Actions is the only
+platform this skill writes (scope question 4). Resolve and pin gitleaks once
 (`gh release view --repo gitleaks/gitleaks --json tagName --jq '.tagName'`), verify SHA256 against
 `checksums.txt` before extracting, install to `$HOME/.local/bin` without `sudo` — never re-resolve
 `releases/latest` per run. The workflow calls `make ci`, nothing else. Every push, every branch,
-`concurrency`+`cancel-in-progress` on GitHub Actions (Azure Pipelines has no equivalent — say so).
-Azure Repos PR triggers live in branch policy, not YAML; a `pr:` block there is silently ignored.
+`concurrency`+`cancel-in-progress` so a second push cancels the first.
+
+## 9 — Dependency vulnerabilities (SCA)
+
+Only if scope question 7 said yes. Two halves, and they do different jobs: **OWASP
+Dependency-Check** is the gate (fails `make ci` on a known CVE at or above the threshold);
+**Dependabot** is the remedy (opens the upgrade PR). Neither replaces the other.
+
+**Gate.** Declare `org.owasp:dependency-check-maven` under `<build><plugins>` in the root `pom.xml`.
+Resolve the version once, at install time, from the source of truth, then pin it:
+
+```bash
+curl -fsSL https://repo1.maven.org/maven2/org/owasp/dependency-check-maven/maven-metadata.xml \
+  | grep -o '<latest>[^<]*' | cut -d'>' -f2
+```
+
+```xml
+<plugin>
+  <groupId>org.owasp</groupId>
+  <artifactId>dependency-check-maven</artifactId>
+  <version><!-- resolved above --></version>
+  <configuration>
+    <!-- 7 = High and above fails the build. The plugin's own default is 11: report only, never fails. -->
+    <failBuildOnCVSS>7</failBuildOnCVSS>
+    <!-- Read the NVD key from the environment; never write the key in the POM. Unset = throttled, still runs. -->
+    <nvdApiKeyEnvironmentVariable>NVD_API_KEY</nvdApiKeyEnvironmentVariable>
+    <!-- Outside ~/.m2 on purpose: setup-java's Maven cache is keyed on pom.xml and must not carry the NVD mirror. -->
+    <dataDirectory>${user.home}/.cache/dependency-check</dataDirectory>
+    <suppressionFiles>
+      <suppressionFile>dependency-check-suppressions.xml</suppressionFile>
+    </suppressionFiles>
+    <formats>
+      <format>HTML</format>
+      <format>JSON</format>
+    </formats>
+  </configuration>
+</plugin>
+```
+
+No `<executions>` block: the `check` goal binds to `verify` by default, which would put a
+20-minute first run and a network dependency inside `./mvnw verify` and every pre-push hook.
+`make sca` invokes it explicitly (`./mvnw -q dependency-check:check`) and `make ci` chains it —
+the same "not in `check`, yes in `ci`" split control 6 uses for `secrets`. `skipTestScope` stays
+at its default (`true`): a test-only dependency does not ship. `Report only` in scope question 7
+means `failBuildOnCVSS` at `11` — write it explicitly with a comment, so nobody mistakes the
+default for a gate.
+
+Copy `templates/dependency-check-suppressions.xml.template` to the repo root, header removed.
+**Before wiring the gate**, run `make sca` once and report existing findings for triage — a tree
+that already carries a High CVE blocks every `make ci` from day one otherwise. A genuine false
+positive or an accepted risk is silenced by a `<suppress>` entry carrying its `<cve>` and a
+`<notes>` reason, never by lowering `failBuildOnCVSS`.
+
+**Remedy.** On GitHub, `templates/dependabot.yml.template` → `.github/dependabot.yml`: weekly
+version updates for `maven` and for `github-actions` (the pinned action majors of control 8 are
+dependencies too). Nothing else is needed — no secret, no setting — but the PRs it opens still go
+through the same Ruleset as everyone else's.
+
+**CI.** `templates/ci/github-actions.yml.template` already carries the two lines this control
+needs: an `actions/cache` step for the NVD mirror and `NVD_API_KEY: ${{ secrets.NVD_API_KEY }}` on
+the `make ci` step. Tell the user to create that repository secret; without it CI still passes,
+just slower.
