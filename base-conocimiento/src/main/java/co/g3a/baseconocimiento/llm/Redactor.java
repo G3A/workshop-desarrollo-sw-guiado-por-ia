@@ -46,6 +46,14 @@ public interface Redactor {
   Ideas idear(String contexto, String idioma);
 
   /**
+   * Notas de lectura de un tramo de un documento largo, para que otra llamada las use en lugar del
+   * texto original: fieles, en el orden del texto, sin agregar nada. Bloqueante.
+   *
+   * @param maxCaracteres largo que se le pide al modelo (quien llama recorta si se pasa)
+   */
+  String condensar(String tramo, String idioma, int maxCaracteres);
+
+  /**
    * Solo la traduccion, conservando el Markdown y los marcadores {@code [n]} del original.
    *
    * @param origen codigo ISO 639-1 o {@code "und"} (el modelo lo infiere del texto)

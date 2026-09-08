@@ -1,18 +1,24 @@
 package co.g3a.baseconocimiento.acciones;
 
-import co.g3a.baseconocimiento.acciones.Acciones.ResultadoEnStreaming;
-import co.g3a.baseconocimiento.acciones.Acciones.ResultadoEstructurado;
+import co.g3a.baseconocimiento.acciones.Acciones.EventoAccion;
+import co.g3a.baseconocimiento.acciones.Acciones.EventoAccion.Lectura;
+import co.g3a.baseconocimiento.acciones.Acciones.EventoAccion.Resultado;
+import co.g3a.baseconocimiento.acciones.Acciones.EventoAccion.Token;
+import co.g3a.baseconocimiento.acciones.Acciones.ResultadoDeAccion;
 import co.g3a.baseconocimiento.acciones.Acciones.SinResultado;
 import co.g3a.baseconocimiento.acciones.Acciones.Tipo;
-import co.g3a.baseconocimiento.acciones.PresupuestoDeContexto.DocumentoRecortado;
+import co.g3a.baseconocimiento.acciones.PresupuestoDeContexto.DocumentoPlanificado;
 import co.g3a.baseconocimiento.acciones.SeccionesRepositorio.Seccion;
 import co.g3a.baseconocimiento.compartido.Dominio.ProyectoId;
 import co.g3a.baseconocimiento.llm.Redactor;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Mono;
 
 /**
@@ -21,10 +27,14 @@ import reactor.core.publisher.Mono;
  * etapas del RAG sobreviven dos: armar el contexto y llamar al LLM. No hay planner, retrieval,
  * umbral de relevancia ni registro: la seleccion de la persona es toda la evidencia.
  *
- * <p>El orden es fijo y por eso el cupo no se filtra (hallazgo 2 de la revision adversarial):
- * cargar y recortar primero, tomar el cupo despues, y construir el Flux dentro de un {@code try}
- * que lo devuelve si el {@link Redactor} lanza antes de que exista un {@code doFinally} que lo
- * haga.
+ * <p>Un documento que no cabe en su cuota no se recorta: se lee entero por pasadas (sub-issue #60)
+ * antes de la accion, con el plan que arma {@link PresupuestoDeContexto} — cada tramo se condensa
+ * en notas, y las notas se vuelven a condensar hasta que quepan. Cada pasada se anuncia con una
+ * {@link Lectura}; si el cliente corta, el bucle para en la pasada siguiente.
+ *
+ * <p>Todo corre recien al suscribirse ({@code Flux.defer}): el cupo se toma ahi y se devuelve en el
+ * {@code doFinally} pase lo que pase, y un {@link Redactor} que lance antes de crear su Flux
+ * termina como error del flujo, no como excepcion del que arma el resultado.
  */
 @Component
 class AccionesSobreDocumentos {
@@ -51,93 +61,129 @@ class AccionesSobreDocumentos {
     this.repo = repo;
     this.redactor = redactor;
     this.cupo = cupo;
-    this.presupuesto = new PresupuestoDeContexto(propiedades.maxCaracteresContexto());
+    this.presupuesto =
+        new PresupuestoDeContexto(
+            propiedades.maxCaracteresContexto(), propiedades.maxCaracteresLectura());
   }
 
-  /** Lo que las cuatro acciones comparten antes de llamar al LLM. */
-  record Preparacion(List<DocumentoRecortado> documentos, String contexto, boolean hayIndexados) {}
+  ResultadoDeAccion ejecutar(Tipo tipo, List<Long> documentos, ProyectoId proyecto, String idioma) {
+    List<Long> unicos = new ArrayList<>(new LinkedHashSet<>(documentos));
+    List<Seccion> secciones = repo.seccionesDe(unicos, proyecto.valor());
+    List<DocumentoPlanificado> plan = presupuesto.planificar(unicos, secciones);
+    boolean hayIndexados = plan.stream().anyMatch(DocumentoPlanificado::indexado);
+    String etiqueta = PresupuestoDeContexto.etiqueta(verboDe(tipo), plan);
 
-  ResultadoEnStreaming redactar(
-      Tipo tipo, List<Long> documentos, ProyectoId proyecto, String idioma) {
-    if (tipo != Tipo.RESUMIR && tipo != Tipo.SINTETIZAR) {
-      throw new IllegalArgumentException(
-          "redactar solo admite RESUMIR o SINTETIZAR; " + tipo + " es estructurado");
-    }
-    Preparacion pre = preparar(documentos, proyecto);
-    String etiqueta = PresupuestoDeContexto.etiqueta(verboDe(tipo), pre.documentos());
-
-    // El cupo se toma recien al suscribirse (Flux.defer): si el adaptador arma el
-    // stream y nadie lo lee (cliente que corta antes de que llegue el cuerpo), no hay
-    // permiso que devolver. Tomarlo aqui lo perderia para siempre.
-    Flux<String> texto =
-        !pre.hayIndexados()
-            ? Flux.just(MENSAJE_SIN_DOCUMENTOS)
+    Flux<EventoAccion> eventos =
+        !hayIndexados
+            ? Flux.just(mensajeFijo(tipo, MENSAJE_SIN_DOCUMENTOS))
             : Flux.defer(
                 () ->
                     cupo.intentarTomar()
-                        ? conCupo(tipo, pre.contexto(), idioma)
-                        : Flux.just(MENSAJE_SERVIDOR_OCUPADO));
-    return new ResultadoEnStreaming(
+                        ? conCupo(tipo, plan, idioma)
+                        : Flux.just(mensajeFijo(tipo, MENSAJE_SERVIDOR_OCUPADO)));
+    return new ResultadoDeAccion(
         etiqueta,
-        PresupuestoDeContexto.cobertura(pre.documentos()),
-        PresupuestoDeContexto.citas(pre.documentos()),
-        texto);
+        PresupuestoDeContexto.cobertura(plan),
+        PresupuestoDeContexto.citas(plan),
+        eventos);
   }
 
-  ResultadoEstructurado estructurar(
-      Tipo tipo, List<Long> documentos, ProyectoId proyecto, String idioma) {
-    if (tipo != Tipo.PREGUNTAS && tipo != Tipo.IDEAS) {
-      throw new IllegalArgumentException(
-          "estructurar solo admite PREGUNTAS o IDEAS; " + tipo + " es prosa en streaming");
-    }
-    Preparacion pre = preparar(documentos, proyecto);
-    String etiqueta = PresupuestoDeContexto.etiqueta(verboDe(tipo), pre.documentos());
-
-    // Mismo Mono.defer que en redactar: el cupo se toma al suscribirse y el doFinally lo
-    // devuelve haya emitido, fallado o sido cancelado.
-    Mono<Object> resultado =
-        !pre.hayIndexados()
-            ? Mono.just(new SinResultado(MENSAJE_SIN_DOCUMENTOS))
-            : Mono.defer(
-                () ->
-                    cupo.intentarTomar()
-                        ? Mono.<Object>fromCallable(
-                                () ->
-                                    tipo == Tipo.PREGUNTAS
-                                        ? redactor.preguntar(pre.contexto(), idioma)
-                                        : redactor.idear(pre.contexto(), idioma))
-                            .doFinally(signal -> cupo.liberar())
-                        : Mono.just(new SinResultado(MENSAJE_SERVIDOR_OCUPADO)));
-    return new ResultadoEstructurado(
-        etiqueta,
-        PresupuestoDeContexto.cobertura(pre.documentos()),
-        PresupuestoDeContexto.citas(pre.documentos()),
-        resultado);
+  static boolean esProsa(Tipo tipo) {
+    return tipo == Tipo.RESUMIR || tipo == Tipo.SINTETIZAR;
   }
 
-  private Preparacion preparar(List<Long> documentos, ProyectoId proyecto) {
-    List<Long> unicos = new ArrayList<>(new LinkedHashSet<>(documentos));
-    List<Seccion> secciones = repo.seccionesDe(unicos, proyecto.valor());
-    List<DocumentoRecortado> recortados = presupuesto.recortar(unicos, secciones);
-    boolean hayIndexados = recortados.stream().anyMatch(DocumentoRecortado::indexado);
-    return new Preparacion(recortados, PresupuestoDeContexto.contexto(recortados), hayIndexados);
+  /** El mismo mensaje, en la forma que cada tipo de accion sabe mostrar. */
+  static EventoAccion mensajeFijo(Tipo tipo, String mensaje) {
+    return esProsa(tipo) ? new Token(mensaje) : new Resultado(new SinResultado(mensaje));
   }
 
-  /** Solo con el cupo ya tomado: lo devuelve pase lo que pase, incluso si el Redactor lanza. */
-  private Flux<String> conCupo(Tipo tipo, String contexto, String idioma) {
-    Flux<String> base;
+  /** Solo con el cupo ya tomado: lo devuelve pase lo que pase. */
+  private Flux<EventoAccion> conCupo(Tipo tipo, List<DocumentoPlanificado> plan, String idioma) {
+    Map<Long, String> notas = new ConcurrentHashMap<>();
+    Flux<EventoAccion> lecturas = Flux.create(sink -> leer(plan, idioma, notas, sink));
+    Flux<EventoAccion> accion =
+        Flux.defer(() -> accion(tipo, PresupuestoDeContexto.contexto(plan, notas), idioma));
+    return Flux.concat(lecturas, accion).doFinally(signal -> cupo.liberar());
+  }
+
+  /**
+   * Las pasadas de lectura de los documentos largos, en orden y de forma sincronica sobre el hilo
+   * que se suscribe (igual que {@code fromCallable}): por nivel, condensa cada tramo en notas; si
+   * las notas juntas no caben en la cuota, las agrupa y repite. Deja las notas finales en {@code
+   * notas} y emite una {@link Lectura} por pasada; si el estimado sobro (las notas salieron mas
+   * cortas), cierra con la ultima pasada declarada para que el progreso llegue al final.
+   */
+  private void leer(
+      List<DocumentoPlanificado> plan,
+      String idioma,
+      Map<Long, String> notas,
+      FluxSink<EventoAccion> sink) {
     try {
-      base =
-          tipo == Tipo.RESUMIR
-              ? redactor.resumir(contexto, idioma)
-              : redactor.sintetizar(contexto, idioma);
+      int porGrupo = presupuesto.notasPorGrupo();
+      for (DocumentoPlanificado d : plan) {
+        if (!d.porPasadas()) {
+          continue;
+        }
+        int hechas = 0;
+        List<String> nivel = d.tramos();
+        while (true) {
+          List<String> condensadas = new ArrayList<>();
+          int objetivo =
+              nivel.size() == 1
+                  ? Math.min(PresupuestoDeContexto.LARGO_NOTAS, d.cuota())
+                  : PresupuestoDeContexto.LARGO_NOTAS;
+          for (String tramo : nivel) {
+            if (sink.isCancelled()) {
+              return;
+            }
+            condensadas.add(recortar(redactor.condensar(tramo, idioma, objetivo), objetivo));
+            hechas++;
+            sink.next(new Lectura(d.documentoId(), hechas, d.pasadas()));
+          }
+          String juntas = String.join("\n\n", condensadas);
+          if (condensadas.size() == 1 || juntas.length() <= d.cuota()) {
+            notas.put(d.documentoId(), recortar(juntas, d.cuota()));
+            break;
+          }
+          nivel = agrupar(condensadas, porGrupo);
+        }
+        if (hechas < d.pasadas()) {
+          sink.next(new Lectura(d.documentoId(), d.pasadas(), d.pasadas()));
+        }
+      }
+      sink.complete();
     } catch (RuntimeException e) {
-      // Antes de que exista un Flux con doFinally: el permiso vuelve aqui, y el error
-      // viaja por el Flux para que el adaptador lo convierta en un evento legible.
-      cupo.liberar();
-      return Flux.error(e);
+      sink.error(e);
     }
-    return base.doFinally(signal -> cupo.liberar());
+  }
+
+  private Flux<EventoAccion> accion(Tipo tipo, String contexto, String idioma) {
+    return switch (tipo) {
+      case RESUMIR -> redactor.resumir(contexto, idioma).<EventoAccion>map(Token::new);
+      case SINTETIZAR -> redactor.sintetizar(contexto, idioma).<EventoAccion>map(Token::new);
+      case PREGUNTAS ->
+          Mono.fromCallable(() -> redactor.preguntar(contexto, idioma))
+              .<EventoAccion>map(Resultado::new)
+              .flux();
+      case IDEAS ->
+          Mono.fromCallable(() -> redactor.idear(contexto, idioma))
+              .<EventoAccion>map(Resultado::new)
+              .flux();
+    };
+  }
+
+  /** De a {@code porGrupo} notas consecutivas por grupo: asi el conteo de pasadas es exacto. */
+  static List<String> agrupar(List<String> notas, int porGrupo) {
+    List<String> grupos = new ArrayList<>();
+    for (int i = 0; i < notas.size(); i += porGrupo) {
+      grupos.add(String.join("\n\n", notas.subList(i, Math.min(notas.size(), i + porGrupo))));
+    }
+    return grupos;
+  }
+
+  private static String recortar(String texto, int largo) {
+    String limpio = texto == null ? "" : texto.strip();
+    return limpio.length() <= largo ? limpio : limpio.substring(0, Math.max(0, largo));
   }
 
   static String verboDe(Tipo tipo) {

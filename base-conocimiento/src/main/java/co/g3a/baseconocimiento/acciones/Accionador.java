@@ -34,15 +34,9 @@ class Accionador implements Acciones {
   }
 
   @Override
-  public ResultadoEnStreaming redactar(
+  public ResultadoDeAccion ejecutar(
       Tipo tipo, List<Long> documentos, ProyectoId proyecto, String idioma) {
-    return accionesSobreDocumentos.redactar(tipo, documentos, proyecto, idioma);
-  }
-
-  @Override
-  public ResultadoEstructurado estructurar(
-      Tipo tipo, List<Long> documentos, ProyectoId proyecto, String idioma) {
-    return accionesSobreDocumentos.estructurar(tipo, documentos, proyecto, idioma);
+    return accionesSobreDocumentos.ejecutar(tipo, documentos, proyecto, idioma);
   }
 
   @Override

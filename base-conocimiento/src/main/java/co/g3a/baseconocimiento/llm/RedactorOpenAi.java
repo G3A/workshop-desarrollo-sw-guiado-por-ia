@@ -42,8 +42,9 @@ class RedactorOpenAi implements Redactor {
             Trabajas SOLO con lo que aparece en los documentos numerados del contexto, nunca con
             conocimiento propio. Cada afirmacion lleva el marcador [n] del documento del que sale,
             pegado al final de esa afirmacion -- nunca antes, nunca varios marcadores sueltos al
-            cierre. Si el encabezado de un documento dice que entro recortado, dilo explicitamente
-            y no inventes lo que no leiste. Si dos documentos se contradicen, señala la
+            cierre. Si el encabezado de un documento dice que lo que sigue son notas de lectura de
+            un documento largo, trabaja con esas notas como si fueran el texto, sin comentar que
+            son notas ni que el documento es largo. Si dos documentos se contradicen, señala la
             contradiccion en vez de elegir uno en silencio. Ve directo al resultado: NO narres tu
             razonamiento ("primero voy a...", "veamos los documentos..."). %s
             """;
@@ -91,6 +92,16 @@ class RedactorOpenAi implements Redactor {
             experimentos, decisiones a tomar, riesgos a atender. Cada idea tiene un titulo corto,
             una justificacion de una o dos frases apoyada en lo que dice un documento, y "fuente"
             con el numero n del documento [n] que la respalda. Entre cuatro y ocho ideas.
+            """;
+
+  private static final String SISTEMA_CONDENSAR =
+      """
+            Tomas notas de lectura de un tramo de un documento largo; otro paso las usara en lugar
+            del texto original, asi que tienen que ser fieles y completas en lo esencial:
+            definiciones, reglas, decisiones, pasos, requisitos, cifras, nombres, advertencias y
+            ejemplos clave, en el orden del texto y sin valorar ni agregar nada. Sin introducciones
+            ni cierres, sin repetir el titulo, sin frases como "el texto dice". Prosa compacta o
+            lineas cortas. Como maximo %d palabras. %s
             """;
 
   private static final String SISTEMA_TRADUCIR =
@@ -191,6 +202,7 @@ class RedactorOpenAi implements Redactor {
   private final ChatClient traduccion;
   private final ChatClient estructurado;
   private final ChatClient deteccion;
+  private final ChatClient lectura;
 
   RedactorOpenAi(OpenAiChatModel modelo) {
     Map<String, Object> extra =
@@ -220,6 +232,26 @@ class RedactorOpenAi implements Redactor {
                     .temperature(0.0)
                     .maxTokens(20))
             .build();
+    // Notas de lectura (sub-issue #60): salida corta y fiel, como la traduccion; el tope
+    // de tokens cubre LARGO_NOTAS caracteres con margen y frena un bucle.
+    this.lectura =
+        ChatClient.builder(modelo)
+            .defaultOptions(
+                OpenAiChatOptions.builder().extraBody(extra).temperature(0.1).maxTokens(600))
+            .build();
+  }
+
+  @Override
+  public String condensar(String tramo, String idioma, int maxCaracteres) {
+    int palabras = Math.max(40, maxCaracteres / 7);
+    String notas =
+        lectura
+            .prompt()
+            .system(SISTEMA_CONDENSAR.formatted(palabras, instruccionIdioma(idioma)))
+            .user("Tramo:\n\n" + tramo)
+            .call()
+            .content();
+    return notas == null ? "" : notas.strip();
   }
 
   @Override

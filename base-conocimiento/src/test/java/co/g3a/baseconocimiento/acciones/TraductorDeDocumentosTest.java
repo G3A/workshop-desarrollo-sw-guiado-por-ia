@@ -34,7 +34,8 @@ import reactor.core.publisher.Flux;
 class TraductorDeDocumentosTest {
 
   private static final ProyectoId PROYECTO = new ProyectoId("default");
-  private static final AccionesPropiedades PROPIEDADES = new AccionesPropiedades(10, 7000, 8000, 1);
+  private static final AccionesPropiedades PROPIEDADES =
+      new AccionesPropiedades(10, 7000, 8000, 1, 10000);
 
   @Test
   @DisplayName(
@@ -193,7 +194,7 @@ class TraductorDeDocumentosTest {
     Redactor redactor = mock(Redactor.class);
     var traductor =
         new TraductorDeDocumentos(
-            repo, redactor, new CupoDeAcciones(new AccionesPropiedades(10, 7000, 8000, 0)));
+            repo, redactor, new CupoDeAcciones(new AccionesPropiedades(10, 7000, 8000, 0, 10000)));
 
     TraduccionDeDocumentos resultado = traductor.traducir(List.of(1L), PROYECTO, "es", "en");
 

@@ -38,9 +38,10 @@ REST y Server-Sent Events; toda la lógica de UI es JavaScript plano consumiendo
   el idioma del resultado y, para traducir, origen y destino. No hay un modo ni una pantalla
   aparte: resumen, síntesis, preguntas, ideas y traducción se pintan como turnos con su etiqueta,
   se guardan en el historial y no llevan feedback 👍/👎 ni «Resultados rápidos», porque no son
-  respuestas del RAG. El bloque «Documentos usados» muestra por documento cuántas secciones
-  entraron al modelo: lo recortado se marca «parcial» y lo inexistente «no indexado», la misma
-  regla de nunca ocultar la falta de evidencia. Preguntas e ideas se pintan desde datos (salida
+  respuestas del RAG. El bloque «Documentos usados» muestra por documento cómo entró al modelo:
+  entero de una vez, o «leído completo en N pasadas» con el progreso pasada a pasada mientras
+  corre; lo inexistente se marca «no indexado», la misma regla de nunca ocultar la falta de
+  evidencia. Preguntas e ideas se pintan desde datos (salida
   estructurada), así el botón «Preguntar» y las tarjetas salen exactas; «Preguntar» solo rellena
   la barra de entrada.
 - **El traductor está donde está el texto**: para escribir en otro idioma, un modo traducir en la
