@@ -12,8 +12,11 @@ por Spring Modulith (`@ApplicationModule` en cada `package-info.java` + `Applica
 Cada módulo declara su intención en el Javadoc de su `package-info.java` — vale la pena leerlos
 antes de tocar un módulo:
 
-- `orquestacion`: expone `Consultar`, la única puerta que los adaptadores pueden cruzar; todo lo
-  demás es `internal`.
+- `orquestacion`: expone `Consultar`, una de las dos puertas que los adaptadores pueden cruzar (la
+  del RAG); todo lo demás es `internal`.
+- `acciones`: expone `Acciones`, la otra puerta — resumir, sintetizar, preguntas, ideas y traducir
+  sobre documentos elegidos a mano. Independiente del RAG: comparte solo el vault indexado y `llm`
+  (ver [ADR-0013](adrs/0013-modulo-acciones-independiente-del-rag.md)).
 - `recuperacion`: SQL a mano sobre `JdbcClient`, deliberadamente no sobre el `VectorStore` de
   Spring AI — esa abstracción no expresa cuatro señales fusionadas por RRF.
 - `llm`: Spring AI se usa solo aquí (chat/streaming/salida estructurada); sus abstracciones de RAG
@@ -70,11 +73,11 @@ Compose (no de Spring).
 ## Fronteras de módulo (Spring Modulith)
 
 Ver la regla completa y sus tres adaptadores en [architecture.md](architecture.md#módulos-spring-modulith)
-y el archivo `ArquitecturaTest`. Son 5 pruebas: 4 de ArchUnit (5 `noClasses()` en total, con
+y el archivo `ArquitecturaTest`. Son 6 pruebas: 5 de ArchUnit (6 `noClasses()` en total, con
 `allowEmptyShould(false)` explícito en las que cubren adaptadores y núcleo, para que no nazcan
 verdes por vacías) más `ApplicationModules.verify()`. Cubren a `web`, `teams` y `seguridad` por
-igual, en las dos direcciones, e incluyen la frontera lateral entre `seguridad` y los otros dos
-adaptadores.
+igual, en las dos direcciones, incluyen la frontera lateral entre `seguridad` y los otros dos
+adaptadores, y la independencia de `acciones` respecto del RAG y de los adaptadores.
 `ApplicationModules.verify()` corre en el mismo ciclo de test que el resto (`make test`), no está
 deshabilitado.
 
@@ -107,7 +110,7 @@ JWKS de Bot Framework).
 
 | Gate | Estado |
 |---|---|
-| ArchUnit | **Presente y bloquea** — 5 pruebas en `ArquitecturaTest`, corre en `make test` |
+| ArchUnit | **Presente y bloquea** — 6 pruebas en `ArquitecturaTest` (5 de ArchUnit más `ApplicationModules.verify()`), corre en `make test` |
 | Checkstyle | **Presente y bloquea** — `failOnViolation=true`, `violationSeverity=error`, incluye las fuentes de test, ligado a `verify`, con `checkstyle-suppressions.xml` |
 | Spotless | **Presente y bloquea** — `google-java-format` sobre todo el código, sin `ratchetFrom`; `spotless:check` en `make lint` |
 | SpotBugs / PMD | Ausente |

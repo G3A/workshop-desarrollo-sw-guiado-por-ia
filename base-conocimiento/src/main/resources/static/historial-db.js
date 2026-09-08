@@ -146,17 +146,43 @@
   // tope de la lista, igual que ChatGPT bump-ea la conversacion activa. No hay
   // guardado incremental token a token: un turno en curso se pierde si el
   // usuario refresca a mitad de una respuesta, pero todo lo ya cerrado persiste.
+  // Devuelve el id del turno guardado: con el, actualizarTurno() puede sumarle
+  // despues una traduccion (issue #38) sin duplicar el registro.
   async function guardarTurno(conversacionId, turno) {
     const bd = await abrir();
     return new Promise((resolve, reject) => {
       const tx = bd.transaction([TABLA_TURNOS, TABLA_CONVERSACIONES], "readwrite");
-      tx.objectStore(TABLA_TURNOS).add(Object.assign({ conversacionId: conversacionId }, turno));
+      const alta = tx.objectStore(TABLA_TURNOS).add(Object.assign({ conversacionId: conversacionId }, turno));
+      let id = null;
+      alta.onsuccess = () => { id = alta.result; };
       const conversacionReq = tx.objectStore(TABLA_CONVERSACIONES).get(conversacionId);
       conversacionReq.onsuccess = () => {
         const conversacion = conversacionReq.result;
         if (conversacion) {
           conversacion.actualizadoEn = turno.fecha || new Date().toISOString();
           tx.objectStore(TABLA_CONVERSACIONES).put(conversacion);
+        }
+      };
+      tx.oncomplete = () => resolve(id);
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  /**
+   * Mezcla `parche` sobre un turno ya guardado (p. ej. la traduccion que la
+   * persona pidio sobre una respuesta vieja). Sin subir VERSION_BD: los
+   * registros de turno son libres y un campo nuevo no exige migracion.
+   */
+  async function actualizarTurno(turnoId, parche) {
+    const bd = await abrir();
+    return new Promise((resolve, reject) => {
+      const tx = bd.transaction(TABLA_TURNOS, "readwrite");
+      const store = tx.objectStore(TABLA_TURNOS);
+      const solicitud = store.get(turnoId);
+      solicitud.onsuccess = () => {
+        const turno = solicitud.result;
+        if (turno) {
+          store.put(Object.assign(turno, parche));
         }
       };
       tx.oncomplete = () => resolve();
@@ -189,6 +215,7 @@
     obtenerConversacion: obtenerConversacion,
     listarTurnosDeConversacion: listarTurnosDeConversacion,
     guardarTurno: guardarTurno,
+    actualizarTurno: actualizarTurno,
     eliminarConversacion: eliminarConversacion,
     actualizarDocumentosActivos: actualizarDocumentosActivos,
   };

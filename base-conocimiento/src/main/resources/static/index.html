@@ -18,6 +18,7 @@
     --acento: #10a37f;
     --acento-texto: #ffffff;
     --error: #d1352b;
+    --advertencia: #b45309;
     --sombra: 0 2px 10px rgba(0, 0, 0, 0.06);
   }
   @media (prefers-color-scheme: dark) {
@@ -33,6 +34,7 @@
       --acento: #19c37d;
       --acento-texto: #0d0d0d;
       --error: #f2867a;
+      --advertencia: #f5b24a;
       --sombra: 0 2px 14px rgba(0, 0, 0, 0.35);
     }
   }
@@ -161,6 +163,93 @@
     white-space: nowrap;
   }
   .lista-documentos .sin-documentos { padding: 0.3rem 0.4rem; font-size: 0.8rem; color: var(--texto-atenuado); }
+
+  /* ---------- Acciones sobre los documentos tildados (issue #38) ---------- */
+  .acciones-documentos { position: relative; padding: 0.15rem 0 0.4rem; }
+  .boton-acciones {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    width: 100%;
+    padding: 0.45rem 0.6rem;
+    border: 1px solid var(--acento);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--acento);
+    font-size: 0.83rem;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+  }
+  .boton-acciones #boton-acciones-texto { flex: 1 1 auto; min-width: 0; }
+  .boton-acciones .flecha { flex: none; font-size: 0.75rem; }
+  .boton-acciones:hover:not(:disabled), .boton-acciones:focus-visible, .boton-acciones[aria-expanded="true"] {
+    background: var(--acento);
+    color: var(--acento-texto);
+  }
+  .boton-acciones:disabled { opacity: 0.55; cursor: default; border-color: var(--borde); color: var(--texto-atenuado); }
+  .boton-acciones .spinner { display: none; flex: none; width: 0.8rem; height: 0.8rem; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: girar 0.9s linear infinite; }
+  .boton-acciones.en-curso .spinner { display: inline-block; }
+  .boton-acciones.en-curso .flecha { display: none; }
+  @keyframes girar { to { transform: rotate(360deg); } }
+  .menu-acciones {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% - 0.2rem);
+    z-index: 30;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    padding: 0.4rem;
+    border: 1px solid var(--borde);
+    border-radius: 10px;
+    background: var(--bg-elevado);
+    box-shadow: var(--sombra);
+  }
+  .menu-acciones.oculto { display: none; }
+  .menu-idioma { padding: 0.2rem 0.4rem 0.5rem; border-bottom: 1px solid var(--borde); margin-bottom: 0.2rem; }
+  .item-accion {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    width: 100%;
+    padding: 0.45rem 0.5rem;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--texto);
+    text-align: left;
+    cursor: pointer;
+  }
+  .item-accion:hover, .item-accion:focus-visible { background: var(--bg-hover); }
+  .item-accion svg { flex: none; width: 1.15rem; height: 1.15rem; color: var(--acento); }
+  .item-accion span { display: flex; flex-direction: column; min-width: 0; }
+  .item-accion b { font-size: 0.85rem; font-weight: 600; }
+  .item-accion small { font-size: 0.73rem; color: var(--texto-atenuado); }
+  .submenu-traducir {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 0.2rem 0.2rem 0.1rem;
+    padding: 0.55rem;
+    border: 1px solid var(--borde);
+    border-radius: 8px;
+    background: var(--bg-main);
+  }
+  .submenu-traducir.oculto { display: none; }
+  .boton-primario {
+    border: none;
+    border-radius: 8px;
+    padding: 0.45rem 0.9rem;
+    background: var(--acento);
+    color: var(--acento-texto);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .boton-primario:hover, .boton-primario:focus-visible { filter: brightness(0.92); }
+  .boton-primario:disabled { opacity: 0.45; cursor: default; }
 
   .lista-conversaciones {
     flex: 1 1 auto;
@@ -318,6 +407,132 @@
     white-space: pre-wrap;
   }
   .mensaje-usuario:hover .boton-copiar { opacity: 1; }
+  .etiqueta-turno {
+    display: inline-block;
+    margin-right: 0.45rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--acento);
+    vertical-align: middle;
+  }
+
+  /* ---------- Turnos de accion (issue #38): cobertura y resultados ---------- */
+  .turno-cobertura {
+    border: 1px solid var(--borde);
+    border-radius: 10px;
+    padding: 0.6rem 0.75rem;
+    margin: 0 0 0.75rem;
+    background: var(--bg-elevado);
+  }
+  .turno-cobertura.oculto, .turno-estructurado.oculto, .turno-traduccion.oculto { display: none; }
+  .turno-cobertura h3 {
+    margin: 0 0 0.4rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--texto-atenuado);
+  }
+  .turno-cobertura ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+  .turno-cobertura li { display: flex; align-items: center; gap: 0.5rem; font-size: 0.87rem; }
+  .turno-cobertura .numero { flex: none; min-width: 1.6rem; color: var(--texto-atenuado); }
+  .turno-cobertura .titulo-documento {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--acento);
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .turno-cobertura li.no-indexado .titulo-documento { color: var(--texto-atenuado); font-weight: 400; }
+  .turno-cobertura .titulo-documento:hover { text-decoration: underline; }
+  .insignia-cobertura {
+    flex: none;
+    font-size: 0.72rem;
+    padding: 0.1rem 0.55rem;
+    border-radius: 999px;
+    border: 1px solid currentColor;
+    white-space: nowrap;
+  }
+  .insignia-cobertura.completa { color: var(--acento); }
+  .insignia-cobertura.parcial { color: var(--advertencia); }
+  .insignia-cobertura.no-indexado { color: var(--texto-atenuado); }
+  .insignia-cobertura.leyendo { color: var(--advertencia); }
+
+  .turno-estructurado { display: flex; flex-direction: column; gap: 0.8rem; margin: 0.2rem 0 0.4rem; }
+  .turno-estructurado .tema h4, .turno-estructurado .idea h4 { margin: 0 0 0.35rem; font-size: 0.92rem; }
+  .turno-estructurado .tema ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.35rem; }
+  .turno-estructurado .tema li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    padding: 0.45rem 0.7rem;
+    border: 1px solid var(--borde);
+    border-radius: 10px;
+    background: var(--bg-elevado);
+    font-size: 0.9rem;
+  }
+  .cita-n { color: var(--texto-atenuado); font-size: 0.8rem; }
+  .descripcion-nivel { font-weight: 400; font-size: 0.78rem; color: var(--texto-atenuado); margin-left: 0.35rem; }
+  .nivel-vacio { margin: 0; font-size: 0.83rem; font-style: italic; color: var(--texto-atenuado); }
+  .chip-5w1h { display: inline-block; margin-right: 0.4rem; padding: 0 0.45rem; border: 1px solid var(--borde); border-radius: 999px; font-size: 0.72rem; color: var(--texto-atenuado); background: var(--bg-elevado); white-space: nowrap; }
+  .boton-preguntar {
+    flex: none;
+    border: 1px solid var(--acento);
+    border-radius: 999px;
+    padding: 0.2rem 0.7rem;
+    background: transparent;
+    color: var(--acento);
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .boton-preguntar:hover, .boton-preguntar:focus-visible { background: var(--acento); color: var(--acento-texto); }
+  .grilla-ideas { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 0.6rem; }
+  .idea {
+    position: relative;
+    padding: 0.7rem 2.1rem 0.7rem 0.85rem;
+    border: 1px solid var(--borde);
+    border-radius: 10px;
+    background: var(--bg-elevado);
+  }
+  .idea p { margin: 0; font-size: 0.87rem; color: var(--texto); }
+  .idea .boton-copiar { position: absolute; top: 0.55rem; right: 0.55rem; }
+  .idea:hover .boton-copiar { opacity: 1; }
+  .sin-resultado { margin: 0; color: var(--texto-atenuado); font-size: 0.9rem; }
+
+  .turno-traduccion { display: flex; flex-direction: column; gap: 0.6rem; margin: 0 0 0.5rem; }
+  .traduccion-idiomas { margin: 0; font-size: 0.83rem; color: var(--texto-atenuado); }
+  .filas-traduccion {
+    list-style: none;
+    margin: 0;
+    padding: 0.6rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    border: 1px solid var(--borde);
+    border-radius: 10px;
+    background: var(--bg-elevado);
+  }
+  .filas-traduccion li { display: flex; align-items: center; gap: 0.6rem; font-size: 0.87rem; }
+  .filas-traduccion .titulo-documento { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+  .filas-traduccion li.no-indexado .titulo-documento, .filas-traduccion li.omitido .titulo-documento { color: var(--texto-atenuado); font-weight: 400; }
+  .filas-traduccion .origen-detectado { flex: none; font-size: 0.75rem; color: var(--texto-atenuado); }
+  .filas-traduccion .estado-traduccion { flex: none; font-size: 0.78rem; color: var(--texto-atenuado); white-space: nowrap; }
+  .filas-traduccion li.listo .estado-traduccion { color: var(--acento); }
+  .filas-traduccion li.en-curso .estado-traduccion { color: var(--advertencia); }
+  .filas-traduccion li.fallido .estado-traduccion { color: var(--error); }
+  .enlace-descarga { color: var(--acento); font-weight: 600; text-decoration: none; }
+  .enlace-descarga:hover { text-decoration: underline; }
+  .textos-traducidos { display: flex; flex-direction: column; gap: 0.8rem; }
+  .textos-traducidos h4 { margin: 0 0 0.3rem; font-size: 0.92rem; }
+  .texto-traducido { white-space: pre-wrap; }
+  .textos-traducidos:empty { display: none; }
 
   .mensaje-asistente { align-items: flex-start; }
   .avatar-asistente {
@@ -562,6 +777,135 @@
     box-shadow: var(--sombra);
   }
   .input-pill:focus-within { border-color: var(--acento); }
+  .input-pill.modo-traducir { border-color: var(--acento); }
+  .boton-modo-traducir {
+    flex: none;
+    width: 2rem;
+    height: 2rem;
+    margin-left: -0.5rem;
+    border: 1px solid transparent;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--texto-atenuado);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .boton-modo-traducir svg { width: 1.15rem; height: 1.15rem; }
+  .boton-modo-traducir:hover, .boton-modo-traducir:focus-visible { color: var(--acento); border-color: var(--borde); }
+  .boton-modo-traducir[aria-pressed="true"] { background: var(--acento); color: var(--acento-texto); }
+  .barra-traducir {
+    max-width: 46rem;
+    margin: 0 auto 0.5rem;
+    padding: 0.55rem 0.9rem;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0.8rem;
+    flex-wrap: wrap;
+    border: 1px solid var(--acento);
+    border-radius: 12px;
+    background: var(--bg-elevado);
+    box-shadow: var(--sombra);
+  }
+  .barra-traducir.oculto { display: none; }
+  .barra-traducir p { margin: 0 0 0.25rem; font-size: 0.8rem; color: var(--texto-atenuado); }
+  .ver-original {
+    align-self: flex-start;
+    border: none;
+    background: none;
+    padding: 0;
+    color: var(--acento);
+    font: inherit;
+    font-size: 0.83rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .ver-original:hover { text-decoration: underline; }
+  .texto-original {
+    padding: 0.5rem 0.75rem;
+    border-left: 3px solid var(--borde);
+    color: var(--texto-atenuado);
+    font-size: 0.9rem;
+    white-space: pre-wrap;
+  }
+  .texto-original.oculto { display: none; }
+
+  /* "Traducir" sobre un turno (alternativa B) */
+  .boton-traducir-turno {
+    flex: none;
+    opacity: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    border: 1px solid var(--borde);
+    border-radius: 6px;
+    background: var(--bg-elevado);
+    color: var(--texto-atenuado);
+    font-size: 0.78rem;
+    line-height: 1;
+    padding: 0.2rem 0.45rem;
+    cursor: pointer;
+  }
+  .boton-traducir-turno svg { width: 0.95rem; height: 0.95rem; }
+  .boton-traducir-turno:hover, .boton-traducir-turno:focus-visible { opacity: 1; color: var(--acento); border-color: var(--acento); }
+  .mensaje-usuario:hover .boton-traducir-turno, .turno:hover .acciones-turno .boton-traducir-turno { opacity: 1; }
+  .acciones-turno { display: flex; gap: 0.4rem; margin: 0.35rem 0 0; }
+  .acciones-turno:empty { display: none; }
+  .traducciones-turno { display: flex; flex-direction: column; gap: 0.5rem; }
+  .traducciones-turno:empty { display: none; }
+  .traducciones-pregunta { align-items: flex-end; }
+  .traducciones-pregunta .turno-traducido { max-width: 34rem; }
+  .turno-traducido {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    margin: 0.5rem 0 0;
+    padding: 0.55rem 0.8rem;
+    border-left: 3px solid var(--acento);
+    background: var(--bg-elevado);
+    border-radius: 0 10px 10px 0;
+  }
+  .turno-traducido .traduccion-idiomas { margin: 0; }
+  .turno-traducido .texto-traducido { white-space: pre-wrap; }
+  .turno-traducido .texto-traducido.oculto { display: none; }
+  .ocultar-traduccion {
+    align-self: flex-start;
+    border: none;
+    background: none;
+    padding: 0;
+    color: var(--acento);
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .popover-traducir {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 0.4rem 0 0;
+    padding: 0.7rem 0.85rem;
+    max-width: 28rem;
+    border: 1px solid var(--borde);
+    border-radius: 12px;
+    background: var(--bg-elevado);
+    box-shadow: var(--sombra);
+  }
+  .mensaje-usuario + .popover-traducir { align-self: flex-end; }
+  .botones-popover { display: flex; gap: 0.5rem; }
+  .boton-cancelar {
+    border: 1px solid var(--borde);
+    border-radius: 8px;
+    padding: 0.45rem 0.9rem;
+    background: transparent;
+    color: var(--texto);
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+  .error-popover { margin: 0; font-size: 0.83rem; color: var(--error); }
+  .error-popover.oculto { display: none; }
   #pregunta {
     flex: 1 1 auto;
     border: none;
@@ -594,6 +938,49 @@
     font-size: 0.75rem;
     color: var(--texto-atenuado);
   }
+
+  /* ---------- Selector de idiomas (idiomas.js) ---------- */
+  .selector-idiomas {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+  }
+  .selector-campo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    flex: 1 1 8rem;
+    min-width: 0;
+  }
+  .selector-campo span {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--texto-atenuado);
+  }
+  .selector-campo select {
+    width: 100%;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid var(--borde);
+    border-radius: 8px;
+    background: var(--bg-main);
+    color: var(--texto);
+    font-size: 0.83rem;
+  }
+  .selector-intercambiar {
+    flex: none;
+    width: 2rem;
+    height: 2rem;
+    border: 1px solid var(--borde);
+    border-radius: 8px;
+    background: var(--bg-elevado);
+    color: var(--texto);
+    font-size: 0.95rem;
+    cursor: pointer;
+  }
+  .selector-intercambiar:hover:not(:disabled) { border-color: var(--acento); color: var(--acento); }
+  .selector-intercambiar:disabled { opacity: 0.4; cursor: default; }
 
   /* ---------- Dialogo de ayuda ---------- */
   dialog {
@@ -713,6 +1100,40 @@
       <details class="sidebar-seccion-documentos" id="seccion-documentos">
         <summary>Documentos <span class="contador-documentos" id="contador-documentos"></span></summary>
         <div class="lista-documentos" id="lista-documentos"></div>
+        <div class="acciones-documentos" id="acciones-documentos">
+          <button type="button" id="boton-acciones" class="boton-acciones" disabled aria-haspopup="menu" aria-expanded="false" aria-controls="menu-acciones">
+            <span class="spinner" aria-hidden="true"></span>
+            <span id="boton-acciones-texto">Selecciona documentos para ver acciones</span>
+            <span class="flecha" aria-hidden="true">▾</span>
+          </button>
+          <div class="menu-acciones oculto" id="menu-acciones" role="menu" aria-label="Acciones sobre los documentos seleccionados">
+            <div class="menu-idioma" id="selector-idioma-resultado"></div>
+            <button type="button" class="item-accion" role="menuitem" data-accion="resumir">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3.5h7l3 3V16.5H5z"/><path d="M12 3.5v3h3"/><path d="M7.5 10h5M7.5 12.5h5"/></svg>
+              <span><b>Resumir</b><small>un resumen por documento</small></span>
+            </button>
+            <button type="button" class="item-accion" role="menuitem" data-accion="sintetizar">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h5M4 10h5M4 15h5"/><path d="M12 10h4"/><path d="M9 5l3 5-3 5"/></svg>
+              <span><b>Sintetizar</b><small>un solo texto que cruza los documentos</small></span>
+            </button>
+            <button type="button" class="item-accion" role="menuitem" data-accion="preguntas">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="10" r="7"/><path d="M8 8a2 2 0 1 1 3 1.7c-.7.4-1 .8-1 1.5"/><path d="M10 14h.01"/></svg>
+              <span><b>Lluvia de preguntas</b><small>qué preguntarle a estos documentos</small></span>
+            </button>
+            <button type="button" class="item-accion" role="menuitem" data-accion="ideas">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 14h6"/><path d="M8 16.5h4"/><path d="M6 8.5a4 4 0 1 1 8 0c0 1.8-1.3 2.6-2 4H8c-.7-1.4-2-2.2-2-4z"/></svg>
+              <span><b>Lluvia de ideas</b><small>qué se podría hacer con esto</small></span>
+            </button>
+            <button type="button" class="item-accion" role="menuitem" data-accion="traducir" aria-controls="submenu-traducir">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h8"/><path d="M7 3v2"/><path d="M4 12c2.5-1 4.5-3.5 5-7"/><path d="M6 8c1 2 2.5 3.5 4 4"/><path d="M11 16l3-7 3 7"/><path d="M12.2 14h3.6"/></svg>
+              <span><b>Traducir</b><small>el documento completo, a otro idioma</small></span>
+            </button>
+            <div class="submenu-traducir oculto" id="submenu-traducir">
+              <div id="selector-idiomas-documentos"></div>
+              <button type="button" id="boton-traducir-documentos" class="boton-primario">Traducir documentos</button>
+            </div>
+          </div>
+        </div>
       </details>
 
       <div class="lista-conversaciones" id="lista-conversaciones"></div>
@@ -741,7 +1162,15 @@
       </div>
 
       <div class="barra-entrada">
+        <div id="barra-traducir" class="barra-traducir oculto">
+          <div id="selector-idiomas-chat"></div>
+          <p>Modo traducir: lo que envíes se traduce, no se busca en la base.</p>
+        </div>
         <form id="formulario" class="input-pill">
+          <button type="button" id="boton-modo-traducir" class="boton-modo-traducir" aria-pressed="false"
+                  title="Modo traducir: traduce lo que escribas en vez de buscarlo" aria-label="Modo traducir">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h8"/><path d="M7 3v2"/><path d="M4 12c2.5-1 4.5-3.5 5-7"/><path d="M6 8c1 2 2.5 3.5 4 4"/><path d="M11 16l3-7 3 7"/><path d="M12.2 14h3.6"/></svg>
+          </button>
           <input id="pregunta" type="text" placeholder="Pregunta algo, por ejemplo: ¿Cómo se despliega el servicio?" autocomplete="off" required>
           <button type="submit" id="boton-preguntar" aria-label="Preguntar">➤</button>
         </form>
@@ -778,6 +1207,7 @@
 
   <script src="ayuda.js"></script>
   <script src="historial-db.js"></script>
+  <script src="idiomas.js"></script>
   <script src="app.js"></script>
   <script>
     kbAyuda.inicializar("boton-ayuda", "modal-ayuda", "contenido-ayuda");
