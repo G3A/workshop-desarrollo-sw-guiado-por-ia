@@ -198,6 +198,7 @@ class TraductorDeDocumentosTest {
     TraduccionDeDocumentos resultado = traductor.traducir(List.of(1L), PROYECTO, "es", "en");
 
     assertThatThrownBy(() -> resultado.eventos().blockLast())
+        .isInstanceOf(Acciones.ServidorOcupado.class)
         .hasMessageContaining(AccionesSobreDocumentos.MENSAJE_SERVIDOR_OCUPADO);
     verify(redactor, never()).traducir(any(), any(), any());
   }

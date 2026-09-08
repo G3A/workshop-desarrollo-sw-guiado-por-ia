@@ -2,6 +2,8 @@ package co.g3a.baseconocimiento.llm;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.openai.errors.OpenAIIoException;
+import java.io.IOException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -44,6 +46,19 @@ class RedactorOpenAiTest {
     assertThat(RedactorOpenAi.instruccionIdioma("pt")).contains("portugués");
     assertThat(RedactorOpenAi.instruccionIdioma("es")).contains("español");
     assertThat(RedactorOpenAi.instruccionIdioma("und")).contains("español");
+  }
+
+  @Test
+  @DisplayName(
+      "Solo una falla del cliente de OpenAI sale de preguntar/idear; un JSON roto es resultado vacio")
+  void distingueInfraestructuraDeFormato() {
+    var delSdk = new OpenAIIoException("Request failed", new IOException("timeout"));
+
+    assertThat(RedactorOpenAi.esFalloDeInfraestructura(delSdk)).isTrue();
+    assertThat(RedactorOpenAi.esFalloDeInfraestructura(new RuntimeException("envuelta", delSdk)))
+        .isTrue();
+    assertThat(RedactorOpenAi.esFalloDeInfraestructura(new RuntimeException("JSON truncado")))
+        .isFalse();
   }
 
   @Test

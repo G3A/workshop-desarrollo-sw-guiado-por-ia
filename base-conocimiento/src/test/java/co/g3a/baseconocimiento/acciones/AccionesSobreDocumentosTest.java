@@ -124,6 +124,36 @@ class AccionesSobreDocumentosTest {
   }
 
   @Test
+  @DisplayName(
+      "Armar el resultado no toma el cupo: se toma al suscribirse (hallazgo de la revision)")
+  void elCupoSeTomaAlSuscribirse() {
+    SeccionesRepositorio repo = mock(SeccionesRepositorio.class);
+    when(repo.seccionesDe(any(), any())).thenReturn(List.of(seccion(1, 10, "A", "texto a")));
+    Redactor redactor = mock(Redactor.class);
+    when(redactor.resumir(anyString(), anyString())).thenReturn(Flux.just("ok"));
+    when(redactor.preguntar(anyString(), anyString()))
+        .thenReturn(new Redactor.Preguntas(List.of()));
+    var cupo = new CupoDeAcciones(PROPIEDADES);
+    var acciones = new AccionesSobreDocumentos(repo, redactor, cupo, PROPIEDADES);
+
+    // Un cliente que corta antes de leer el cuerpo: el resultado se arma y nadie lo lee.
+    acciones.redactar(Tipo.RESUMIR, List.of(10L), PROYECTO, "es");
+    acciones.estructurar(Tipo.PREGUNTAS, List.of(10L), PROYECTO, "es");
+    verifyNoInteractions(redactor);
+    assertThat(cupo.intentarTomar()).as("nadie se suscribio: el cupo sigue libre").isTrue();
+    cupo.liberar();
+
+    // Y el cupo se mira al suscribirse, no al armar: el mismo resultado da el mensaje
+    // fijo con el cupo ocupado y el texto real cuando vuelve a estar libre.
+    ResultadoEnStreaming resultado = acciones.redactar(Tipo.RESUMIR, List.of(10L), PROYECTO, "es");
+    assertThat(cupo.intentarTomar()).isTrue();
+    assertThat(String.join("", resultado.texto().collectList().block()))
+        .isEqualTo(AccionesSobreDocumentos.MENSAJE_SERVIDOR_OCUPADO);
+    cupo.liberar();
+    assertThat(String.join("", resultado.texto().collectList().block())).isEqualTo("ok");
+  }
+
+  @Test
   @DisplayName("El cupo vuelve aunque el Flux termine en error")
   void cupoVuelveConFluxError() {
     SeccionesRepositorio repo = mock(SeccionesRepositorio.class);

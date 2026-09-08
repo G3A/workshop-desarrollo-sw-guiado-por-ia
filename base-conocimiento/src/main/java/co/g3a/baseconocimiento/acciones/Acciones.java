@@ -92,6 +92,20 @@ public interface Acciones {
   record SinResultado(String mensaje) {}
 
   /**
+   * El cupo de acciones esta agotado. Las acciones de prosa y las estructuradas lo dicen con un
+   * texto fijo en su lugar (ver {@link SinResultado}); las traducciones no tienen ese lugar — sus
+   * eventos van por documento — y lo lanzan dentro del flujo, para que el adaptador lo muestre con
+   * el mismo mensaje y sin disfrazarlo de corte.
+   */
+  final class ServidorOcupado extends RuntimeException {
+    private static final long serialVersionUID = 1L;
+
+    public ServidorOcupado(String mensaje) {
+      super(mensaje);
+    }
+  }
+
+  /**
    * Lo que pasa mientras se traducen documentos, en un solo flujo ordenado para que el adaptador lo
    * mapee a eventos SSE sin coordinar dos streams. Por documento: {@link IdiomaDetectado} (solo si
    * el origen era «detectar»), luego {@link Omitido} o una secuencia de {@link Progreso} y {@link

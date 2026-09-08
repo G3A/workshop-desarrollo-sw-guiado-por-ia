@@ -1,5 +1,6 @@
 package co.g3a.baseconocimiento.llm;
 
+import com.openai.errors.OpenAIException;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -75,10 +76,10 @@ class RedactorOpenAi implements Redactor {
           + """
 
             Propone las preguntas que estos documentos permiten responder: las que alguien
-            que los lee por primera vez haria para entenderlos y usarlos. Agrupalas en dos a
-            cuatro temas. Cada pregunta debe poder responderse con el contenido del documento que
-            cita: "fuente" es el numero n del documento [n] que la responde. Entre seis y doce
-            preguntas en total, formuladas de forma completa y concreta.
+            que los lee por primera vez haria para entenderlos y usarlos. Agrupalas en dos o
+            tres temas. Cada pregunta debe poder responderse con el contenido del documento que
+            cita: "fuente" es el numero n del documento [n] que la responde. Entre cuatro y ocho
+            preguntas en total, cortas, formuladas de forma completa y concreta.
             """;
 
   private static final String SISTEMA_IDEAS =
@@ -104,9 +105,11 @@ class RedactorOpenAi implements Redactor {
   private static final String SISTEMA_DETECTAR =
       """
             Identificas en que idioma esta escrito un texto. Responde SOLO el codigo ISO 639-1 de
-            dos letras del idioma predominante (por ejemplo "es", "en", "pt"). Si el texto no tiene
-            suficiente lenguaje natural para saberlo (solo codigo, numeros o simbolos), responde
-            "und".
+            dos letras del idioma predominante (por ejemplo "es", "en", "pt"). Decide por el
+            idioma de las FRASES (articulos, verbos, conectores), no por los nombres tecnicos,
+            comandos, rutas ni palabras en ingles sueltas que un texto tecnico en otro idioma
+            suele traer. Si el texto no tiene suficiente lenguaje natural para saberlo (solo
+            codigo, numeros o simbolos), responde "und".
             """;
 
   /** Lo que un modelo chico de verdad devuelve cuando se le pide un codigo de idioma. */
@@ -250,13 +253,30 @@ class RedactorOpenAi implements Redactor {
               .call()
               .entity(Preguntas.class, spec -> spec.useProviderStructuredOutput());
       return preguntas == null || preguntas.temas() == null ? new Preguntas(List.of()) : preguntas;
-    } catch (Exception e) {
+    } catch (RuntimeException e) {
+      if (esFalloDeInfraestructura(e)) {
+        throw e;
+      }
       // Igual que VerificadorGroundingOpenAi: un JSON truncado o invalido no es un
       // resultado, y la UI dice "el modelo no devolvio un resultado valido" en vez
       // de mostrar algo a medias.
       log.warn("El modelo no devolvio preguntas validas: {}", e.toString());
       return new Preguntas(List.of());
     }
+  }
+
+  /**
+   * Un JSON truncado o invalido es un resultado vacio; una falla del cliente (modelo sin descargar,
+   * Ollama caido, timeout) no lo es: tiene que llegar al adaptador con su pista, la misma que da
+   * resumir. Se recorre la cadena de causas porque Spring AI puede envolver la del SDK.
+   */
+  static boolean esFalloDeInfraestructura(Throwable error) {
+    for (Throwable t = error; t != null; t = t.getCause() == t ? null : t.getCause()) {
+      if (t instanceof OpenAIException) {
+        return true;
+      }
+    }
+    return false;
   }
 
   @Override
@@ -270,7 +290,10 @@ class RedactorOpenAi implements Redactor {
               .call()
               .entity(Ideas.class, spec -> spec.useProviderStructuredOutput());
       return ideas == null || ideas.ideas() == null ? new Ideas(List.of()) : ideas;
-    } catch (Exception e) {
+    } catch (RuntimeException e) {
+      if (esFalloDeInfraestructura(e)) {
+        throw e;
+      }
       log.warn("El modelo no devolvio ideas validas: {}", e.toString());
       return new Ideas(List.of());
     }

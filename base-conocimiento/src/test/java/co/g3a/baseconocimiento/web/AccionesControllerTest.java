@@ -299,6 +299,47 @@ class AccionesControllerTest {
     verify(acciones, never()).traducirTexto(any(), any(), any());
   }
 
+  @Test
+  @DisplayName("Un idioma de tres letras o que el JDK no conoce es 400, como promete el mensaje")
+  void idiomaSoloIso6391() throws Exception {
+    mockMvc
+        .perform(get("/api/acciones/resumir").param("documentos", "1").param("idioma", "ukr"))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().string(org.hamcrest.Matchers.containsString("dos letras")));
+    mockMvc
+        .perform(
+            get("/api/acciones/traducir-documentos")
+                .param("documentos", "1")
+                .param("destino", "xx"))
+        .andExpect(status().isBadRequest());
+    verify(acciones, never()).redactar(any(), any(), any(), any());
+    verify(acciones, never()).traducirDocumentos(any(), any(), any(), any());
+  }
+
+  @Test
+  @DisplayName("El cupo agotado en una traduccion llega con su mensaje tal cual, no como corte")
+  void cupoAgotadoEnUnaTraduccion() throws Exception {
+    when(acciones.traducirDocumentos(any(), any(), any(), any()))
+        .thenReturn(
+            new TraduccionDeDocumentos(
+                "Traducción de 1 documento: a.md",
+                List.of(new DocumentoATraducir(1L, "a.md", "file:///a", 2)),
+                Flux.error(
+                    new Acciones.ServidorOcupado(
+                        "El servidor ya esta atendiendo el maximo de acciones. Espera un momento."))));
+
+    String cuerpo =
+        sse(
+            get("/api/acciones/traducir-documentos")
+                .param("documentos", "1")
+                .param("destino", "en"));
+
+    assertThat(cuerpo)
+        .contains("event:error-servidor")
+        .contains("Espera un momento")
+        .doesNotContain("interrumpio");
+  }
+
   private String sse(
       org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder peticion)
       throws Exception {
