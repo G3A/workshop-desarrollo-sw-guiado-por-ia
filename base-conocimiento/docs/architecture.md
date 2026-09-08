@@ -174,12 +174,15 @@ depender de él.
 **El presupuesto de contexto es la decisión central.** `PresupuestoDeContexto` reparte
 `kb.acciones.max-caracteres-contexto` (7000 por defecto, calibrado para `num_ctx` 4096 del perfil
 Bonsai descontando prompt y salida) en partes iguales entre los documentos, del más corto al más
-largo, redistribuyendo lo que un documento corto no usa; cada documento entra en orden de `ord`
-hasta su cuota, y si ni su primera sección cabe entra el comienzo de esa sección recortado. Lo
-que no entra **se declara**, nunca se esconde: en el contexto (una línea que el prompt exige
-reflejar en la prosa) y en `CoberturaDocumento` (`seccionesIncluidas/seccionesTotales`,
-`primeraRecortada`), que la UI muestra como insignia por documento y aviso de «parcial». Un id
-que no existe en el proyecto queda en la cobertura con `0/0` («no indexado») en vez de
+largo, redistribuyendo lo que un documento corto no usa. Un documento que cabe en su cuota entra
+tal cual; uno que no **se lee entero por pasadas** antes de la acción (sub-issue #60): sus
+secciones se parten en tramos de `kb.acciones.max-caracteres-lectura` (10000), cada tramo se
+condensa con el LLM en notas de hasta 1200 caracteres, y si las notas juntas todavía no caben se
+agrupan y se vuelven a condensar hasta que quepan. Nada se recorta. El número de pasadas se sabe
+de antemano (tramos y grupos son deterministas) y viaja en `CoberturaDocumento`
+(`seccionesTotales`, `pasadas`); cada pasada hecha se anuncia con un evento `lectura`, que la UI
+pinta como progreso por documento, y el contexto final dice que lo que sigue son notas de lectura.
+Un id que no existe en el proyecto queda en la cobertura con `0/0` («no indexado») en vez de
 desaparecer. Traducir no usa el presupuesto: parte cada sección en bloques de ≤1500 caracteres por
 párrafos, deja pasar los `code_block` sin LLM, detecta el idioma por documento de forma perezosa
 y omite (y lo dice) el documento cuyo origen ya es el destino.

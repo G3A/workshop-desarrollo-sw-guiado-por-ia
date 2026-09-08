@@ -7,7 +7,7 @@ import co.g3a.baseconocimiento.acciones.Acciones.EventoTraduccion.Omitido;
 import co.g3a.baseconocimiento.acciones.Acciones.EventoTraduccion.Progreso;
 import co.g3a.baseconocimiento.acciones.Acciones.EventoTraduccion.Texto;
 import co.g3a.baseconocimiento.acciones.Acciones.TraduccionDeDocumentos;
-import co.g3a.baseconocimiento.acciones.PresupuestoDeContexto.DocumentoRecortado;
+import co.g3a.baseconocimiento.acciones.PresupuestoDeContexto.DocumentoPlanificado;
 import co.g3a.baseconocimiento.acciones.SeccionesRepositorio.Seccion;
 import co.g3a.baseconocimiento.compartido.Dominio.ProyectoId;
 import co.g3a.baseconocimiento.llm.Redactor;
@@ -20,8 +20,8 @@ import reactor.core.publisher.Mono;
 
 /**
  * Traduce documentos completos, bloque a bloque. A diferencia de las acciones que redactan, aqui no
- * hay presupuesto de contexto que recorte: cada bloque es una llamada al LLM con su propia ventana,
- * asi que se recorre todo el documento y lo unico que se declara es el progreso.
+ * hay presupuesto de contexto ni pasadas de lectura: cada bloque es una llamada al LLM con su
+ * propia ventana, asi que se recorre todo el documento y lo unico que se declara es el progreso.
  *
  * <p>Un bloque es una seccion entera si cabe en {@link #LARGO_BLOQUE}, o sus parrafos agrupados
  * hasta ese largo si no (hallazgo 12 de la revision adversarial: una seccion de 4000 caracteres en
@@ -41,7 +41,7 @@ class TraductorDeDocumentos {
 
   /** Sin tope: la traduccion recorre el documento entero, el reparto solo ordena y agrupa. */
   private static final PresupuestoDeContexto SIN_PRESUPUESTO =
-      new PresupuestoDeContexto(Integer.MAX_VALUE);
+      new PresupuestoDeContexto(Integer.MAX_VALUE, Integer.MAX_VALUE);
 
   private final SeccionesRepositorio repo;
   private final Redactor redactor;
@@ -67,7 +67,7 @@ class TraductorDeDocumentos {
       List<Long> documentos, ProyectoId proyecto, String origen, String destino) {
     List<Long> unicos = new ArrayList<>(new LinkedHashSet<>(documentos));
     List<Seccion> secciones = repo.seccionesDe(unicos, proyecto.valor());
-    List<DocumentoRecortado> ordenados = SIN_PRESUPUESTO.recortar(unicos, secciones);
+    List<DocumentoPlanificado> ordenados = SIN_PRESUPUESTO.planificar(unicos, secciones);
     String etiqueta = PresupuestoDeContexto.etiqueta("Traducción de", ordenados);
 
     List<DocumentoEnBloques> enBloques =
@@ -78,8 +78,8 @@ class TraductorDeDocumentos {
                         d.documentoId(),
                         d.titulo(),
                         d.uri(),
-                        partir(d.incluidas()),
-                        muestraDe(d.incluidas())))
+                        partir(d.secciones()),
+                        muestraDe(d.secciones())))
             .toList();
     List<DocumentoATraducir> descripcion =
         enBloques.stream()

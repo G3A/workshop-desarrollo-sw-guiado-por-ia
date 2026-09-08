@@ -52,8 +52,9 @@ con ellos que no son una pregunta: **resumir** (un resumen por documento), **sin
 texto que cruza los documentos), **lluvia de preguntas**, **lluvia de ideas** y **traducir** (el
 documento completo, a cualquier idioma, con descarga en Markdown). El mismo traductor sirve dentro
 del chat: un modo traducir en la barra de entrada y «Traducir» sobre cualquier turno. Cada
-resultado es un turno más de la conversación y muestra cuánto de cada documento entró de verdad al
-modelo — un documento largo entra recortado y se marca «parcial», nunca en silencio.
+resultado es un turno más de la conversación y muestra cómo entró cada documento al modelo — un
+documento largo no se recorta: se lee entero por pasadas (notas por tramo, condensadas hasta que
+caben) y la cobertura dice cuántas fueron, con progreso mientras avanza.
 
 Todo eso vive en un módulo **independiente del RAG**: comparte solo el vault indexado y el cliente
 del LLM. Detalle en

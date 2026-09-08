@@ -19,7 +19,8 @@ import reactor.core.publisher.Flux;
  */
 class TraductorDeTextoTest {
 
-  private static final AccionesPropiedades PROPIEDADES = new AccionesPropiedades(10, 7000, 8000, 1);
+  private static final AccionesPropiedades PROPIEDADES =
+      new AccionesPropiedades(10, 7000, 8000, 1, 10000);
 
   @Test
   @DisplayName("Con origen nulo detecta una sola vez y traduce con lo detectado")
@@ -92,7 +93,7 @@ class TraductorDeTextoTest {
 
     var sinCupo =
         new TraductorDeTexto(
-            redactor, new CupoDeAcciones(new AccionesPropiedades(10, 7000, 8000, 0)));
+            redactor, new CupoDeAcciones(new AccionesPropiedades(10, 7000, 8000, 0, 10000)));
     assertThatThrownBy(() -> sinCupo.traducir("hola", "es", "en").texto().blockLast())
         .isInstanceOf(Acciones.ServidorOcupado.class)
         .hasMessageContaining(AccionesSobreDocumentos.MENSAJE_SERVIDOR_OCUPADO);

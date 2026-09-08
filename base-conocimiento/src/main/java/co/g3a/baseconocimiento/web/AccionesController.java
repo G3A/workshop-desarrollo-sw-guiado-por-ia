@@ -2,10 +2,10 @@ package co.g3a.baseconocimiento.web;
 
 import co.g3a.baseconocimiento.acciones.Acciones;
 import co.g3a.baseconocimiento.acciones.Acciones.CoberturaDocumento;
+import co.g3a.baseconocimiento.acciones.Acciones.EventoAccion;
 import co.g3a.baseconocimiento.acciones.Acciones.EventoTraduccion;
 import co.g3a.baseconocimiento.acciones.Acciones.Limites;
-import co.g3a.baseconocimiento.acciones.Acciones.ResultadoEnStreaming;
-import co.g3a.baseconocimiento.acciones.Acciones.ResultadoEstructurado;
+import co.g3a.baseconocimiento.acciones.Acciones.ResultadoDeAccion;
 import co.g3a.baseconocimiento.acciones.Acciones.TextoTraducido;
 import co.g3a.baseconocimiento.acciones.Acciones.Tipo;
 import co.g3a.baseconocimiento.acciones.Acciones.TraduccionDeDocumentos;
@@ -79,9 +79,10 @@ class AccionesController {
   }
 
   /**
-   * Resumir y sintetizar: {@code etiqueta}, {@code cobertura}, {@code citas}, {@code token}×n,
-   * {@code fin}. Preguntas e ideas: lo mismo pero un unico {@code resultado} (el JSON estructurado)
-   * en vez de tokens.
+   * {@code etiqueta}, {@code cobertura}, {@code citas}, luego {@code lectura}×n (una por pasada
+   * sobre cada documento largo; ninguna si todos caben), y la salida: {@code token}×n para resumir
+   * y sintetizar, un unico {@code resultado} (el JSON estructurado) para preguntas e ideas; {@code
+   * fin}.
    *
    * @param tipo {@code resumir}, {@code sintetizar}, {@code preguntas} o {@code ideas}; otro es 404
    *     (con {@code KB_API_TOKEN} configurado, 401 antes: el filtro solo exceptua estas cuatro
@@ -108,21 +109,19 @@ class AccionesController {
     }
     ProyectoId proyecto = ParametrosWeb.proyectoDe(projectId);
 
-    Flux<ServerSentEvent<Object>> cuerpo;
-    if (tipoAccion == Tipo.RESUMIR || tipoAccion == Tipo.SINTETIZAR) {
-      ResultadoEnStreaming resultado = acciones.redactar(tipoAccion, ids, proyecto, codigo);
-      cuerpo =
-          Flux.concat(
-              cabecera(resultado.etiqueta(), resultado.cobertura(), resultado.citas()),
-              resultado.texto().map(token -> json("token", token)));
-    } else {
-      ResultadoEstructurado resultado = acciones.estructurar(tipoAccion, ids, proyecto, codigo);
-      cuerpo =
-          Flux.concat(
-              cabecera(resultado.etiqueta(), resultado.cobertura(), resultado.citas()),
-              resultado.resultado().map(objeto -> json("resultado", objeto)).flux());
-    }
-    return stream(cuerpo);
+    ResultadoDeAccion resultado = acciones.ejecutar(tipoAccion, ids, proyecto, codigo);
+    return stream(
+        Flux.concat(
+            cabecera(resultado.etiqueta(), resultado.cobertura(), resultado.citas()),
+            resultado.eventos().map(AccionesController::eventoDe)));
+  }
+
+  private static ServerSentEvent<Object> eventoDe(EventoAccion evento) {
+    return switch (evento) {
+      case EventoAccion.Lectura e -> json("lectura", e);
+      case EventoAccion.Token e -> json("token", e.fragmento());
+      case EventoAccion.Resultado e -> json("resultado", e.valor());
+    };
   }
 
   /**

@@ -43,11 +43,15 @@ dependa de `orquestacion`, `recuperacion`, `ingesta`, `modelos` o los adaptadore
 
 Dos decisiones derivadas que también cierran aquí:
 
-- **El presupuesto de contexto se declara, nunca se esconde.** `PresupuestoDeContexto` reparte un
-  tope de caracteres (7000 por defecto, calibrado para 4096 tokens descontando prompt y salida)
-  en partes iguales con redistribución; lo que no entra se marca en el contexto y en la cobertura
-  que ve la UI, incluida una primera sección recortada, que no cuenta como cobertura completa. Es
-  la misma regla de ADR-0008 («nunca ocultar la falta de evidencia») aplicada a lo que no se leyó.
+- **Todo documento elegido entra entero; lo que se declara es cómo.** `PresupuestoDeContexto`
+  reparte un tope de caracteres (7000 por defecto, calibrado para 4096 tokens descontando prompt y
+  salida) en partes iguales con redistribución. El que cabe entra tal cual; el que no se lee por
+  pasadas (tramos condensados en notas con el LLM, y las notas vueltas a condensar hasta que
+  quepan), y la cobertura dice cuántas pasadas son, con progreso mientras corre. La primera
+  versión recortaba el documento a lo que cabía y avisaba «parcial»; con un solo documento largo
+  el aviso pedía algo imposible y la acción no lo cubría (sub-issue #60). Es la misma regla de
+  ADR-0008 («nunca ocultar la falta de evidencia») llevada a leerlo todo en vez de declarar lo que
+  no se leyó.
 - **Preguntas e ideas van con salida estructurada**, sin token a token, para que la UI pinte desde
   datos (botón «Preguntar» por pregunta, tarjetas por idea) en vez de depender de que un modelo de
   4B respete un formato de listas.

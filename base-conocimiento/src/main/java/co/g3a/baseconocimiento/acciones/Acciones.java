@@ -36,26 +36,16 @@ public interface Acciones {
   record Limites(int maxDocumentos, int maxCaracteresTexto) {}
 
   /**
-   * Cuanto de cada documento elegido entro de verdad al contexto del LLM. El modelo local tiene un
-   * contexto acotado, asi que un documento largo entra recortado a sus primeras secciones: esto lo
-   * dice en vez de esconderlo. {@code 0/0} significa que el id no existe en el proyecto (o no tiene
-   * secciones indexadas todavia).
+   * Como entra cada documento elegido al contexto del LLM. Todo documento indexado entra ENTERO: el
+   * que cabe en su cuota, tal cual; el que no, leido por pasadas (sub-issue #60): cada tramo se
+   * condensa en notas con el LLM antes de la accion, y {@code pasadas} dice cuantas llamadas son —
+   * se sabe de antemano, asi la UI lo muestra antes de empezar y avanza con {@link
+   * EventoAccion.Lectura}. {@code pasadas == 0} es un documento que entro sin condensar. {@code
+   * seccionesTotales == 0} significa que el id no existe en el proyecto (o no tiene secciones
+   * indexadas todavia).
    */
   record CoberturaDocumento(
-      long documentoId,
-      String titulo,
-      String uri,
-      int seccionesIncluidas,
-      int seccionesTotales,
-      boolean primeraRecortada) {
-
-    /**
-     * {@code false} tambien cuando entro una sola seccion pero cortada: «1 de 1» con la mitad del
-     * texto afuera no es cobertura completa.
-     */
-    public boolean completa() {
-      return seccionesTotales > 0 && seccionesIncluidas >= seccionesTotales && !primeraRecortada;
-    }
+      long documentoId, String titulo, String uri, int seccionesTotales, int pasadas) {
 
     public boolean indexado() {
       return seccionesTotales > 0;
@@ -63,31 +53,48 @@ public interface Acciones {
   }
 
   /**
-   * Resumir y sintetizar: la cobertura y las citas (una por documento, numeradas en el orden en que
-   * la persona los eligio) estan disponibles de inmediato; el texto llega token a token.
+   * Lo que pasa mientras corre una accion, en un solo flujo ordenado (misma forma que {@link
+   * EventoTraduccion}): primero una {@link Lectura} por cada pasada sobre un documento largo, luego
+   * la salida — {@link Token}×n para resumir y sintetizar, un unico {@link Resultado} para
+   * preguntas e ideas (salida estructurada, decision 11 del issue #38).
+   */
+  sealed interface EventoAccion
+      permits EventoAccion.Lectura, EventoAccion.Token, EventoAccion.Resultado {
+
+    /** Termino la pasada {@code pasadaActual} de {@code pasadasTotales} sobre el documento. */
+    record Lectura(long documentoId, int pasadaActual, int pasadasTotales)
+        implements EventoAccion {}
+
+    /** Un fragmento de prosa, tal como lo emite el LLM. */
+    record Token(String fragmento) implements EventoAccion {}
+
+    /**
+     * El record que devuelve {@code llm} ({@code Preguntas} o {@code Ideas}), o un {@link
+     * SinResultado}. Viaja como {@code Object} para que el adaptador lo serialice sin depender de
+     * {@code llm}. Cada pregunta o idea trae la cita como el entero {@code n} del documento {@code
+     * [n]} de la cobertura.
+     */
+    record Resultado(Object valor) implements EventoAccion {}
+  }
+
+  /**
+   * Una accion sobre documentos: la etiqueta, la cobertura y las citas (una por documento,
+   * numeradas en el orden en que la persona los eligio) estan disponibles de inmediato; los eventos
+   * corren recien al suscribirse.
    *
    * @param etiqueta lo que la UI muestra en la burbuja («Resumen de 3 documentos: a, b, c»)
    */
-  record ResultadoEnStreaming(
-      String etiqueta, List<CoberturaDocumento> cobertura, List<Cita> citas, Flux<String> texto) {}
-
-  /**
-   * Preguntas e ideas: salida estructurada del LLM, sin token a token (decision 11 del issue #38).
-   * {@code resultado} es el record que devuelve {@code llm} ({@code Preguntas} o {@code Ideas});
-   * viaja como {@code Object} para que el adaptador lo serialice sin depender de {@code llm}. Cada
-   * pregunta o idea trae la cita como el entero {@code n} del documento {@code [n]} de la
-   * cobertura.
-   */
-  record ResultadoEstructurado(
+  record ResultadoDeAccion(
       String etiqueta,
       List<CoberturaDocumento> cobertura,
       List<Cita> citas,
-      Mono<Object> resultado) {}
+      Flux<EventoAccion> eventos) {}
 
   /**
-   * Lo que {@link ResultadoEstructurado#resultado()} emite cuando no hubo nada que estructurar
-   * (ningun documento existe, o el servidor esta ocupado): un mensaje fijo, no un error — es el
-   * equivalente del texto fijo que las acciones en streaming emiten en su lugar.
+   * Lo que una accion estructurada emite como {@link EventoAccion.Resultado} cuando no hubo nada
+   * que estructurar (ningun documento existe, o el servidor esta ocupado): un mensaje fijo, no un
+   * error — el equivalente del {@link EventoAccion.Token} fijo que las acciones de prosa emiten en
+   * su lugar.
    */
   record SinResultado(String mensaje) {}
 
@@ -151,17 +158,12 @@ public interface Acciones {
   Limites limites();
 
   /**
-   * Resumir o sintetizar (solo {@link Tipo#RESUMIR} y {@link Tipo#SINTETIZAR}; los otros dos tipos
-   * lanzan {@link IllegalArgumentException} porque su salida es estructurada).
+   * Resumir, sintetizar, preguntas o ideas sobre los documentos elegidos, enteros.
    *
-   * @param idioma codigo ISO 639-1 del idioma en que se redacta el resultado
+   * @param idioma codigo ISO 639-1 del idioma en que se redacta el resultado (y las notas de
+   *     lectura de los documentos largos)
    */
-  ResultadoEnStreaming redactar(
-      Tipo tipo, List<Long> documentos, ProyectoId proyecto, String idioma);
-
-  /** Preguntas o ideas (solo {@link Tipo#PREGUNTAS} y {@link Tipo#IDEAS}). */
-  ResultadoEstructurado estructurar(
-      Tipo tipo, List<Long> documentos, ProyectoId proyecto, String idioma);
+  ResultadoDeAccion ejecutar(Tipo tipo, List<Long> documentos, ProyectoId proyecto, String idioma);
 
   /**
    * @param origen codigo ISO 639-1, o {@code null} para detectarlo por documento

@@ -1383,24 +1383,48 @@
     fuente.addEventListener("cobertura", (evento) => {
       renderCobertura(turno, JSON.parse(evento.data));
     });
+    // Mientras haya documentos largos por leer, el contador sigue y el progreso va en
+    // "Documentos usados" (pasada k de M); "Redactando" recien con la primera salida.
+    let redactando = false;
+    const marcarRedactando = () => {
+      if (redactando) {
+        return;
+      }
+      redactando = true;
+      detenerContador();
+      turno.estado.textContent = definicion.redactando;
+    };
     fuente.addEventListener("citas", (evento) => {
       const citas = JSON.parse(evento.data);
       turno.citasDatos = citas;
       turno.citas.innerHTML = citas.length
         ? citas.map((c, i) => itemCita(c, i + 1)).join("")
         : "<li>Sin citas.</li>";
-      detenerContador();
-      turno.estado.textContent = definicion.redactando;
+      if (!turno.coberturaDatos.some((c) => c.pasadas > 0)) {
+        marcarRedactando();
+      }
+    });
+    fuente.addEventListener("lectura", (evento) => {
+      const lectura = JSON.parse(evento.data);
+      const documento = turno.coberturaDatos.find((c) => c.documentoId === lectura.documentoId);
+      if (documento) {
+        documento.pasadaActual = lectura.pasadaActual;
+        documento.pasadas = lectura.pasadasTotales;
+        renderCobertura(turno, turno.coberturaDatos);
+      }
     });
     fuente.addEventListener("token", (evento) => {
+      marcarRedactando();
       turno.respuesta.textContent += JSON.parse(evento.data);
     });
     fuente.addEventListener("resultado", (evento) => {
+      marcarRedactando();
       renderEstructurado(turno, definicion.tipo, JSON.parse(evento.data));
     });
     fuente.addEventListener("fin", () => {
       const duracionMs = Date.now() - inicioTurno;
       cerrarStreaming(conversacionId, turno, detenerContador, duracionMs);
+      renderCobertura(turno, turno.coberturaDatos);
       guardarTurno(etiqueta, proyecto, turno, false, null, conversacionId, duracionMs);
     });
     fuente.addEventListener("error-servidor", (evento) => {
@@ -1420,9 +1444,13 @@
   }
 
   /**
-   * "Documentos usados": cuanto de cada documento entro de verdad al modelo.
-   * Los indexados llevan el mismo [n] que las citas; los que no existen en el
-   * proyecto quedan al final como "no indexado" en vez de desaparecer.
+   * "Documentos usados": como entro cada documento al modelo. Todo documento
+   * indexado entra entero: tal cual si cabe, o leido por pasadas (notas por
+   * tramo) si no, con el progreso pasada a pasada mientras corre. Los indexados
+   * llevan el mismo [n] que las citas; los que no existen en el proyecto quedan
+   * al final como "no indexado" en vez de desaparecer. Los turnos guardados por
+   * la version anterior traen seccionesIncluidas/primeraRecortada en vez de
+   * pasadas y se siguen mostrando como entonces.
    */
   function renderCobertura(turno, cobertura) {
     turno.coberturaDatos = cobertura || [];
@@ -1434,8 +1462,8 @@
       turno.cobertura.innerHTML = "";
       return;
     }
+    const terminado = turno.estado.classList.contains("completado") || turno.estado.classList.contains("error");
     let n = 0;
-    const parciales = [];
     const filas = turno.coberturaDatos
       .map((c) => {
         const indexado = c.seccionesTotales > 0;
@@ -1451,29 +1479,25 @@
           : (uri
             ? `<a class="titulo-documento" href="${escaparHtml(uri)}" target="_blank" rel="noopener">${titulo}</a>`
             : `<span class="titulo-documento">${titulo}</span>`);
-        const completa = c.seccionesIncluidas >= c.seccionesTotales && !c.primeraRecortada;
+        const secciones = c.seccionesTotales + (c.seccionesTotales === 1 ? " sección" : " secciones");
         let insignia;
-        if (completa) {
-          insignia = `<span class="insignia-cobertura completa">${c.seccionesTotales}/${c.seccionesTotales} secciones</span>`;
-        } else if (c.primeraRecortada) {
-          insignia = `<span class="insignia-cobertura parcial">comienzo de la sección 1 de ${c.seccionesTotales} · parcial</span>`;
+        if (c.pasadas === undefined) {
+          // Turno guardado por la version que recortaba.
+          const completa = c.seccionesIncluidas >= c.seccionesTotales && !c.primeraRecortada;
+          insignia = completa
+            ? `<span class="insignia-cobertura completa">${secciones} · entero</span>`
+            : `<span class="insignia-cobertura parcial">primeras ${c.seccionesIncluidas} de ${c.seccionesTotales} secciones · parcial</span>`;
+        } else if (!c.pasadas) {
+          insignia = `<span class="insignia-cobertura completa">${secciones} · entero</span>`;
+        } else if (terminado || (c.pasadaActual || 0) >= c.pasadas) {
+          insignia = `<span class="insignia-cobertura completa">${secciones} · leído completo en ${c.pasadas} pasadas</span>`;
         } else {
-          insignia = `<span class="insignia-cobertura parcial">primeras ${c.seccionesIncluidas} de ${c.seccionesTotales} secciones · parcial</span>`;
-        }
-        if (!completa) {
-          parciales.push(c);
+          insignia = `<span class="insignia-cobertura leyendo">${secciones} · leyendo: pasada ${c.pasadaActual || 0} de ${c.pasadas}</span>`;
         }
         return `<li><span class="numero">[${n}]</span>${enlace}${insignia}</li>`;
       })
       .join("");
-    const aviso = parciales.length
-      ? `<p class="aviso-parcial">${parciales.length} de ${turno.coberturaDatos.length} ` +
-        (parciales.length === 1
-          ? "documentos entró solo en parte: es más largo de lo que cabe en una sola lectura del modelo. Selecciónalo solo para cubrirlo entero."
-          : "documentos entraron solo en parte: son más largos de lo que cabe en una sola lectura del modelo. Selecciónalos de a uno para cubrirlos enteros.") +
-        "</p>"
-      : "";
-    turno.cobertura.innerHTML = "<h3>Documentos usados</h3><ol>" + filas + "</ol>" + aviso;
+    turno.cobertura.innerHTML = "<h3>Documentos usados</h3><ol>" + filas + "</ol>";
     turno.cobertura.classList.remove("oculto");
   }
 

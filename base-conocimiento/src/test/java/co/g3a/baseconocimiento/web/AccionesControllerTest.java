@@ -16,10 +16,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import co.g3a.baseconocimiento.acciones.Acciones;
 import co.g3a.baseconocimiento.acciones.Acciones.CoberturaDocumento;
 import co.g3a.baseconocimiento.acciones.Acciones.DocumentoATraducir;
+import co.g3a.baseconocimiento.acciones.Acciones.EventoAccion;
 import co.g3a.baseconocimiento.acciones.Acciones.EventoTraduccion;
 import co.g3a.baseconocimiento.acciones.Acciones.Limites;
-import co.g3a.baseconocimiento.acciones.Acciones.ResultadoEnStreaming;
-import co.g3a.baseconocimiento.acciones.Acciones.ResultadoEstructurado;
+import co.g3a.baseconocimiento.acciones.Acciones.ResultadoDeAccion;
 import co.g3a.baseconocimiento.acciones.Acciones.TextoTraducido;
 import co.g3a.baseconocimiento.acciones.Acciones.Tipo;
 import co.g3a.baseconocimiento.acciones.Acciones.TraduccionDeDocumentos;
@@ -50,7 +50,7 @@ class AccionesControllerTest {
   private static final Cita CITA =
       new Cita("file:///vault/documentos/a.md", "a.md", "extracto", "doc_section");
   private static final CoberturaDocumento COBERTURA =
-      new CoberturaDocumento(1L, "a.md", "file:///vault/documentos/a.md", 5, 20, false);
+      new CoberturaDocumento(1L, "a.md", "file:///vault/documentos/a.md", 20, 3);
 
   @Autowired MockMvc mockMvc;
 
@@ -71,15 +71,19 @@ class AccionesControllerTest {
   }
 
   @Test
-  @DisplayName("GET /api/acciones/resumir: etiqueta, cobertura, citas, tokens y fin, en ese orden")
+  @DisplayName(
+      "GET /api/acciones/resumir: etiqueta, cobertura, citas, lecturas, tokens y fin, en ese orden")
   void resumirTransmitePorSse() throws Exception {
-    when(acciones.redactar(eq(Tipo.RESUMIR), eq(List.of(1L, 2L)), any(), eq("en")))
+    when(acciones.ejecutar(eq(Tipo.RESUMIR), eq(List.of(1L, 2L)), any(), eq("en")))
         .thenReturn(
-            new ResultadoEnStreaming(
+            new ResultadoDeAccion(
                 "Resumen de 1 documento: a.md",
                 List.of(COBERTURA),
                 List.of(CITA),
-                Flux.just("Trata ", "de [1].")));
+                Flux.just(
+                    new EventoAccion.Lectura(1L, 1, 3),
+                    new EventoAccion.Token("Trata "),
+                    new EventoAccion.Token("de [1]."))));
 
     String cuerpo =
         sse(
@@ -89,15 +93,17 @@ class AccionesControllerTest {
                 .param("idioma", "en"));
 
     assertThat(cuerpo).contains("event:etiqueta").contains("data:\"Resumen de 1 documento: a.md\"");
-    assertThat(cuerpo).contains("event:cobertura").contains("\"seccionesIncluidas\":5");
-    assertThat(cuerpo).contains("\"primeraRecortada\":false");
+    assertThat(cuerpo).contains("event:cobertura").contains("\"seccionesTotales\":20");
+    assertThat(cuerpo).contains("\"pasadas\":3");
     assertThat(cuerpo).contains("event:citas").contains("a.md");
+    assertThat(cuerpo).contains("event:lectura").contains("\"pasadaActual\":1");
     assertThat(cuerpo).contains("data:\"Trata \"").contains("data:\"de [1].\"");
     assertThat(cuerpo.indexOf("event:etiqueta")).isLessThan(cuerpo.indexOf("event:cobertura"));
     assertThat(cuerpo.indexOf("event:cobertura")).isLessThan(cuerpo.indexOf("event:citas"));
-    assertThat(cuerpo.indexOf("event:citas")).isLessThan(cuerpo.indexOf("event:token"));
+    assertThat(cuerpo.indexOf("event:citas")).isLessThan(cuerpo.indexOf("event:lectura"));
+    assertThat(cuerpo.indexOf("event:lectura")).isLessThan(cuerpo.indexOf("event:token"));
     assertThat(cuerpo.indexOf("event:token")).isLessThan(cuerpo.indexOf("event:fin"));
-    verify(acciones).redactar(Tipo.RESUMIR, List.of(1L, 2L), new ProyectoId("default"), "en");
+    verify(acciones).ejecutar(Tipo.RESUMIR, List.of(1L, 2L), new ProyectoId("default"), "en");
   }
 
   @Test
@@ -105,13 +111,13 @@ class AccionesControllerTest {
   void preguntasEsEstructurado() throws Exception {
     Map<String, Object> preguntas =
         Map.of("temas", List.of(Map.of("tema", "Despliegue", "preguntas", List.of())));
-    when(acciones.estructurar(eq(Tipo.PREGUNTAS), eq(List.of(1L)), any(), eq("es")))
+    when(acciones.ejecutar(eq(Tipo.PREGUNTAS), eq(List.of(1L)), any(), eq("es")))
         .thenReturn(
-            new ResultadoEstructurado(
+            new ResultadoDeAccion(
                 "Preguntas sobre 1 documento: a.md",
                 List.of(COBERTURA),
                 List.of(CITA),
-                Mono.just(preguntas)));
+                Flux.just(new EventoAccion.Resultado(preguntas))));
 
     String cuerpo = sse(get("/api/acciones/preguntas").param("documentos", "1"));
 
@@ -120,7 +126,7 @@ class AccionesControllerTest {
     assertThat(cuerpo.indexOf("event:citas")).isLessThan(cuerpo.indexOf("event:resultado"));
     assertThat(cuerpo.indexOf("event:resultado")).isLessThan(cuerpo.indexOf("event:fin"));
     // Sin idioma: español.
-    verify(acciones).estructurar(Tipo.PREGUNTAS, List.of(1L), ProyectoId.POR_DEFECTO, "es");
+    verify(acciones).ejecutar(Tipo.PREGUNTAS, List.of(1L), ProyectoId.POR_DEFECTO, "es");
   }
 
   @Test
@@ -140,7 +146,7 @@ class AccionesControllerTest {
         .perform(get("/api/acciones/resumir").param("documentos", "1").param("idioma", "en-US"))
         .andExpect(status().isBadRequest());
     mockMvc.perform(get("/api/acciones/resumir")).andExpect(status().isBadRequest());
-    verify(acciones, never()).redactar(any(), any(), any(), any());
+    verify(acciones, never()).ejecutar(any(), any(), any(), any());
   }
 
   @Test
@@ -173,9 +179,9 @@ class AccionesControllerTest {
   @Test
   @DisplayName("Un error a mitad del stream llega como error-servidor, no como corte mudo")
   void errorEnElStream() throws Exception {
-    when(acciones.redactar(any(), any(), any(), any()))
+    when(acciones.ejecutar(any(), any(), any(), any()))
         .thenReturn(
-            new ResultadoEnStreaming(
+            new ResultadoDeAccion(
                 "Resumen de 1 documento: a.md",
                 List.of(COBERTURA),
                 List.of(CITA),
@@ -312,7 +318,7 @@ class AccionesControllerTest {
                 .param("documentos", "1")
                 .param("destino", "xx"))
         .andExpect(status().isBadRequest());
-    verify(acciones, never()).redactar(any(), any(), any(), any());
+    verify(acciones, never()).ejecutar(any(), any(), any(), any());
     verify(acciones, never()).traducirDocumentos(any(), any(), any(), any());
   }
 
