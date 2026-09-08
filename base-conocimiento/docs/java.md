@@ -110,7 +110,7 @@ JWKS de Bot Framework).
 
 | Gate | Estado |
 |---|---|
-| ArchUnit | **Presente y bloquea** — 5 pruebas en `ArquitecturaTest`, corre en `make test` |
+| ArchUnit | **Presente y bloquea** — 6 pruebas en `ArquitecturaTest` (5 de ArchUnit más `ApplicationModules.verify()`), corre en `make test` |
 | Checkstyle | **Presente y bloquea** — `failOnViolation=true`, `violationSeverity=error`, incluye las fuentes de test, ligado a `verify`, con `checkstyle-suppressions.xml` |
 | Spotless | **Presente y bloquea** — `google-java-format` sobre todo el código, sin `ratchetFrom`; `spotless:check` en `make lint` |
 | SpotBugs / PMD | Ausente |

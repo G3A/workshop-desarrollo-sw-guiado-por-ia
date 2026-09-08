@@ -439,7 +439,11 @@
       return; // Sin conexion con el backend todavia: no hay nada que reconectar.
     }
 
-    const ultimaGuardada = turnosGuardados.length ? turnosGuardados[turnosGuardados.length - 1].pregunta : null;
+    // Solo cuentan los turnos de pregunta: el servidor recuerda la ultima pregunta del RAG,
+    // y una accion o una traduccion guardadas despues no deben hacerla parecer sin guardar
+    // (si no, cada F5 la repetiria). Los turnos de antes de las acciones no traen tipo.
+    const preguntasGuardadas = turnosGuardados.filter((t) => (t.tipo || "pregunta") === "pregunta");
+    const ultimaGuardada = preguntasGuardadas.length ? preguntasGuardadas[preguntasGuardadas.length - 1].pregunta : null;
     if (estado.pregunta === ultimaGuardada) {
       return; // Ya esta guardada por el camino normal (evento "fin"): nada que hacer.
     }
@@ -1622,11 +1626,14 @@
       renderTraduccion(turno, true);
       guardarTurno(etiqueta, proyecto, turno, false, null, conversacionId, duracionMs);
     });
+    // Con error, las filas que quedaron "en espera" o a mitad de bloque se vuelven a
+    // pintar como fallidas: si no, esperarian para siempre.
     fuente.addEventListener("error-servidor", (evento) => {
       detenerContador();
       turno.estado.textContent = JSON.parse(evento.data);
       turno.estado.classList.add("error");
       cerrarStreaming(conversacionId, turno, detenerContador);
+      renderTraduccion(turno);
       guardarTurno(etiqueta, proyecto, turno, true, turno.estado.textContent, conversacionId);
     });
     fuente.onerror = () => {
@@ -1634,6 +1641,7 @@
       turno.estado.textContent = "No se pudo completar la traducción (¿Ollama no responde?).";
       turno.estado.classList.add("error");
       cerrarStreaming(conversacionId, turno, detenerContador);
+      renderTraduccion(turno);
       guardarTurno(etiqueta, proyecto, turno, true, turno.estado.textContent, conversacionId);
     };
   }
@@ -1672,9 +1680,14 @@
         } else if (estado.omitido) {
           detalle = "ya está en " + escaparHtml(nombreIdioma(estado.idioma).toLowerCase()) + ", se omitió";
           clase = "omitido";
-        } else if (terminado || (datos.textos[d.documentoId] && estado.bloqueActual >= estado.bloquesTotales && turno.estado.classList.contains("completado"))) {
+        } else if (terminado || (datos.textos[d.documentoId] && estado.bloqueActual >= estado.bloquesTotales && (turno.estado.classList.contains("completado") || turno.estado.classList.contains("error")))) {
           detalle = "Listo";
           clase = "listo";
+        } else if (turno.estado.classList.contains("error")) {
+          detalle = estado.bloqueActual > 0
+            ? "se interrumpió en el bloque " + estado.bloqueActual + " de " + estado.bloquesTotales
+            : "no se tradujo";
+          clase = "fallido";
         } else if (estado.bloqueActual > 0) {
           detalle = "bloque " + estado.bloqueActual + " de " + estado.bloquesTotales;
           clase = "en-curso";
@@ -1985,7 +1998,11 @@
           bloque.querySelector(".texto-traducido").textContent = datos.texto;
         },
         alTerminar: async (huboError, mensaje) => {
-          fijarBotonEnviar(false);
+          // Mismo guard que cerrarStreaming: si la persona cambio de conversacion, el
+          // boton que se ve es el de la otra, y puede estar ocupado con su propio stream.
+          if (conversacionActualId === conversacionId) {
+            fijarBotonEnviar(false);
+          }
           if (huboError) {
             bloque.remove();
             mostrarError(mensaje);

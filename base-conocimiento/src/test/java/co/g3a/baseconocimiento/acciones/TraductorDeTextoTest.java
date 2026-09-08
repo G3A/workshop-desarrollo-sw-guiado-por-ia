@@ -94,6 +94,7 @@ class TraductorDeTextoTest {
         new TraductorDeTexto(
             redactor, new CupoDeAcciones(new AccionesPropiedades(10, 7000, 8000, 0)));
     assertThatThrownBy(() -> sinCupo.traducir("hola", "es", "en").texto().blockLast())
+        .isInstanceOf(Acciones.ServidorOcupado.class)
         .hasMessageContaining(AccionesSobreDocumentos.MENSAJE_SERVIDOR_OCUPADO);
   }
 }

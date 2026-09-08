@@ -44,7 +44,7 @@ class TraductorDeTexto {
                   () -> {
                     if (!cupo.intentarTomar()) {
                       return Flux.error(
-                          new IllegalStateException(
+                          new Acciones.ServidorOcupado(
                               AccionesSobreDocumentos.MENSAJE_SERVIDOR_OCUPADO));
                     }
                     return redactor

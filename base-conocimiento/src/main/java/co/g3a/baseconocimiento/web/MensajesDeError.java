@@ -1,5 +1,7 @@
 package co.g3a.baseconocimiento.web;
 
+import co.g3a.baseconocimiento.acciones.Acciones;
+
 /**
  * Traduce la excepcion que revienta un stream a algo que se pueda leer en pantalla. Compartido por
  * los dos controladores SSE de la pagina de chat: el fallo mas comun (el modelo del perfil sin
@@ -19,6 +21,11 @@ final class MensajesDeError {
     Throwable raiz = error;
     while (raiz.getCause() != null && raiz.getCause() != raiz) {
       raiz = raiz.getCause();
+    }
+    // Un cupo agotado no es un corte: el mensaje de la fachada va tal cual, el mismo que
+    // las acciones de prosa emiten como texto fijo.
+    if (raiz instanceof Acciones.ServidorOcupado) {
+      return raiz.getMessage();
     }
     String detalle =
         raiz.getMessage() == null ? raiz.getClass().getSimpleName() : raiz.getMessage();

@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.regex.Pattern;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -50,8 +51,14 @@ import reactor.core.publisher.Flux;
 @RestController
 class AccionesController {
 
-  /** ISO 639-1 (dos letras) o, tolerando lo que devuelva la deteccion, ISO 639-2 (tres). */
-  private static final Pattern CODIGO_IDIOMA = Pattern.compile("^[a-z]{2,3}$");
+  /**
+   * ISO 639-1 y nada mas: lo que el cliente manda va derecho a un prompt, y el {@code Redactor}
+   * solo sabe nombrar los codigos que el JDK conoce. Los de tres letras que devuelve la deteccion
+   * los normaliza el propio Redactor; por aqui no pasan.
+   */
+  private static final Pattern CODIGO_IDIOMA = Pattern.compile("^[a-z]{2}$");
+
+  private static final Set<String> IDIOMAS_ISO = Set.of(Locale.getISOLanguages());
 
   private static final String MENSAJE_IDIOMA_INVALIDO =
       "El idioma debe ser un código ISO 639-1 de dos letras (por ejemplo es, en, pt)";
@@ -229,7 +236,7 @@ class AccionesController {
    */
   private static String idiomaValidado(String idioma) {
     String codigo = idioma == null ? "" : idioma.strip().toLowerCase(Locale.ROOT);
-    if (!CODIGO_IDIOMA.matcher(codigo).matches() || "und".equals(codigo) || "auto".equals(codigo)) {
+    if (!CODIGO_IDIOMA.matcher(codigo).matches() || !IDIOMAS_ISO.contains(codigo)) {
       throw new IllegalArgumentException(MENSAJE_IDIOMA_INVALIDO);
     }
     return codigo;

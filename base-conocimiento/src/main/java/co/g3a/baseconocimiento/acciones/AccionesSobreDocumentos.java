@@ -66,14 +66,17 @@ class AccionesSobreDocumentos {
     Preparacion pre = preparar(documentos, proyecto);
     String etiqueta = PresupuestoDeContexto.etiqueta(verboDe(tipo), pre.documentos());
 
-    Flux<String> texto;
-    if (!pre.hayIndexados()) {
-      texto = Flux.just(MENSAJE_SIN_DOCUMENTOS);
-    } else if (!cupo.intentarTomar()) {
-      texto = Flux.just(MENSAJE_SERVIDOR_OCUPADO);
-    } else {
-      texto = conCupo(tipo, pre.contexto(), idioma);
-    }
+    // El cupo se toma recien al suscribirse (Flux.defer): si el adaptador arma el
+    // stream y nadie lo lee (cliente que corta antes de que llegue el cuerpo), no hay
+    // permiso que devolver. Tomarlo aqui lo perderia para siempre.
+    Flux<String> texto =
+        !pre.hayIndexados()
+            ? Flux.just(MENSAJE_SIN_DOCUMENTOS)
+            : Flux.defer(
+                () ->
+                    cupo.intentarTomar()
+                        ? conCupo(tipo, pre.contexto(), idioma)
+                        : Flux.just(MENSAJE_SERVIDOR_OCUPADO));
     return new ResultadoEnStreaming(
         etiqueta,
         PresupuestoDeContexto.cobertura(pre.documentos()),
@@ -90,22 +93,21 @@ class AccionesSobreDocumentos {
     Preparacion pre = preparar(documentos, proyecto);
     String etiqueta = PresupuestoDeContexto.etiqueta(verboDe(tipo), pre.documentos());
 
-    Mono<Object> resultado;
-    if (!pre.hayIndexados()) {
-      resultado = Mono.just(new SinResultado(MENSAJE_SIN_DOCUMENTOS));
-    } else if (!cupo.intentarTomar()) {
-      resultado = Mono.just(new SinResultado(MENSAJE_SERVIDOR_OCUPADO));
-    } else {
-      // El cupo ya esta tomado: el fromCallable corre recien al suscribirse, y el
-      // doFinally lo devuelve haya emitido, fallado o sido cancelado.
-      resultado =
-          Mono.<Object>fromCallable(
-                  () ->
-                      tipo == Tipo.PREGUNTAS
-                          ? redactor.preguntar(pre.contexto(), idioma)
-                          : redactor.idear(pre.contexto(), idioma))
-              .doFinally(signal -> cupo.liberar());
-    }
+    // Mismo Mono.defer que en redactar: el cupo se toma al suscribirse y el doFinally lo
+    // devuelve haya emitido, fallado o sido cancelado.
+    Mono<Object> resultado =
+        !pre.hayIndexados()
+            ? Mono.just(new SinResultado(MENSAJE_SIN_DOCUMENTOS))
+            : Mono.defer(
+                () ->
+                    cupo.intentarTomar()
+                        ? Mono.<Object>fromCallable(
+                                () ->
+                                    tipo == Tipo.PREGUNTAS
+                                        ? redactor.preguntar(pre.contexto(), idioma)
+                                        : redactor.idear(pre.contexto(), idioma))
+                            .doFinally(signal -> cupo.liberar())
+                        : Mono.just(new SinResultado(MENSAJE_SERVIDOR_OCUPADO)));
     return new ResultadoEstructurado(
         etiqueta,
         PresupuestoDeContexto.cobertura(pre.documentos()),
