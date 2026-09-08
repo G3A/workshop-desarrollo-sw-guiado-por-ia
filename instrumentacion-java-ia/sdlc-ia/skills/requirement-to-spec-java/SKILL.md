@@ -10,7 +10,7 @@ description: >
   git. Invoke with `/sdlc-ia:requirement-to-spec-java <path to the requirement document>`.
 argument-hint: "<path to requirement document>"
 disable-model-invocation: true
-allowed-tools: Read, Glob, Grep, Write, AskUserQuestion, Bash(command -v pandoc*), Bash(pandoc*), Bash(gh auth status*), Bash(gh issue create*), Bash(gh issue edit*), Bash(gh issue view*), Bash(gh issue list*), Bash(gh api repos/*/issues*), Bash(gh label list*), Bash(gh repo view*)
+allowed-tools: Read, Glob, Grep, Write, AskUserQuestion, Bash(command -v pandoc*), Bash(pandoc*), Bash(gh auth status*), Bash(gh issue create*), Bash(gh issue edit*), Bash(gh issue view*), Bash(gh issue list*), Bash(gh api repos/*/issues*), Bash(gh api repos/*/milestones*), Bash(gh label list*), Bash(gh repo view*)
 ---
 
 # requirement-to-spec-java — Business document → spec and tasks, before a ticket exists
@@ -104,6 +104,8 @@ End Phase 6 with a concrete next step, naming the real destination just written:
 - Do NOT decide contract-break, scope, doc-update timing, or validation-blocking on the user's
   behalf — surface each with evidence and stop.
 - Do NOT default the output destination — ask, every time, even when only one tracker is detected.
+- Do NOT pick a milestone on the user's behalf — offer the open ones, with "none" first; an issue
+  enters a sprint when a person plans it, not when a skill files it.
 - Do NOT ask more than 4 questions in one `AskUserQuestion` call, and never ask what Phase 1
   already answered.
 - Do NOT assume a document's language for the spec/tasks files — match `AGENTS.md`/`docs/`.

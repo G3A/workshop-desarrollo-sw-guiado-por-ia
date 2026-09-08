@@ -14,12 +14,16 @@ All notable changes to the `sdlc-ia` plugin. Versions follow the `version` field
   every load-bearing factual claim is atomized, tagged with its source and confidence, and
   verified with the user before being persisted to `docs/claims-ledger.md`.
 
-- **`instrument-project-java`** — installs eight deterministic controls in a Java/Maven
+- **`instrument-project-java`** — installs nine deterministic controls in a Java/Maven
   repository: reproducible inputs (Maven wrapper pin, BOM-managed dependency versions), a strict
   build (`-Xlint:all -Werror`), verifiable style (Spotless + Checkstyle), a single `make check`
   entry point, Lefthook pre-commit/pre-push gates, gitleaks secret scanning, ArchUnit
-  architecture fitness functions, and a CI pipeline (GitHub Actions or Azure DevOps). Every gate
-  is proven to fail before the run reports success. When the target repository already has some
+  architecture fitness functions, a GitHub Actions CI workflow (the only CI platform this plugin
+  writes, matching its declared GitHub-only scope), and — opt-in,
+  like secrets — dependency vulnerability scanning: OWASP Dependency-Check behind `make sca`
+  (fails `make ci` on CVSS ≥ 7, NVD key from the environment, suppressions with a reason) plus
+  Dependabot version updates on GitHub. Every gate is proven to fail before the run reports
+  success. When the target repository already has some
   of these controls wired up — `base-conocimiento`, the worked example behind this skill, already
   has ArchUnit + Spring Modulith verification running in `mvn test` — the skill verifies and
   reports findings instead of reinstalling from scratch.
@@ -37,4 +41,40 @@ All notable changes to the `sdlc-ia` plugin. Versions follow the `version` field
   established upstream (`linear-plan-build`/`ado-plan-build`); resolves GitHub's own auto-close
   syntax (`Closes #<n>`) as the issue-linking token, and detects whether the repository tracks
   in-progress/in-review status via labels or GitHub Projects v2 before choosing which one to
-  write to.
+  write to. Every commit it makes, and the PR body, end with the git trailer
+  `Asistido-por-IA: <model id>` naming the model that ran the session, so a repository can
+  separate AI-assisted commits from the rest (`git log --format='%(trailers:key=Asistido-por-IA)'`)
+  and survive a squash merge that takes the PR body as the commit message. An optional
+  `confirm-push` argument adds a second checkpoint between the commit and the push, so a team
+  that wants the developer to own the push (the way the process viewer models it) can keep the
+  rest of the loop autonomous. The branch is cut from, and the PR opened against, a resolved
+  `BASE-BRANCH` — the integration branch the repo documents, falling back to the remote's
+  default — instead of always the default branch, which on a repo that integrates on `dev` and
+  keeps `main` as a snapshot produced PRs against the wrong branch. Once the plan is approved it
+  is posted on the issue as a comment (steps, decisions, assumptions, out of scope), and Step F
+  commits one green step at a time with `Refs #<n>`, the last one carrying `Closes #<n>`, so the
+  history reads task by task. A missing milestone is reported as "in no sprint", and a repository
+  with neither status labels nor a Projects v2 board is pointed at the viewer's node that creates
+  one.
+
+- **`requirement-to-spec-java`** — turns a business requirement document (Word via `pandoc`,
+  PDF, Excel, Markdown, plain text) into a specification and a task breakdown *before* an issue
+  exists: silent discovery of the Java/Spring surface the requirement touches (REST controllers,
+  JPA entities, migrations, documentation that would go stale), a scope round of at most four
+  questions per call across six always-active categories, and a destination that is always asked —
+  a GitHub parent issue with native sub-issues (and, on request, the milestone that represents
+  the sprint, applied to parent and children), or `docs/specs/<slug>/spec.md` + `tasks.md`. Never
+  writes code, never opens a PR, never touches git. Adapted from arkandia's stack-agnostic
+  `requirement-to-spec` (0.5.0).
+
+- **`debt-triage`** — triages the findings an analyzer already reports (SonarQube, CodeQL,
+  ESLint, Checkstyle, PMD, SpotBugs, …) instead of installing a new one: groups open findings by
+  rule, gives every one a verdict — real, false positive, accepted risk — with the reason next to
+  the code, writes the fix for the real ones in the working tree, and never applies a tool's
+  auto-fix without reading the call site. Never commits.
+
+- **`legacy-test-harness`** — conditions a legacy repository of any stack and grows real tests
+  across five layers (unit/collaboration, contract, acceptance, performance, security) on code
+  that already ships: fingerprints the stack, maps the seams Feathers-style, asks which layers
+  to generate this run, and never edits production code — a seam that needs a production edit is
+  proposed as a candidate issue (`Costura: <what>`, label `deuda-tecnica`) for the user to file.

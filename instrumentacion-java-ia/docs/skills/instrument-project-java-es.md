@@ -4,9 +4,9 @@
 
 Instala la capa de **instrumentación determinística** en un repositorio Java/Maven: un conjunto
 de controles que una máquina puede verificar por sí sola, en milisegundos y sin ambigüedad, antes
-de que una persona revise el cambio. Cubre ocho controles — desde builds reproducibles hasta un
-pipeline de CI — y prueba que cada uno realmente falla cuando debería fallar antes de dar la
-corrida por terminada.
+de que una persona revise el cambio. Cubre nueve controles — desde builds reproducibles hasta un
+pipeline de CI y el escaneo de dependencias vulnerables — y prueba que cada uno realmente falla
+cuando debería fallar antes de dar la corrida por terminada.
 
 Es el complemento de `instrument-agent-java`: esta skill instala lo que una computadora puede
 decidir sola (¿compila con warnings?, ¿el formato es correcto?, ¿hay un secreto en el commit?);
@@ -21,7 +21,7 @@ puede abrir).
 
 No recibe argumentos.
 
-## Los ocho controles
+## Los nueve controles
 
 | # | Control | Qué instala | Qué evita |
 |---|---------|--------------|-----------|
@@ -32,7 +32,8 @@ No recibe argumentos.
 | 5 | Shift-left | Hooks de pre-commit/pre-push con Lefthook | Que los errores aparezcan recién en la revisión |
 | 6 | Escaneo de secretos | gitleaks | Que una credencial llegue al historial de git |
 | 7 | Pruebas de arquitectura | ArchUnit / verificación de Spring Modulith | Que la regla de dependencias se rompa en silencio |
-| 8 | CI | Workflow de GitHub Actions o pipeline de Azure Pipelines | Que los controles locales se salteen |
+| 8 | CI | Workflow de GitHub Actions (la única plataforma de CI que escribe la skill) | Que los controles locales se salteen |
+| 9 | Dependencias vulnerables (SCA) | OWASP Dependency-Check detrás de `make sca` (falla `make ci` con CVSS ≥ 7), archivo de supresiones con motivo, y Dependabot en GitHub | Que una dependencia con un CVE conocido llegue a producción sin que nadie lo vea |
 
 ## Fases principales
 
@@ -46,10 +47,13 @@ No recibe argumentos.
 3. **Acordar el alcance y aplicar** — antes de escribir nada confirma que el árbol de trabajo
    está limpio. Pregunta solo lo que el descubrimiento no pudo resolver: qué controles instalar,
    qué formateador usar (`google-java-format` o `palantir-java-format`), si reformatear todo el
-   repositorio de una vez o solo lo tocado desde la rama base, qué plataforma de CI usar, si
-   activar el escaneo de secretos y si instalar un hook de mensajes de commit con Conventional
-   Commits (solo si el historial ya sigue esa convención). Luego instala los controles en el
-   orden que uno depende del anterior, verificando cada uno antes de seguir con el siguiente.
+   repositorio de una vez o solo lo tocado desde la rama base, si escribir el workflow de CI, si
+   activar el escaneo de secretos, si instalar un hook de mensajes de commit con Conventional
+   Commits (solo si el historial ya sigue esa convención) y si activar el escaneo de
+   dependencias vulnerables (apagado por defecto, como los secretos: cuesta una clave gratuita
+   de la NVD o una primera corrida lenta, y un archivo de supresiones que hay que curar). Luego
+   instala los controles en el orden que uno depende del anterior, verificando cada uno antes de
+   seguir con el siguiente.
 4. **Verificar rompiendo** — para cada control, provoca deliberadamente una falla real (por
    ejemplo: agrega un import sin usar, intenta un commit con una credencial de prueba, reordena
    imports) y confirma que el control efectivamente lo detiene. Deshace cada cambio de prueba
@@ -69,8 +73,12 @@ No recibe argumentos.
 - `Makefile` (parchado si ya existe, nunca reemplazado).
 - `lefthook.yml`.
 - Configuración de gitleaks (si se activa).
+- Plugin `dependency-check-maven` en `pom.xml`, `dependency-check-suppressions.xml` y
+  `.github/dependabot.yml` (si se activa el control 9).
 - Clases de test de arquitectura (ArchUnit).
-- Workflow de CI (`.github/workflows/*` o pipeline de Azure Pipelines).
+- Workflow de CI (`.github/workflows/ci.yml`). Si el repositorio ya tiene su CI en otra
+  plataforma, la skill lo reporta como fuera de alcance y le indica el target `make ci` que ese
+  pipeline puede invocar; no escribe pipelines para otras plataformas.
 - Secciones de `AGENTS.md`/`CLAUDE.md`, si ya existen.
 
 Nunca hace `commit` ni `push`: los únicos cambios de git que ejecuta son los de romper y

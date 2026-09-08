@@ -24,7 +24,7 @@ repositorio. Decir sin más que "hoy solo cubre .NET" ya no describe el plugin c
 | Skill | Qué hace |
 |---|---|
 | [`agent-context-java`](docs/skills/agent-context-java-es.md) | Genera el paquete de contexto de un repo Java/Spring (`AGENTS.md`, `docs/architecture.md`, ADRs, `docs/java.md`) para que un agente de IA lo entienda sin adivinar. |
-| [`instrument-project-java`](docs/skills/instrument-project-java-es.md) | Instala 8 controles deterministas: build reproducible, build estricto, estilo, un solo punto de entrada, hooks de pre-commit/pre-push, escaneo de secretos, pruebas de arquitectura (ArchUnit) y CI. |
+| [`instrument-project-java`](docs/skills/instrument-project-java-es.md) | Instala 9 controles deterministas: build reproducible, build estricto, estilo, un solo punto de entrada, hooks de pre-commit/pre-push, escaneo de secretos, pruebas de arquitectura (ArchUnit), CI y escaneo de dependencias vulnerables (OWASP Dependency-Check + Dependabot). |
 | [`instrument-agent-java`](docs/skills/instrument-agent-java-es.md) | Registra servidores MCP y una catálogo de 8 hooks de Claude Code (bash puro, sin Node/jq) que limitan lo que el agente puede hacer solo. |
 | [`requirement-to-spec-java`](docs/skills/requirement-to-spec-java-es.md) | Convierte un documento de requisitos de negocio en una especificación y un desglose de tareas, antes de que exista un issue — nunca escribe código, nunca abre PR. |
 | [`github-plan-build`](docs/skills/github-plan-build-es.md) | El ciclo completo: toma un issue de GitHub, arma un plan, lo implementa test-first, y abre una PR verificada. |
@@ -50,7 +50,7 @@ significaría dejar de ser la versión pública y sin marca que este paquete se 
 
 ## Cómo instalarlo localmente
 
-Desde una sesión de Claude Code, agregá este directorio como marketplace local y instalá el plugin:
+Desde una sesión de Claude Code, agrega este directorio como marketplace local e instala el plugin:
 
 ```
 /plugin marketplace add D:\GitHub_public\workshop-desarrollo-sw-guiado-por-ia\instrumentacion-java-ia

@@ -20,7 +20,7 @@ an accident of installing quality gates.
 
 ## 1. Extend `.PHONY`
 
-The existing line 2 lists every infra/model target. Append the six new ones at the end — do not
+The existing line 2 lists every infra/model target. Append the seven new ones at the end — do not
 reorder what is already there:
 
 ```diff
@@ -30,13 +30,13 @@ reorder what is already there:
    pull-ministral pull-qwen35 pull-nemotron pull-granite41 pull-phi4mini pull-qwen25 \
 -  pin-embeddings-cpu seed ingest ingest-repos ingest-teams ingest-azdo psql health clean
 +  pin-embeddings-cpu seed ingest ingest-repos ingest-teams ingest-azdo psql health clean \
-+  format lint secrets check ci hooks
++  format lint secrets sca check ci hooks
 ```
 
 ## 2. Append a new section after `## ---------------------------------------------------------------- desarrollo`
 
 The existing `build`/`test`/`verify`/`clean`/`psql` targets under that header stay exactly as they
-are — do not touch them. Add the six new targets after `clean`, with a header comment consistent
+are — do not touch them. Add the seven new targets after `clean`, with a header comment consistent
 in *shape* with the existing section dividers (`## ---- <name>`) but the description text in
 English, since it belongs to the block this skill owns:
 
@@ -52,10 +52,13 @@ lint:  ## Verify code style and static rules (gate: Spotless + Checkstyle)
 secrets:  ## Scan the working tree for committed secrets
 	gitleaks detect --no-banner --redact
 
+sca:  ## Scan dependencies for known vulnerabilities (gate: OWASP Dependency-Check, fails on CVSS >= 7)
+	./mvnw -q dependency-check:check
+
 check: lint build test  ## Single local confidence signal
 	@echo "OK -- the repo is green"
 
-ci: lint build test secrets  ## What the CI pipeline runs
+ci: lint build test secrets sca  ## What the CI pipeline runs
 	@echo "OK -- CI gates passed"
 
 hooks:  ## Install git hooks (Lefthook)
@@ -79,6 +82,10 @@ Notes on this block:
 - If the repo declined secret scanning in Phase 2, drop the `secrets` target and drop it from `ci`
   in the same edit — a target invoking a tool nobody installed fails the first time someone actually
   runs `make ci`.
+- `sca` follows the same rule as `secrets`: **not** in `check` (the first run downloads the NVD
+  mirror, 20+ minutes without an API key, and every run needs the network), **yes** in `ci`. It
+  needs the `dependency-check-maven` plugin declared in `pom.xml` first (control 9). If scope
+  question 7 declined SCA, drop the target and drop it from `ci` in the same edit.
 
 ## 3. Nothing else changes
 

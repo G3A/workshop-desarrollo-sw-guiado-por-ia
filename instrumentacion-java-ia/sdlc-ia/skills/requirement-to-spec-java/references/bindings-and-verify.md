@@ -12,8 +12,8 @@ system, the only two destinations this plugin supports:
 
 | Step | File mode | Tracker mode (GitHub) |
 |---|---|---|
-| `CREATE-PARENT` | Write `docs/specs/<slug>/spec.md` from `templates/spec.md.template` | `gh issue create --title "<title>" --body "<spec body>" --label enhancement` — the spec's own content becomes the issue body |
-| `CREATE-CHILD` | Write `docs/specs/<slug>/tasks.md` from `templates/tasks.md.template`, one entry per task | `gh issue create --title "<task title>" --body "<task body>" --parent <parent-issue-number>` — one sub-issue per task, native GitHub sub-issues, not a checklist inside the parent body |
+| `CREATE-PARENT` | Write `docs/specs/<slug>/spec.md` from `templates/spec.md.template` | `gh issue create --title "<title>" --body "<spec body>" --label enhancement` — the spec's own content becomes the issue body. Add `--milestone "<title>"` only if Phase 3 chose one |
+| `CREATE-CHILD` | Write `docs/specs/<slug>/tasks.md` from `templates/tasks.md.template`, one entry per task | `gh issue create --title "<task title>" --body "<task body>" --parent <parent-issue-number>` — one sub-issue per task, native GitHub sub-issues, not a checklist inside the parent body. The same `--milestone` as the parent, when one was chosen — a sprint filter that shows the parent but hides its tasks is worse than none |
 | `LINK-PARENT` | Both files cross-reference each other by relative path in their first section | `--parent` at creation time already sets the relation both directions; nothing further to link |
 | `SET-INITIAL-STATUS` | N/A — a file has no status field | Leave the sub-issues **open**, unassigned — `github-plan-build`'s own Step A is what takes an issue from open to in-progress, not this skill |
 
@@ -52,6 +52,10 @@ nothing to say:
    missing attachment").
 4. **Not read** — every attachment Phase 1 could not convert or open, by name. Repeats the Phase 1
    finding; does not add speculation about what a missing file might have said.
+
+In tracker mode, state the milestone in one line: either the one applied to parent and children, or
+**"no milestone — the issue is in the backlog, outside any sprint, until someone plans it"**, so
+nobody reads "created on GitHub" as "scheduled".
 
 Close with a concrete next step naming the real destination just written — never a generic
 "you can now proceed":

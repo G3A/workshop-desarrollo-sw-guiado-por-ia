@@ -16,7 +16,7 @@ que sabe manejar, no una condición para funcionar.
 ## Cómo se invoca
 
 ```
-/sdlc-ia:github-plan-build [número o URL del issue] [skip-checkpoint]
+/sdlc-ia:github-plan-build [número o URL del issue] [skip-checkpoint] [confirm-push]
 ```
 
 - El **número o URL del issue** es obligatorio (por ejemplo `42`, `#42`, o una URL completa de
@@ -24,6 +24,11 @@ que sabe manejar, no una condición para funcionar.
 - `skip-checkpoint` es opcional: le dice a la skill que para este issue en particular no haga
   falta pausar a pedir aprobación del plan, porque el usuario ya confía en que es un cambio de
   rutina. Nunca se salta el checkpoint si el usuario pidió explícitamente ver el plan.
+- `confirm-push` es opcional y hace lo contrario: agrega una segunda pausa, después del commit y
+  antes del push. La skill muestra la rama, los commits y los archivos que saldrían de tu máquina
+  y pregunta una sola vez si sigue (push y PR) o si se detiene ahí para que el push lo hagas tú.
+  Si eliges detenerte, no hay push, ni PR, ni comentario en el issue: te deja los comandos exactos
+  para seguir a mano. Sin este argumento, el push no pide confirmación.
 
 ## Resumen de las fases
 
@@ -35,9 +40,12 @@ que sabe manejar, no una condición para funcionar.
    repositorio usa **etiquetas** (labels) o **GitHub Projects v2** para marcar "en progreso" / "en
    revisión", y si encuentra ambos mecanismos, le pregunta al usuario cuál es la fuente de verdad
    en vez de escribir en los dos.
-3. **Preparar el entorno de git** — sincroniza la rama por defecto, confirma que el árbol de
-   trabajo está limpio (si no lo está, se detiene y avisa) y crea una rama
-   `feature/<número>-<slug>` que siempre incluye el número del issue.
+3. **Preparar el entorno de git** — resuelve la rama de integración (la que declare `AGENTS.md`
+   o `CLAUDE.md`; si no hay convención escrita, la rama por defecto del remoto), la sincroniza,
+   confirma que el árbol de trabajo está limpio (si no lo está, se detiene y avisa) y crea desde
+   ahí una rama `feature/<número>-<slug>` que siempre incluye el número del issue. El PR se abre
+   contra esa misma rama de integración; si no es la rama por defecto, la skill avisa que
+   `Closes #<n>` no va a cerrar el issue solo al mergear.
 4. **Presentar el resumen del issue** — antes de tocar código, muestra título, estado,
    etiquetas, la rama creada, y marca cualquier issue relacionado que no esté cerrado, porque el
    estado y las etiquetas de un issue no son necesariamente confiables por sí solos.
@@ -51,13 +59,19 @@ que sabe manejar, no una condición para funcionar.
      corrección, alcance) antes de escribir una sola línea de código.
    - **Punto de aprobación condicional** — solo entra en modo plan si el cambio es grande, toca
      un contrato público, un esquema de datos, permisos, o si la revisión dejó algo sin resolver;
-     si el cambio es chico y reversible, sigue directo.
+     si el cambio es chico y reversible, sigue directo. Una vez aprobado, publica el plan como
+     comentario en el issue (pasos, decisiones, supuestos y lo que queda fuera), para que el
+     equipo lo lea sin abrir una sesión del agente.
    - **Implementar con test primero**, en pasos pequeños, corriendo el gate acotado después de
-     cada uno.
+     cada uno y haciendo **un commit por paso en verde** con `Refs #<n>`; el commit que completa
+     el último paso lleva `Closes #<n>`.
    - **Correr los gates completos del repositorio** (lint, build, tests, `/code-review`, y
      `/security-review` si el cambio toca autenticación o entradas externas) antes de abrir el PR.
    - **Commit, push y apertura del PR**, enlazando el issue con el token de cierre automático de
-     GitHub (`Closes #<n>`).
+     GitHub (`Closes #<n>`). Cada commit cierra además con el trailer
+     `Asistido-por-IA: <modelo>`, con el modelo que corrió la sesión, y el cuerpo del PR lo
+     repite: así el repositorio puede separar los commits asistidos por IA del resto con
+     `git log --format='%(trailers:key=Asistido-por-IA)'`, incluso después de un squash.
    - **Vigilar el CI hasta que quede verde** y atender los comentarios de revisión uno por uno.
    - **Cerrar** — publica el resumen final como comentario en el issue y actualiza su estado a
      "en revisión".
@@ -84,9 +98,10 @@ Nunca hace merge del PR, nunca activa auto-merge y nunca despliega a producción
   mecanismos a la vez, pregunta una sola vez cuál es la fuente de verdad en vez de escribir en
   los dos; si no encuentra ninguno, salta los pasos de escritura de estado y lo deja anotado en
   el resumen, para que "se saltó" no se confunda con "se olvidó".
-- **El único punto de pausa real es la aprobación del plan (paso E del ciclo), y es
+- **El único punto de pausa por defecto es la aprobación del plan (paso E del ciclo), y es
   condicional.** Todo lo demás — explorar, implementar, corregir sus propios gates en rojo,
-  escribir en el issue — se decide y se ejecuta sin pedir permiso.
+  escribir en el issue, pushear — se decide y se ejecuta sin pedir permiso. La única pausa
+  adicional es la del push, y solo si la pediste con `confirm-push`.
 - **Escala solo en casos concretos**: escrituras en producción o acciones destructivas,
   comunicaciones reales a clientes, un fallo de CI ambiguo (no se sabe si es intermitente o real),
   un ciclo de arreglos que no converge después de tres intentos sobre el mismo job, una decisión
