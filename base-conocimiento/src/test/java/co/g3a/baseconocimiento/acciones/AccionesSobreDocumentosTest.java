@@ -6,6 +6,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.atMost;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -168,7 +170,7 @@ class AccionesSobreDocumentosTest {
 
   @Test
   @DisplayName("Si el cliente corta a mitad de las pasadas, el bucle para y el cupo vuelve")
-  void cortarAMitadDeLasPasadas() {
+  void cortarAMitadDeLasPasadas() throws InterruptedException {
     var propiedades = new AccionesPropiedades(10, 100, 8000, 1, 50);
     SeccionesRepositorio repo = mock(SeccionesRepositorio.class);
     when(repo.seccionesDe(any(), any())).thenReturn(cincoSecciones());
@@ -179,9 +181,13 @@ class AccionesSobreDocumentosTest {
 
     acciones.ejecutar(Tipo.RESUMIR, List.of(10L), PROYECTO, "es").eventos().take(2).blockLast();
 
-    verify(redactor, never()).resumir(any(), any());
-    verify(redactor, times(2)).condensar(anyString(), eq("es"), anyInt());
     assertThat(cupo.intentarTomar()).as("el cupo volvio al cancelar").isTrue();
+    // El bucle corre en su propio hilo: la cancelacion se nota al ir a emitir la pasada
+    // siguiente, asi que puede haber hecho una llamada mas, nunca las cinco.
+    Thread.sleep(200);
+    verify(redactor, never()).resumir(any(), any());
+    verify(redactor, atLeast(2)).condensar(anyString(), eq("es"), anyInt());
+    verify(redactor, atMost(3)).condensar(anyString(), eq("es"), anyInt());
   }
 
   @Test
