@@ -55,6 +55,12 @@ Dos decisiones derivadas que también cierran aquí:
 - **Preguntas e ideas van con salida estructurada**, sin token a token, para que la UI pinte desde
   datos (botón «Preguntar» por pregunta, tarjetas por idea) en vez de depender de que un modelo de
   4B respete un formato de listas.
+- **La lluvia de preguntas sigue un método, no un prompt suelto** (sub-issue #61): un nivel de la
+  taxonomía de Bloom por llamada, en orden, y dentro de cada nivel la plantilla 5W1H (una pregunta
+  por interrogativo como máximo, solo si un documento la responde). El tope sale del método, no de
+  una cuota arbitraria: hasta seis por nivel, y un nivel puede quedar vacío. Una llamada por nivel
+  mantiene cada salida corta (cabe en el timeout en CPU) y deja emitir el resultado acumulado, así
+  la UI muestra lo que ya hay y por cuál nivel va.
 
 ## Consecuencias
 

@@ -62,6 +62,22 @@ class RedactorOpenAiTest {
   }
 
   @Test
+  @DisplayName(
+      "El interrogativo 5W1H se normaliza a uno de seis codigos; lo desconocido queda vacio")
+  void normalizaElTipo5w1h() {
+    assertThat(RedactorOpenAi.normalizarTipo("Qué")).isEqualTo("que");
+    assertThat(RedactorOpenAi.normalizarTipo("por qué")).isEqualTo("por-que");
+    assertThat(RedactorOpenAi.normalizarTipo("Por_que")).isEqualTo("por-que");
+    assertThat(RedactorOpenAi.normalizarTipo("why")).isEqualTo("por-que");
+    assertThat(RedactorOpenAi.normalizarTipo("Cómo ")).isEqualTo("como");
+    assertThat(RedactorOpenAi.normalizarTipo("quiénes")).isEqualTo("quien");
+    assertThat(RedactorOpenAi.normalizarTipo("where")).isEqualTo("donde");
+    assertThat(RedactorOpenAi.normalizarTipo("cuál")).isEqualTo("que");
+    assertThat(RedactorOpenAi.normalizarTipo("tal vez")).isEmpty();
+    assertThat(RedactorOpenAi.normalizarTipo(null)).isEmpty();
+  }
+
+  @Test
   @DisplayName("La muestra para detectar idioma se recorta y se aplana")
   void recortaLaMuestra() {
     String larga = "linea uno\n\n   linea   dos  " + "x".repeat(5000);

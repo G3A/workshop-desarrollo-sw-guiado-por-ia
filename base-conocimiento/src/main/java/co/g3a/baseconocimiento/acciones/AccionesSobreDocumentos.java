@@ -11,6 +11,9 @@ import co.g3a.baseconocimiento.acciones.PresupuestoDeContexto.DocumentoPlanifica
 import co.g3a.baseconocimiento.acciones.SeccionesRepositorio.Seccion;
 import co.g3a.baseconocimiento.compartido.Dominio.ProyectoId;
 import co.g3a.baseconocimiento.llm.Redactor;
+import co.g3a.baseconocimiento.llm.Redactor.Nivel;
+import co.g3a.baseconocimiento.llm.Redactor.NivelBloom;
+import co.g3a.baseconocimiento.llm.Redactor.Preguntas;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -167,10 +170,26 @@ class AccionesSobreDocumentos {
     return switch (tipo) {
       case RESUMIR -> redactor.resumir(contexto, idioma).<EventoAccion>map(Token::new);
       case SINTETIZAR -> redactor.sintetizar(contexto, idioma).<EventoAccion>map(Token::new);
+      // Un nivel de Bloom por llamada (sub-issue #61): cada una es corta y cabe en el
+      // timeout en CPU, y el resultado sale acumulado nivel a nivel para que la UI
+      // pinte lo que ya hay y diga por cual va. El ultimo Resultado es el completo.
       case PREGUNTAS ->
-          Mono.fromCallable(() -> redactor.preguntar(contexto, idioma))
-              .<EventoAccion>map(Resultado::new)
-              .flux();
+          Flux.fromArray(NivelBloom.values())
+              .concatMap(
+                  nivel ->
+                      Mono.fromCallable(
+                          () ->
+                              new Nivel(
+                                  nivel.codigo(), redactor.preguntar(contexto, idioma, nivel))))
+              .scan(
+                  List.<Nivel>of(),
+                  (acumulado, nivel) -> {
+                    List<Nivel> lista = new ArrayList<>(acumulado);
+                    lista.add(nivel);
+                    return List.copyOf(lista);
+                  })
+              .skip(1)
+              .<EventoAccion>map(niveles -> new Resultado(new Preguntas(niveles)));
       case IDEAS ->
           Mono.fromCallable(() -> redactor.idear(contexto, idioma))
               .<EventoAccion>map(Resultado::new)

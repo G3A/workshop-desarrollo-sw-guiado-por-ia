@@ -155,8 +155,9 @@ prefijo de URI, no por el módulo que la expone.
 
 Cinco acciones sobre los documentos que la persona tildó en la barra lateral de la página de
 chat (issue #38): **resumir** (un resumen por documento), **sintetizar** (un solo texto: en común,
-contradicciones, conclusión), **lluvia de preguntas** y **lluvia de ideas** (salida estructurada,
-con la cita `[n]` de cada pregunta o idea) y **traducir** (el documento completo, bloque a bloque,
+contradicciones, conclusión), **lluvia de preguntas** (por niveles de la taxonomía de Bloom, un
+nivel por llamada, con la plantilla 5W1H por pregunta) y **lluvia de ideas** (ambas con salida
+estructurada y la cita `[n]` de cada pregunta o idea) y **traducir** (el documento completo, bloque a bloque,
 con origen detectado o elegido y destino libre). El mismo traductor sirve dentro del chat: un modo
 traducir en la barra de entrada y «Traducir» sobre cualquier turno ya escrito.
 

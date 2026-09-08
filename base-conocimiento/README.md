@@ -49,7 +49,8 @@ planificación libre sin límite.
 
 Aparte de preguntar, la página de chat deja elegir documentos en la barra lateral y hacer cosas
 con ellos que no son una pregunta: **resumir** (un resumen por documento), **sintetizar** (un solo
-texto que cruza los documentos), **lluvia de preguntas**, **lluvia de ideas** y **traducir** (el
+texto que cruza los documentos), **lluvia de preguntas** (por niveles de Bloom, con la plantilla
+5W1H), **lluvia de ideas** y **traducir** (el
 documento completo, a cualquier idioma, con descarga en Markdown). El mismo traductor sirve dentro
 del chat: un modo traducir en la barra de entrada y «Traducir» sobre cualquier turno. Cada
 resultado es un turno más de la conversación y muestra cómo entró cada documento al modelo — un

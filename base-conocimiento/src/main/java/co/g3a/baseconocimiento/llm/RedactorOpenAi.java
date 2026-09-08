@@ -1,6 +1,7 @@
 package co.g3a.baseconocimiento.llm;
 
 import com.openai.errors.OpenAIException;
+import java.text.Normalizer;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -76,11 +77,13 @@ class RedactorOpenAi implements Redactor {
           + REGLAS_COMUNES
           + """
 
-            Propone las preguntas que estos documentos permiten responder: las que alguien
-            que los lee por primera vez haria para entenderlos y usarlos. Agrupalas en dos o
-            tres temas. Cada pregunta debe poder responderse con el contenido del documento que
-            cita: "fuente" es el numero n del documento [n] que la responde. Entre cuatro y ocho
-            preguntas en total, cortas, formuladas de forma completa y concreta.
+            Generas preguntas de UN solo nivel de la taxonomia de Bloom: "%s" (%s). Recorre los
+            seis interrogativos -- que, quien, cuando, donde, por que, como -- y para cada uno
+            formula UNA pregunta de ese nivel SOLO si algun documento la responde de verdad; si
+            no, omite ese interrogativo. Puede no quedar ninguna. Cada pregunta lleva "texto"
+            (completa, concreta, corta), "tipo" con el interrogativo usado (exactamente uno de:
+            que, quien, cuando, donde, por-que, como) y "fuente" con el numero n del documento
+            [n] que la responde. No repitas una pregunta con otro interrogativo y otras palabras.
             """;
 
   private static final String SISTEMA_IDEAS =
@@ -274,27 +277,65 @@ class RedactorOpenAi implements Redactor {
         .content();
   }
 
+  /** Salida estructurada de un nivel: solo la lista, el nivel ya lo sabe quien llama. */
+  record PreguntasDeNivel(List<Pregunta> preguntas) {}
+
   @Override
-  public Preguntas preguntar(String contexto, String idioma) {
+  public List<Pregunta> preguntar(String contexto, String idioma, NivelBloom nivel) {
     try {
-      Preguntas preguntas =
+      PreguntasDeNivel salida =
           estructurado
               .prompt()
-              .system(SISTEMA_PREGUNTAS.formatted(instruccionIdioma(idioma)))
+              .system(
+                  SISTEMA_PREGUNTAS.formatted(
+                      instruccionIdioma(idioma), nivel.codigo(), nivel.descripcion()))
               .user("Documentos:\n\n" + contexto)
               .call()
-              .entity(Preguntas.class, spec -> spec.useProviderStructuredOutput());
-      return preguntas == null || preguntas.temas() == null ? new Preguntas(List.of()) : preguntas;
+              .entity(PreguntasDeNivel.class, spec -> spec.useProviderStructuredOutput());
+      if (salida == null || salida.preguntas() == null) {
+        return List.of();
+      }
+      return salida.preguntas().stream()
+          .filter(p -> p != null && p.texto() != null && !p.texto().isBlank())
+          .map(p -> new Pregunta(p.texto().strip(), normalizarTipo(p.tipo()), p.fuente()))
+          .toList();
     } catch (RuntimeException e) {
       if (esFalloDeInfraestructura(e)) {
         throw e;
       }
       // Igual que VerificadorGroundingOpenAi: un JSON truncado o invalido no es un
-      // resultado, y la UI dice "el modelo no devolvio un resultado valido" en vez
-      // de mostrar algo a medias.
-      log.warn("El modelo no devolvio preguntas validas: {}", e.toString());
-      return new Preguntas(List.of());
+      // resultado; el nivel queda vacio y los demas siguen.
+      log.warn(
+          "El modelo no devolvio preguntas validas para el nivel {}: {}",
+          nivel.codigo(),
+          e.toString());
+      return List.of();
     }
+  }
+
+  /**
+   * El interrogativo tal como lo devuelve un modelo chico (con acento, en ingles, con espacio) a
+   * uno de los seis codigos 5W1H; vacio si no se reconoce, para que la UI no invente uno.
+   */
+  static String normalizarTipo(String tipo) {
+    if (tipo == null) {
+      return "";
+    }
+    String plano =
+        Normalizer.normalize(tipo, Normalizer.Form.NFD)
+            .replaceAll("\\p{M}", "")
+            .toLowerCase(Locale.ROOT)
+            .strip()
+            .replaceAll("[\\s_]+", "-");
+    return switch (plano) {
+      case "que", "what", "cual", "cuales", "which" -> "que";
+      case "quien", "quienes", "who" -> "quien";
+      case "cuando", "when" -> "cuando";
+      case "donde", "where" -> "donde";
+      case "por-que", "porque", "why" -> "por-que";
+      case "como", "how" -> "como";
+      default -> "";
+    };
   }
 
   /**

@@ -236,8 +236,7 @@ class AccionesSobreDocumentosTest {
     when(repo.seccionesDe(any(), any())).thenReturn(List.of(seccion(1, 10, "A", "texto a")));
     Redactor redactor = mock(Redactor.class);
     when(redactor.resumir(anyString(), anyString())).thenReturn(Flux.just("ok"));
-    when(redactor.preguntar(anyString(), anyString()))
-        .thenReturn(new Redactor.Preguntas(List.of()));
+    when(redactor.preguntar(anyString(), anyString(), any())).thenReturn(List.of());
     var cupo = new CupoDeAcciones(PROPIEDADES);
     var acciones = new AccionesSobreDocumentos(repo, redactor, cupo, PROPIEDADES);
 
@@ -298,15 +297,19 @@ class AccionesSobreDocumentosTest {
 
   @Test
   @DisplayName(
-      "Preguntas e ideas: salida estructurada, con su etiqueta, y el cupo vuelve al completar")
+      "Preguntas (un nivel de Bloom por llamada, acumuladas) e ideas: salida estructurada, con su"
+          + " etiqueta, y el cupo vuelve al completar")
   void estructurar() {
     SeccionesRepositorio repo = mock(SeccionesRepositorio.class);
     when(repo.seccionesDe(any(), any())).thenReturn(List.of(seccion(1, 10, "A", "texto a")));
     Redactor redactor = mock(Redactor.class);
-    var preguntas =
-        new Redactor.Preguntas(
-            List.of(new Redactor.Tema("Despliegue", List.of(new Redactor.Pregunta("¿Cómo?", 1)))));
-    when(redactor.preguntar(anyString(), eq("pt"))).thenReturn(preguntas);
+    var recordar = new Redactor.Pregunta("¿Qué hace make up?", "que", 1);
+    var aplicar = new Redactor.Pregunta("¿Cómo lo usarías sin GPU?", "como", 1);
+    when(redactor.preguntar(anyString(), eq("pt"), any())).thenReturn(List.of());
+    when(redactor.preguntar(anyString(), eq("pt"), eq(Redactor.NivelBloom.RECORDAR)))
+        .thenReturn(List.of(recordar));
+    when(redactor.preguntar(anyString(), eq("pt"), eq(Redactor.NivelBloom.APLICAR)))
+        .thenReturn(List.of(aplicar));
     var ideas = new Redactor.Ideas(List.of(new Redactor.Idea("Titulo", "porque", 1)));
     when(redactor.idear(anyString(), eq("es"))).thenReturn(ideas);
     var cupo = new CupoDeAcciones(PROPIEDADES);
@@ -315,8 +318,20 @@ class AccionesSobreDocumentosTest {
     ResultadoDeAccion conPreguntas =
         acciones.ejecutar(Tipo.PREGUNTAS, List.of(10L), PROYECTO, "pt");
     assertThat(conPreguntas.etiqueta()).isEqualTo("Preguntas sobre 1 documento: A");
-    assertThat(conPreguntas.eventos().collectList().block())
-        .containsExactly(new Resultado(preguntas));
+    List<EventoAccion> eventos = conPreguntas.eventos().collectList().block();
+    // Seis Resultado acumulados, uno por nivel, en el orden de Bloom; el ultimo es el completo.
+    assertThat(eventos).hasSize(6).allMatch(e -> e instanceof Resultado);
+    assertThat(((Redactor.Preguntas) ((Resultado) eventos.get(0)).valor()).niveles())
+        .containsExactly(new Redactor.Nivel("recordar", List.of(recordar)));
+    Redactor.Preguntas completo = (Redactor.Preguntas) ((Resultado) eventos.get(5)).valor();
+    assertThat(completo.niveles())
+        .extracting(Redactor.Nivel::nivel)
+        .containsExactly("recordar", "comprender", "aplicar", "analizar", "evaluar", "crear");
+    assertThat(completo.niveles().get(2).preguntas()).containsExactly(aplicar);
+    assertThat(completo.niveles().get(5).preguntas()).isEmpty();
+    for (Redactor.NivelBloom nivel : Redactor.NivelBloom.values()) {
+      verify(redactor).preguntar(anyString(), eq("pt"), eq(nivel));
+    }
     assertThat(cupo.intentarTomar()).isTrue();
     cupo.liberar();
 

@@ -110,7 +110,14 @@ class AccionesControllerTest {
   @DisplayName("GET /api/acciones/preguntas: un solo evento resultado con el JSON, sin tokens")
   void preguntasEsEstructurado() throws Exception {
     Map<String, Object> preguntas =
-        Map.of("temas", List.of(Map.of("tema", "Despliegue", "preguntas", List.of())));
+        Map.of(
+            "niveles",
+            List.of(
+                Map.of(
+                    "nivel",
+                    "recordar",
+                    "preguntas",
+                    List.of(Map.of("texto", "¿Qué hace make up?", "tipo", "que", "fuente", 1)))));
     when(acciones.ejecutar(eq(Tipo.PREGUNTAS), eq(List.of(1L)), any(), eq("es")))
         .thenReturn(
             new ResultadoDeAccion(
@@ -121,7 +128,10 @@ class AccionesControllerTest {
 
     String cuerpo = sse(get("/api/acciones/preguntas").param("documentos", "1"));
 
-    assertThat(cuerpo).contains("event:resultado").contains("\"tema\":\"Despliegue\"");
+    assertThat(cuerpo)
+        .contains("event:resultado")
+        .contains("\"nivel\":\"recordar\"")
+        .contains("\"tipo\":\"que\"");
     assertThat(cuerpo).doesNotContain("event:token");
     assertThat(cuerpo.indexOf("event:citas")).isLessThan(cuerpo.indexOf("event:resultado"));
     assertThat(cuerpo.indexOf("event:resultado")).isLessThan(cuerpo.indexOf("event:fin"));

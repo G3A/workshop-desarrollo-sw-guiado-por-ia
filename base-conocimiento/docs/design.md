@@ -43,7 +43,11 @@ REST y Server-Sent Events; toda la lógica de UI es JavaScript plano consumiendo
   corre; lo inexistente se marca «no indexado», la misma regla de nunca ocultar la falta de
   evidencia. Preguntas e ideas se pintan desde datos (salida
   estructurada), así el botón «Preguntar» y las tarjetas salen exactas; «Preguntar» solo rellena
-  la barra de entrada.
+  la barra de entrada. La lluvia de preguntas se organiza por los seis niveles de la taxonomía de
+  Bloom (recordar, comprender, aplicar, analizar, evaluar, crear), una sección por nivel, con la
+  plantilla 5W1H por pregunta (chip «Qué», «Quién», «Cuándo», «Dónde», «Por qué», «Cómo»); los
+  niveles llegan uno a uno y la sección se va completando, con «Sin preguntas de este nivel» en
+  los que el documento no da.
 - **El traductor está donde está el texto**: para escribir en otro idioma, un modo traducir en la
   barra de entrada con una barra visible que avisa que lo enviado se traduce y no se busca; para
   leer en otro idioma, «Traducir» sobre cualquier burbuja o respuesta, con la traducción plegable
