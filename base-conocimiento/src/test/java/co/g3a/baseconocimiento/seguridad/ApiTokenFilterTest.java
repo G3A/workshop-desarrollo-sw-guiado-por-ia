@@ -101,7 +101,8 @@ class ApiTokenFilterTest {
 
   @Test
   @DisplayName(
-      "Con token configurado, las siete rutas de /api/acciones quedan excluidas: mismo EventSource sin cabeceras que /api/chat")
+      "Con token configurado, las siete rutas de /api/acciones quedan excluidas: "
+          + "mismo EventSource sin cabeceras que /api/chat")
   void accionesQuedanExcluidas() throws Exception {
     ApiTokenFilter filtro = new ApiTokenFilter(new SeguridadPropiedades("secreto"));
     String[] rutas = {
