@@ -16,6 +16,20 @@
   const modalDocumentoTitulo = document.getElementById("modal-documento-titulo");
   const modalDocumentoCuerpo = document.getElementById("modal-documento-cuerpo");
   const modalDocumentoDescarga = document.getElementById("modal-documento-descarga");
+  // Acciones sobre los documentos tildados (issue #38): el control bajo la lista,
+  // su menu de cinco acciones y el sub-panel de Traducir.
+  const botonAcciones = document.getElementById("boton-acciones");
+  const botonAccionesTexto = document.getElementById("boton-acciones-texto");
+  const menuAcciones = document.getElementById("menu-acciones");
+  const submenuTraducir = document.getElementById("submenu-traducir");
+  const botonTraducirDocumentos = document.getElementById("boton-traducir-documentos");
+  const contenedorIdiomaResultado = document.getElementById("selector-idioma-resultado");
+  const contenedorIdiomasDocumentos = document.getElementById("selector-idiomas-documentos");
+  // El traductor del chat: el modo traducir de la barra de entrada (alternativa A).
+  const botonModoTraducir = document.getElementById("boton-modo-traducir");
+  const barraTraducir = document.getElementById("barra-traducir");
+  const contenedorIdiomasChat = document.getElementById("selector-idiomas-chat");
+  const inputPill = formulario;
 
   // Esta vista previa (Señal 1: FTS) matchea por raíz de palabra, no por
   // significado: si la pregunta no comparte vocabulario con el documento
@@ -51,19 +65,225 @@
   let documentosDisponibles = [];
   let documentosActivosActuales = [];
 
+  // Topes del modulo de acciones (GET /api/acciones/limites): el control se
+  // deshabilita antes de que un 400 llegue como un corte de conexion, porque
+  // EventSource no puede leer el cuerpo de un 400. Defaults = los del servidor.
+  let limitesAcciones = { maxDocumentos: 10, maxCaracteresTexto: 8000 };
+
+  // Un selector para el idioma del resultado (resumir, sintetizar, preguntas,
+  // ideas) y otro, con origen, para Traducir documentos. Sin idiomas.js (no
+  // deberia pasar: va antes que este archivo) el menu sigue sin ellos.
+  const selectorIdiomaResultado =
+    window.kbIdiomas && contenedorIdiomaResultado
+      ? window.kbIdiomas.crearSelector({ soloDestino: true, destino: leerPreferencia("kb.acciones.idioma", "es") })
+      : null;
+  const selectorIdiomasDocumentos =
+    window.kbIdiomas && contenedorIdiomasDocumentos
+      ? window.kbIdiomas.crearSelector({ destino: leerPreferencia("kb.acciones.destino", "en") })
+      : null;
+  if (selectorIdiomaResultado) {
+    contenedorIdiomaResultado.appendChild(selectorIdiomaResultado.elemento);
+  }
+  if (selectorIdiomasDocumentos) {
+    contenedorIdiomasDocumentos.appendChild(selectorIdiomasDocumentos.elemento);
+  }
+
+  // Las acciones del menu se registran por nombre desde el codigo que las
+  // implementa (resumir/sintetizar/preguntas/ideas y traducir): el control no
+  // sabe que hace cada una, solo cuando puede ofrecerlas.
+  const accionesDelMenu = {};
+  function registrarAccion(nombre, ejecutar) {
+    accionesDelMenu[nombre] = ejecutar;
+  }
+
+  function leerPreferencia(clave, porDefecto) {
+    try {
+      return localStorage.getItem(clave) || porDefecto;
+    } catch (error) {
+      return porDefecto;
+    }
+  }
+  function guardarPreferencia(clave, valor) {
+    try {
+      localStorage.setItem(clave, valor);
+    } catch (error) {
+      // Sin almacenamiento: la preferencia dura la sesion.
+    }
+  }
+
   // Orden importa: cargarHistorialGuardado() abre la conversacion mas reciente
   // y reconcilia su seleccion de documentos guardada contra documentosDisponibles
   // -- si corriera antes de tener la lista, esa seleccion se pisaria con "todos".
   cargarProyectos()
     .then(cargarDocumentosDisponibles)
-    .then(cargarHistorialGuardado);
+    .then(cargarHistorialGuardado)
+    .then(cargarLimitesAcciones);
 
   campoProyecto.addEventListener("change", cargarDocumentosDisponibles);
+
+  // ---------- Control y menu de acciones sobre los documentos tildados ----------
+
+  async function cargarLimitesAcciones() {
+    try {
+      const respuesta = await fetch("/api/acciones/limites");
+      if (respuesta.ok) {
+        const limites = await respuesta.json();
+        if (limites && limites.maxDocumentos > 0) {
+          limitesAcciones = limites;
+        }
+      }
+    } catch (error) {
+      // Sin backend todavia: se quedan los defaults, que coinciden con los del servidor.
+    }
+    actualizarControlAcciones();
+  }
+
+  /**
+   * Los cuatro estados del control: sin seleccion (deshabilitado con ayuda),
+   * N seleccionados, menu abierto, y accion en curso (deshabilitado con spinner).
+   * Se llama en cada punto donde cambia la seleccion o donde hoy se toca el
+   * boton de enviar: la exclusion mutua es la misma que la del chat, sin un
+   * canal de estado aparte (hallazgo 8 de la revision del plan).
+   */
+  function actualizarControlAcciones() {
+    if (!botonAcciones) {
+      return;
+    }
+    const n = documentosActivosActuales.length;
+    // El boton de enviar ya modela "hay algo en curso en ESTA conversacion"
+    // (incluido el panel de reformulaciones esperando una eleccion): es la misma
+    // senal, no un canal de estado aparte.
+    const enCurso = boton.disabled || (conversacionActualId != null && streamsActivos.has(conversacionActualId));
+    let texto;
+    if (n === 0) {
+      texto = "Selecciona documentos para ver acciones";
+    } else if (n > limitesAcciones.maxDocumentos) {
+      texto = "Máximo " + limitesAcciones.maxDocumentos + " documentos por acción";
+    } else if (enCurso) {
+      texto = "Acción en curso…";
+    } else {
+      texto = "Acciones sobre " + n + (n === 1 ? " documento" : " documentos");
+    }
+    botonAccionesTexto.textContent = texto;
+    botonAcciones.disabled = n === 0 || n > limitesAcciones.maxDocumentos || enCurso;
+    botonAcciones.classList.toggle("en-curso", enCurso);
+    if (botonAcciones.disabled) {
+      cerrarMenuAcciones();
+    }
+    if (botonTraducirDocumentos) {
+      botonTraducirDocumentos.textContent = "Traducir " + n + (n === 1 ? " documento" : " documentos");
+    }
+  }
+
+  function fijarBotonEnviar(deshabilitado) {
+    boton.disabled = deshabilitado;
+    actualizarControlAcciones();
+  }
+
+  function abrirMenuAcciones() {
+    if (!menuAcciones || botonAcciones.disabled) {
+      return;
+    }
+    menuAcciones.classList.remove("oculto");
+    botonAcciones.setAttribute("aria-expanded", "true");
+  }
+
+  function cerrarMenuAcciones() {
+    if (!menuAcciones) {
+      return;
+    }
+    menuAcciones.classList.add("oculto");
+    if (submenuTraducir) {
+      submenuTraducir.classList.add("oculto");
+    }
+    if (botonAcciones) {
+      botonAcciones.setAttribute("aria-expanded", "false");
+    }
+  }
+
+  if (botonAcciones && menuAcciones) {
+    botonAcciones.addEventListener("click", () => {
+      if (menuAcciones.classList.contains("oculto")) {
+        abrirMenuAcciones();
+      } else {
+        cerrarMenuAcciones();
+      }
+    });
+    menuAcciones.querySelectorAll(".item-accion").forEach((item) => {
+      item.addEventListener("click", () => {
+        const accion = item.dataset.accion;
+        if (accion === "traducir") {
+          // El sub-panel de idiomas se despliega en el mismo menu; la accion
+          // arranca con su propio boton ("Traducir N documentos").
+          if (submenuTraducir) {
+            submenuTraducir.classList.toggle("oculto");
+          }
+          return;
+        }
+        cerrarMenuAcciones();
+        if (accionesDelMenu[accion]) {
+          accionesDelMenu[accion]();
+        }
+      });
+    });
+    if (botonTraducirDocumentos) {
+      botonTraducirDocumentos.addEventListener("click", () => {
+        cerrarMenuAcciones();
+        if (accionesDelMenu.traducir) {
+          accionesDelMenu.traducir();
+        }
+      });
+    }
+    // Clic fuera y Escape cierran el menu, como cualquier menu.
+    document.addEventListener("click", (evento) => {
+      if (!evento.target.closest("#acciones-documentos")) {
+        cerrarMenuAcciones();
+      }
+    });
+    document.addEventListener("keydown", (evento) => {
+      if (evento.key === "Escape") {
+        cerrarMenuAcciones();
+      }
+    });
+  }
+
+  /** Lo que la persona tildo, literal: aqui "[]" significa ninguno, no todos. */
+  function documentosSeleccionadosParaAccion() {
+    const documentos = documentosActivosActuales.slice();
+    if (!documentos.length) {
+      alert("Tilda al menos un documento.");
+      return null;
+    }
+    if (documentos.length > limitesAcciones.maxDocumentos) {
+      alert("Se pueden elegir hasta " + limitesAcciones.maxDocumentos + " documentos por acción.");
+      return null;
+    }
+    if (conversacionActualId != null && streamsActivos.has(conversacionActualId)) {
+      return null;
+    }
+    return documentos;
+  }
+
+  function idiomaDelResultado() {
+    const codigo = selectorIdiomaResultado ? selectorIdiomaResultado.valores().destino : "es";
+    guardarPreferencia("kb.acciones.idioma", codigo);
+    if (window.kbIdiomas) {
+      window.kbIdiomas.recordar(codigo);
+    }
+    return codigo;
+  }
 
   formulario.addEventListener("submit", (evento) => {
     evento.preventDefault();
     const pregunta = campoPregunta.value.trim();
     if (!pregunta || (conversacionActualId != null && streamsActivos.has(conversacionActualId))) {
+      return;
+    }
+    // Modo traducir (issue #38, alternativa A): lo que se envia se traduce, no se
+    // busca en la base. No necesita documentos tildados.
+    if (modoTraducir) {
+      traducirTextoDelChat(pregunta);
+      campoPregunta.value = "";
       return;
     }
     if (documentosDisponibles.length && documentosActivosActuales.length === 0) {
@@ -84,7 +304,7 @@
       if (bienvenida) {
         bienvenida.classList.remove("oculto");
       }
-      boton.disabled = false;
+      fijarBotonEnviar(false);
       campoPregunta.value = "";
       campoPregunta.focus();
       // "Todos activos" por defecto para la conversacion nueva (no hereda lo
@@ -189,7 +409,7 @@
     } else {
       await reconectarSiHaceFalta(conversacionId, turnos);
     }
-    boton.disabled = !!streamsActivos.get(conversacionId);
+    fijarBotonEnviar(!!streamsActivos.get(conversacionId));
 
     await cargarListaConversaciones();
     historial.lastElementChild?.scrollIntoView({ behavior: "auto", block: "start" });
@@ -219,7 +439,11 @@
       return; // Sin conexion con el backend todavia: no hay nada que reconectar.
     }
 
-    const ultimaGuardada = turnosGuardados.length ? turnosGuardados[turnosGuardados.length - 1].pregunta : null;
+    // Solo cuentan los turnos de pregunta: el servidor recuerda la ultima pregunta del RAG,
+    // y una accion o una traduccion guardadas despues no deben hacerla parecer sin guardar
+    // (si no, cada F5 la repetiria). Los turnos de antes de las acciones no traen tipo.
+    const preguntasGuardadas = turnosGuardados.filter((t) => (t.tipo || "pregunta") === "pregunta");
+    const ultimaGuardada = preguntasGuardadas.length ? preguntasGuardadas[preguntasGuardadas.length - 1].pregunta : null;
     if (estado.pregunta === ultimaGuardada) {
       return; // Ya esta guardada por el camino normal (evento "fin"): nada que hacer.
     }
@@ -284,7 +508,7 @@
     // nada.
     activarFeedback(turno, estado.queryLogId);
     if (conversacionActualId === conversacionId) {
-      boton.disabled = false;
+      fijarBotonEnviar(false);
     }
     guardarTurno(
         estado.pregunta, proyecto || estado.projectId, turno, huboError,
@@ -319,28 +543,52 @@
       if (bienvenida) {
         bienvenida.classList.remove("oculto");
       }
-      boton.disabled = false;
+      fijarBotonEnviar(false);
     }
     cargarListaConversaciones();
   }
 
   function pintarTurnoGuardado(registro) {
-    const turno = nuevoTurno(registro.pregunta);
+    // Los turnos guardados antes del issue #38 no tienen tipo: son preguntas.
+    const tipo = registro.tipo || "pregunta";
+    const turno = nuevoTurno(registro.pregunta, { tipo: tipo });
+    turno.registroId = registro.id;
     if (registro.reformulacion) {
       turno.reformulacion.textContent = "Buscando también como: “" + registro.reformulacion + "”";
     }
-    turno.previa.innerHTML = registro.previa && registro.previa.length
-      ? registro.previa.map((c) => itemCita(c, null)).join("")
-      : "<li>Sin resultados rápidos.</li>";
+    if (turno.previa) {
+      turno.previa.innerHTML = registro.previa && registro.previa.length
+        ? registro.previa.map((c) => itemCita(c, null)).join("")
+        : "<li>Sin resultados rápidos.</li>";
+    }
     turno.citas.innerHTML = registro.citas && registro.citas.length
       ? registro.citas.map((c, i) => itemCita(c, i + 1)).join("")
       : "<li>Sin citas.</li>";
     turno.respuesta.textContent = registro.respuesta || "";
+    if (tipo !== "pregunta") {
+      renderCobertura(turno, registro.cobertura || []);
+      if (tipo === "preguntas" || tipo === "ideas") {
+        renderEstructurado(turno, tipo, registro.resultado);
+      }
+      if (typeof pintarTurnoDeTraduccionGuardado === "function") {
+        pintarTurnoDeTraduccionGuardado(turno, registro);
+      }
+    }
+    if (Array.isArray(registro.traducciones) && registro.traducciones.length) {
+      turno.traduccionesDatos = registro.traducciones.slice();
+      turno.traduccionesDatos.forEach((t) => {
+        const bloque = crearBloqueTraducido(turno, t.ambito, t);
+        if (bloque) {
+          bloque.querySelector(".texto-traducido").textContent = t.texto || "";
+          bloque.classList.add("listo");
+        }
+      });
+    }
     if (registro.error) {
       turno.estado.textContent = registro.estadoError || "La respuesta quedó incompleta.";
       turno.estado.classList.add("error");
     } else if (registro.duracionMs != null) {
-      turno.estado.textContent = "Respondido en " + formatearDuracion(registro.duracionMs);
+      turno.estado.textContent = (tipo === "pregunta" ? "Respondido en " : "Listo en ") + formatearDuracion(registro.duracionMs);
       turno.estado.classList.add("completado");
     }
   }
@@ -427,6 +675,7 @@
         ? "(" + documentosActivosActuales.length + "/" + documentosDisponibles.length + ")"
         : "";
     }
+    actualizarControlAcciones();
   }
 
   async function alCambiarSeleccionDocumentos() {
@@ -435,6 +684,7 @@
     if (contadorDocumentos) {
       contadorDocumentos.textContent = "(" + documentosActivosActuales.length + "/" + documentosDisponibles.length + ")";
     }
+    actualizarControlAcciones();
     if (conversacionActualId != null) {
       try {
         await kbHistorialDb.actualizarDocumentosActivos(conversacionActualId, documentosActivosNormalizados());
@@ -587,18 +837,18 @@
       abrirModalDocumento(enlace.dataset.uri, enlace.dataset.titulo);
       return;
     }
-    const boton = evento.target.closest(".boton-copiar");
-    if (!boton) {
+    const copiar = evento.target.closest(".boton-copiar");
+    if (!copiar) {
       return;
     }
     try {
-      await navigator.clipboard.writeText(boton.dataset.texto || "");
-      const original = boton.textContent;
-      boton.textContent = "✓";
-      boton.disabled = true;
+      await navigator.clipboard.writeText(copiar.dataset.texto || "");
+      const original = copiar.textContent;
+      copiar.textContent = "✓";
+      copiar.disabled = true;
       setTimeout(() => {
-        boton.textContent = original;
-        boton.disabled = false;
+        copiar.textContent = original;
+        copiar.disabled = false;
       }, 1200);
     } catch (error) {
       // Sin permiso de portapapeles o navegador viejo: no hay mucho mas que
@@ -606,39 +856,72 @@
     }
   });
 
-  function nuevoTurno(pregunta) {
+  // Los turnos de accion (issue #38) llevan una etiqueta en la burbuja y ni
+  // feedback ni "Resultados rapidos": no son respuestas del RAG.
+  const ETIQUETA_TURNO = {
+    resumen: "Resumen",
+    sintesis: "Síntesis",
+    preguntas: "Preguntas",
+    ideas: "Ideas",
+    "traduccion-documentos": "Traducción",
+    "traduccion-texto": "Traducción",
+  };
+
+  /**
+   * opciones.tipo: "pregunta" (por defecto) o uno de ETIQUETA_TURNO. Un turno de
+   * accion se pinta con su etiqueta, el bloque de cobertura y sin feedback.
+   */
+  function nuevoTurno(pregunta, opciones) {
+    const tipo = (opciones && opciones.tipo) || "pregunta";
+    const esAccion = tipo !== "pregunta";
+    // "Traducir" por turno (alternativa B): sobre lo que escribio la persona
+    // siempre, y sobre la respuesta cuando es prosa. No sobre un turno que ya es
+    // una traduccion (hallazgo 11) ni sobre preguntas/ideas, que no son texto.
+    const esTraduccion = tipo === "traduccion-documentos" || tipo === "traduccion-texto";
+    const traducibleRespuesta = tipo === "pregunta" || tipo === "resumen" || tipo === "sintesis";
     if (bienvenida) {
       bienvenida.classList.add("oculto");
     }
     const turno = document.createElement("div");
-    turno.className = "turno";
+    turno.className = "turno turno-tipo-" + tipo;
     turno.innerHTML =
       '<div class="mensaje mensaje-usuario">' +
-      botonCopiar(escaparHtml(pregunta), "Copiar pregunta") +
-      `<div class="burbuja">${escaparHtml(pregunta)}</div>` +
+      (esTraduccion ? "" : botonTraducirTurno("pregunta")) +
+      botonCopiar(escaparHtml(pregunta), esAccion ? "Copiar etiqueta" : "Copiar pregunta") +
+      '<div class="burbuja">' +
+      (esAccion ? `<span class="etiqueta-turno">${escaparHtml(ETIQUETA_TURNO[tipo] || "")}</span>` : "") +
+      `<span class="texto-burbuja">${escaparHtml(pregunta)}</span>` +
       "</div>" +
+      "</div>" +
+      '<div class="traducciones-turno traducciones-pregunta" data-ambito="pregunta"></div>' +
       '<div class="mensaje mensaje-asistente">' +
       '<div class="avatar-asistente">KB</div>' +
       '<div class="contenido-asistente">' +
       '<p class="turno-reformulacion"></p>' +
       '<p class="turno-estado"></p>' +
       '<div class="turno-eleccion oculto"></div>' +
+      '<div class="turno-cobertura oculto"></div>' +
       '<div class="turno-respuesta"></div>' +
-      '<div class="turno-feedback oculto">' +
-      '<span>¿Te sirvió esta respuesta?</span>' +
-      '<button type="button" class="boton-feedback boton-feedback-si" ' +
-      'aria-label="Respuesta útil">👍</button>' +
-      '<button type="button" class="boton-feedback boton-feedback-no" ' +
-      'aria-label="Respuesta no útil">👎</button>' +
-      '<span class="turno-feedback-gracias oculto">¡Gracias!</span>' +
-      "</div>" +
-      '<details class="turno-detalle">' +
-      '<summary>Resultados rápidos ' +
-      `<button type="button" class="boton-info" title="${escaparHtml(TEXTO_INFO_PREVIA)}" ` +
-      'aria-label="Por qué la vista previa puede no mostrar nada">i</button>' +
-      "</summary>" +
-      '<ul class="turno-previa"></ul>' +
-      "</details>" +
+      (traducibleRespuesta ? '<div class="acciones-turno">' + botonTraducirTurno("respuesta") + "</div>" : "") +
+      '<div class="traducciones-turno" data-ambito="respuesta"></div>' +
+      '<div class="turno-estructurado oculto"></div>' +
+      '<div class="turno-traduccion oculto"></div>' +
+      (esAccion ? "" :
+        '<div class="turno-feedback oculto">' +
+        '<span>¿Te sirvió esta respuesta?</span>' +
+        '<button type="button" class="boton-feedback boton-feedback-si" ' +
+        'aria-label="Respuesta útil">👍</button>' +
+        '<button type="button" class="boton-feedback boton-feedback-no" ' +
+        'aria-label="Respuesta no útil">👎</button>' +
+        '<span class="turno-feedback-gracias oculto">¡Gracias!</span>' +
+        "</div>" +
+        '<details class="turno-detalle">' +
+        '<summary>Resultados rápidos ' +
+        `<button type="button" class="boton-info" title="${escaparHtml(TEXTO_INFO_PREVIA)}" ` +
+        'aria-label="Por qué la vista previa puede no mostrar nada">i</button>' +
+        "</summary>" +
+        '<ul class="turno-previa"></ul>' +
+        "</details>") +
       '<details class="turno-detalle">' +
       "<summary>Citas</summary>" +
       '<ol class="turno-citas"></ol>' +
@@ -657,11 +940,18 @@
       });
     }
     turno.scrollIntoView({ behavior: "smooth", block: "start" });
-    return {
+    const objeto = {
       raiz: turno,
+      tipo: tipo,
+      // Traducciones pedidas con "Traducir" sobre este turno (alternativa B).
+      traduccionesDatos: [],
+      textoBurbuja: turno.querySelector(".texto-burbuja"),
       estado: turno.querySelector(".turno-estado"),
       reformulacion: turno.querySelector(".turno-reformulacion"),
       eleccion: turno.querySelector(".turno-eleccion"),
+      cobertura: turno.querySelector(".turno-cobertura"),
+      estructurado: turno.querySelector(".turno-estructurado"),
+      traduccion: turno.querySelector(".turno-traduccion"),
       previa: turno.querySelector(".turno-previa"),
       respuesta: turno.querySelector(".turno-respuesta"),
       citas: turno.querySelector(".turno-citas"),
@@ -673,12 +963,31 @@
       // IndexedDB tal cual se ve, sin tener que re-parsear el DOM.
       previaDatos: [],
       citasDatos: [],
+      coberturaDatos: [],
+      resultadoDatos: null,
+      documentosDatos: null,
+      // El id del registro en IndexedDB, para actualizarlo despues (traducciones).
+      registroId: null,
       reformulacionTexto: null,
       queryLogId: null,
       // true mientras el panel de reformulaciones espera que la persona elija:
       // el "fin" de ese primer stream no cierra el turno ni lo guarda.
       eligiendo: false,
     };
+    turnosPorRaiz.set(turno, objeto);
+    return objeto;
+  }
+
+  // Del elemento .turno al objeto que lo maneja: lo necesita "Traducir" por
+  // turno, que llega por un clic delegado en #historial.
+  const turnosPorRaiz = new WeakMap();
+
+  function botonTraducirTurno(ambito) {
+    return `<button type="button" class="boton-traducir-turno" data-ambito="${ambito}" ` +
+      'title="Traducir a otro idioma" aria-label="Traducir a otro idioma">' +
+      '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<path d="M3 5h8"/><path d="M7 3v2"/><path d="M4 12c2.5-1 4.5-3.5 5-7"/><path d="M6 8c1 2 2.5 3.5 4 4"/><path d="M11 16l3-7 3 7"/><path d="M12.2 14h3.6"/></svg>' +
+      "<span>Traducir</span></button>";
   }
 
   /**
@@ -754,7 +1063,7 @@
     // este envio no se puede seguir refiriendo a ella.
     const conversacionId = conversacionActualId;
 
-    boton.disabled = true;
+    fijarBotonEnviar(true);
     const turno = nuevoTurno(pregunta);
     const inicioTurno = Date.now();
     const detenerContador = iniciarContador(turno.estado, "Buscando y analizando tu pregunta");
@@ -990,7 +1299,7 @@
         (turno.reformulacionTexto ? "Buscando como: “" + busqueda + "”" : "Buscando con tu pregunta tal cual") +
         (enIdiomaOriginal ? " · respuesta en el idioma original de las fuentes" : "");
       if (conversacionActualId === conversacionId) {
-        boton.disabled = true;
+        fijarBotonEnviar(true);
       }
       const detenerContador = iniciarContador(turno.estado, "Buscando y analizando tu pregunta");
       iniciarStreaming(pregunta, proyecto, turno, detenerContador, conversacionId, Date.now(), documentos, {
@@ -998,6 +1307,901 @@
         idioma: enIdiomaOriginal ? "original" : "es",
       });
     });
+  }
+
+  // ---------- Resumir, sintetizar, preguntas e ideas: un turno por accion ----------
+
+  const ACCIONES = {
+    resumir: { tipo: "resumen", verbo: "Resumen de", trabajando: "redactando el resumen", redactando: "Redactando el resumen…" },
+    sintetizar: { tipo: "sintesis", verbo: "Síntesis de", trabajando: "redactando la síntesis", redactando: "Redactando la síntesis…" },
+    preguntas: { tipo: "preguntas", verbo: "Preguntas sobre", trabajando: "proponiendo preguntas", redactando: "Armando las preguntas…" },
+    ideas: { tipo: "ideas", verbo: "Ideas a partir de", trabajando: "proponiendo ideas", redactando: "Armando las ideas…" },
+  };
+  Object.keys(ACCIONES).forEach((accion) => registrarAccion(accion, () => ejecutarAccion(accion)));
+
+  /**
+   * Misma forma que la etiqueta del servidor (PresupuestoDeContexto.etiqueta): se
+   * pinta de inmediato y el evento "etiqueta" la reemplaza por la definitiva,
+   * con los titulos reales y sin los documentos que ya no existan.
+   */
+  function etiquetaProvisional(verbo, documentos) {
+    const titulos = documentos
+      .map((id) => (documentosDisponibles.find((d) => d.id === id) || {}).titulo)
+      .filter((t) => !!t);
+    if (!titulos.length) {
+      return verbo + " documentos seleccionados";
+    }
+    const primeros = titulos.slice(0, 3).join(", ");
+    const restantes = titulos.length - 3;
+    return verbo + " " + titulos.length + (titulos.length === 1 ? " documento: " : " documentos: ") +
+      primeros + (restantes > 0 ? " y " + restantes + " más" : "");
+  }
+
+  async function ejecutarAccion(accion) {
+    const documentos = documentosSeleccionadosParaAccion();
+    if (!documentos) {
+      return;
+    }
+    const definicion = ACCIONES[accion];
+    const idioma = idiomaDelResultado();
+    const proyecto = campoProyecto.value.trim() || "default";
+    const etiqueta = etiquetaProvisional(definicion.verbo, documentos);
+    if (conversacionActualId == null) {
+      try {
+        conversacionActualId = await kbHistorialDb.crearConversacion(etiqueta, documentosActivosNormalizados());
+        await cargarListaConversaciones();
+      } catch (error) {
+        // Sin IndexedDB: se ejecuta igual, solo no persiste.
+      }
+    }
+    const conversacionId = conversacionActualId;
+    fijarBotonEnviar(true);
+    const turno = nuevoTurno(etiqueta, { tipo: definicion.tipo });
+    turno.documentosDatos = documentos;
+    const inicioTurno = Date.now();
+    const detenerContador = iniciarContador(
+      turno.estado,
+      "Leyendo " + documentos.length + (documentos.length === 1 ? " documento y " : " documentos y ") + definicion.trabajando);
+    iniciarStreamingAccion(accion, documentos, idioma, proyecto, turno, detenerContador, conversacionId, inicioTurno);
+  }
+
+  function iniciarStreamingAccion(accion, documentos, idioma, proyecto, turno, detenerContador, conversacionId, inicioTurno) {
+    const definicion = ACCIONES[accion];
+    const url = "/api/acciones/" + accion + "?documentos=" + documentos.join(",") +
+      "&projectId=" + encodeURIComponent(proyecto) + "&idioma=" + encodeURIComponent(idioma);
+    // La "pregunta" con la que se guarda el turno: la etiqueta definitiva del
+    // servidor en cuanto llega, la provisional mientras tanto.
+    let etiqueta = turno.textoBurbuja.textContent;
+    const fuente = new EventSource(url);
+    streamsActivos.set(conversacionId, { fuente: fuente, turno: turno, detenerContador: detenerContador });
+    actualizarControlAcciones();
+
+    fuente.addEventListener("etiqueta", (evento) => {
+      etiqueta = JSON.parse(evento.data);
+      turno.textoBurbuja.textContent = etiqueta;
+    });
+    fuente.addEventListener("cobertura", (evento) => {
+      renderCobertura(turno, JSON.parse(evento.data));
+    });
+    // Mientras haya documentos largos por leer, el contador sigue y el progreso va en
+    // "Documentos usados" (pasada k de M); "Redactando" recien con la primera salida.
+    let redactando = false;
+    const marcarRedactando = () => {
+      if (redactando) {
+        return;
+      }
+      redactando = true;
+      detenerContador();
+      turno.estado.textContent = definicion.redactando;
+    };
+    fuente.addEventListener("citas", (evento) => {
+      const citas = JSON.parse(evento.data);
+      turno.citasDatos = citas;
+      turno.citas.innerHTML = citas.length
+        ? citas.map((c, i) => itemCita(c, i + 1)).join("")
+        : "<li>Sin citas.</li>";
+      if (!turno.coberturaDatos.some((c) => c.pasadas > 0)) {
+        marcarRedactando();
+      }
+    });
+    fuente.addEventListener("lectura", (evento) => {
+      const lectura = JSON.parse(evento.data);
+      const documento = turno.coberturaDatos.find((c) => c.documentoId === lectura.documentoId);
+      if (documento) {
+        documento.pasadaActual = lectura.pasadaActual;
+        documento.pasadas = lectura.pasadasTotales;
+        renderCobertura(turno, turno.coberturaDatos);
+      }
+    });
+    fuente.addEventListener("token", (evento) => {
+      marcarRedactando();
+      turno.respuesta.textContent += JSON.parse(evento.data);
+    });
+    fuente.addEventListener("resultado", (evento) => {
+      marcarRedactando();
+      const datos = JSON.parse(evento.data);
+      renderEstructurado(turno, definicion.tipo, datos);
+      // Las preguntas llegan nivel a nivel: el estado dice por cual va.
+      if (definicion.tipo === "preguntas" && datos && datos.niveles) {
+        const hechos = datos.niveles.length;
+        const totalNiveles = Object.keys(NIVELES_BLOOM).length;
+        if (hechos < totalNiveles) {
+          const siguiente = Object.keys(NIVELES_BLOOM)[hechos];
+          turno.estado.textContent = "Nivel " + hechos + " de " + totalNiveles + " listo; generando «" +
+            (NIVELES_BLOOM[siguiente] ? NIVELES_BLOOM[siguiente].titulo.toLowerCase() : siguiente) + "»…";
+        }
+      }
+    });
+    fuente.addEventListener("fin", () => {
+      const duracionMs = Date.now() - inicioTurno;
+      cerrarStreaming(conversacionId, turno, detenerContador, duracionMs);
+      renderCobertura(turno, turno.coberturaDatos);
+      guardarTurno(etiqueta, proyecto, turno, false, null, conversacionId, duracionMs);
+    });
+    fuente.addEventListener("error-servidor", (evento) => {
+      detenerContador();
+      turno.estado.textContent = JSON.parse(evento.data);
+      turno.estado.classList.add("error");
+      cerrarStreaming(conversacionId, turno, detenerContador);
+      guardarTurno(etiqueta, proyecto, turno, true, turno.estado.textContent, conversacionId);
+    });
+    fuente.onerror = () => {
+      detenerContador();
+      turno.estado.textContent = "No se pudo completar la acción (¿Ollama no responde?).";
+      turno.estado.classList.add("error");
+      cerrarStreaming(conversacionId, turno, detenerContador);
+      guardarTurno(etiqueta, proyecto, turno, true, turno.estado.textContent, conversacionId);
+    };
+  }
+
+  /**
+   * "Documentos usados": como entro cada documento al modelo. Todo documento
+   * indexado entra entero: tal cual si cabe, o leido por pasadas (notas por
+   * tramo) si no, con el progreso pasada a pasada mientras corre. Los indexados
+   * llevan el mismo [n] que las citas; los que no existen en el proyecto quedan
+   * al final como "no indexado" en vez de desaparecer. Los turnos guardados por
+   * la version anterior traen seccionesIncluidas/primeraRecortada en vez de
+   * pasadas y se siguen mostrando como entonces.
+   */
+  function renderCobertura(turno, cobertura) {
+    turno.coberturaDatos = cobertura || [];
+    if (!turno.cobertura) {
+      return;
+    }
+    if (!turno.coberturaDatos.length) {
+      turno.cobertura.classList.add("oculto");
+      turno.cobertura.innerHTML = "";
+      return;
+    }
+    const terminado = turno.estado.classList.contains("completado") || turno.estado.classList.contains("error");
+    let n = 0;
+    const filas = turno.coberturaDatos
+      .map((c) => {
+        const indexado = c.seccionesTotales > 0;
+        const titulo = escaparHtml(c.titulo || c.uri || "#" + c.documentoId);
+        if (!indexado) {
+          return `<li class="no-indexado"><span class="numero"></span><span class="titulo-documento">${titulo}</span>` +
+            '<span class="insignia-cobertura no-indexado">no indexado</span></li>';
+        }
+        n++;
+        const uri = c.uri || "";
+        const enlace = esUriDelVault(uri)
+          ? `<button type="button" class="enlace-cita titulo-documento" data-uri="${escaparHtml(uri)}" data-titulo="${titulo}">${titulo}</button>`
+          : (uri
+            ? `<a class="titulo-documento" href="${escaparHtml(uri)}" target="_blank" rel="noopener">${titulo}</a>`
+            : `<span class="titulo-documento">${titulo}</span>`);
+        const secciones = c.seccionesTotales + (c.seccionesTotales === 1 ? " sección" : " secciones");
+        let insignia;
+        if (c.pasadas === undefined) {
+          // Turno guardado por la version que recortaba.
+          const completa = c.seccionesIncluidas >= c.seccionesTotales && !c.primeraRecortada;
+          insignia = completa
+            ? `<span class="insignia-cobertura completa">${secciones} · entero</span>`
+            : `<span class="insignia-cobertura parcial">primeras ${c.seccionesIncluidas} de ${c.seccionesTotales} secciones · parcial</span>`;
+        } else if (!c.pasadas) {
+          insignia = `<span class="insignia-cobertura completa">${secciones} · entero</span>`;
+        } else if (terminado || (c.pasadaActual || 0) >= c.pasadas) {
+          insignia = `<span class="insignia-cobertura completa">${secciones} · leído completo en ${c.pasadas} pasadas</span>`;
+        } else {
+          insignia = `<span class="insignia-cobertura leyendo">${secciones} · leyendo: pasada ${c.pasadaActual || 0} de ${c.pasadas}</span>`;
+        }
+        return `<li><span class="numero">[${n}]</span>${enlace}${insignia}</li>`;
+      })
+      .join("");
+    turno.cobertura.innerHTML = "<h3>Documentos usados</h3><ol>" + filas + "</ol>";
+    turno.cobertura.classList.remove("oculto");
+  }
+
+  // Los seis niveles de la taxonomia de Bloom, en el orden en que el servidor los
+  // genera, y los seis interrogativos 5W1H con que se formula cada pregunta.
+  const NIVELES_BLOOM = {
+    recordar: { titulo: "Recordar", descripcion: "hechos, términos y pasos tal como aparecen" },
+    comprender: { titulo: "Comprender", descripcion: "explicar, resumir, clasificar, dar ejemplos" },
+    aplicar: { titulo: "Aplicar", descripcion: "usarlo en una situación concreta" },
+    analizar: { titulo: "Analizar", descripcion: "descomponer, comparar, causas y supuestos" },
+    evaluar: { titulo: "Evaluar", descripcion: "juzgar con criterios: ventajas, riesgos, decisiones" },
+    crear: { titulo: "Crear", descripcion: "proponer algo nuevo a partir del documento" },
+  };
+  const TIPOS_5W1H = { que: "Qué", quien: "Quién", cuando: "Cuándo", donde: "Dónde", "por-que": "Por qué", como: "Cómo" };
+
+  function itemPregunta(p) {
+    const chip = TIPOS_5W1H[p.tipo] ? `<span class="chip-5w1h">${TIPOS_5W1H[p.tipo]}</span>` : "";
+    return `<li><span class="pregunta-texto">${chip}${escaparHtml(p.texto || "")} <span class="cita-n">[${Number(p.fuente) || "?"}]</span></span>` +
+      `<button type="button" class="boton-preguntar" data-pregunta="${escaparHtml(p.texto || "")}">Preguntar</button></li>`;
+  }
+
+  /**
+   * Preguntas e ideas llegan como JSON (decision 11 del issue #38): la UI pinta
+   * desde datos, asi el boton "Preguntar" por pregunta y las tarjetas por idea
+   * salen exactas en vez de depender de que un modelo chico respete un formato
+   * de listas. Las preguntas llegan varias veces, acumuladas nivel a nivel; cada
+   * vez se repinta todo.
+   */
+  function renderEstructurado(turno, tipo, datos) {
+    turno.resultadoDatos = datos || null;
+    if (!turno.estructurado) {
+      return;
+    }
+    if (!datos || datos.mensaje) {
+      turno.estructurado.innerHTML = "";
+      turno.estructurado.classList.add("oculto");
+      if (datos && datos.mensaje) {
+        turno.respuesta.textContent = datos.mensaje;
+      }
+      return;
+    }
+    let html = "";
+    if (tipo === "preguntas" && datos.temas) {
+      // Turnos guardados por la version anterior, agrupados por tema.
+      const temas = datos.temas;
+      html = temas.length
+        ? temas.map((t) =>
+            `<section class="tema"><h4>${escaparHtml(t.tema || "")}</h4><ul>` +
+            (t.preguntas || []).map((p) => itemPregunta(p)).join("") +
+            "</ul></section>").join("")
+        : '<p class="sin-resultado">El modelo no devolvió preguntas válidas. Vuelve a intentarlo.</p>';
+    } else if (tipo === "preguntas") {
+      // Un nivel de Bloom por seccion, en orden, con la plantilla 5W1H por pregunta
+      // (sub-issue #61). Los niveles llegan acumulados: se pinta lo que ya hay.
+      const niveles = datos.niveles || [];
+      const total = niveles.reduce((n, l) => n + (l.preguntas || []).length, 0);
+      html = niveles.map((l) => {
+        const nombre = NIVELES_BLOOM[l.nivel] || { titulo: l.nivel || "", descripcion: "" };
+        const preguntas = l.preguntas || [];
+        return `<section class="tema nivel-bloom"><h4>${escaparHtml(nombre.titulo)}` +
+          ` <span class="descripcion-nivel">${escaparHtml(nombre.descripcion)}</span></h4>` +
+          (preguntas.length
+            ? "<ul>" + preguntas.map((p) => itemPregunta(p)).join("") + "</ul>"
+            : '<p class="nivel-vacio">Sin preguntas de este nivel en los documentos.</p>') +
+          "</section>";
+      }).join("");
+      if (!niveles.length) {
+        html = '<p class="sin-resultado">El modelo no devolvió preguntas válidas. Vuelve a intentarlo.</p>';
+      } else if (!total && niveles.length >= Object.keys(NIVELES_BLOOM).length) {
+        html += '<p class="sin-resultado">El modelo no encontró preguntas en ningún nivel. Vuelve a intentarlo.</p>';
+      }
+    } else {
+      const ideas = datos.ideas || [];
+      html = ideas.length
+        ? '<div class="grilla-ideas">' + ideas.map((i) =>
+            `<article class="idea"><h4>${escaparHtml(i.titulo || "")}</h4>` +
+            `<p>${escaparHtml(i.justificacion || "")} <span class="cita-n">[${Number(i.fuente) || "?"}]</span></p>` +
+            botonCopiar(escaparHtml((i.titulo || "") + ": " + (i.justificacion || "")), "Copiar idea") +
+            "</article>").join("") + "</div>"
+        : '<p class="sin-resultado">El modelo no devolvió ideas válidas. Vuelve a intentarlo.</p>';
+    }
+    turno.estructurado.innerHTML = html;
+    turno.estructurado.classList.remove("oculto");
+  }
+
+  // "Preguntar" solo rellena la barra de entrada: es el unico puente entre las
+  // acciones y el chat, y vive solo en la UI (supuesto 8 del issue #38).
+  historial.addEventListener("click", (evento) => {
+    const preguntar = evento.target.closest(".boton-preguntar");
+    if (!preguntar) {
+      return;
+    }
+    campoPregunta.value = preguntar.dataset.pregunta || "";
+    campoPregunta.focus();
+  });
+
+  // ---------- Traducir documentos completos, bloque a bloque ----------
+
+  registrarAccion("traducir", traducirDocumentos);
+
+  function nombreIdioma(codigo) {
+    return window.kbIdiomas ? window.kbIdiomas.nombreDe(codigo) : (codigo || "");
+  }
+
+  async function traducirDocumentos() {
+    const documentos = documentosSeleccionadosParaAccion();
+    if (!documentos) {
+      return;
+    }
+    const idiomas = selectorIdiomasDocumentos ? selectorIdiomasDocumentos.valores() : { origen: null, destino: "en" };
+    guardarPreferencia("kb.acciones.destino", idiomas.destino);
+    if (window.kbIdiomas) {
+      window.kbIdiomas.recordar(idiomas.destino);
+    }
+    const proyecto = campoProyecto.value.trim() || "default";
+    const etiqueta = etiquetaProvisional("Traducción de", documentos);
+    if (conversacionActualId == null) {
+      try {
+        conversacionActualId = await kbHistorialDb.crearConversacion(etiqueta, documentosActivosNormalizados());
+        await cargarListaConversaciones();
+      } catch (error) {
+        // Sin IndexedDB: se traduce igual, solo no persiste.
+      }
+    }
+    const conversacionId = conversacionActualId;
+    fijarBotonEnviar(true);
+    const turno = nuevoTurno(etiqueta, { tipo: "traduccion-documentos" });
+    turno.documentosDatos = documentos;
+    // Todo lo que hace falta para pintar (y repintar tras un reload) la traduccion:
+    // idiomas pedidos, estado por documento y el texto traducido por documento.
+    turno.resultadoDatos = { origen: idiomas.origen, destino: idiomas.destino, documentos: [], estados: {}, textos: {} };
+    const inicioTurno = Date.now();
+    const detenerContador = iniciarContador(
+      turno.estado,
+      "Traduciendo " + documentos.length + (documentos.length === 1 ? " documento" : " documentos") + " al " + nombreIdioma(idiomas.destino).toLowerCase());
+    iniciarStreamingTraduccion(documentos, idiomas, proyecto, turno, detenerContador, conversacionId, inicioTurno);
+  }
+
+  function iniciarStreamingTraduccion(documentos, idiomas, proyecto, turno, detenerContador, conversacionId, inicioTurno) {
+    const url = "/api/acciones/traducir-documentos?documentos=" + documentos.join(",") +
+      "&projectId=" + encodeURIComponent(proyecto) +
+      "&origen=" + encodeURIComponent(idiomas.origen || "auto") +
+      "&destino=" + encodeURIComponent(idiomas.destino);
+    let etiqueta = turno.textoBurbuja.textContent;
+    const datos = turno.resultadoDatos;
+    const fuente = new EventSource(url);
+    streamsActivos.set(conversacionId, { fuente: fuente, turno: turno, detenerContador: detenerContador });
+    actualizarControlAcciones();
+
+    fuente.addEventListener("etiqueta", (evento) => {
+      etiqueta = JSON.parse(evento.data);
+      turno.textoBurbuja.textContent = etiqueta;
+    });
+    fuente.addEventListener("documentos", (evento) => {
+      datos.documentos = JSON.parse(evento.data);
+      datos.documentos.forEach((d) => {
+        datos.estados[d.documentoId] = { bloquesTotales: d.bloquesTotales, bloqueActual: 0, idioma: idiomas.origen, omitido: false };
+      });
+      renderTraduccion(turno);
+    });
+    fuente.addEventListener("idioma-detectado", (evento) => {
+      const e = JSON.parse(evento.data);
+      estadoDe(datos, e.documentoId).idioma = e.codigo;
+      renderTraduccion(turno);
+    });
+    fuente.addEventListener("documento-omitido", (evento) => {
+      const e = JSON.parse(evento.data);
+      const estado = estadoDe(datos, e.documentoId);
+      estado.omitido = true;
+      estado.idioma = e.codigo;
+      renderTraduccion(turno);
+    });
+    fuente.addEventListener("progreso", (evento) => {
+      const e = JSON.parse(evento.data);
+      const estado = estadoDe(datos, e.documentoId);
+      estado.bloqueActual = e.bloqueActual;
+      estado.bloquesTotales = e.bloquesTotales;
+      renderTraduccion(turno);
+    });
+    fuente.addEventListener("texto", (evento) => {
+      const e = JSON.parse(evento.data);
+      datos.textos[e.documentoId] = (datos.textos[e.documentoId] || "") + e.fragmento;
+      renderTextoTraducido(turno, e.documentoId);
+    });
+    fuente.addEventListener("fin", () => {
+      const duracionMs = Date.now() - inicioTurno;
+      cerrarStreaming(conversacionId, turno, detenerContador, duracionMs);
+      renderTraduccion(turno, true);
+      guardarTurno(etiqueta, proyecto, turno, false, null, conversacionId, duracionMs);
+    });
+    // Con error, las filas que quedaron "en espera" o a mitad de bloque se vuelven a
+    // pintar como fallidas: si no, esperarian para siempre.
+    fuente.addEventListener("error-servidor", (evento) => {
+      detenerContador();
+      turno.estado.textContent = JSON.parse(evento.data);
+      turno.estado.classList.add("error");
+      cerrarStreaming(conversacionId, turno, detenerContador);
+      renderTraduccion(turno);
+      guardarTurno(etiqueta, proyecto, turno, true, turno.estado.textContent, conversacionId);
+    });
+    fuente.onerror = () => {
+      detenerContador();
+      turno.estado.textContent = "No se pudo completar la traducción (¿Ollama no responde?).";
+      turno.estado.classList.add("error");
+      cerrarStreaming(conversacionId, turno, detenerContador);
+      renderTraduccion(turno);
+      guardarTurno(etiqueta, proyecto, turno, true, turno.estado.textContent, conversacionId);
+    };
+  }
+
+  function estadoDe(datos, documentoId) {
+    if (!datos.estados[documentoId]) {
+      datos.estados[documentoId] = { bloquesTotales: 0, bloqueActual: 0, idioma: null, omitido: false };
+    }
+    return datos.estados[documentoId];
+  }
+
+  /**
+   * Una fila por documento (origen detectado, progreso por bloque, omitido o
+   * "Listo · Descargar .md") y, debajo, el texto traducido con un encabezado por
+   * documento que pone la UI: el nucleo emite solo la traduccion (hallazgo 25).
+   * `terminado` = ya llego "fin": los que no se omitieron quedan listos.
+   */
+  function renderTraduccion(turno, terminado) {
+    const datos = turno.resultadoDatos;
+    if (!turno.traduccion || !datos) {
+      return;
+    }
+    const encabezado =
+      '<p class="traduccion-idiomas">' +
+      escaparHtml(datos.origen ? nombreIdioma(datos.origen) : "Detectar el origen") +
+      " → " + escaparHtml(nombreIdioma(datos.destino)) + "</p>";
+    const filas = (datos.documentos || [])
+      .map((d) => {
+        const estado = estadoDe(datos, d.documentoId);
+        const titulo = escaparHtml(d.titulo || "#" + d.documentoId);
+        let detalle;
+        let clase = "";
+        if (!d.bloquesTotales) {
+          detalle = "no indexado";
+          clase = "no-indexado";
+        } else if (estado.omitido) {
+          detalle = "ya está en " + escaparHtml(nombreIdioma(estado.idioma).toLowerCase()) + ", se omitió";
+          clase = "omitido";
+        } else if (terminado || (datos.textos[d.documentoId] && estado.bloqueActual >= estado.bloquesTotales && (turno.estado.classList.contains("completado") || turno.estado.classList.contains("error")))) {
+          detalle = "Listo";
+          clase = "listo";
+        } else if (turno.estado.classList.contains("error")) {
+          detalle = estado.bloqueActual > 0
+            ? "se interrumpió en el bloque " + estado.bloqueActual + " de " + estado.bloquesTotales
+            : "no se tradujo";
+          clase = "fallido";
+        } else if (estado.bloqueActual > 0) {
+          detalle = "bloque " + estado.bloqueActual + " de " + estado.bloquesTotales;
+          clase = "en-curso";
+        } else {
+          detalle = "en espera";
+        }
+        const origen = estado.idioma
+          ? `<span class="origen-detectado">origen: ${escaparHtml(nombreIdioma(estado.idioma).toLowerCase())}</span>`
+          : "";
+        const descarga = clase === "listo"
+          ? ` · <a class="enlace-descarga" href="${urlDescargaMarkdown(d, datos)}" download="${escaparHtml(nombreArchivoMarkdown(d, datos))}">Descargar .md</a>`
+          : "";
+        return `<li class="${clase}"><span class="titulo-documento">${titulo}</span>${origen}` +
+          `<span class="estado-traduccion">${detalle}${descarga}</span></li>`;
+      })
+      .join("");
+    let textos = turno.traduccion.querySelector(".textos-traducidos");
+    const textosHtml = textos ? textos.innerHTML : "";
+    turno.traduccion.innerHTML =
+      encabezado + '<ol class="filas-traduccion">' + filas + "</ol>" +
+      '<div class="textos-traducidos">' + textosHtml + "</div>";
+    turno.traduccion.classList.remove("oculto");
+    Object.keys(datos.textos).forEach((id) => renderTextoTraducido(turno, Number(id)));
+  }
+
+  function renderTextoTraducido(turno, documentoId) {
+    const datos = turno.resultadoDatos;
+    const contenedor = turno.traduccion && turno.traduccion.querySelector(".textos-traducidos");
+    if (!contenedor) {
+      return;
+    }
+    let seccion = contenedor.querySelector(`[data-documento="${documentoId}"]`);
+    if (!seccion) {
+      const documento = (datos.documentos || []).find((d) => d.documentoId === documentoId) || {};
+      seccion = document.createElement("section");
+      seccion.dataset.documento = String(documentoId);
+      seccion.innerHTML = `<h4>${escaparHtml(documento.titulo || "#" + documentoId)}</h4><div class="texto-traducido"></div>`;
+      contenedor.appendChild(seccion);
+    }
+    seccion.querySelector(".texto-traducido").textContent = datos.textos[documentoId] || "";
+  }
+
+  // El .md se arma en el navegador con lo que llego (fuera de alcance guardarlo en
+  // el servidor): encabezado con el titulo, y el texto tal cual lo tradujo el modelo.
+  function nombreArchivoMarkdown(documento, datos) {
+    const base = String(documento.titulo || "documento").replace(/\.[a-z0-9]+$/i, "").replace(/[^\w.-]+/g, "-");
+    return base + "." + datos.destino + ".md";
+  }
+  function urlDescargaMarkdown(documento, datos) {
+    const contenido = "# " + (documento.titulo || "") + "\n\n" + (datos.textos[documento.documentoId] || "");
+    return "data:text/markdown;charset=utf-8," + encodeURIComponent(contenido);
+  }
+
+  /** Repinta un turno de traduccion guardado: filas, textos y enlaces de descarga. */
+  function pintarTurnoDeTraduccionGuardado(turno, registro) {
+    if (!registro.resultado) {
+      return;
+    }
+    if (turno.tipo === "traduccion-texto") {
+      turno.resultadoDatos = registro.resultado;
+      turno.estado.insertAdjacentElement("afterend", turno.traduccion);
+      renderTraduccionDeTexto(turno);
+      return;
+    }
+    if (turno.tipo !== "traduccion-documentos") {
+      return;
+    }
+    turno.resultadoDatos = registro.resultado;
+    turno.documentosDatos = registro.documentos || null;
+    if (!registro.error) {
+      turno.estado.classList.add("completado");
+    }
+    renderTraduccion(turno, !registro.error);
+  }
+
+  // ---------- El traductor del chat: modo traducir (A) ----------
+
+  let modoTraducir = false;
+  const selectorIdiomasChat =
+    window.kbIdiomas && contenedorIdiomasChat
+      ? window.kbIdiomas.crearSelector({ destino: leerPreferencia("kb.acciones.destino-chat", "en") })
+      : null;
+  if (selectorIdiomasChat) {
+    contenedorIdiomasChat.appendChild(selectorIdiomasChat.elemento);
+  }
+  const PLACEHOLDER_PREGUNTA = campoPregunta.placeholder;
+
+  // El modo NO se persiste: se apaga al recargar, y mientras esta activo la barra
+  // de arriba lo dice con todas las letras, para que nadie reciba una traduccion
+  // cuando esperaba una respuesta (supuesto 9 del issue #38).
+  function fijarModoTraducir(activo) {
+    modoTraducir = !!activo;
+    if (barraTraducir) {
+      barraTraducir.classList.toggle("oculto", !modoTraducir);
+    }
+    if (botonModoTraducir) {
+      botonModoTraducir.setAttribute("aria-pressed", modoTraducir ? "true" : "false");
+      botonModoTraducir.title = modoTraducir
+        ? "Modo traducir activo: vuelve a preguntar"
+        : "Modo traducir: traduce lo que escribas en vez de buscarlo";
+    }
+    inputPill.classList.toggle("modo-traducir", modoTraducir);
+    campoPregunta.placeholder = modoTraducir ? "Escribe lo que quieres traducir…" : PLACEHOLDER_PREGUNTA;
+    boton.setAttribute("aria-label", modoTraducir ? "Traducir" : "Preguntar");
+    boton.title = modoTraducir ? "Traducir" : "";
+  }
+  if (botonModoTraducir) {
+    botonModoTraducir.addEventListener("click", () => {
+      fijarModoTraducir(!modoTraducir);
+      campoPregunta.focus();
+    });
+  }
+
+  async function traducirTextoDelChat(texto) {
+    const idiomas = selectorIdiomasChat ? selectorIdiomasChat.valores() : { origen: null, destino: "en" };
+    guardarPreferencia("kb.acciones.destino-chat", idiomas.destino);
+    if (window.kbIdiomas) {
+      window.kbIdiomas.recordar(idiomas.destino);
+    }
+    const proyecto = campoProyecto.value.trim() || "default";
+    if (conversacionActualId == null) {
+      try {
+        conversacionActualId = await kbHistorialDb.crearConversacion(texto, documentosActivosNormalizados());
+        await cargarListaConversaciones();
+      } catch (error) {
+        // Sin IndexedDB: se traduce igual, solo no persiste.
+      }
+    }
+    const conversacionId = conversacionActualId;
+    fijarBotonEnviar(true);
+    const turno = nuevoTurno(texto, { tipo: "traduccion-texto" });
+    turno.resultadoDatos = { origen: idiomas.origen, destino: idiomas.destino, idiomaDetectado: null, original: texto };
+    // Los idiomas van arriba del texto traducido, como en los mockups.
+    turno.estado.insertAdjacentElement("afterend", turno.traduccion);
+    renderTraduccionDeTexto(turno);
+    const inicioTurno = Date.now();
+    const detenerContador = iniciarContador(turno.estado, "Traduciendo al " + nombreIdioma(idiomas.destino).toLowerCase());
+    traducirPorFetch(
+      { texto: texto, origen: idiomas.origen || "auto", destino: idiomas.destino },
+      turno,
+      {
+        alDetectar: (codigo) => {
+          turno.resultadoDatos.idiomaDetectado = codigo;
+          renderTraduccionDeTexto(turno);
+          detenerContador();
+          turno.estado.textContent = "Traduciendo…";
+        },
+        alToken: (fragmento) => { turno.respuesta.textContent += fragmento; },
+        alTerminar: (huboError, mensaje) => {
+          detenerContador();
+          if (huboError) {
+            turno.estado.textContent = mensaje;
+            turno.estado.classList.add("error");
+            cerrarStreaming(conversacionId, turno, detenerContador);
+            guardarTurno(texto, proyecto, turno, true, mensaje, conversacionId);
+            return;
+          }
+          const duracionMs = Date.now() - inicioTurno;
+          cerrarStreaming(conversacionId, turno, detenerContador, duracionMs);
+          guardarTurno(texto, proyecto, turno, false, null, conversacionId, duracionMs);
+        },
+      },
+      conversacionId,
+      detenerContador);
+  }
+
+  /** "Español (detectado) → Inglés", mas "Ver original" con el texto de partida. */
+  function renderTraduccionDeTexto(turno) {
+    const datos = turno.resultadoDatos;
+    if (!turno.traduccion || !datos) {
+      return;
+    }
+    const origen = datos.origen
+      ? nombreIdioma(datos.origen)
+      : (datos.idiomaDetectado ? nombreIdioma(datos.idiomaDetectado) + " (detectado)" : "Detectando el origen");
+    const abierto = turno.traduccion.querySelector(".texto-original:not(.oculto)") != null;
+    turno.traduccion.innerHTML =
+      `<p class="traduccion-idiomas">${escaparHtml(origen)} → ${escaparHtml(nombreIdioma(datos.destino))}</p>` +
+      (datos.original
+        ? `<button type="button" class="ver-original">${abierto ? "Ocultar original" : "Ver original"}</button>` +
+          `<div class="texto-original${abierto ? "" : " oculto"}">${escaparHtml(datos.original)}</div>`
+        : "");
+    turno.traduccion.classList.remove("oculto");
+  }
+
+  historial.addEventListener("click", (evento) => {
+    const verOriginal = evento.target.closest(".ver-original");
+    if (!verOriginal) {
+      return;
+    }
+    const original = verOriginal.nextElementSibling;
+    const abierto = original.classList.toggle("oculto") === false;
+    verOriginal.textContent = abierto ? "Ocultar original" : "Ver original";
+  });
+
+  // ---------- "Traducir" sobre un turno ya escrito (B) ----------
+
+  historial.addEventListener("click", (evento) => {
+    const boton = evento.target.closest(".boton-traducir-turno");
+    if (!boton) {
+      return;
+    }
+    const turno = turnosPorRaiz.get(boton.closest(".turno"));
+    if (turno) {
+      abrirPopoverTraducir(turno, boton.dataset.ambito, boton);
+    }
+  });
+
+  historial.addEventListener("click", (evento) => {
+    const ocultar = evento.target.closest(".ocultar-traduccion");
+    if (!ocultar) {
+      return;
+    }
+    const texto = ocultar.parentElement.querySelector(".texto-traducido");
+    const oculto = texto.classList.toggle("oculto");
+    ocultar.textContent = oculto ? "Mostrar" : "Ocultar";
+  });
+
+  function abrirPopoverTraducir(turno, ambito, ancla) {
+    historial.querySelectorAll(".popover-traducir").forEach((p) => p.remove());
+    const popover = document.createElement("div");
+    popover.className = "popover-traducir";
+    const selector = window.kbIdiomas
+      ? window.kbIdiomas.crearSelector({ destino: leerPreferencia("kb.acciones.destino-chat", "en") })
+      : null;
+    if (selector) {
+      popover.appendChild(selector.elemento);
+    }
+    const botones = document.createElement("div");
+    botones.className = "botones-popover";
+    botones.innerHTML =
+      '<button type="button" class="boton-primario">Traducir</button>' +
+      '<button type="button" class="boton-cancelar">Cancelar</button>';
+    popover.appendChild(botones);
+    const error = document.createElement("p");
+    error.className = "error-popover oculto";
+    popover.appendChild(error);
+    // Bajo la burbuja (ambito pregunta) o bajo la fila de acciones de la respuesta.
+    const contenedor = ambito === "pregunta"
+      ? turno.raiz.querySelector(".mensaje-usuario")
+      : ancla.parentElement;
+    contenedor.insertAdjacentElement("afterend", popover);
+    botones.querySelector(".boton-cancelar").addEventListener("click", () => popover.remove());
+    botones.querySelector(".boton-primario").addEventListener("click", () => {
+      const idiomas = selector ? selector.valores() : { origen: null, destino: "en" };
+      traducirTurno(turno, ambito, popover, idiomas);
+    });
+  }
+
+  function crearBloqueTraducido(turno, ambito, datos) {
+    const contenedor = turno.raiz.querySelector(`.traducciones-turno[data-ambito="${ambito}"]`);
+    if (!contenedor) {
+      return null;
+    }
+    const bloque = document.createElement("div");
+    bloque.className = "turno-traducido";
+    bloque.innerHTML =
+      `<p class="traduccion-idiomas">${escaparHtml(cabeceraIdiomas(datos))}</p>` +
+      '<button type="button" class="ocultar-traduccion">Ocultar</button>' +
+      '<div class="texto-traducido"></div>';
+    contenedor.appendChild(bloque);
+    return bloque;
+  }
+
+  function cabeceraIdiomas(datos) {
+    const origen = datos.origen
+      ? nombreIdioma(datos.origen)
+      : (datos.idiomaDetectado ? nombreIdioma(datos.idiomaDetectado) + " (detectado)" : "Detectando el origen");
+    return origen + " → " + nombreIdioma(datos.destino);
+  }
+
+  function traducirTurno(turno, ambito, popover, idiomas) {
+    const texto = ambito === "pregunta" ? turno.textoBurbuja.textContent : turno.respuesta.textContent;
+    const error = popover.querySelector(".error-popover");
+    const mostrarError = (mensaje) => {
+      error.textContent = mensaje;
+      error.classList.remove("oculto");
+      popover.querySelectorAll("button").forEach((b) => { b.disabled = false; });
+    };
+    if (!texto.trim()) {
+      mostrarError("No hay texto que traducir.");
+      return;
+    }
+    if (conversacionActualId != null && streamsActivos.has(conversacionActualId)) {
+      mostrarError("Espera a que termine la acción en curso.");
+      return;
+    }
+    guardarPreferencia("kb.acciones.destino-chat", idiomas.destino);
+    if (window.kbIdiomas) {
+      window.kbIdiomas.recordar(idiomas.destino);
+    }
+    const datos = { ambito: ambito, origen: idiomas.origen, destino: idiomas.destino, idiomaDetectado: null, texto: "" };
+    const bloque = crearBloqueTraducido(turno, ambito, datos);
+    error.classList.add("oculto");
+    popover.querySelectorAll("button").forEach((b) => { b.disabled = true; });
+    const conversacionId = conversacionActualId;
+    fijarBotonEnviar(true);
+    traducirPorFetch(
+      { texto: texto, origen: idiomas.origen || "auto", destino: idiomas.destino },
+      turno,
+      {
+        alDetectar: (codigo) => {
+          datos.idiomaDetectado = codigo;
+          bloque.querySelector(".traduccion-idiomas").textContent = cabeceraIdiomas(datos);
+        },
+        alToken: (fragmento) => {
+          datos.texto += fragmento;
+          bloque.querySelector(".texto-traducido").textContent = datos.texto;
+        },
+        alTerminar: async (huboError, mensaje) => {
+          // Mismo guard que cerrarStreaming: si la persona cambio de conversacion, el
+          // boton que se ve es el de la otra, y puede estar ocupado con su propio stream.
+          if (conversacionActualId === conversacionId) {
+            fijarBotonEnviar(false);
+          }
+          if (huboError) {
+            bloque.remove();
+            mostrarError(mensaje);
+            return;
+          }
+          bloque.classList.add("listo");
+          popover.remove();
+          turno.traduccionesDatos.push(datos);
+          if (turno.registroId != null) {
+            try {
+              await kbHistorialDb.actualizarTurno(turno.registroId, { traducciones: turno.traduccionesDatos });
+            } catch (persistencia) {
+              // Sin IndexedDB: la traduccion se ve en esta sesion, no sobrevive a un reload.
+            }
+          }
+        },
+      },
+      conversacionId,
+      () => {});
+  }
+
+  /**
+   * POST /api/acciones/traducir-texto leido con fetch: EventSource no sabe hacer
+   * POST y una respuesta larga no cabe en una URL. Se registra en streamsActivos
+   * con la misma forma que un EventSource (close = abortar), asi borrar la
+   * conversacion, el doble envio y el "⋯" de la lista se comportan igual
+   * (hallazgo 8 de la revision del plan).
+   */
+  function traducirPorFetch(cuerpo, turno, callbacks, conversacionId, detenerContador) {
+    const controlador = new AbortController();
+    // Un cuelgue del servidor no tiene "error" nativo como en EventSource: tope duro.
+    const tope = setTimeout(() => controlador.abort(), 10 * 60 * 1000);
+    streamsActivos.set(conversacionId, {
+      fuente: { close: () => { clearTimeout(tope); controlador.abort(); } },
+      turno: turno,
+      detenerContador: detenerContador,
+    });
+    actualizarControlAcciones();
+    cargarListaConversaciones();
+
+    (async () => {
+      let terminoBien = false;
+      let mensajeError = "La traducción se interrumpió.";
+      try {
+        const respuesta = await fetch("/api/acciones/traducir-texto", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(cuerpo),
+          signal: controlador.signal,
+        });
+        const eventos = await leerSse(respuesta.body, (evento, dato) => {
+          if (evento === "idioma-detectado") {
+            callbacks.alDetectar(JSON.parse(dato));
+          } else if (evento === "token") {
+            callbacks.alToken(JSON.parse(dato));
+          } else if (evento === "error-servidor" || evento === "error-cliente") {
+            mensajeError = JSON.parse(dato);
+          } else if (evento === "fin") {
+            terminoBien = true;
+          }
+        });
+        if (!respuesta.ok) {
+          // El 400 llega con su motivo como evento error-cliente (ya leido arriba);
+          // cualquier otro estado, con lo que haya.
+          terminoBien = false;
+          if (mensajeError === "La traducción se interrumpió.") {
+            mensajeError = "El servidor rechazó la traducción (HTTP " + respuesta.status + ").";
+          }
+        } else if (!eventos.vioFin && !terminoBien) {
+          mensajeError = "La traducción se interrumpió antes de terminar.";
+        }
+      } catch (error) {
+        mensajeError = controlador.signal.aborted
+          ? "La traducción se canceló."
+          : "Se perdió la conexión con el servidor (¿Ollama no responde?).";
+      }
+      clearTimeout(tope);
+      streamsActivos.delete(conversacionId);
+      callbacks.alTerminar(!terminoBien, mensajeError);
+    })();
+  }
+
+  /**
+   * Parser SSE minimo sobre un ReadableStream: acumula en un buffer y consume
+   * solo hasta el ultimo "\n\n" completo (un chunk TCP puede cortar a mitad de
+   * un evento, hallazgo 9), acepta "\r\n" y el espacio opcional tras "data:".
+   */
+  async function leerSse(cuerpo, alEvento) {
+    const lector = cuerpo.getReader();
+    const decodificador = new TextDecoder();
+    let buffer = "";
+    let vioFin = false;
+    const procesar = (bloque) => {
+      let evento = "message";
+      const datos = [];
+      bloque.split("\n").forEach((linea) => {
+        if (linea.startsWith("event:")) {
+          evento = linea.slice(6).trim();
+        } else if (linea.startsWith("data:")) {
+          datos.push(linea.slice(5).replace(/^ /, ""));
+        }
+      });
+      if (evento === "fin") {
+        vioFin = true;
+      }
+      alEvento(evento, datos.join("\n"));
+    };
+    for (;;) {
+      const { value, done } = await lector.read();
+      if (done) {
+        break;
+      }
+      buffer += decodificador.decode(value, { stream: true }).replace(/\r\n/g, "\n");
+      let corte;
+      while ((corte = buffer.indexOf("\n\n")) >= 0) {
+        const bloque = buffer.slice(0, corte);
+        buffer = buffer.slice(corte + 2);
+        if (bloque.trim()) {
+          procesar(bloque);
+        }
+      }
+    }
+    if (buffer.trim()) {
+      procesar(buffer);
+    }
+    return { vioFin: vioFin };
   }
 
   function cerrarStreaming(conversacionId, turno, detenerContador, duracionMs) {
@@ -1013,32 +2217,42 @@
     // Solo toca el boton si el usuario sigue mirando esta conversacion: si ya
     // se fue a otra, el estado del boton depende de ESA, no de la que termino.
     if (conversacionActualId === conversacionId) {
-      boton.disabled = false;
+      fijarBotonEnviar(false);
     }
-    if (turno.estado.textContent === "Redactando la respuesta…") {
-      if (duracionMs != null) {
-        turno.estado.textContent = "Respondido en " + formatearDuracion(duracionMs);
-        turno.estado.classList.add("completado");
-      } else {
-        turno.estado.textContent = "";
-      }
+    if (duracionMs != null) {
+      // "Respondido en" para el chat; los turnos de accion dicen "Listo en".
+      turno.estado.textContent =
+        (turno.tipo === "pregunta" ? "Respondido en " : "Listo en ") + formatearDuracion(duracionMs);
+      turno.estado.classList.add("completado");
+    } else if (turno.estado.textContent === "Redactando la respuesta…") {
+      turno.estado.textContent = "";
     }
   }
 
+  /**
+   * Devuelve el id del registro (o null sin IndexedDB) y lo deja en
+   * turno.registroId, para que "Traducir" sobre un turno pueda actualizarlo.
+   */
   async function guardarTurno(pregunta, proyecto, turno, huboError, estadoError, conversacionId, duracionMs) {
     try {
-      await kbHistorialDb.guardarTurno(conversacionId, {
+      const id = await kbHistorialDb.guardarTurno(conversacionId, {
+        tipo: turno.tipo,
         pregunta: pregunta,
         proyecto: proyecto,
         reformulacion: turno.reformulacionTexto,
         respuesta: turno.respuesta.textContent,
         previa: turno.previaDatos,
         citas: turno.citasDatos,
+        cobertura: turno.coberturaDatos,
+        resultado: turno.resultadoDatos,
+        documentos: turno.documentosDatos,
+        traducciones: turno.traduccionesDatos,
         error: huboError,
         estadoError: estadoError,
         duracionMs: duracionMs == null ? null : duracionMs,
         fecha: new Date().toISOString(),
       });
+      turno.registroId = id;
       // Bump-ea la conversacion al tope de la lista (y le saca el "⋯" de "generando"),
       // sin importar si es la que el usuario esta mirando ahora mismo.
       await cargarListaConversaciones();

@@ -188,6 +188,14 @@ services:
       # Orquestador.construirContexto) arriesga desbordar el contexto justo
       # cuando por fin hay material bueno que sintetizar.
       KB_EXPANDIR_VECINOS: ${KB_EXPANDIR_VECINOS:-false}
+      # Acciones sobre documentos seleccionados (issue #38). Sin estas lineas
+      # las variables de .env no llegarian al contenedor: compose no usa
+      # env_file, pasa cada KB_* a mano (hallazgo 28 de la revision del plan).
+      KB_ACCIONES_MAX_DOCUMENTOS: ${KB_ACCIONES_MAX_DOCUMENTOS:-10}
+      KB_ACCIONES_MAX_CARACTERES_CONTEXTO: ${KB_ACCIONES_MAX_CARACTERES_CONTEXTO:-7000}
+      KB_ACCIONES_MAX_CARACTERES_LECTURA: ${KB_ACCIONES_MAX_CARACTERES_LECTURA:-10000}
+      KB_ACCIONES_MAX_CARACTERES_TEXTO: ${KB_ACCIONES_MAX_CARACTERES_TEXTO:-8000}
+      KB_ACCIONES_MAX_CONCURRENTES: ${KB_ACCIONES_MAX_CONCURRENTES:-2}
       # Distinta de KB_VAULT_DIR (esa es la ruta del HOST que se monta abajo).
       # Dentro del contenedor el vault siempre queda en /vault, con las
       # subcarpetas documentos/ y repos/ (ver kb.ingesta.vault-dir). Sin esta
