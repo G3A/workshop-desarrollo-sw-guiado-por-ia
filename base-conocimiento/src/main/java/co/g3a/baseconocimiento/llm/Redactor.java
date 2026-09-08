@@ -21,14 +21,48 @@ import reactor.core.publisher.Flux;
 public interface Redactor {
 
   /**
-   * Una pregunta que los documentos permiten hacer; {@code fuente} es el {@code n} de {@code [n]}.
+   * Los seis niveles de la taxonomia de Bloom, en orden (sub-issue #61): las preguntas se generan
+   * nivel por nivel, y la descripcion es la que ve el modelo en su prompt.
    */
-  record Pregunta(String texto, int fuente) {}
+  enum NivelBloom {
+    RECORDAR("recordar", "reconocer y recuperar hechos, terminos, datos y pasos tal como aparecen"),
+    COMPRENDER("comprender", "explicar con otras palabras, resumir, clasificar, dar ejemplos"),
+    APLICAR("aplicar", "usar lo que dice el documento en una situacion concreta o un caso nuevo"),
+    ANALIZAR("analizar", "descomponer, comparar, encontrar relaciones, causas y supuestos"),
+    EVALUAR("evaluar", "juzgar con criterios: ventajas, riesgos, decisiones y su justificacion"),
+    CREAR(
+        "crear",
+        "proponer algo nuevo a partir del documento: un plan, una mejora, una alternativa");
 
-  record Tema(String tema, List<Pregunta> preguntas) {}
+    private final String codigo;
+    private final String descripcion;
 
-  /** Salida estructurada de {@link #preguntar}; vacia si el modelo no devolvio algo valido. */
-  record Preguntas(List<Tema> temas) {}
+    NivelBloom(String codigo, String descripcion) {
+      this.codigo = codigo;
+      this.descripcion = descripcion;
+    }
+
+    public String codigo() {
+      return codigo;
+    }
+
+    public String descripcion() {
+      return descripcion;
+    }
+  }
+
+  /**
+   * Una pregunta que los documentos permiten hacer. {@code tipo} es el interrogativo 5W1H con que
+   * se formulo ({@code que}, {@code quien}, {@code cuando}, {@code donde}, {@code por-que}, {@code
+   * como}; vacio si el modelo no lo dijo); {@code fuente} es el {@code n} de {@code [n]}.
+   */
+  record Pregunta(String texto, String tipo, int fuente) {}
+
+  /** Las preguntas de un nivel de Bloom; vacia si los documentos no dan para ese nivel. */
+  record Nivel(String nivel, List<Pregunta> preguntas) {}
+
+  /** Lo que la accion acumula nivel a nivel: un {@link Nivel} por nivel ya generado, en orden. */
+  record Preguntas(List<Nivel> niveles) {}
 
   record Idea(String titulo, String justificacion, int fuente) {}
 
@@ -41,7 +75,11 @@ public interface Redactor {
   /** Un solo texto que cruza los documentos: en comun, contradicciones, conclusion. */
   Flux<String> sintetizar(String contexto, String idioma);
 
-  Preguntas preguntar(String contexto, String idioma);
+  /**
+   * Las preguntas de UN nivel de Bloom: por cada interrogativo 5W1H una como maximo, y solo si un
+   * documento la responde. Vacia si no hay o si el modelo no devolvio algo valido. Bloqueante.
+   */
+  List<Pregunta> preguntar(String contexto, String idioma, NivelBloom nivel);
 
   Ideas idear(String contexto, String idioma);
 

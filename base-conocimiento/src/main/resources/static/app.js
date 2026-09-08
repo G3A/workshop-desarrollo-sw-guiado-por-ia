@@ -1419,7 +1419,18 @@
     });
     fuente.addEventListener("resultado", (evento) => {
       marcarRedactando();
-      renderEstructurado(turno, definicion.tipo, JSON.parse(evento.data));
+      const datos = JSON.parse(evento.data);
+      renderEstructurado(turno, definicion.tipo, datos);
+      // Las preguntas llegan nivel a nivel: el estado dice por cual va.
+      if (definicion.tipo === "preguntas" && datos && datos.niveles) {
+        const hechos = datos.niveles.length;
+        const totalNiveles = Object.keys(NIVELES_BLOOM).length;
+        if (hechos < totalNiveles) {
+          const siguiente = Object.keys(NIVELES_BLOOM)[hechos];
+          turno.estado.textContent = "Nivel " + hechos + " de " + totalNiveles + " listo; generando «" +
+            (NIVELES_BLOOM[siguiente] ? NIVELES_BLOOM[siguiente].titulo.toLowerCase() : siguiente) + "»…";
+        }
+      }
     });
     fuente.addEventListener("fin", () => {
       const duracionMs = Date.now() - inicioTurno;
@@ -1501,11 +1512,30 @@
     turno.cobertura.classList.remove("oculto");
   }
 
+  // Los seis niveles de la taxonomia de Bloom, en el orden en que el servidor los
+  // genera, y los seis interrogativos 5W1H con que se formula cada pregunta.
+  const NIVELES_BLOOM = {
+    recordar: { titulo: "Recordar", descripcion: "hechos, términos y pasos tal como aparecen" },
+    comprender: { titulo: "Comprender", descripcion: "explicar, resumir, clasificar, dar ejemplos" },
+    aplicar: { titulo: "Aplicar", descripcion: "usarlo en una situación concreta" },
+    analizar: { titulo: "Analizar", descripcion: "descomponer, comparar, causas y supuestos" },
+    evaluar: { titulo: "Evaluar", descripcion: "juzgar con criterios: ventajas, riesgos, decisiones" },
+    crear: { titulo: "Crear", descripcion: "proponer algo nuevo a partir del documento" },
+  };
+  const TIPOS_5W1H = { que: "Qué", quien: "Quién", cuando: "Cuándo", donde: "Dónde", "por-que": "Por qué", como: "Cómo" };
+
+  function itemPregunta(p) {
+    const chip = TIPOS_5W1H[p.tipo] ? `<span class="chip-5w1h">${TIPOS_5W1H[p.tipo]}</span>` : "";
+    return `<li><span class="pregunta-texto">${chip}${escaparHtml(p.texto || "")} <span class="cita-n">[${Number(p.fuente) || "?"}]</span></span>` +
+      `<button type="button" class="boton-preguntar" data-pregunta="${escaparHtml(p.texto || "")}">Preguntar</button></li>`;
+  }
+
   /**
-   * Preguntas e ideas llegan de golpe como JSON (decision 11 del issue #38): la
-   * UI pinta desde datos, asi el boton "Preguntar" por pregunta y las tarjetas
-   * por idea salen exactas en vez de depender de que un modelo chico respete un
-   * formato de listas.
+   * Preguntas e ideas llegan como JSON (decision 11 del issue #38): la UI pinta
+   * desde datos, asi el boton "Preguntar" por pregunta y las tarjetas por idea
+   * salen exactas en vez de depender de que un modelo chico respete un formato
+   * de listas. Las preguntas llegan varias veces, acumuladas nivel a nivel; cada
+   * vez se repinta todo.
    */
   function renderEstructurado(turno, tipo, datos) {
     turno.resultadoDatos = datos || null;
@@ -1521,16 +1551,35 @@
       return;
     }
     let html = "";
-    if (tipo === "preguntas") {
-      const temas = datos.temas || [];
+    if (tipo === "preguntas" && datos.temas) {
+      // Turnos guardados por la version anterior, agrupados por tema.
+      const temas = datos.temas;
       html = temas.length
         ? temas.map((t) =>
             `<section class="tema"><h4>${escaparHtml(t.tema || "")}</h4><ul>` +
-            (t.preguntas || []).map((p) =>
-              `<li><span class="pregunta-texto">${escaparHtml(p.texto || "")} <span class="cita-n">[${Number(p.fuente) || "?"}]</span></span>` +
-              `<button type="button" class="boton-preguntar" data-pregunta="${escaparHtml(p.texto || "")}">Preguntar</button></li>`).join("") +
+            (t.preguntas || []).map((p) => itemPregunta(p)).join("") +
             "</ul></section>").join("")
         : '<p class="sin-resultado">El modelo no devolvió preguntas válidas. Vuelve a intentarlo.</p>';
+    } else if (tipo === "preguntas") {
+      // Un nivel de Bloom por seccion, en orden, con la plantilla 5W1H por pregunta
+      // (sub-issue #61). Los niveles llegan acumulados: se pinta lo que ya hay.
+      const niveles = datos.niveles || [];
+      const total = niveles.reduce((n, l) => n + (l.preguntas || []).length, 0);
+      html = niveles.map((l) => {
+        const nombre = NIVELES_BLOOM[l.nivel] || { titulo: l.nivel || "", descripcion: "" };
+        const preguntas = l.preguntas || [];
+        return `<section class="tema nivel-bloom"><h4>${escaparHtml(nombre.titulo)}` +
+          ` <span class="descripcion-nivel">${escaparHtml(nombre.descripcion)}</span></h4>` +
+          (preguntas.length
+            ? "<ul>" + preguntas.map((p) => itemPregunta(p)).join("") + "</ul>"
+            : '<p class="nivel-vacio">Sin preguntas de este nivel en los documentos.</p>') +
+          "</section>";
+      }).join("");
+      if (!niveles.length) {
+        html = '<p class="sin-resultado">El modelo no devolvió preguntas válidas. Vuelve a intentarlo.</p>';
+      } else if (!total && niveles.length >= Object.keys(NIVELES_BLOOM).length) {
+        html += '<p class="sin-resultado">El modelo no encontró preguntas en ningún nivel. Vuelve a intentarlo.</p>';
+      }
     } else {
       const ideas = datos.ideas || [];
       html = ideas.length
