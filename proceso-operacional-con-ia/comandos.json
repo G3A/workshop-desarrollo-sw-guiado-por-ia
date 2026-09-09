@@ -4,9 +4,9 @@
     "descripcion": "Fuente única de verdad del contenido narrativo de cada paso (el .bpmn solo aporta el flujo y una línea técnica por nodo en su documentation). Versión pública, sin marca de ninguna empresa, centrada en GitHub y GitHub Actions.",
     "bpmn": "proceso-operacional-con-ia.bpmn",
     "clases": {
-      "T": "Comando de terminal copiable, listo para pegar tal cual (con los campos del formulario ya interpolados).",
-      "S": "Comando o skill de un agente de código con IA (una instrucción en lenguaje natural o un slash command de ejemplo).",
-      "manual": "No hay un único comando: es una instrucción, una plantilla con campos propios, o una acción que se hace en una interfaz (GitHub, un navegador)."
+      "T": "Lo corres tú: un comando de terminal copiable, listo para pegar tal cual en PowerShell (con los campos del formulario ya interpolados).",
+      "S": "Lo ejecuta el agente: un slash command de una skill de la librería sdlc-ia. Tú lo lanzas y respondes sus preguntas; la skill hace el resto. La de «Planificar el issue» cubre sola todo el ciclo del issue hasta la PR abierta.",
+      "manual": "Lo haces tú, sin un único comando: una instrucción, una plantilla con campos propios, una decisión, o una acción en una interfaz (GitHub, un navegador). Liberar, mergear y cerrar el sprint son siempre de este tipo: la librería nunca mergea ni libera."
     },
     "semantica": {
       "idempotent": "Puedes repetirlo sin efectos raros — correrlo dos veces no rompe nada.",
