@@ -191,7 +191,8 @@ the ledger to `docs/claims-ledger.md`.
 3. Remind the user, in the resolved language, to commit — suggest a commit message matching that
    language (e.g. `docs: bootstrap Java context pack for AI coding agents` in English,
    `docs: agrega el paquete de contexto Java para agentes de IA` in Spanish):
-   `git add AGENTS.md CLAUDE.md docs/ && git commit -m "<message>"`;
+   `git add AGENTS.md CLAUDE.md docs/` then `git commit -m "<message>"` (two commands, no `&&`,
+   so it works in Windows PowerShell 5.1 too);
    fill `<!-- TODO -->` markers, review the ADRs, skim `docs/claims-ledger.md` for anything
    unverified; if quality gates were absent, consider Checkstyle/Spotless + an arch-linting test
    (ArchUnit, or `ApplicationModules.verify()` if modules exist); re-run

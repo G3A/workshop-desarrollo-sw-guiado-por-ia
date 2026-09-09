@@ -36,3 +36,4 @@ Mantén los ADRs cortos (1 página). Nómbralos `NNNN-slug-corto.md` con un cont
 - `0010-docling-reemplaza-pdfbox` — Docling para extracción de PDF/DOCX/PPTX.
 - `0011-vault-unificado` — unificación del vault de ingesta.
 - `0012-spring-modulith-para-fronteras-entre-modulos` — por qué Spring Modulith y no paquetes sueltos por convención.
+- `0013-modulo-acciones-independiente-del-rag` — resumir, sintetizar, preguntas, ideas y traducir en un módulo aparte, que comparte con el RAG solo el vault indexado y el LLM.

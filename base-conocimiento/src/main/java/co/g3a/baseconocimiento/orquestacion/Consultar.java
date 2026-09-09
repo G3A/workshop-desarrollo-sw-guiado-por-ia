@@ -12,12 +12,14 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 /**
- * La fachada del nucleo: la unica puerta que los adaptadores pueden cruzar.
+ * La fachada del RAG: la puerta que los adaptadores cruzan para preguntar (la otra, {@code
+ * acciones.Acciones}, es para resumir, sintetizar, preguntas, ideas y traducir sobre documentos
+ * elegidos a mano, y no pasa por este pipeline).
  *
- * <p>Que exista una sola operacion es deliberado. La UI web y el bot de Teams son piel: traducen un
- * mensaje entrante a una {@link Pregunta} y una {@link Respuesta} a su formato de salida. Ninguno
- * de los dos sabe que existen cuatro senales, un RRF ni un cross-encoder — y una prueba de ArchUnit
- * lo verifica en cada build.
+ * <p>Que exista una sola operacion de consulta es deliberado. La UI web y el bot de Teams son piel:
+ * traducen un mensaje entrante a una {@link Pregunta} y una {@link Respuesta} a su formato de
+ * salida. Ninguno de los dos sabe que existen cuatro senales, un RRF ni un cross-encoder — y una
+ * prueba de ArchUnit lo verifica en cada build.
  */
 public interface Consultar {
 

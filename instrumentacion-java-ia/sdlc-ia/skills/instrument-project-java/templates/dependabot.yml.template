@@ -1,0 +1,24 @@
+# Written to `.github/dependabot.yml` -- control 9.
+#
+# No placeholders. No secret, no repository setting: GitHub picks the file up on the next push.
+# What it does NOT do: fail anything. Dependabot is the remedy (it opens the upgrade PR); the gate is
+# dependency-check-maven behind `make sca`. The PRs it opens go through the same CI and Ruleset as
+# everyone else's -- do not exempt them.
+#
+# Multi-module repositories: one `maven` entry at "/" is enough while the root POM manages every
+# version (control 1). Add a `directory` per child only when a child POM pins its own.
+# Delete this header before writing the file.
+
+version: 2
+updates:
+  # The application's dependency tree, as resolved by the root pom.xml.
+  - package-ecosystem: "maven"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  # The action majors control 8 pinned are dependencies too; nothing else bumps them.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"

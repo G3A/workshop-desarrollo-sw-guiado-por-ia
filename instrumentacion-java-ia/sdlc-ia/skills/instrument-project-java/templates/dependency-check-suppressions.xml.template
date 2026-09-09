@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Written to `dependency-check-suppressions.xml` at the repo root, referenced from the
+     dependency-check-maven <suppressionFiles> in pom.xml (control 9). Ships empty on purpose.
+     Delete this header comment before writing the file; the XML declaration above stays first. -->
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+  <!--
+    One <suppress> per finding the team looked at and decided not to act on. Every entry carries
+    the CVE it silences and a <notes> reason a reviewer can check -- an entry without notes is
+    invisible debt, the same rule as .gitleaksignore and allowEmptyShould.
+
+    Silence a finding here, by CVE and package. Never by lowering failBuildOnCVSS in pom.xml: that
+    silences every future finding too.
+
+    Shape:
+    <suppress>
+      <notes>False positive: CPE matched the wrong product. Verified against the advisory on YYYY-MM-DD.</notes>
+      <packageUrl regex="true">^pkg:maven/org\.example/some\-artifact@.*$</packageUrl>
+      <cve>CVE-YYYY-NNNNN</cve>
+    </suppress>
+  -->
+</suppressions>

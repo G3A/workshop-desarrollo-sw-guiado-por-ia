@@ -100,6 +100,44 @@ class ApiTokenFilterTest {
   }
 
   @Test
+  @DisplayName(
+      "Con token configurado, las siete rutas de /api/acciones quedan excluidas: "
+          + "mismo EventSource sin cabeceras que /api/chat")
+  void accionesQuedanExcluidas() throws Exception {
+    ApiTokenFilter filtro = new ApiTokenFilter(new SeguridadPropiedades("secreto"));
+    String[] rutas = {
+      "/api/acciones/limites",
+      "/api/acciones/resumir",
+      "/api/acciones/sintetizar",
+      "/api/acciones/preguntas",
+      "/api/acciones/ideas",
+      "/api/acciones/traducir-documentos",
+      "/api/acciones/traducir-texto"
+    };
+    for (String ruta : rutas) {
+      MockHttpServletRequest request = new MockHttpServletRequest("GET", ruta);
+      MockHttpServletResponse response = new MockHttpServletResponse();
+      FilterChain chain = mock(FilterChain.class);
+      filtro.doFilter(request, response, chain);
+      verify(chain).doFilter(request, response);
+    }
+  }
+
+  @Test
+  @DisplayName("Un tipo de accion inventado NO queda excluido: con token, 401 antes que 404")
+  void tipoDeAccionInventadoExigeToken() throws Exception {
+    ApiTokenFilter filtro = new ApiTokenFilter(new SeguridadPropiedades("secreto"));
+
+    MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/acciones/inventar");
+    MockHttpServletResponse response = new MockHttpServletResponse();
+    FilterChain chain = mock(FilterChain.class);
+    filtro.doFilter(request, response, chain);
+
+    verifyNoInteractions(chain);
+    assertThat(response.getStatus()).isEqualTo(401);
+  }
+
+  @Test
   @DisplayName("Con token configurado, /api/preview queda excluido: la UI web no tiene login")
   void previewQuedaExcluido() throws Exception {
     ApiTokenFilter filtro = new ApiTokenFilter(new SeguridadPropiedades("secreto"));
