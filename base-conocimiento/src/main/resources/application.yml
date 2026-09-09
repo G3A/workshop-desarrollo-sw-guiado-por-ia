@@ -227,6 +227,40 @@ kb:
     # respuesta completa todavia esta en camino.
     preview-limite: ${KB_WEB_PREVIEW_LIMITE:8}
 
+  # Acciones sobre los documentos elegidos en la pagina de chat (issue #38):
+  # resumir, sintetizar, preguntas, ideas y traducir. Modulo `acciones`,
+  # independiente del RAG: comparte solo el vault indexado y el cliente LLM.
+  acciones:
+    # Tope de documentos por accion. Mas documentos no rompen el servidor:
+    # degradan la cobertura de cada uno, porque el presupuesto de abajo se
+    # reparte entre ellos. La UI lo lee de /api/acciones/limites para
+    # deshabilitar el control en vez de dejar que el 400 llegue como un corte.
+    max-documentos: ${KB_ACCIONES_MAX_DOCUMENTOS:10}
+    # Presupuesto TOTAL de texto que entra al LLM en la llamada final de
+    # resumir, sintetizar, preguntas e ideas (la traduccion no lo usa: va por
+    # bloques). 7000 caracteres de español son ~2000 tokens: con num_ctx 4096
+    # (perfil Bonsai, el mas chico) quedan ~3000 tras el prompt de sistema y
+    # una salida de hasta 900 tokens. Un documento que no cabe en su parte NO
+    # se recorta: se lee entero por pasadas (abajo) y a esta llamada entran sus
+    # notas de lectura. Con un modelo de contexto mas grande, subelo para que
+    # menos documentos necesiten pasadas.
+    max-caracteres-contexto: ${KB_ACCIONES_MAX_CARACTERES_CONTEXTO:7000}
+    # Cuanto texto entra en UNA pasada de lectura de un documento largo: una
+    # llamada que devuelve notas de hasta 1200 caracteres, por eso puede ser
+    # mayor que el presupuesto de arriba (10000 caracteres son ~2800 tokens de
+    # entrada mas ~400 de salida). Cuanto mas grande, menos pasadas; un
+    # documento de 1,8 millones de caracteres son ~200 pasadas con este valor
+    # (decenas de segundos cada una en CPU, segundos con GPU). Con num_ctx mas
+    # grande, subelo.
+    max-caracteres-lectura: ${KB_ACCIONES_MAX_CARACTERES_LECTURA:10000}
+    # Largo maximo de un texto del chat a traducir (modo traducir o "Traducir"
+    # sobre un turno). Por encima, 400 antes de abrir el stream.
+    max-caracteres-texto: ${KB_ACCIONES_MAX_CARACTERES_TEXTO:8000}
+    # Cupo propio del modulo (compartir el del RAG seria depender de
+    # orquestacion). Sumados pueden superar OLLAMA_NUM_PARALLEL; en ese caso
+    # Ollama encola y la accion tarda mas, no falla.
+    max-concurrentes: ${KB_ACCIONES_MAX_CONCURRENTES:2}
+
   ingesta:
     # OJO: distinta de KB_VAULT_DIR (esa es la ruta en el HOST que el compose
     # monta como bind mount). Esta es la ruta que la app ve DENTRO del

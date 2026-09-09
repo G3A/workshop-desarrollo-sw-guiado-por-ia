@@ -2,8 +2,10 @@
 
 > Called from **Phase 3** and **Phase 4** of `SKILL.md`.
 
-Seven hooks. Each entry says what it does, why it earns its cost, what it deliberately does not
-cover, and what it costs to get wrong. **1 and 2 are the default. 3 to 7 are offered.**
+Eight hooks, between this file and `hook-catalog-2.md`. Each entry says what it does, why it earns
+its cost, what it deliberately does not cover, and what it costs to get wrong. **1 and 2 are the
+default. 3 to 8 are offered — 6, 7 and 8 only when their precondition holds** (the table in
+`SKILL.md` says which).
 
 Phase 4's template → output mapping, into `scripts/agent-hooks/`:
 

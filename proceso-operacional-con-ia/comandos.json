@@ -1,6 +1,6 @@
 {
   "meta": {
-    "version": "1.0.0",
+    "version": "1.1.0",
     "descripcion": "Fuente única de verdad del contenido narrativo de cada paso (el .bpmn solo aporta el flujo y una línea técnica por nodo en su documentation). Versión pública, sin marca de ninguna empresa, centrada en GitHub y GitHub Actions.",
     "bpmn": "proceso-operacional-con-ia.bpmn",
     "clases": {
@@ -62,6 +62,18 @@
       "options": ["https://registry.npmjs.org/", "https://npm.pkg.github.com/"],
       "default": "https://registry.npmjs.org/",
       "persistencia": "localStorage"
+    },
+    "MODELO_IA": {
+      "label": "Modelo de IA que asiste (va en el pie de cada commit, ej. claude-opus-5)",
+      "type": "text",
+      "pattern": "^[A-Za-z0-9._:/-]+$",
+      "persistencia": "localStorage"
+    },
+    "SPRINT": {
+      "label": "Sprint actual (título del milestone en GitHub)",
+      "type": "text",
+      "default": "Sprint 1",
+      "persistencia": "localStorage"
     }
   },
   "catalogs": {
@@ -96,7 +108,7 @@
       "semantica": "idempotent",
       "requires": "Fundamentos de colaboración confirmados (f0).",
       "porque": "Instalar el agente es el paso de menor riesgo de todo el proceso — no toca tu repo todavía. Elegir un repo piloto chico y ya conocido (no el más crítico del equipo) te deja equivocarte barato mientras aprendes los gestos base.",
-      "guiaPasos": "<ol><li>Instala un agente de código con IA. Este recorrido usa <a href=\"https://claude.com/product/claude-code\" target=\"_blank\" rel=\"noopener\">Claude Code</a> como ejemplo concreto, pero cualquier agente equivalente con soporte de MCP y hooks sirve igual.</li><li>Elige un repositorio piloto: prefiere uno chico, brownfield (con historia real, no un ejemplo de juguete), del que ya conozcas el dominio.</li><li>Abre una terminal en ese repo y arranca el agente ahí — todo lo que sigue se prueba primero en ese repo piloto.</li></ol>",
+      "guiaPasos": "<ol><li>Instala un agente de código con IA. Este recorrido usa <a href=\"https://claude.com/product/claude-code\" target=\"_blank\" rel=\"noopener\">Claude Code</a> como ejemplo concreto, pero cualquier agente equivalente con soporte de MCP y hooks sirve igual.</li><li>Elige un repositorio piloto: prefiere uno chico, brownfield (con historia real, no un ejemplo de juguete), del que ya conozcas el dominio.</li><li>Abre una terminal en ese repo y arranca el agente ahí — todo lo que sigue se prueba primero en ese repo piloto.</li><li>Instala el paquete de skills de este taller, <code>sdlc-ia</code>, desde su carpeta local: <code>claude plugin marketplace add &lt;ruta a instrumentacion-java-ia&gt;</code> y <code>claude plugin install sdlc-ia@sdlc-ia</code>. Los comandos <code>/sdlc-ia:…</code> de los bloques siguientes salen de ahí. Para actualizarlo después, un solo comando desde esa carpeta: <code>.\\update.ps1</code> (o <code>./update.sh</code> en bash), que trae la última versión del repo, refresca el marketplace y reinstala; los cambios aplican a las sesiones nuevas del agente. El README de la librería lo explica en «Actualizar cuando sale una versión nueva».</li></ol>",
       "madurez": "transversal",
       "madurezSub": "instalacion"
     },
@@ -135,7 +147,7 @@
       "slash": "/sdlc-ia:instrument-agent-java",
       "porque": "Esta skill hace en un solo paso lo que antes describíamos a mano: registra los servidores MCP que tu equipo necesita (con las versiones fijadas, nunca \"la última\" sin pinear) y activa un catálogo de hooks de Claude Code que limitan lo que el agente puede hacer solo — leer un archivo de secretos, correr un comando peligroso, editar una migración ya aplicada. Es la skill real <code>instrument-agent-java</code> del paquete <code>instrumentacion-java-ia/</code> de este mismo taller: puedes leer su código completo, no es una caja negra.",
       "tipoInstrumentacion": "noDeterminista",
-      "guiaPasos": "<p>La skill pregunta qué servidores MCP tiene sentido registrar (por ejemplo, el servidor oficial de GitHub) y qué hooks activar — dos vienen prendidos por defecto (guarda de secretos, formateo automático), el resto se ofrece según lo que detecte en tu repo. Antes de terminar, prueba cada hook disparándolo de verdad, no solo escribe los archivos.</p><p class=\"tip\">Si solo quieres sumar un servidor MCP suelto sin correr la skill completa, el comando de base sigue siendo válido: <code>claude mcp add --transport http github https://api.githubcopilot.com/mcp</code>.</p>",
+      "guiaPasos": "<p>La skill pregunta qué servidores MCP tiene sentido registrar (por ejemplo, el servidor oficial de GitHub) y qué hooks activar — dos vienen prendidos por defecto (guarda de secretos, formateo automático), tres se ofrecen siempre (bloqueo de comandos peligrosos, barrido de dependencias al abrir la sesión, bitácora de auditoría) y los tres últimos solo si el repo tiene lo que protegen (versiones centralizadas en el pom, migraciones Flyway/Liquibase, equipo en Windows). Antes de terminar, prueba cada hook disparándolo de verdad, no solo escribe los archivos.</p><p class=\"tip\">Si solo quieres sumar un servidor MCP suelto sin correr la skill completa, el comando de base sigue siendo válido: <code>claude mcp add --transport http github https://api.githubcopilot.com/mcp</code>.</p>",
       "madurez": "transversal",
       "madurezSub": "instalacion"
     },
@@ -143,7 +155,7 @@
       "clase": "T",
       "esGateway": true,
       "semantica": "idempotent",
-      "cmd": "gh auth status && claude doctor",
+      "cmd": "gh auth status; if ($?) { claude doctor }",
       "ramas": {"si": "G2", "no": "a2"},
       "porque": "Un chequeo de salud simple evita descubrir a mitad del bloque B que la autenticación nunca terminó de quedar bien configurada.",
       "guiaPasos": "<p>Si ambos comandos terminan sin error, sigues al bloque B. Si algo falla, vuelve a <b>«Configurar MCP y hooks del agente»</b> y revisa el paso que no cerró.</p>",
@@ -154,7 +166,7 @@
       "clase": "T",
       "esGateway": true,
       "semantica": "idempotent",
-      "cmd": "test -f AGENTS.md && echo \"existe\" || echo \"no existe\"",
+      "cmd": "if (Test-Path AGENTS.md) { 'existe' } else { 'no existe' }",
       "ramas": {"no": "b1", "si": "bi"},
       "porque": "Un archivo de contexto (AGENTS.md o equivalente) es lo que separa a un agente que adivina las convenciones del repo de uno que las lee. Vale la pena chequear si ya existe antes de regenerarlo de cero.",
       "guiaPasos": "<p>Si no existe, sigues a <b>«Generar contexto del repo»</b>. Si ya existe (por ejemplo, otra persona del equipo ya lo armó), sigues a <b>«Completar solo el andamiaje»</b> — se salta la generación y va directo a lo que falte.</p>",
@@ -165,7 +177,7 @@
       "semantica": "guarded",
       "requires": "Repo piloto elegido, agente autenticado.",
       "slash": "/sdlc-ia:agent-context-java",
-      "porque": "Generar el contexto con el agente (en vez de escribirlo a mano) es más rápido y más completo — el agente recorre el repo, detecta el stack, y arma un primer borrador. Pero no puede inventar reglas de negocio que no están en ningún lado: por eso deja marcadores explícitos para que una persona los complete. Esta es la skill real <code>agent-context-java</code> de <code>instrumentacion-java-ia/</code> — genera AGENTS.md, arquitectura, ADRs y un <code>docs/java.md</code> propio del stack, y valida cada afirmación que escribe contra un archivo real antes de darla por buena (nunca inventa una versión o un framework que no leyó).",
+      "porque": "Generar el contexto con el agente (en vez de escribirlo a mano) es más rápido y más completo — el agente recorre el repo, detecta el stack, y arma un primer borrador. Pero no puede inventar reglas de negocio que no están en ningún lado: por eso deja marcadores explícitos para que una persona los complete. Esta es la skill real <code>agent-context-java</code> de <code>instrumentacion-java-ia/</code> — genera AGENTS.md, arquitectura, ADRs y un <code>docs/java.md</code> propio del stack, y valida las afirmaciones de más peso (entre 8 y 15 por corrida) contra un archivo real antes de darlas por buenas — las que no se pueden verificar en ningún archivo te las pregunta en vez de inventarlas (nunca inventa una versión o un framework que no leyó).",
       "guiaPasos": "<p>La skill hace una entrevista corta (unas 10 preguntas, menos si el repo ya se explica solo) antes de escribir nada — no hace falta que le describas el repo tú mismo/a, ella lo lee.</p><p class=\"tip\">El resultado es un borrador con <code>&lt;!-- TODO --&gt;</code> donde hace falta criterio humano, no un documento terminado — el paso siguiente (<b>b2</b>) es justo llenar esos huecos.</p>",
       "madurez": "1"
     },
@@ -191,7 +203,7 @@
       "clase": "T",
       "semantica": "idempotent",
       "requires": "Juez de CI configurado, con lefthook.yml ya creado (pz, pz2) — antes de este paso, ese archivo todavía no existe.",
-      "cmd": "test -f lefthook.yml && echo lefthook-ok; grep -q hooks .claude/settings.json 2>/dev/null && echo agente-hooks-ok",
+      "cmd": "if (Test-Path lefthook.yml) { 'lefthook-ok' }\nif ((Test-Path .claude/settings.json) -and (Select-String -Path .claude/settings.json -Pattern '\"hooks\"' -Quiet)) { 'agente-hooks-ok' }",
       "porque": "Los hooks (locales y del agente) son lo que convierte una convención escrita en una convención aplicada. Confirmar que el andamiaje llegó evita descubrir recién en la primera PR que nadie los activó. Este paso corre después de «Configurar el juez de CI» a propósito: <code>instrument-project-java</code> (pz) es quien escribe <code>lefthook.yml</code> — antes de que corra, no habría nada que verificar.",
       "guiaPasos": "<p>Son dos arneses distintos, no uno solo: <b>lefthook.yml</b> son los hooks de Git (pre-commit/pre-push — corren aunque el agente no esté abierto) y forman parte de la instrumentación <b>determinista</b> (los instala <code>instrument-project-java</code>, siguiente bloque); la clave <code>\"hooks\"</code> dentro de <code>.claude/settings.json</code> son los hooks del propio agente (Claude Code) — instrumentación <b>no determinista</b> (los instala <code>instrument-agent-java</code>, paso anterior) — y <b>nunca</b> una carpeta <code>.claude/hooks</code> aparte, eso no existe. Si tu agente no es Claude Code, el equivalente es su propio mecanismo de hooks o plugins.</p><p class=\"tip\">Que existan no confirma que funcionen — eso es <b>«Confirmar hooks del agente»</b>, dos pasos más adelante.</p>",
       "tipoInstrumentacion": "determinista",
@@ -224,9 +236,9 @@
       "actor": "repo-lead",
       "requires": "Permisos de administración del repositorio en GitHub.",
       "manualCmd": "/sdlc-ia:instrument-project-java",
-      "manualNote": "Una sola vez por repositorio (no por issue). Primero corre la skill <code>instrument-project-java</code> de <code>instrumentacion-java-ia/</code> — instala 8 controles deterministas (build reproducible, build estricto, estilo, un <code>make check</code> único, hooks de pre-commit/pre-push, escaneo de secretos, pruebas de arquitectura y el workflow de CI) y prueba que cada uno realmente falla antes de darse por terminada. Lo único que la skill NO toca es la configuración de GitHub mismo — eso queda manual: 1) en Settings → Rules → Rulesets, crea un ruleset sobre la rama principal que exija el workflow de CI que la skill instaló como \"required status check\", al menos 1 aprobación, y (opcional) un archivo CODEOWNERS; 2) si el proceso incluye despliegue, configura un Environment de GitHub con reviewers requeridos para el destino de deploy.",
+      "manualNote": "Una sola vez por repositorio (no por issue). Primero corre la skill <code>instrument-project-java</code> de <code>instrumentacion-java-ia/</code> — instala 9 controles deterministas (build reproducible, build estricto, estilo, un <code>make check</code> único, hooks de pre-commit/pre-push, escaneo de secretos, pruebas de arquitectura, el workflow de CI y, si lo activas, el escaneo de dependencias vulnerables con OWASP Dependency-Check y Dependabot) y prueba que cada uno realmente falla antes de darse por terminada. Lo único que la skill NO toca es la configuración de GitHub mismo — eso queda manual: 1) en Settings → Rules → Rulesets, crea un ruleset sobre la rama principal que exija el workflow de CI que la skill instaló como \"required status check\", al menos 1 aprobación, y (opcional) un archivo CODEOWNERS; 2) si el proceso incluye despliegue, configura un Environment de GitHub con reviewers requeridos para el destino de deploy.",
       "porque": "Esto reemplaza lo que en otras plataformas se arma con \"políticas de rama\": acá el mecanismo es un Ruleset (la forma recomendada actualmente en GitHub, por encima de las reglas de protección de rama clásicas — es a nivel de organización, con lista de excepciones auditable). Se configura una vez y protege cada PR que venga después, no hace falta repetirlo por issue. Corre antes de «Verificar que llegó el arnés»: <code>instrument-project-java</code> es quien escribe <code>lefthook.yml</code> — verificarlo antes de que este paso corra encontraría un archivo que todavía no existe.",
-      "guiaPasos": "<ol><li>Corre <code>/sdlc-ia:instrument-project-java</code> — instala el workflow de CI junto con todo lo demás, en vez de escribirlo a mano. Esta es la instrumentación <b>determinista</b>: build reproducible, build estricto, estilo, ArchUnit, CI — controles que deciden en milisegundos, sin ambigüedad ni criterio de por medio (a diferencia de los hooks del agente de <code>instrument-agent-java</code>, actividad 6, que sí aplican criterio).</li><li><b>Settings → Rules → Rulesets</b> → nuevo ruleset sobre <code>main</code>/<code>dev</code>: \"Require status checks to pass\" (elige el workflow que la skill instaló), \"Require a pull request before merging\" con al menos 1 aprobación.</li><li>Opcional mientras el repo tenga un solo colaborador: un archivo <code>CODEOWNERS</code> para asignar revisores automáticamente por carpeta. Deja de ser opcional en cuanto se suma una segunda persona — sin él, la mitad humana del gate de revisión (actividad 27) no tiene a quién asignarse.</li><li>Si hay despliegue automático, un <b>Environment</b> (Settings → Environments) con reviewers requeridos antes de que el workflow pueda desplegar.</li><li>En un repo de una sola persona, \"al menos 1 aprobación\" bloquea cualquier merge — nadie puede aprobar su propia PR. Agrega un <i>bypass actor</i> (rol Administrador, modo <code>always</code>) para ese caso, pero es una excepción de arranque, no el estado final: en cuanto se suma un segundo colaborador, retíralo o acótalo (por ejemplo, a <code>pull_request</code> únicamente) para que la regla de 1 aprobación vuelva a exigirse de verdad.</li></ol>",
+      "guiaPasos": "<ol><li>Corre <code>/sdlc-ia:instrument-project-java</code> — instala el workflow de CI junto con todo lo demás, en vez de escribirlo a mano. Esta es la instrumentación <b>determinista</b>: build reproducible, build estricto, estilo, ArchUnit, CI — controles que deciden en milisegundos, sin ambigüedad ni criterio de por medio (a diferencia de los hooks del agente de <code>instrument-agent-java</code>, actividad 6, que sí aplican criterio).</li><li><b>Settings → Rules → Rulesets</b> → un ruleset sobre <code>dev</code> y otro sobre <code>main</code>: \"Require status checks to pass\" (elige el workflow que la skill instaló) y \"Require a pull request before merging\" con al menos 1 aprobación. <code>main</code> es lo liberado: además de esas dos reglas, nadie abre PR contra <code>main</code> salvo la de liberación desde <code>dev</code>.</li><li>Opcional mientras el repo tenga un solo colaborador: un archivo <code>CODEOWNERS</code> para asignar revisores automáticamente por carpeta. Deja de ser opcional en cuanto se suma una segunda persona — sin él, la mitad humana del gate de revisión (actividad 27) no tiene a quién asignarse.</li><li>Si hay despliegue automático, un <b>Environment</b> (Settings → Environments) con reviewers requeridos antes de que el workflow pueda desplegar.</li><li>En un repo de una sola persona, \"al menos 1 aprobación\" bloquea cualquier merge — nadie puede aprobar su propia PR. Agrega un <i>bypass actor</i> (rol Administrador, modo <code>always</code>) para ese caso, pero es una excepción de arranque, no el estado final: en cuanto se suma un segundo colaborador, retíralo o acótalo (por ejemplo, a <code>pull_request</code> únicamente) para que la regla de 1 aprobación vuelva a exigirse de verdad.</li></ol>",
       "tipoInstrumentacion": "determinista",
       "madurez": "1"
     },
@@ -234,10 +246,25 @@
       "clase": "T",
       "semantica": "idempotent",
       "requires": "Juez de CI configurado (pz).",
-      "cmd": "git commit --allow-empty -m \"chore: primera corrida del pipeline\" && git push",
+      "cmd": "git commit --allow-empty -m \"chore: primera corrida del pipeline\"; if ($?) { git push }",
       "porque": "Un pipeline que nunca corrió es un pipeline sin probar. Un commit vacío es la forma más barata de confirmar que el workflow realmente se dispara antes de depender de él para la primera PR real.",
       "guiaPasos": "<p>Revisa la pestaña <b>Actions</b> del repositorio en GitHub: el workflow debería aparecer corriendo (o ya haber corrido) para este commit.</p>",
       "tipoInstrumentacion": "determinista",
+      "madurez": "1"
+    },
+    "pj": {
+      "clase": "manual",
+      "semantica": "idempotent",
+      "actor": "repo-lead",
+      "requires": "gh autenticado (a1), pipeline ya disparado (pz2). Una sola vez por repositorio; el milestone, una vez por sprint.",
+      "manualNote": "Dos cosas distintas, y el visor las separa a propósito: el <b>milestone</b> dice a qué sprint pertenece un issue (vive en el issue, se filtra con <code>gh issue list</code>) y el <b>Project v2</b> dice cómo va (Todo → In progress → In review → Done, un campo que el issue suelto no tiene). El comando de abajo crea cada uno <b>solo si no existe</b>: busca primero por título y crea únicamente cuando no encuentra nada, así puedes correrlo de nuevo cada sprint sin duplicar.",
+      "manualCmdTpl": "# PowerShell 5.1 o 7. Sin acentos a proposito: si lo guardas como .ps1, 5.1 lo lee como ANSI.\n# 0) Una vez por maquina: gh necesita los scopes de Projects (abre el navegador)\ngh auth refresh -s 'project,read:project'\n\n# Si un comando de gh falla, parar ahi: un listado fallido no es 'no existe'\nfunction Assert-Gh { if ($LASTEXITCODE -ne 0) { throw \"gh fallo con codigo $LASTEXITCODE\" } }\n\n# 1) Project v2 del repo, solo si no existe uno con el nombre del repo\n$Lista = gh project list --owner {GH_OWNER} --format json | ConvertFrom-Json; Assert-Gh\n$N = $Lista.projects | Where-Object { $_.title -eq '{GH_REPO}' } | ForEach-Object { $_.number }\nif (-not $N) {\n  $N = (gh project create --owner {GH_OWNER} --title '{GH_REPO}' --format json | ConvertFrom-Json).number; Assert-Gh\n  gh project link $N --owner {GH_OWNER} --repo {GH_REPO}; Assert-Gh\n}\n\"Project #$N\"\n\n# 2) Milestone del sprint, solo si no existe uno con ese titulo\n$Hitos = gh api 'repos/{GH_OWNER}/{GH_REPO}/milestones?state=all' | ConvertFrom-Json; Assert-Gh\n$M = $Hitos | Where-Object { $_.title -eq '{SPRINT}' } | ForEach-Object { $_.number }\nif (-not $M) {\n  $Datos = @('-f', 'title={SPRINT}')\n  if ('{SPRINT_FIN}' -match '^\\d\\d\\d\\d-\\d\\d-\\d\\d$') { $Datos += @('-f', 'due_on={SPRINT_FIN}T23:59:59Z') }   # la fecha es opcional\n  $M = (gh api -X POST 'repos/{GH_OWNER}/{GH_REPO}/milestones' @Datos | ConvertFrom-Json).number; Assert-Gh\n}\n\"Milestone #$M\"\n\n# 3) Opcion 'In review' en el campo Status, solo si no existe. gh project no la expone: va por GraphQL,\n#    que reemplaza la lista completa de opciones. Se leen las actuales CON su id (asi conservan color,\n#    descripcion y los valores ya asignados a las tarjetas) y se agrega una sola.\n$Campo = (gh project field-list $N --owner {GH_OWNER} --format json | ConvertFrom-Json).fields | Where-Object { $_.name -eq 'Status' }; Assert-Gh\nif (-not ($Campo.options | Where-Object { $_.name -eq 'In review' })) {\n  $Lectura = 'query($id: ID!) { node(id: $id) { ... on ProjectV2SingleSelectField { options { id name color description } } } }'\n  $Actuales = (gh api graphql -f query=$Lectura -F \"id=$($Campo.id)\" | ConvertFrom-Json).data.node.options; Assert-Gh\n  $Opciones = @($Actuales | ForEach-Object { @{ id = $_.id; name = $_.name; color = $_.color; description = [string]$_.description } })\n  $Opciones += @{ name = 'In review'; color = 'PURPLE'; description = 'PR abierta, esperando revision' }\n  $Consulta = 'mutation($fieldId: ID!, $options: [ProjectV2SingleSelectFieldOptionInput!]!) { updateProjectV2Field(input: { fieldId: $fieldId, singleSelectOptions: $options }) { projectV2Field { ... on ProjectV2SingleSelectField { options { name } } } } }'\n  $Cuerpo = Join-Path $env:TEMP 'in-review.json'\n  [IO.File]::WriteAllText($Cuerpo, (@{ query = $Consulta; variables = @{ fieldId = $Campo.id; options = $Opciones } } | ConvertTo-Json -Depth 6 -Compress))\n  gh api graphql --input $Cuerpo | Out-Null; Assert-Gh\n}\n$Estados = ((gh project field-list $N --owner {GH_OWNER} --format json | ConvertFrom-Json).fields | Where-Object { $_.name -eq 'Status' }).options.name -join ', '\n\"Status: $Estados\"\n\n# 4) Auto-add (cada issue nuevo entra solo al tablero). No hay API para el workflow integrado del Project:\n#    Opcion A, por defecto y sin secretos: en el Project, menu ... > Workflows > Auto-add to project > Edit > este repo > Save and turn on.\n#    Opcion B, todo en el repo (equipos): el workflow add-to-project.yml de la guia de pasos + un token personal\n#    (classic, scopes project y repo) guardado como secreto. gh lo pide por consola, nunca lo pegues en el comando:\n#    gh secret set ADD_TO_PROJECT_PAT",
+      "manualInputs": [
+        {"name": "SPRINT", "label": "Sprint actual (título del milestone)", "placeholder": "ej. Sprint 12"},
+        {"name": "SPRINT_FIN", "label": "Fecha de cierre del sprint (AAAA-MM-DD)", "placeholder": "ej. 2026-09-19"}
+      ],
+      "porque": "Sin esto, «tomar issue del sprint» no tiene dónde mirar: un issue asignado a ti no dice de qué sprint es, y «en progreso» o «en revisión» no existen en un issue suelto. <code>github-plan-build</code> mueve el estado del issue sola al aprobar el plan y al cerrar, pero solo si encuentra un Project v2 con campo Status (o etiquetas de estado); si no encuentra ninguno, salta esas escrituras y lo dice en su resumen. El milestone es el contenedor del sprint más simple que ofrece GitHub: nativo del issue, sin Project de por medio, y <code>gh issue list --milestone</code> lo filtra directo. No uses además el campo Iteration del Project: dos fuentes de verdad para el mismo sprint terminan desincronizadas, y ninguna skill de este taller lo lee.",
+      "guiaPasos": "<ol><li>Completa el sprint y su fecha de cierre; el título del sprint queda guardado en ⚙ Perfil y lo reutilizan <b>«Tomar issue del sprint»</b> y el gate de cierre.</li><li>Corre el bloque en PowerShell (funciona en 5.1 y en 7). <code>gh auth refresh -s project,read:project</code> abre el navegador una vez y hay que completar la autorización hasta ver <i>Authentication complete</i>; <code>gh project</code> no funciona con el token por defecto de <code>gh auth login</code>, y sin esos scopes el listado falla y <code>Assert-Gh</code> corta ahí en vez de intentar crear a ciegas. GitHub guarda la fecha de cierre del milestone como día, sin hora.</li><li>La parte 3 agrega la opción <b>In review</b> al campo Status (viene con Todo, In Progress y Done). <code>gh project</code> no sabe editar opciones, así que va por la API GraphQL con <code>gh api graphql</code>: la mutación reemplaza la lista completa, por eso el bloque lee las opciones actuales y suma una sola vez. El resultado se imprime al final como <code>Status: Todo, In Progress, Done, In review</code>.</li><li>La parte 4 es el auto-add, para que cada issue nuevo entre solo al tablero, y tiene dos salidas porque GitHub no expone ninguna API para activar el workflow integrado del Project. <b>Opción A, la recomendada para un repo de una persona:</b> en el Project, menú <b>⋯ → Workflows → Auto-add to project → Edit</b>, elige este repositorio y <b>Save and turn on</b>. Un clic, sin secretos que administrar. <b>Opción B, para equipos que quieren todo reproducible desde el repo:</b> un workflow con <code>actions/add-to-project</code>, que exige un token personal con scopes <code>project</code> y <code>repo</code> guardado como secreto (<code>GITHUB_TOKEN</code> no puede tocar Projects). Es un segundo token que expira y rota, ese es su costo. El archivo va en <code>.github/workflows/add-to-project.yml</code>:<pre class=\"mono\">name: Add issues to project\non:\n  issues:\n    types: [opened]\njobs:\n  add-to-project:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/add-to-project@v2\n        with:\n          project-url: https://github.com/users/&lt;owner&gt;/projects/&lt;numero del Project&gt;\n          github-token: ${{ secrets.ADD_TO_PROJECT_PAT }}</pre>Si el Project es de una organización, la URL es <code>https://github.com/orgs/&lt;org&gt;/projects/&lt;numero&gt;</code>.</li><li>El auto-add solo alcanza a los issues que se creen <b>después</b>. Los que ya existían entran uno por uno: <code>gh project item-add &lt;numero del Project&gt; --owner &lt;owner&gt; --url https://github.com/&lt;owner&gt;/&lt;repo&gt;/issues/&lt;n&gt;</code>. Sin eso, <code>github-plan-build</code> no puede mover el estado de ese issue, porque el campo Status vive en la tarjeta del Project, no en el issue.</li></ol><p class=\"tip\">El milestone se crea de nuevo cada sprint (cambia el título en el perfil y vuelve a correr solo la parte 2); el Project, una vez por repositorio. Los sub-issues que crea <code>requirement-to-spec-java</code> nacen en el backlog sin milestone hasta que alguien los planifica: eso es a propósito.</p>",
       "madurez": "1"
     },
     "ds": {
@@ -245,14 +272,14 @@
       "semantica": "guarded",
       "slash": "/sdlc-ia:debt-triage",
       "porque": "Sumar un agente a un repo con deuda técnica sin atender no la resuelve sola — pero un agente sí es bueno para triar deuda existente (análisis estático, código muerto, dependencias vencidas) antes de que empiece a sumarse deuda nueva encima.",
-      "guiaPasos": "<p>Corre <code>/sdlc-ia:debt-triage</code> — es la skill real <code>debt-triage</code> del paquete <code>instrumentacion-java-ia/sdlc-ia/</code> de este mismo taller. Detecta el analizador que ya corre en tu repo (SonarQube, CodeQL, ESLint, Checkstyle, o el que uses), agrupa los hallazgos abiertos por regla y le da un veredicto a cada uno — real, falso positivo, o riesgo aceptado — antes de proponer un arreglo o justificar por qué no vale la pena arreglarlo.</p><p class=\"tip\">Nunca aplica las sugerencias del analizador a ciegas: cada hallazgo se lee en su contexto antes de decidir.</p>",
+      "guiaPasos": "<p>Corre <code>/sdlc-ia:debt-triage</code> — es la skill real <code>debt-triage</code> del paquete <code>instrumentacion-java-ia/sdlc-ia/</code> de este mismo taller. Detecta el analizador que ya corre en tu repo (SonarQube, CodeQL, ESLint, Checkstyle, o el que uses), agrupa los hallazgos abiertos por regla y le da un veredicto a cada uno — real, falso positivo, o riesgo aceptado. Para los reales escribe el arreglo en tu árbol de trabajo, sin commitear, para que lo revises; para los otros dos deja la supresión con su motivo al lado del código.</p><p class=\"tip\">Nunca aplica las sugerencias del analizador a ciegas: cada hallazgo se lee en su contexto antes de decidir.</p>",
       "madurez": "2"
     },
     "GT": {
       "clase": "T",
       "esGateway": true,
       "semantica": "idempotent",
-      "cmd": "test -d test -o -d tests -o -d __tests__ && echo \"existe\" || echo \"no existe\"",
+      "cmd": "if ((Test-Path test) -or (Test-Path tests) -or (Test-Path __tests__)) { 'existe' } else { 'no existe' }",
       "ramas": {"si": "GT2", "no": "bt"},
       "porque": "Igual que con el contexto: vale la pena chequear si ya hay una estrategia de pruebas antes de armar una nueva de cero.",
       "guiaPasos": "<p>\"Existe\" acá no significa solo que haya una carpeta de tests — significa que hay una estrategia real (qué capas se prueban, con qué herramientas). Si tienes dudas, trátalo como \"no existe\".</p>",
@@ -273,7 +300,7 @@
       "cmd": "echo \"¿el mapeo de costuras encontró algo que exige tocar producción?\"",
       "ramas": {"si": "bi2", "no": "bo1"},
       "porque": "A veces preparar las pruebas revela que una costura solo se puede cortar cambiando código de producción (no solo agregando pruebas). Eso ya no es preparación — es trabajo real que merece su propio issue, no colarse sin que nadie lo vea.",
-      "guiaPasos": "<p>Si el mapeo de costuras (paso anterior) encontró algo así, regístralo como issue en vez de arreglarlo de paso. Si no encontró nada, sigues directo al ciclo por issue.</p>",
+      "guiaPasos": "<p>Si el mapeo de costuras (paso anterior) encontró algo así, regístralo como issue en vez de arreglarlo de paso. Si no encontró nada, sigues al ciclo por issue, que empieza preguntando si el requisito ya es un issue o todavía es un documento.</p>",
       "madurez": "1"
     },
     "bi2": {
@@ -285,12 +312,33 @@
       "guiaPasos": "<p>Con esto, la preparación del proyecto queda cerrada. El siguiente paso arranca el ciclo por issue (bloque C), que se repite una vez por cada issue del sprint.</p>",
       "madurez": "1"
     },
+    "GR": {
+      "clase": "T",
+      "esGateway": true,
+      "semantica": "idempotent",
+      "cmd": "gh issue list --search \"{TEMA}\" --state open",
+      "inputs": [{"name": "TEMA", "label": "Palabras clave del requisito", "type": "text", "placeholder": "ej. resumir documentos seleccionados"}],
+      "ramas": {"si": "bo1", "no": "r1"},
+      "porque": "El ciclo por issue asume que el trabajo ya está expresado como un issue con criterios de aceptación. Muchas veces no es así: lo que llega es un documento de negocio (un Word, un PDF, un correo largo) que alguien tiene que convertir en issue explorando el repo a mano. Hacer explícita esa bifurcación evita que ese trabajo de traducción quede invisible, o que se salte y el issue nazca vago.",
+      "guiaPasos": "<p>Busca si ya existe un issue para este requisito. Si existe, sigues a <b>«Tomar issue del sprint»</b>. Si lo que tienes es un documento de requisitos (o un pedido en lenguaje natural que todavía no es un issue), sigues a <b>«Convertir requisito en spec y tareas»</b>, que lo convierte con el agente y termina justo donde este ciclo empieza.</p>",
+      "madurez": "3"
+    },
+    "r1": {
+      "clase": "S",
+      "semantica": "guarded",
+      "requires": "Un documento de requisitos (Word, PDF, Excel, Markdown o texto plano) que todavía no es un issue (GR, rama \"no\").",
+      "slash": "/sdlc-ia:requirement-to-spec-java {RUTA_DOCUMENTO}",
+      "inputs": [{"name": "RUTA_DOCUMENTO", "label": "Ruta al documento de requisitos (o el pedido en texto)", "type": "text", "placeholder": "ej. docs/requisitos/acciones-sobre-documentos.docx"}],
+      "porque": "Es la versión reproducible de la exploración a mano que hace quien escribe un issue: la skill real <code>requirement-to-spec-java</code> de <code>instrumentacion-java-ia/sdlc-ia/</code> lee el documento, recorre el repo y produce una especificación y un desglose de tareas del tamaño de un commit cada una. Corre <b>antes</b> de tomar un issue, sobre un documento que todavía nadie aprobó — y por eso su límite es estricto: <b>nunca escribe código, nunca abre PR, nunca toca git</b>. Es el espejo de <code>github-plan-build</code> (c1), que sí empuja ramas y abre PRs una vez que el plan quedó aprobado.",
+      "guiaPasos": "<p>Corre el comando con la ruta al documento. Si el pedido llegó como texto (un correo, un chat), guárdalo en un <code>.md</code> y pasa esa ruta: la skill recibe una ruta, no texto suelto. La skill pasa por seis fases, y te pide decisiones solo en la tercera:</p><ol><li><b>Descubrimiento silencioso</b>: convierte el documento a Markdown si hace falta (<code>pandoc</code> para Word; PDF y Excel con fidelidad reducida), lee <code>AGENTS.md</code>, <code>docs/architecture.md</code> y los ADRs, detecta qué controladores REST, entidades y migraciones toca el requisito, y cita archivo y línea de la documentación que el cambio dejaría falsa.</li><li><b>Prerrequisitos</b>: reporta qué encontró (<code>pandoc</code>, <code>gh auth status</code>). No instala nada.</li><li><b>Acordar el alcance</b>: máximo cuatro preguntas por ronda, sin jerga. Siempre revisa seis categorías: impacto en contratos públicos, cruce contra la base de datos (solo si hay datos tabulares y un servidor MCP), documentación desactualizada, adjuntos faltantes (los reporta, no los adivina), ambigüedades (actores, disparadores, forma de los datos, casos borde) y criterios de validación en forma doble: qué prueba que se cumplió y qué probaría que no. Al final pregunta el destino: <b>GitHub</b> (un issue padre con un sub-issue nativo por tarea) o <b>archivo local</b> (<code>docs/specs/&lt;slug&gt;/spec.md</code> y <code>tasks.md</code>). Nunca lo asume.</li><li><b>Aplicar</b>: escribe el destino elegido. Las tareas van en orden de construcción: esquema, servicio, endpoint, interfaz, y la documentación al final.</li><li><b>Verificar</b>: vuelve a consultar GitHub para confirmar que cada sub-issue apunta al padre, o que ambos archivos existen y se enlazan.</li><li><b>Reportar</b>: cuatro secciones siempre presentes: preguntado, respondido (decisiones y supuestos), fuera de alcance y no leído.</li></ol><p>Lo que sale de acá es el issue que <b>«Tomar issue del sprint»</b> espera: cada decisión que tomaste queda escrita como <i>Decisión</i>, y cada hueco que nadie resolvió queda como <i>Supuesto</i> declarado, que el plan de <b>c1</b> tiene que poder detectar.</p><p class=\"tip\">Si la característica tiene interfaz, pide primero mockups con alternativas y elige una antes de correr la skill: una decisión de UX tomada viendo opciones concretas ahorra un desglose de tareas que después se descarta.</p><p class=\"tip\">Cierra con el paso siguiente ya resuelto: <code>/sdlc-ia:github-plan-build &lt;número del issue padre&gt;</code>. Los sub-issues quedan abiertos y sin asignar a propósito: es c1 quien los toma.</p>",
+      "madurez": "3"
+    },
     "bo1": {
       "clase": "T",
       "semantica": "idempotent",
-      "cmd": "gh issue list --assignee @me --state open",
-      "porque": "Arranca acá cada vuelta del ciclo. Tomar un issue concreto (no \"lo que aparezca\") es lo que hace posible medir el ciclo: cuánto tarda de tomado a cerrado, dónde se traba.",
-      "guiaPasos": "<p>Elige un issue del sprint asignado a ti. Anota su número — lo vas a necesitar en varios pasos siguientes (rama, commit, PR).</p>",
+      "cmd": "gh issue list --assignee '@me' --milestone \"{SPRINT}\" --state open",
+      "porque": "Arranca acá cada vuelta del ciclo. Tomar un issue concreto (no \"lo que aparezca\") es lo que hace posible medir el ciclo: cuánto tarda de tomado a cerrado, dónde se traba. «Del sprint» significa «con el milestone del sprint actual»: sin ese filtro, la lista mezcla lo planificado para estas dos semanas con todo el backlog que alguien te asignó alguna vez.",
+      "guiaPasos": "<p>Elige un issue del sprint asignado a ti. Anota su número — lo vas a necesitar en varios pasos siguientes (rama, commit, PR).</p><p>El sprint sale de ⚙ Perfil (<code>SPRINT</code>), el mismo título del milestone que creaste en <b>«Crear Project y milestone del sprint»</b>. Si la lista sale vacía, primero confirma que el milestone existe y que los issues del sprint lo tienen asignado — planificar el sprint es justamente eso: ponerle el milestone a los issues que entran y asignarlos: <code>gh issue edit &lt;n&gt; --milestone \"&lt;sprint&gt;\" --add-assignee '@me'</code>. Las comillas alrededor de <code>'@me'</code> no son opcionales en PowerShell: <code>@me</code> a secas es sintaxis de <i>splatting</i> y desaparece del comando.</p><p class=\"tip\">Si tu equipo usa el tablero del Project, es la misma lista vista por columnas de estado; el milestone y el tablero no compiten, uno dice cuándo y el otro cómo va.</p>",
       "madurez": "3"
     },
     "c1": {
@@ -300,14 +348,14 @@
       "slash": "/sdlc-ia:github-plan-build {ISSUE_ID}",
       "inputs": [{"name": "ISSUE_ID", "label": "Número del issue", "type": "text", "pattern": "^[0-9]+$"}],
       "porque": "Pedirle al agente que planifique antes de tocar código separa dos preguntas distintas: \"¿qué hay que hacer?\" de \"¿cómo se hace?\". Revisar el plan es más barato que revisar el código ya escrito. Este comando es la skill real <code>github-plan-build</code> de <code>instrumentacion-java-ia/</code> — y no solo planifica: corre <b>todo</b> el ciclo de este bloque C de punta a punta (explorar el repo, armar el plan, revisión adversarial en 3 lentes distintas, el checkpoint de aprobación, implementar test-first, los gates, commit/push/PR, seguir el CI, atender comentarios de review). Este diagrama muestra cada etapa por separado a propósito, para que entiendas qué hace por dentro — pero en la práctica corres un solo comando.",
-      "guiaPasos": "<p>El agente lee el issue completo (incluidos los comentarios), explora el repo sin asumir una arquitectura que no confirmó, y arma un plan. Se detiene en el checkpoint de aprobación (equivalente al gate <b>G3</b> de este diagrama) antes de tocar código — a partir de ahí sigues el resto del bloque C dentro de la misma sesión.</p><p class=\"tip\">Para un issue chico y rutinario, agrega <code>skip-checkpoint</code> al final del comando para saltar la pausa de aprobación. No lo uses en cambios grandes o irreversibles.</p>",
+      "guiaPasos": "<p>El agente lee el issue completo (incluidos los comentarios), explora el repo sin asumir una arquitectura que no confirmó, y arma un plan. Se detiene en el checkpoint de aprobación (equivalente al gate <b>G3</b> de este diagrama) antes de tocar código — a partir de ahí sigues el resto del bloque C dentro de la misma sesión.</p><p class=\"tip\">Para un issue chico y rutinario, agrega <code>skip-checkpoint</code> al final del comando para saltar la pausa de aprobación. No lo uses en cambios grandes o irreversibles.</p><p class=\"tip\">Por defecto la skill pushea la rama y abre la PR sin preguntar. Si prefieres que el push lo decidas tú, como lo modela este diagrama en <b>«Push de la rama»</b>, agrega <code>confirm-push</code>: la skill se detiene después del commit, te muestra qué saldría de tu máquina y pregunta una sola vez.</p>",
       "madurez": "3"
     },
     "bo2": {
       "clase": "manual",
       "semantica": "idempotent",
       "requires": "Plan publicado (c1).",
-      "manualNote": "Abre el issue en GitHub y lee la lista de tareas que publicó el agente. Si tu equipo usa GitHub Projects, revisa también que la tarjeta del issue tenga los campos que necesites (estado, iteración, estimación).",
+      "manualNote": "Abre el issue en GitHub y lee el comentario con el plan aprobado que publicó el agente al salir del checkpoint: la lista de pasos, las decisiones que tomaste, los supuestos que asumió solo y lo que dejó fuera de alcance. El estado del issue vive en el Project que creaste en el bloque B: la skill lo pasó a <b>In progress</b> al aprobar el plan y lo va a pasar a <b>In review</b> al cerrar, sin que tengas que tocar el tablero. Si tu equipo agregó campos propios (estimación, prioridad), esos sí quedan a tu cargo.",
       "porque": "El plan lo escribió el agente, pero la responsabilidad de que tenga sentido sigue siendo tuya. Este es el único punto del ciclo donde alguien lee el plan completo antes de que se ejecute una sola línea de código.",
       "guiaPasos": "<p>No hace falta que el plan sea perfecto — el siguiente gate (G3) te da tres salidas distintas según qué tan bien te cierre.</p>",
       "madurez": "3"
@@ -326,21 +374,21 @@
       "clase": "T",
       "semantica": "guarded",
       "requires": "Plan aprobado (G3, rama \"seguir\").",
-      "cmd": "git checkout -b feature/{RESUMEN}-{ISSUE_ID}",
+      "cmd": "git checkout -b feat/{ISSUE_ID}-{RESUMEN}",
       "inputs": [
         {"name": "RESUMEN", "label": "Resumen corto en kebab-case", "type": "text", "pattern": "^[a-z0-9-]+$"},
         {"name": "ISSUE_ID", "label": "Número del issue", "type": "text", "pattern": "^[0-9]+$"}
       ],
       "manualShared": ["ISSUE_ID"],
       "porque": "La rama se crea antes de escribir código, no después. Así, si algo sale mal a mitad de la implementación, el punto de partida (la rama base) sigue intacto y puedes volver a empezar sin arrastrar el intento fallido.",
-      "guiaPasos": "<p>El nombre de rama incluye el número de issue — hace que sea trivial encontrar qué rama corresponde a qué issue meses después.</p>",
+      "guiaPasos": "<p>El nombre de rama incluye el número de issue — hace que sea trivial encontrar qué rama corresponde a qué issue meses después. El número va primero, con el mismo patrón <code>&lt;prefijo&gt;/&lt;n&gt;-&lt;slug&gt;</code> que crea <code>github-plan-build</code>: así la rama hecha a mano y la de la skill se ven iguales en <code>git branch</code>. El prefijo es el que tu repo ya usa: este monorepo usa <code>feat/</code>, <code>fix/</code> y <code>docs/</code> (míralo con <code>git branch -r</code>), y la skill lo detecta de la misma forma; <code>feature/</code> es solo el valor por defecto cuando no hay convención.</p><p>Si vienes de <b>c1</b> con <code>github-plan-build</code>, esta rama ya existe: la skill la crea en su fase 2, <b>antes</b> de leer el issue a fondo y planificar, no después de aprobar el plan como muestra este diagrama. El orden es a propósito: el plan aprobado puede quedar como archivo en <code>docs/plans/</code> dentro de la misma rama, y el chequeo de árbol limpio de esa fase protege tu trabajo antes de que la skill escriba nada. Si ya estás parado en la rama con trabajo previo, la reutiliza en vez de recrearla. Para el ciclo a mano, ramificar después de aprobar el plan sigue siendo razonable.</p>",
       "madurez": "3"
     },
     "c2": {
       "clase": "manual",
       "semantica": "guarded",
       "requires": "Rama creada (c4a).",
-      "manualNote": "Si venís de <b>c1</b> con <code>github-plan-build</code>, esto ya se ejecuta solo — no hace falta un comando aparte. La skill parte el plan en tareas con <code>TaskCreate</code>, agrupa las que tocan archivos disjuntos para correrlas en paralelo, y hace un commit por tarea completada (RED→GREEN, test primero). Si tienes subagentes especializados por stack (ver <code>.claude/agents/</code>), cada tarea puede delegarse al más adecuado.",
+      "manualNote": "Si vienes de <b>c1</b> con <code>github-plan-build</code>, esto ya se ejecuta solo — no hace falta un comando aparte. La skill parte el plan en tareas con <code>TaskCreate</code>, agrupa las que tocan archivos disjuntos para correrlas en paralelo, y hace un commit por tarea completada (RED→GREEN, test primero), cada uno con <code>Refs #N</code> y el pie <code>Asistido-por-IA</code>; el que completa la última tarea lleva <code>Closes #N</code>. Si tu equipo tiene subagentes propios por stack (en <code>.claude/agents/</code> de tu repo; este paquete no trae ninguno, a propósito), cada tarea puede delegarse al más adecuado.",
       "porque": "Un commit por tarea (no un commit gigante al final) es lo que hace que el historial sirva para algo — revisar, revertir parcialmente, o entender qué pasó, tarea por tarea, en vez de un diff enorme sin estructura.",
       "guiaPasos": "<p>Este nodo existe para que veas qué pasa por dentro del mismo comando de <b>c1</b> — no es un paso manual aparte, salvo que estés ejecutando el ciclo sin <code>github-plan-build</code> y se lo estés pidiendo al agente tú mismo/a en lenguaje natural.</p>",
       "madurez": "3"
@@ -378,7 +426,7 @@
       "requires": "Tareas ejecutadas (c2), verificación visual si aplicaba (vw).",
       "manualNote": "Cuatro capas, ninguna reemplaza a las otras: local (el agente corre pruebas/linters antes de avisar), CI (lo mismo, en un runner de GitHub Actions), seguridad (análisis de dependencias y estático sobre lo que cambió), y un checklist humano corto de 2 minutos sobre lo que el agente asumió.",
       "porque": "Cada capa cubre el punto ciego de las otras: lo local es rápido pero corre en tu máquina, no en un entorno limpio; CI es el entorno limpio pero no mira seguridad; seguridad no mira si el diseño tiene sentido; el checklist humano es lo único que puede.",
-      "guiaPasos": "<ol><li>Local: el agente corre pruebas y linters antes de decir que terminó.</li><li>CI: el workflow de GitHub Actions corre lo mismo, en limpio.</li><li>Seguridad: SCA/SAST sobre el diff (dependencias nuevas, patrones inseguros).</li><li>Checklist humano: relee el diff completo una vez, buscando specificamente lo que el agente pudo haber asumido mal.</li></ol>",
+      "guiaPasos": "<ol><li>Local: el agente corre pruebas y linters antes de decir que terminó. Si vienes de <b>c1</b>, esto es el paso G de la skill: los gates del repo más <code>/code-review</code> sobre el diff del issue, antes del commit.</li><li>CI: el workflow de GitHub Actions corre lo mismo, en limpio.</li><li>Seguridad: SCA/SAST sobre el diff (dependencias nuevas, patrones inseguros). Lo que este taller instala: el escaneo de secretos (gitleaks) y el SCA de dependencias (OWASP Dependency-Check en <code>make ci</code>, que falla con un CVE de severidad alta, más Dependabot para abrir el PR de actualización), ambos de <code>instrument-project-java</code> y ambos opcionales al instalarla; y, dentro de <code>github-plan-build</code>, <code>/security-review</code> cuando el diff toca autenticación, secretos, parseo de entradas o I/O externo. Un SAST completo (CodeQL, Sonar) es un sensor que agregas aparte.</li><li>Checklist humano: relee el diff completo una vez, buscando specificamente lo que el agente pudo haber asumido mal.</li></ol>",
       "madurez": "2"
     },
     "G4": {
@@ -403,9 +451,9 @@
       "clase": "manual",
       "semantica": "guarded",
       "requires": "Criterios de aceptación cumplidos (G4, rama \"sí\").",
-      "plantillaCommit": "{RESUMEN}\n\nCloses #{ISSUE_ID}",
-      "porque": "El pie <code>Closes #123</code> es la convención nativa de GitHub para enlazar un commit a un issue — cuando el commit llega a la rama principal, GitHub cierra el issue solo. Es lo contrario de lo que pediría una plataforma de work items separada: acá el commit y el issue son parte del mismo grafo.",
-      "guiaPasos": "<p>Además de <code>Closes</code>, GitHub reconoce <code>Fixes</code> y <code>Resolves</code> como sinónimos — cualquiera de los tres cierra el issue automáticamente al mergear a la rama por defecto.</p>",
+      "plantillaCommit": "git commit -m \"{RESUMEN}\" -m \"Closes #{ISSUE_ID}\" -m \"Asistido-por-IA: {MODELO_IA}\"",
+      "porque": "El pie <code>Closes #123</code> es la convención nativa de GitHub para enlazar un commit a un issue — cuando el commit llega a la rama principal, GitHub cierra el issue solo. Es lo contrario de lo que pediría una plataforma de work items separada: acá el commit y el issue son parte del mismo grafo. El segundo pie, <code>Asistido-por-IA: &lt;modelo&gt;</code>, deja registrado qué modelo asistió el cambio: es lo que después permite separar en las métricas el código asistido por IA del que no lo fue.",
+      "guiaPasos": "<p>Además de <code>Closes</code>, GitHub reconoce <code>Fixes</code> y <code>Resolves</code> como sinónimos — cualquiera de los tres cierra el issue automáticamente al mergear a la rama por defecto.</p><p><code>Asistido-por-IA</code> es un <i>trailer</i> de git: va en el último párrafo del mensaje, separado del <code>Closes</code> por una línea en blanco, y con formato <code>Clave: valor</code>. Cada <code>-m</code> del comando es un párrafo, así el trailer queda solo en el último sin escribir líneas en blanco a mano, y funciona igual en PowerShell y en bash. El modelo se completa una sola vez en ⚙ Perfil (<code>MODELO_IA</code>) y la plantilla lo interpola; si no lo completaste, queda el marcador <code>{MODELO_IA}</code> para que lo reemplaces a mano. Para consultarlo después: <code>git log --format='%h %(trailers:key=Asistido-por-IA,valueonly)'</code>.</p><p>Si el commit lo hizo el agente con <code>github-plan-build</code>, el skill ya pone este trailer solo (paso H del ciclo), con el modelo que corrió la sesión.</p>",
       "madurez": "3"
     },
     "c4c": {
@@ -414,16 +462,17 @@
       "requires": "Commit hecho (c4b).",
       "cmd": "git push -u origin HEAD",
       "porque": "Sin push, todo lo anterior sigue viviendo solo en tu máquina — este es el paso que lo hace visible para el resto del equipo y dispara la maquinaria de GitHub (CI, la posibilidad de abrir la PR).",
-      "guiaPasos": "<p><code>-u</code> deja la rama configurada para que los próximos <code>git push</code> no necesiten repetir el nombre remoto.</p>",
+      "guiaPasos": "<p><code>-u</code> deja la rama configurada para que los próximos <code>git push</code> no necesiten repetir el nombre remoto.</p><p>Si viniste de <b>c1</b> con <code>github-plan-build</code>, este paso ya lo hizo la skill sola: su contrato de autonomía pushea y abre la PR sin preguntar. Para que la decisión sea tuya, como muestra este nodo, corre la skill con <code>confirm-push</code>: se detiene después del commit y pregunta una vez; si eliges «lo pusheo yo», el comando de arriba es exactamente el que te deja pendiente.</p>",
       "madurez": "3"
     },
     "p1": {
       "clase": "T",
       "semantica": "guarded",
       "requires": "Rama pusheada (c4c).",
-      "cmd": "gh pr create --fill --base dev",
-      "porque": "Abrir la PR es lo que dispara el \"juez\" de CI configurado en el bloque B — el Ruleset exige que ese check pase antes de poder mergear, así que a partir de acá el pipeline entra en juego automáticamente.",
-      "guiaPasos": "<p><code>--fill</code> usa el título y cuerpo del último commit para completar la PR — revísalo y ajústalo si hace falta antes de confirmar. <code>--base dev</code> asume que tu rama de integración se llama <code>dev</code>; cámbialo si tu equipo usa otro nombre.</p>",
+      "cmd": "$cuerpo = @\"\n{RESUMEN}\n\nCloses #{ISSUE_ID}\n\nAsistido-por-IA: {MODELO_IA}\n\"@\ngh pr create --base dev --title \"{RESUMEN}\" --body $cuerpo",
+      "inputs": [{"name": "RESUMEN", "label": "Título de la PR (una línea, qué resuelve)", "type": "text", "placeholder": "ej. agrega validación de email al registro"}],
+      "porque": "Abrir la PR es lo que dispara el \"juez\" de CI configurado en el bloque B — el Ruleset exige que ese check pase antes de poder mergear, así que a partir de acá el pipeline entra en juego automáticamente. El cuerpo se escribe explícito, con <code>Closes #N</code> y el pie <code>Asistido-por-IA</code> en sus propios párrafos, por la misma razón que en el merge (actividad mg): es lo que sobrevive al squash. <code>--fill</code> no sirve con varios commits — toma el título del nombre de la rama y el cuerpo de la lista de asuntos, y el <code>Closes</code> que vive en el cuerpo del último commit se pierde.",
+      "guiaPasos": "<p>El bloque es PowerShell: el <i>here-string</i> <code>@\"…\"@</code> arma el cuerpo con sus párrafos (el cierre <code>\"@</code> va en la primera columna). <code>--base dev</code> asume que tu rama de integración se llama <code>dev</code>; cámbialo si tu equipo usa otro nombre. Es lo mismo que hace <code>github-plan-build</code> en su paso H: <code>--base</code> con la rama de integración resuelta y el cuerpo con el <code>Closes</code> y el trailer, nunca <code>--fill</code>.</p>",
       "madurez": "3"
     },
     "G5": {
@@ -451,10 +500,10 @@
       "clase": "manual",
       "semantica": "guarded",
       "requires": "CI en verde (G5, rama \"sí\").",
-      "manualNote": "Dos capas de revisión, no una: 1) una pasada local gratis con un comando de revisión de código antes de pedir revisión humana (evita gastar el tiempo de una persona en cosas que un agente ya detecta), y 2) revisión humana, con CODEOWNERS asignando automáticamente a quien corresponda por carpeta.",
+      "manualNote": "Dos capas de revisión, no una: 1) una pasada local gratis con un comando de revisión de código antes de pedir revisión humana (evita gastar el tiempo de una persona en cosas que un agente ya detecta) — si vienes de <b>c1</b>, <code>github-plan-build</code> ya la corrió antes del commit (su paso G), así que acá solo la repites si cambiaste algo después del push —, y 2) revisión humana, con CODEOWNERS asignando automáticamente a quien corresponda por carpeta.",
       "manualCmd": "/code-review",
       "porque": "La revisión de un agente y la de una persona buscan cosas distintas: el agente es bueno detectando bugs mecánicos, duplicación, simplificaciones obvias; una persona es quien evalúa si el enfoque tiene sentido para el negocio. Ninguna reemplaza a la otra.",
-      "guiaPasos": "<p>Si instalaste la GitHub Action oficial de Claude Code (<code>anthropics/claude-code-action</code>, con <code>/install-github-app</code>), también puedes pedirle una revisión directamente en la PR comentando <code>@claude revisá esta PR</code> — deja comentarios inline en el diff, igual que una persona.</p>",
+      "guiaPasos": "<p>Si instalaste la GitHub Action oficial de Claude Code (<code>anthropics/claude-code-action</code>, con <code>/install-github-app</code>), también puedes pedirle una revisión directamente en la PR comentando <code>@claude revisa esta PR</code> — deja comentarios inline en el diff, igual que una persona.</p>",
       "madurez": "3"
     },
     "G6": {
@@ -479,9 +528,9 @@
       "clase": "T",
       "semantica": "guarded",
       "requires": "PR aprobada (G6, rama \"sí\").",
-      "cmd": "gh pr merge --squash --delete-branch --body \"$(gh pr view --json body -q .body)\"",
+      "cmd": "$cuerpo = (gh pr view --json body -q .body) -join \"`n\"\ngh pr merge --squash --delete-branch --body $cuerpo",
       "porque": "El Ruleset configurado en el bloque B es lo que realmente bloquea este comando si algún check requerido no pasó — no depende de que nadie se acuerde de chequearlo a mano.",
-      "guiaPasos": "<p><code>--squash</code> deja un commit limpio en la rama principal; <code>--delete-branch</code> limpia la rama de feature ya mergeada.</p><p><b>El <code>--body</code> explícito no es opcional:</b> por defecto, <code>gh pr merge --squash</code> arma el mensaje del commit final a partir de los commits individuales, no del cuerpo de la PR — si el <code>Closes #N</code> vive solo ahí (como en la actividad 24) y no en el último commit, el squash lo pierde y el issue no se cierra solo. Pasarle el cuerpo de la PR de forma explícita, como en el comando de arriba, es lo que garantiza que <code>Closes #N</code> llegue al commit real que queda en la rama principal.</p>",
+      "guiaPasos": "<p><code>--squash</code> deja un commit limpio en la rama principal; <code>--delete-branch</code> limpia la rama de feature ya mergeada.</p><p><b>El <code>--body</code> explícito no es opcional:</b> por defecto, <code>gh pr merge --squash</code> arma el mensaje del commit final a partir de los commits individuales, no del cuerpo de la PR — si el <code>Closes #N</code> vive solo ahí (como en la actividad 24) y no en el último commit, el squash lo pierde y el issue no se cierra solo. Pasarle el cuerpo de la PR de forma explícita, como en el comando de arriba, es lo que garantiza que <code>Closes #N</code> llegue al commit real que queda en la rama principal. Lo mismo aplica al trailer <code>Asistido-por-IA</code>: la actividad 26 lo escribe en el cuerpo de la PR, y este comando lo lleva al commit del squash — si editaste el cuerpo de la PR a mano, revisa que el trailer siga ahí.</p><p>Este merge va a <code>dev</code>, no a <code>main</code>: el issue sigue abierto hasta la PR de liberación <code>dev</code> → <code>main</code> (ver el cierre del ciclo, G7). Si necesitas cerrarlo ya, <code>gh issue close &lt;n&gt;</code> y dilo en el comentario.</p>",
       "madurez": "3"
     },
     "cd1": {
@@ -527,7 +576,7 @@
       "semantica": "idempotent",
       "ramas": {"si": "bo1", "no": "end_ok"},
       "porque": "Este es el cierre del ciclo PDCA: si quedan issues, el proceso vuelve a su propio comienzo (bo1) — no es una lista que se recorre una vez, es un hábito que se repite issue tras issue.",
-      "guiaPasos": "<p>Si quedan issues del sprint asignados a ti, vuelves a <b>«Tomar issue del sprint»</b>. Si no, el sprint (para ti) está cerrado.</p>",
+      "guiaPasos": "<p>Si quedan issues del sprint asignados a ti, vuelves a <b>«Tomar issue del sprint»</b>. Es el mismo filtro de bo1: <code>gh issue list --assignee '@me' --milestone \"&lt;sprint&gt;\" --state open</code>. Si sale vacío, el sprint (para ti) está cerrado; cuando el equipo cierra el milestone, el siguiente sprint arranca creando el próximo en <b>«Crear Project y milestone del sprint»</b>.</p><p><b>Liberar.</b> Todo el ciclo mergeó a <code>dev</code>, la rama de integración. <code>main</code> es lo estable, lo liberado, y solo recibe una PR desde <code>dev</code> cuando lo integrado está en verde y el equipo decide publicar: <code>gh pr create --base main --head dev --title \"Release &lt;versión&gt;\"</code>, mergeada con merge commit para conservar los commits tal cual. Ahí es cuando los <code>Closes #N</code> de los commits cierran los issues solos, porque recién entonces llegan a la rama por defecto. Si el repo publica un paquete (como el plugin <code>sdlc-ia</code> de este taller), esa PR es la que sube la versión y fecha el CHANGELOG.</p>",
       "madurez": "3"
     }  },
   "eventos": {

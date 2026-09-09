@@ -4,11 +4,16 @@
 #
 #   {{CHECKOUT_MAJOR}}       {{SETUP_JAVA_MAJOR}}       {{CACHE_MAJOR}}      {{UPLOAD_ARTIFACT_MAJOR}}
 #   {{JAVA_VERSION}}         the repo's own <java.version> / <maven.compiler.release>, never guessed
-#   {{GITLEAKS_VERSION}}     gh release view --repo gitleaks/gitleaks --json tagName --jq '.tagName' | tr -d v
+#   {{GITLEAKS_VERSION}}     gh release view --repo gitleaks/gitleaks --json tagName --jq .tagName
+#                            prints e.g. v8.30.1 -- write it WITHOUT the leading v (8.30.1): the URL
+#                            below adds the v itself and the archive name has none.
 #
-#   for a in actions/checkout actions/setup-java actions/cache actions/upload-artifact; do
-#     printf '%s %s\n' "$a" "$(gh api repos/$a/releases/latest --jq .tag_name | cut -d. -f1)"
-#   done
+#   Action majors, one gh call each, same in PowerShell 5.1, 7 and bash (no quotes inside --jq --
+#   Windows PowerShell 5.1 strips them before gh sees them):
+#     gh api repos/actions/checkout/releases/latest --jq .tag_name
+#   prints e.g. v4.2.1 -- write the major, v4. Likewise for actions/setup-java, actions/cache,
+#   actions/upload-artifact. You are resolving once, by hand, at install time; read the value,
+#   do not script the substring.
 #
 # Two lines carry the whole design:
 #   java-version: {{JAVA_VERSION}}   the runner installs the JDK the repo targets. Same version
@@ -94,7 +99,24 @@ jobs:
           java-version: "{{JAVA_VERSION}}"
           cache: maven
 
+      # Control 9. Dependency-check keeps its NVD mirror in the dataDirectory the pom.xml points at
+      # (~/.cache/dependency-check -- outside ~/.m2 on purpose, so setup-java's pom-keyed Maven
+      # cache never carries it). Without this step every run rebuilds the mirror: 20+ minutes
+      # without an NVD key. The key is unique per run so the refreshed mirror is saved every time;
+      # restore-keys picks up the most recent previous one.
+      # Drop this step, and the NVD_API_KEY line below, if SCA was skipped in Phase 3.
+      - name: Cache the NVD mirror for dependency-check
+        uses: actions/cache@{{CACHE_MAJOR}}
+        with:
+          path: ~/.cache/dependency-check
+          key: nvd-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: nvd-${{ runner.os }}-
+
       - name: Run the same gates as local
+        env:
+          # Repository secret (Settings > Secrets and variables > Actions). Unset = the scan still
+          # runs, throttled. Never a literal here.
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
         run: make ci
 
       # Only useful once Surefire/Failsafe reports exist under target/surefire-reports -- which

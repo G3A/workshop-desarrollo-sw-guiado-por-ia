@@ -39,6 +39,7 @@ verificadas por ArchUnit y `ApplicationModules.verify()` en cada build (`Arquite
 | `ingesta` | Conectores (documentos locales, repos Git, Teams, Azure DevOps), chunking, destilación, bursting |
 | `recuperacion` | Las 4 señales, RRF, cross-encoder, expansión de contexto |
 | `orquestacion` | Planner, executor, las 6 herramientas, síntesis, la fachada `Consultar` |
+| `acciones` | Resumir, sintetizar, preguntas, ideas y traducir sobre documentos elegidos a mano; la fachada `Acciones`. Independiente del RAG ([ADR-0013](adrs/0013-modulo-acciones-independiente-del-rag.md)) |
 | `modelos` | Cliente de embeddings y cross-encoder ONNX |
 | `llm` | Cliente de Ollama (chat, streaming, salida estructurada) |
 | `web` | Adaptador UI HTML/JS: REST, SSE, estáticos |
@@ -46,14 +47,16 @@ verificadas por ArchUnit y `ApplicationModules.verify()` en cada build (`Arquite
 | `seguridad` | Filtro de token Bearer sobre el API programático |
 | `compartido` | Tipos de dominio: `Cita`, `Fragmento`, `Proyecto`, `Respuesta` |
 
-**La regla que ArchUnit hace cumplir**: `web`, `teams` y `seguridad` solo pueden depender de la
-fachada de `orquestacion` y de `compartido`. Nunca de `recuperacion`, `ingesta`, `modelos` ni
-`llm`. Es el límite que hace que "tres adaptadores reemplazables" signifique algo, no solo una
-intención escrita.
+**La regla que ArchUnit hace cumplir**: `web`, `teams` y `seguridad` solo pueden depender de las
+dos fachadas (`orquestacion.Consultar` y `acciones.Acciones`) y de `compartido`. Nunca de
+`recuperacion`, `ingesta`, `modelos` ni `llm`. Es el límite que hace que "tres adaptadores
+reemplazables" signifique algo, no solo una intención escrita. Una segunda regla aísla a
+`acciones` del RAG: no puede depender de `orquestacion`, `recuperacion`, `ingesta`, `modelos` ni
+de los adaptadores.
 
 ### Núcleo compartido y adaptadores
 
-Una sola fachada:
+Dos fachadas. La del RAG:
 
 ```java
 Respuesta consultar(Pregunta pregunta, ProyectoId proyecto, Filtros filtros)
@@ -63,6 +66,9 @@ Respuesta consultar(Pregunta pregunta, ProyectoId proyecto, Filtros filtros)
 multi-tenant del MVP (ver Autenticación más abajo). `Consultar` expone además `previsualizar`
 (solo señal 1, sin embeddings ni reranker) y `responderEnStreaming` (citas de inmediato +
 `Flux<String>` token a token), las dos operaciones que sostienen la UI web de F4.
+
+La otra fachada, `acciones.Acciones`, no recibe una pregunta sino una lista de documentos que la
+persona eligió a mano — ver [Acciones sobre documentos seleccionados](#acciones-sobre-documentos-seleccionados-apiacciones).
 
 ## Esquema de datos
 
@@ -145,6 +151,54 @@ prefijo de URI, no por el módulo que la expone.
 7. **QueryLogRepositorio** registra pregunta, plan, herramientas, candidatos, respuesta y citas —
    incluida la traza de un rechazo por umbral o por el verificador de grounding.
 
+## Acciones sobre documentos seleccionados (`/api/acciones/*`)
+
+Cinco acciones sobre los documentos que la persona tildó en la barra lateral de la página de
+chat (issue #38): **resumir** (un resumen por documento), **sintetizar** (un solo texto: en común,
+contradicciones, conclusión), **lluvia de preguntas** (por niveles de la taxonomía de Bloom, un
+nivel por llamada, con la plantilla 5W1H por pregunta) y **lluvia de ideas** (ambas con salida
+estructurada y la cita `[n]` de cada pregunta o idea) y **traducir** (el documento completo, bloque a bloque,
+con origen detectado o elegido y destino libre). El mismo traductor sirve dentro del chat: un modo
+traducir en la barra de entrada y «Traducir» sobre cualquier turno ya escrito.
+
+Vive en el módulo `acciones`, **independiente del RAG a propósito**
+([ADR-0013](adrs/0013-modulo-acciones-independiente-del-rag.md)): de las siete etapas solo
+sobreviven armar el contexto y llamar al LLM. No hay planner (no hay pregunta), ni retrieval ni
+fusión (la persona ya dijo qué documentos), ni umbral de relevancia ni verificador de grounding
+(no hay relevancia que juzgar), ni `query_log` ni feedback, ni reconexión tras un F5. Comparte
+con el RAG solo dos cosas, y ninguna es código: el vault indexado (`SeccionesRepositorio`, SQL
+propio sobre `documents`/`chunks` filtrado por `project_id`) y el cliente del LLM
+(`llm.Redactor`, el hermano del `Sintetizador` con prompts de resumir/traducir, no de responder).
+Tiene su propio cupo de concurrencia (`CupoDeAcciones`): compartir el del orquestador sería
+depender de él.
+
+**El presupuesto de contexto es la decisión central.** `PresupuestoDeContexto` reparte
+`kb.acciones.max-caracteres-contexto` (7000 por defecto, calibrado para `num_ctx` 4096 del perfil
+Bonsai descontando prompt y salida) en partes iguales entre los documentos, del más corto al más
+largo, redistribuyendo lo que un documento corto no usa. Un documento que cabe en su cuota entra
+tal cual; uno que no **se lee entero por pasadas** antes de la acción (sub-issue #60): sus
+secciones se parten en tramos de `kb.acciones.max-caracteres-lectura` (10000), cada tramo se
+condensa con el LLM en notas de hasta 1200 caracteres, y si las notas juntas todavía no caben se
+agrupan y se vuelven a condensar hasta que quepan. Nada se recorta. El número de pasadas se sabe
+de antemano (tramos y grupos son deterministas) y viaja en `CoberturaDocumento`
+(`seccionesTotales`, `pasadas`); cada pasada hecha se anuncia con un evento `lectura`, que la UI
+pinta como progreso por documento, y el contexto final dice que lo que sigue son notas de lectura.
+Un id que no existe en el proyecto queda en la cobertura con `0/0` («no indexado») en vez de
+desaparecer. Traducir no usa el presupuesto: parte cada sección en bloques de ≤1500 caracteres por
+párrafos, deja pasar los `code_block` sin LLM, detecta el idioma por documento de forma perezosa
+y omite (y lo dice) el documento cuyo origen ya es el destino.
+
+`AccionesController` (`web`) expone siete rutas, todas fuera de `ApiTokenFilter` por el mismo
+motivo que `/api/chat` (mismo `EventSource` sin cabeceras): `GET /api/acciones/limites` (los
+topes, para que la UI deshabilite el control antes de un 400), `GET /api/acciones/{resumir|
+sintetizar}` (SSE: `etiqueta`, `cobertura`, `citas`, `token`×n, `fin`), `GET /api/acciones/
+{preguntas|ideas}` (igual, pero un único `resultado` JSON en vez de tokens), `GET
+/api/acciones/traducir-documentos` (`documentos`, `idioma-detectado`, `documento-omitido`,
+`progreso`, `texto`, `fin`) y `POST /api/acciones/traducir-texto` (cuerpo JSON leído con `fetch`,
+porque una respuesta larga no cabe en una URL). Los 400 se deciden **antes** de abrir el stream,
+con los topes de `Acciones.limites()` y un evento `error-cliente` como cuerpo; un error a mitad
+del stream llega como `error-servidor`, nunca como corte mudo.
+
 ## Retrieval híbrido de 4 señales (`/api/search`)
 
 FTS (`ts_rank_cd` sobre GIN) + denso (coseno sobre HNSW) + supresión por IDF + decaimiento
@@ -166,9 +220,11 @@ Quedan **fuera** de este filtro, a propósito:
 - `/api/messages` — el Bot Connector ya valida su propio JWT contra Azure AD
   (`ValidadorTokenBotFramework`); exigir además este token rechazaría tráfico legítimo de Azure Bot
   Service.
-- `/api/chat` y `/api/preview` — la UI web de F4. El `EventSource` nativo del navegador no puede
-  mandar cabeceras propias, y estas dos rutas son el "keyword search on landing" pensado para no
-  tener fricción. El MVP no tiene login de persona (Entra ID queda fuera, según los Supuestos del
+- `/api/chat`, `/api/preview` y las siete rutas de `/api/acciones/*` — la UI web de F4 y las
+  acciones sobre documentos seleccionados. El `EventSource` nativo del navegador no puede mandar
+  cabeceras propias, y estas rutas son el "keyword search on landing" pensado para no tener
+  fricción. Son rutas exactas, no un prefijo: un tipo de acción inventado exige token y responde
+  401 antes de que el controlador llegue a decir 404. El MVP no tiene login de persona (Entra ID queda fuera, según los Supuestos del
   plan): este token protege llamadas programáticas, no la página que cualquiera con acceso a la
   red ya puede abrir.
 - `/api/admin/ayuda` y `/api/admin/proyectos` (F9/F10) — el botón `?` y el selector de proyecto

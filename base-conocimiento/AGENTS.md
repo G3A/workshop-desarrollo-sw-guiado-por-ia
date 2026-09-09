@@ -16,7 +16,7 @@ Este archivo solo captura lo que no es obvio leyendo el código. Para arquitectu
 - [Java — profundidad técnica](docs/java.md) — módulos, JDK, DI, persistencia, quality gates, CI.
 - [Usuario objetivo](docs/target-user.md) — quién usa el sistema y qué le importa.
 - [Diseño](docs/design.md) — el adaptador web (HTML/JS sin build).
-- [Decisiones (ADRs)](docs/adrs/) — 12 decisiones registradas, desde la tabla única de embeddings hasta Spring Modulith.
+- [Decisiones (ADRs)](docs/adrs/) — 13 decisiones registradas, desde la tabla única de embeddings hasta el módulo de acciones independiente del RAG.
 - [Plan del proyecto, fase por fase](docs/plans/plan-base-conocimiento.md) — historia de cómo se llegó al estado actual.
 - [Investigación VRAM/modelo LLM](docs/investigacion-vram-y-modelo-llm.md) — por qué Gemma3:4b y el trade-off GPU/CPU.
 - [Registro del bot de Teams](docs/teams/registro-azure-bot.md) — cómo registrar el bot en Azure.
@@ -46,10 +46,15 @@ el `Makefile` ya resuelve flags de perfil y el reparto de GPU según el hardware
 
 ## Reglas no obvias
 
-- **Los adaptadores son piel**: `web`, `teams` y `seguridad` solo pueden depender de la fachada
-  `orquestacion.Consultar` y de `compartido`. Nunca de `recuperacion`, `ingesta`, `modelos` ni
-  `llm` — lo hace cumplir `ArquitecturaTest` (ArchUnit + `ApplicationModules.verify()`) en cada
-  build, no es solo una convención escrita.
+- **Los adaptadores son piel**: `web`, `teams` y `seguridad` solo pueden depender de las dos
+  fachadas, `orquestacion.Consultar` (el RAG) y `acciones.Acciones` (resumir, sintetizar,
+  preguntas, ideas y traducir sobre documentos elegidos), y de `compartido`. Nunca de
+  `recuperacion`, `ingesta`, `modelos` ni `llm` — lo hace cumplir `ArquitecturaTest` (ArchUnit +
+  `ApplicationModules.verify()`) en cada build, no es solo una convención escrita.
+- **`acciones` es independiente del RAG**: comparte con `orquestacion` solo el vault indexado (SQL
+  propio sobre `documents`/`chunks`) y el cliente del LLM (`llm`); nunca `Consultar`, el planner,
+  el retrieval ni `query_log`. Otra regla de `ArquitecturaTest` lo hace cumplir — ver
+  [ADR-0013](docs/adrs/0013-modulo-acciones-independiente-del-rag.md).
 - **El texto crudo nunca se embebe**: el embedding ancla en los campos que destila el LLM
   (`searchable_question`, `summary`, `resolution`); el texto crudo solo alimenta full-text search.
   Ver [ADR-0003](docs/adrs/0003-no-embeber-texto-crudo.md).

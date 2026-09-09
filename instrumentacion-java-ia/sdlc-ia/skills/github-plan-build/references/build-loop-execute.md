@@ -3,7 +3,8 @@
 > Continues `references/build-loop.md` (Steps A–E: grill, explore, plan, adversarial review,
 > approval checkpoint) for the `github-plan-build` skill. Same bindings, same tracker-agnostic
 > scope. Only Step E (in the other file) pauses for the user — everything here is **act and
-> self-verify**; see **Escalation** below for the complete list of things that stop you.
+> self-verify**, except the optional `confirm-push` pause in Step H; see **Escalation** below
+> for the complete list of things that stop you.
 
 ## Step F — Implement, test-first
 
@@ -38,6 +39,15 @@
    check (a single-test filter and/or the linter), not the whole suite yet. Subagents
    report results; **you** run the checks, so one agent's green is never taken on
    faith.
+
+   **Then commit that step — one commit per green step.** Stage only the step's files;
+   the message says what the step did, references the ticket with `Refs #<n>` (the
+   child's number instead, when `CHILD-LINK` applies), and ends with the
+   `Asistido-por-IA` trailer described in Step H. The commit that completes the **last**
+   step of the plan carries `LINK-TOKEN` (`Closes #<n>`) instead of `Refs` — the task
+   list tells you which one that is, so decide it before writing the message; never
+   amend a commit afterwards to add it. A history that reads task by task is what lets
+   a reviewer follow the plan in the diff and revert one step without losing the rest.
 
 4. Keep steps small — split anything past ~8 files / ~200 lines of diff. Follow the
    repo's own file-size and module-splitting conventions if it has any; do not impose
@@ -87,19 +97,47 @@ versus real, unclear error, possibly pre-existing — escalate rather than guess
 1. Stage **only the files you changed** — never `git add -A`, never anything
    secret-like (`.env`, keys, tokens), and never echo a secret value into a command or
    a commit message.
-2. Commit with a message that includes `LINK-TOKEN` so the tracker attaches the commit
-   to `TICKET`. **If `TICKET` has sub-issues and this commit finishes one of them**,
-   the binding table's `CHILD-LINK` step (where defined) says how that commit
-   references the child instead of the parent — but does **not** close it here. A
-   child's own code is not proven until Step I says the PR is green with comments
-   addressed; closing on the commit alone would mark a sub-issue done while CI can
-   still fail it or a reviewer can still ask for changes to it. `LINK-TOKEN` on
-   `TICKET` itself is still reserved for whichever commit finishes the **last**
-   remaining child, or for a ticket with no children at all.
+2. Step F already committed each step. What is left for this commit is whatever Step G
+   changed — a gate fix, a `/code-review` finding — as one more `Refs #<n>` commit; if
+   Step G changed nothing, there is nothing to commit here and that is fine. Every
+   commit on `BRANCH` references `TICKET` (`Refs #<n>`), and exactly one — the one that
+   completed the last step in Step F — carries `LINK-TOKEN` so the tracker attaches the
+   branch to `TICKET`. **If `TICKET` has sub-issues**, the binding table's `CHILD-LINK`
+   step (where defined) says how a child's commits reference the child instead of the
+   parent — but does **not** close it here. A child's own code is not proven until
+   Step I says the PR is green with comments addressed; closing on the commit alone
+   would mark a sub-issue done while CI can still fail it or a reviewer can still ask
+   for changes to it. `LINK-TOKEN` on `TICKET` itself is still reserved for the commit
+   that finishes the **last** step of the last remaining child, or of a ticket with no
+   children at all.
+
+   **Every commit also ends with the trailer `Asistido-por-IA: <model id>`** — the model
+   that is running this session, as the harness reports it (e.g. `claude-opus-5`), never
+   guessed. Git trailer format: last paragraph of the message, `Key: value`, separated
+   from the `LINK-TOKEN` line by a blank line, since `Closes #<n>` is not a trailer and
+   would break the block. This is what lets the repo tell AI-assisted commits from the
+   rest (`git log --format='%h %(trailers:key=Asistido-por-IA,valueonly)'`) and feed the
+   AI-vs-non-AI split in its metrics. Any `Co-Authored-By` or session trailers the
+   harness adds go in the same paragraph.
+
+   **`confirm-push` checkpoint — only when the argument was given.** With every commit
+   in place and Step G green, stop *before* the push and ask once with
+   `AskUserQuestion`. The question shows what would leave the machine: `BRANCH`, the
+   commits (`git log --oneline <base>..HEAD`), the files changed, and the PR title.
+   Two options:
+   - **Push and open the PR (Recommended)** — continue with H.3.
+   - **Stop here, I push it myself** — end the run *without* pushing. Steps H.3–J do not
+     run: no push, no PR, no `COMMENT`, no `STATUS→IN-REVIEW`. Report the branch name,
+     the exact `git push -u origin <BRANCH>` and `OPEN-PR` commands the developer will
+     run, and that the issue was left in-progress on purpose, so the wrap-up is not
+     mistaken for forgotten.
+   Without `confirm-push` there is no question here: pushing is pre-authorized by the
+   **Autonomy contract** in `SKILL.md`.
 3. Push `BRANCH`.
-4. Open the PR with `OPEN-PR`. The body links `TICKET`, summarizes the change, and
-   lists **the verification commands you actually ran** with their results — not the
-   ones you intended to run.
+4. Open the PR with `OPEN-PR`. The body links `TICKET`, summarizes the change, lists
+   **the verification commands you actually ran** with their results — not the ones you
+   intended to run — and repeats the `Asistido-por-IA` trailer as its last line, so a
+   squash merge that takes the PR body as the commit message keeps it.
 
 **Never merge the PR** and never enable auto-complete. Opening it is where your
 authority ends.
@@ -139,7 +177,11 @@ correct," and a sub-issue closed before that point can still be wrong.
 
 1. Post the summary via `COMMENT` and set `STATUS→IN-REVIEW` (both pre-authorized —
    never ask). The summary must reflect the **final** state: the PR URL, that CI is
-   green, and that review comments were addressed.
+   green, and that review comments were addressed. If the PR targets a branch that is
+   not the repository's default one (the calling skill's `BASE-BRANCH`, where defined),
+   say in the comment and in the session that `LINK-TOKEN` will **not** auto-close
+   `TICKET` when this PR merges — it closes when the integration branch is released to
+   the default branch, and whoever needs it closed earlier closes it by hand.
 2. Report back in the session: PR URL, CI status, tracker status, what the watch loop
    changed after the first push, which comments you addressed, which gates were
    skipped because the repo does not define them, and anything deliberately left for a
@@ -160,4 +202,5 @@ correct," and a sub-issue closed before that point can still be wrong.
 
 For everything else — branching, planning, implementing, fixing your own gate
 failures, and tracker writes on `TICKET` itself — **decide and proceed. Do not check
-in.**
+in.** The one opt-in exception is the `confirm-push` pause in Step H, and only when
+the user asked for it in the arguments.

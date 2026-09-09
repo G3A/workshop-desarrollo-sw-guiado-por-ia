@@ -13,7 +13,7 @@ Glob for `pom.xml`, `build.gradle`, `build.gradle.kts`, `settings.gradle(.kts)`,
 If nothing matches, stop and tell the user this skill only applies to Java repositories. Write
 nothing.
 
-This skill's templates and worked examples target **Maven**. If the repo is Gradle, the eight
+This skill's templates and worked examples target **Maven**. If the repo is Gradle, the nine
 controls still apply but every artifact path differs (`build.gradle` instead of `pom.xml`,
 `checkstyle` + `spotless` Gradle plugins instead of Maven plugins, `gradlew` instead of `mvnw`) —
 say so up front and adapt each template by hand; do not silently force a Maven layout onto a
@@ -21,10 +21,8 @@ Gradle repo.
 
 ## 2. Wrapper and version pin
 
-```bash
-ls mvnw mvnw.cmd .mvn/wrapper/maven-wrapper.properties
-cat .mvn/wrapper/maven-wrapper.properties
-```
+Glob for `mvnw`, `mvnw.cmd` and `.mvn/wrapper/maven-wrapper.properties`, then Read the
+properties file — the agent's own tools, no `ls`/`cat` to translate between shells.
 
 Record `distributionUrl`. It must be a **literal** version (`.../apache-maven-3.9.11-bin.zip`),
 never a moving target. If the wrapper is absent, control 1 has to install it
@@ -60,10 +58,9 @@ or inherits it. Divergence across modules is a Phase 2 question, not a guess.
 
 ## 6. Dependency management (control 1's other half)
 
-```bash
-grep -n "<dependencyManagement>" -A5 pom.xml
-grep -n "<version>" pom.xml   # then manually exclude matches inside <dependencyManagement> and <parent>
-```
+Grep tool on `pom.xml`: pattern `<dependencyManagement>` with 5 lines of context after, then
+pattern `<version>` — and manually exclude the matches inside `<dependencyManagement>` and
+`<parent>`.
 
 - BOM imports (`<scope>import</scope>`, `<type>pom</type>`) inside `<dependencyManagement>` are
   the Java equivalent of .NET's Central Package Management — record every one, with its version
@@ -89,7 +86,7 @@ outside that pattern. Control 1 is satisfied; nothing to install.
 
 ## 8. Existing controls
 
-For each of the eight, record `present` / `partial` / `missing` **and what it contains**:
+For each of the nine, record `present` / `partial` / `missing` **and what it contains**:
 
 | Control | Look for | "Partial" looks like |
 |---|---|---|
@@ -100,19 +97,20 @@ For each of the eight, record `present` / `partial` / `missing` **and what it co
 | Shift-left | `lefthook.yml`, `.pre-commit-config.yaml` | Config present but `.git/hooks` still all `.sample` — never installed |
 | Secrets | `.gitleaks.toml`, `.gitleaksignore` | Gitleaks wired in CI only — the secret is already in history by the time it fires |
 | Architecture | `archunit-junit5` dependency, an `*ArchTest.java`/`*ArchitectureTest.java` class | Test class exists with `allowEmptyShould(true)` rules whose trigger condition is already true — see `references/arch-tests.md` |
-| CI | `.github/workflows/`, `.azdevops/`, `azure-pipelines.yml` | Pipeline builds but runs no gates, or duplicates Makefile steps by hand |
+| CI | `.github/workflows/*.yml` | Workflow builds but runs no gates, or duplicates Makefile steps by hand |
+| Dependency vulnerabilities | `dependency-check-maven` in `pom.xml`, `dependency-check-suppressions.xml`, `.github/dependabot.yml`, Dependabot alerts enabled in the repo settings | Plugin declared with `failBuildOnCVSS` left at its default `11` (reports, never fails); Dependabot alerts on with nothing gating a merge; a suppression file with entries and no `<notes>` |
 
 **A partial control is more dangerous than a missing one** — the team believes it is covered. Call
 these out explicitly in the report.
 
-## 9. CI platform
+## 9. CI
 
-```bash
-ls .github/workflows/ .azdevops/ 2>/dev/null
-find . -maxdepth 2 -iname "azure-pipelines*.yml"
-```
+Glob `.github/workflows/*.yml`, then Glob `Jenkinsfile`, `.gitlab-ci.yml`, `azure-pipelines*.yml`.
 
-If exactly one platform is present, use it. If none or several, ask in Phase 2.
+A workflow under `.github/workflows/` is control 8, `present` or `partial` (table above). Nothing
+there → ask in Phase 3 whether to write one. CI on another platform (the second Glob) is recorded
+and reported: this skill writes GitHub Actions only, so control 8 is **out of scope** for that
+repo, and the report names the `make ci` target the existing pipeline can call instead.
 
 ## 10. Context documents
 
@@ -137,8 +135,8 @@ The `commit-msg` block is **not installed** by default here.
 
 ## 12. Environment facts
 
-```bash
-./mvnw -v          # or mvn -v if no wrapper yet
+```
+./mvnw -v          # .\mvnw.cmd -v in PowerShell; mvn -v if no wrapper yet
 java -version
 make --version
 lefthook version

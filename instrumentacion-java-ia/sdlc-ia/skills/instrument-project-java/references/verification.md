@@ -22,8 +22,8 @@ the install, silently undoing your own work. `git checkout` is safe for exactly 
 ## Procedure
 
 1. Note the exact file and the exact edit.
-2. **Snapshot the file first**, outside the repo (`cp <file> <tmp>/<file>.bak`). One file, one
-   break, one restore — never break two gates at once.
+2. **Snapshot the file first**, outside the repo (`Copy-Item <file> <tmp>/<file>.bak` in
+   PowerShell, `cp` in bash). One file, one break, one restore — never break two gates at once.
 3. Make the edit.
 4. Run the gate's command.
 5. Confirm it **fails**, and that the message names the problem.
@@ -101,26 +101,37 @@ build/test in order.
 swallow the real reason. Supply a disposable identity so a machine with no `user.name`/`user.email`
 configured does not produce a false `BLOCKED`:
 
-```bash
+PowerShell (5.1 and 7):
+
+```powershell
 make hooks                                    # install the hooks first
-GC='git -c user.name=instrument-check -c user.email=check@example.invalid -c commit.gpgSign=false'
-HEAD_BEFORE=$(git rev-parse HEAD)
+$before = git rev-parse HEAD
 git add <file>
-$GC commit -m "test: hook check"              # expected to fail
-[ "$HEAD_BEFORE" = "$(git rev-parse HEAD)" ] \
-  && echo "BLOCKED — no commit was written" \
-  || { echo "NOT BLOCKED — undoing"; git reset --soft "$HEAD_BEFORE"; }
+git -c user.name=instrument-check -c user.email=check@example.invalid -c commit.gpgSign=false commit -m "test: hook check"   # expected to fail
+if ($before -eq (git rev-parse HEAD)) { "BLOCKED - no commit was written" } else { "NOT BLOCKED - undoing"; git reset --soft $before }
 ```
 
-**Before trusting a `BLOCKED`, prove the commit path works at all**: run the same `$GC commit` with
-hooks bypassed (`LEFTHOOK=0 $GC commit -m "test: baseline"`) on a trivial staged change and confirm
-history *does* move, then `git reset --soft` it. A `BLOCKED` on a repo where nothing can commit is
-the most convincing false positive here.
+bash:
+
+```bash
+make hooks
+HEAD_BEFORE=$(git rev-parse HEAD)
+git add <file>
+git -c user.name=instrument-check -c user.email=check@example.invalid -c commit.gpgSign=false commit -m "test: hook check"
+[ "$HEAD_BEFORE" = "$(git rev-parse HEAD)" ] && echo "BLOCKED - no commit was written" || { echo "NOT BLOCKED - undoing"; git reset --soft "$HEAD_BEFORE"; }
+```
+
+**Before trusting a `BLOCKED`, prove the commit path works at all**: run the same commit with
+hooks bypassed on a trivial staged change — PowerShell `$env:LEFTHOOK = '0'; git -c ... commit -m "test: baseline"; Remove-Item Env:LEFTHOOK`,
+bash `LEFTHOOK=0 git -c ... commit -m "test: baseline"` — confirm history *does* move, then
+`git reset --soft` it. A `BLOCKED` on a repo where nothing can commit is the most convincing false
+positive here.
 
 If it prints `NOT BLOCKED`, the reset already undid the commit — fix the hook (most often
 `lefthook install` was never run: `.git/hooks` still holds only `.sample` files) and try again.
 
-Also confirm the escape hatch and mention it in the report: `LEFTHOOK=0 git commit …`.
+Also confirm the escape hatch and mention it in the report: `$env:LEFTHOOK = '0'; git commit …`
+in PowerShell, `LEFTHOOK=0 git commit …` in bash.
 
 ## Control 6 — Secrets
 
@@ -129,11 +140,12 @@ AWS's own published example and gitleaks allowlists it by design, so the scan pa
 like a broken gate when the gate is actually correct. Use a fake key that is not a documentation
 sample, e.g. `AKIA4SFODNN7QWERTZXC`.
 
-```bash
-git add <file>
-git -c user.name=instrument-check -c user.email=check@example.invalid -c commit.gpgSign=false \
-  commit -m "test: secret check"
 ```
+git add <file>
+git -c user.name=instrument-check -c user.email=check@example.invalid -c commit.gpgSign=false commit -m "test: secret check"
+```
+
+(One line, same in PowerShell and bash.)
 
 **Expect:** `gitleaks protect --staged` blocks the commit before it exists, naming the rule and the
 redacted match. If it passes on your test string, run `gitleaks detect --no-banner` directly on a
@@ -162,12 +174,34 @@ Cannot be broken locally. Verify by inspection instead:
   `<java.version>`), never a hardcoded literal in the workflow;
 - calls `make ci` rather than restating the steps;
 - triggers on **every push, on every branch** — not only the default one;
-- on GitHub Actions, a second push to the same branch cancels the first (`concurrency` +
-  `cancel-in-progress`) — **Azure Pipelines has no equivalent**, do not claim it there;
-- a pull request inside the repository does not run the whole pipeline twice;
-- for Azure Repos, there is no `pr:` block — PR validation comes from the branch policy, and the
-  YAML file alone does nothing until it is wired through the Pipelines UI **and** added to a branch
-  policy. Report control 8 as **written but not yet active** for Azure DevOps.
+- a second push to the same branch cancels the first (`concurrency` + `cancel-in-progress`);
+- a pull request inside the repository does not run the whole workflow twice;
+- the workflow runs on the next push, but it is a report, not a gate, until a Ruleset on the
+  integration branch requires it as a status check — Phase 5 says so explicitly;
+- if control 9 was installed: the NVD cache step is present and the `make ci` step reads
+  `NVD_API_KEY` from a secret — never from a literal in the file.
+
+## Control 9 — Dependency vulnerabilities
+
+**Break:** add a **compile-scope** dependency with a well-known High CVE to `pom.xml` — test scope
+is skipped by design and would look like a broken gate. `commons-collections:commons-collections:3.2.1`
+(CVE-2015-7501, CVSS 9.8) is the classic choice; snapshot `pom.xml` first.
+
+```bash
+make sca
+```
+
+**Expect:** the build fails, naming the CVE and the artifact, with the threshold it crossed. The
+first run needs the NVD mirror — 20+ minutes without `NVD_API_KEY` in the environment, a few
+with it — so run `make sca` once on the clean tree *before* the break, both to pre-warm the mirror
+and to surface pre-existing findings. Restore `pom.xml` from the snapshot and confirm `make sca`
+passes again (or reports only the pre-existing findings you already triaged).
+
+`.github/dependabot.yml` cannot be broken locally. Verify by inspection: `version: 2`, one
+`maven` entry at `directory: "/"` (one per module directory on a multi-module repo only if the
+child POMs manage their own versions), one `github-actions` entry, a `schedule.interval`. On
+GitHub, the **Insights → Dependency graph → Dependabot** tab shows the file was picked up within
+minutes of the push; before that push it is a file, not a control.
 
 ---
 
