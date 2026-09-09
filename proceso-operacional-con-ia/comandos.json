@@ -6,7 +6,7 @@
     "clases": {
       "T": "Lo corres tú: un comando de terminal copiable, listo para pegar tal cual en PowerShell (con los campos del formulario ya interpolados).",
       "S": "Lo ejecuta el agente: un slash command de una skill de la librería sdlc-ia. Tú lo lanzas y respondes sus preguntas; la skill hace el resto. La de «Planificar el issue» cubre sola todo el ciclo del issue hasta la PR abierta.",
-      "manual": "Lo haces tú, sin un único comando: una instrucción, una plantilla con campos propios, una decisión, o una acción en una interfaz (GitHub, un navegador). Liberar, mergear y cerrar el sprint son siempre de este tipo: la librería nunca mergea ni libera."
+      "manual": "Lo haces tú, sin un único comando: una instrucción, una plantilla con campos propios, una decisión, o una acción en una interfaz (GitHub, un navegador). Liberar y cerrar el sprint son siempre de este tipo, y el merge lo corres tú como comando (T): la librería nunca mergea ni libera."
     },
     "semantica": {
       "idempotent": "Puedes repetirlo sin efectos raros — correrlo dos veces no rompe nada.",
