@@ -57,6 +57,41 @@ Desde una sesión de Claude Code, agrega este directorio como marketplace local 
 /plugin install sdlc-ia
 ```
 
+Lo mismo desde la terminal, sin sesión interactiva:
+
+```
+claude plugin marketplace add D:\GitHub_public\workshop-desarrollo-sw-guiado-por-ia\instrumentacion-java-ia
+claude plugin install sdlc-ia@sdlc-ia
+```
+
+### Actualizar cuando sale una versión nueva
+
+Un solo comando, desde esta carpeta, en cualquier equipo que tenga el clon:
+
+```
+.\update.ps1        # Windows PowerShell 5.1 o PowerShell 7
+./update.sh         # macOS, Linux, Git Bash
+```
+
+Hace `git pull --ff-only` sobre la rama en la que esté el clon, registra el marketplace `sdlc-ia`
+sobre esta carpeta si falta o apunta a otra ruta, refresca e instala, y verifica que la caché
+instalada sea idéntica a la fuente archivo por archivo. Con `-NoPull` (o `--no-pull`) reinstala lo
+que ya está en disco sin tocar git. Un clon en `main` recibe lo liberado; un clon en `dev`, lo
+último integrado.
+
+Por qué existe el script: la CLI instala el plugin **copiándolo a una caché**
+(`~/.claude/plugins/cache/sdlc-ia/sdlc-ia/<versión>/`) y `claude plugin install` **nunca refresca
+un plugin que ya figura instalado**, ni siquiera cuando `plugin.json` subió de versión (comprobado:
+con 0.1.0 instalado y 0.2.0 en la fuente, responde «already installed»). La única forma de traer
+la copia nueva es desinstalar e instalar, y eso es lo que hace el script. La regla que lo acompaña,
+**una versión por liberación: la PR `dev` → `main` sube `version` en
+`sdlc-ia/.claude-plugin/plugin.json` y fecha la entrada del CHANGELOG**, no es lo que dispara la
+actualización: es lo que permite saber qué copia tiene cada equipo (`claude plugin list` muestra
+la versión) y que el CHANGELOG cuente la verdad.
+
+Los cambios aplican a las **sesiones nuevas** de Claude Code; una sesión abierta sigue con las
+skills que cargó al arrancar. `claude plugin list` muestra la versión activa.
+
 Las 7 skills quedan disponibles como `/sdlc-ia:agent-context-java`,
 `/sdlc-ia:instrument-project-java`, `/sdlc-ia:instrument-agent-java`,
 `/sdlc-ia:requirement-to-spec-java`, `/sdlc-ia:github-plan-build`, `/sdlc-ia:debt-triage` y

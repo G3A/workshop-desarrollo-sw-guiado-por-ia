@@ -9,24 +9,31 @@ Monorepo del taller de desarrollo de software guiado por IA.
 - [`proceso-operacional-con-ia/`](proceso-operacional-con-ia/README.md) — visor interactivo del
   ciclo de onboarding al desarrollo operacional guiado por IA, sobre GitHub y GitHub Actions.
 - [`instrumentacion-java-ia/`](instrumentacion-java-ia/README.md) — plugin de Claude Code
-  (`sdlc-ia`) con 4 skills que instrumentan un repo Java/Spring para desarrollo guiado por IA:
-  contexto, controles deterministas, hooks del agente, y el ciclo ticket→PR sobre GitHub.
+  (`sdlc-ia`) con 7 skills que instrumentan un repo Java/Spring para desarrollo guiado por IA:
+  contexto, controles deterministas, hooks del agente, requisito→spec, el ciclo ticket→PR sobre
+  GitHub, triaje de deuda y pruebas sobre código legacy.
 
-## Ramas: qué no tocar
+## Ramas
+
+### `main` es lo estable; `dev` es donde se integra
+
+- **`dev`** es la rama de integración: toda rama de trabajo (`feat/`, `fix/`, `docs/`) abre su PR
+  contra `dev`.
+- **`main`** es la rama estable, lo liberado. Solo recibe **PRs de liberación desde `dev`**, cuando
+  todo lo que hay en `dev` está en verde y se decide publicar. Nunca una rama de trabajo directo.
+- Lo que `main` contenía antes de adoptar este esquema quedó preservado en la rama
+  `snapshot/main-antes-del-primer-release`, que no se borra ni se mergea.
+
+El repositorio hermano [`base-conocimiento-sandbox`](https://github.com/G3A/base-conocimiento-sandbox)
+sigue otro esquema a propósito: allí `main` es el snapshot «antes de instrumentar con IA» que los
+manuales muestran en capturas, y no se mergea.
+
+### Ramas que no se tocan
 
 > **Aviso para cualquier persona o agente que limpie ramas o integre este repositorio.**
 >
 > Aquí hay ramas que *parecen* atrasadas o abandonadas y son material didáctico. Ninguna tiene
 > protección de rama, así que borrarlas o mergearlas sale sin ninguna fricción. Lee esto antes.
-
-### `main` no se mergea desde `dev`
-
-`main` apunta al **commit inicial** y lleva decenas de commits sin integrar, con cero commits
-propios. No es un descuido: es el punto de partida limpio del taller. El trabajo termina en `dev`.
-
-Lo mismo vale, y con más razón, en el repositorio hermano
-[`base-conocimiento-sandbox`](https://github.com/G3A/base-conocimiento-sandbox), donde `main` es el
-snapshot «antes de instrumentar con IA» que los manuales muestran en capturas.
 
 ### Las ramas `validacion/*` no se borran
 

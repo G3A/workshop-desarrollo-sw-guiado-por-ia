@@ -1,0 +1,10 @@
+# Fin de linea por tipo de archivo. Sin esto, un clon en Windows con core.autocrlf=true deja
+# update.sh y las plantillas de hooks con CRLF, y bash falla con "$'\r': command not found".
+* text=auto eol=lf
+
+*.sh           text eol=lf
+*.sh.template  text eol=lf
+*.yml          text eol=lf
+*.yml.template text eol=lf
+
+*.ps1          text eol=crlf

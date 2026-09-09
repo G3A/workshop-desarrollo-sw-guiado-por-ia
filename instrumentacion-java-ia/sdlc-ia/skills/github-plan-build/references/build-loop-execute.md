@@ -180,7 +180,8 @@ correct," and a sub-issue closed before that point can still be wrong.
    green, and that review comments were addressed. If the PR targets a branch that is
    not the repository's default one (the calling skill's `BASE-BRANCH`, where defined),
    say in the comment and in the session that `LINK-TOKEN` will **not** auto-close
-   `TICKET` at merge — whoever merges closes it by hand.
+   `TICKET` when this PR merges — it closes when the integration branch is released to
+   the default branch, and whoever needs it closed earlier closes it by hand.
 2. Report back in the session: PR URL, CI status, tracker status, what the watch loop
    changed after the first push, which comments you addressed, which gates were
    skipped because the repo does not define them, and anything deliberately left for a
