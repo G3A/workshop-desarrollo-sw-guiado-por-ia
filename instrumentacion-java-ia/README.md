@@ -62,6 +62,26 @@ Las 7 skills quedan disponibles como `/sdlc-ia:agent-context-java`,
 `/sdlc-ia:requirement-to-spec-java`, `/sdlc-ia:github-plan-build`, `/sdlc-ia:debt-triage` y
 `/sdlc-ia:legacy-test-harness`.
 
+## Shell: PowerShell primero, bash también
+
+Dos alcances distintos, a propósito. Los comandos que una **skill** le pide ejecutar al agente
+funcionan sin cambios en Windows PowerShell 5.1, PowerShell 7 y bash. Los bloques que una
+**persona** copia del visor `proceso-operacional-con-ia` están escritos para PowerShell 5.1 y 7,
+porque el taller es Windows-first; quien lo siga desde macOS o WSL traduce `Test-Path`, `if ($?)`
+y los *here-strings* a bash a mano, y el visor lo dice en cada bloque. La regla que sostiene la
+parte neutral:
+
+- Lo que **ejecuta** algo usa `git`, `gh` (con `--jq` para filtrar), `make` o `mvn` en forma
+  neutral: sin `&&`/`||`, sin `$(...)`, sin `sed`/`grep`/`cut`/`tr`/`find` encadenados. Dos
+  pasos son dos comandos.
+- Lo que solo **lee** el repositorio usa los tools Read, Glob y Grep del agente, que no dependen
+  de ninguna shell.
+- Donde no hay forma neutral, la instrucción trae las dos: PowerShell primero, bash al lado.
+- En Windows el wrapper de Maven es `.\mvnw.cmd`; `./mvnw` es la forma bash.
+
+Las excepciones son deliberadas: los scripts de hooks de `instrument-agent-java` son bash (corren
+dentro de Claude Code, que trae bash en todos los sistemas) y el workflow de CI corre en Ubuntu.
+
 ## Verificar los hooks
 
 Los scripts de `sdlc-ia/skills/instrument-agent-java/templates/hooks/` tienen su propia suite de

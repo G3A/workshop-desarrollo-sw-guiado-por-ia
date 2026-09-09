@@ -13,7 +13,7 @@ description: >
   Invoke with `/sdlc-ia:github-plan-build [issue number or URL] [skip-checkpoint] [confirm-push]`.
 argument-hint: "[issue number or URL] [skip-checkpoint] [confirm-push]"
 disable-model-invocation: true
-allowed-tools: Read, Glob, Grep, Edit, Write, AskUserQuestion, Agent, Skill, TaskCreate, TaskUpdate, TaskList, TaskGet, EnterPlanMode, ExitPlanMode, Monitor, ScheduleWakeup, Bash(git status*), Bash(git diff*), Bash(git add*), Bash(git commit*), Bash(git log*), Bash(git rev-parse*), Bash(git symbolic-ref*), Bash(git fetch*), Bash(git checkout*), Bash(git switch*), Bash(git pull*), Bash(git push*), Bash(gh auth status*), Bash(gh repo view*), Bash(gh label list*), Bash(gh issue*), Bash(gh pr*), Bash(gh api*), Bash(gh run*), Bash(gh project*), Bash(make *), Bash(npm *), Bash(npx *), Bash(pnpm *), Bash(yarn *), Bash(pytest*), Bash(python *), Bash(python3 *), Bash(uv *), Bash(go *), Bash(cargo *), Bash(dotnet *), Bash(mvn *), Bash(gradle *), Bash(./gradlew*), Bash(bundle *), Bash(rake *), Bash(composer *), Bash(php *)
+allowed-tools: Read, Glob, Grep, Edit, Write, AskUserQuestion, Agent, Skill, TaskCreate, TaskUpdate, TaskList, TaskGet, EnterPlanMode, ExitPlanMode, Monitor, ScheduleWakeup, Bash(git status*), Bash(git diff*), Bash(git add*), Bash(git commit*), Bash(git log*), Bash(git rev-parse*), Bash(git merge-base*), Bash(git branch*), Bash(git fetch*), Bash(git checkout*), Bash(git switch*), Bash(git pull*), Bash(git push*), Bash(gh auth status*), Bash(gh repo view*), Bash(gh label list*), Bash(gh issue*), Bash(gh pr*), Bash(gh api*), Bash(gh run*), Bash(gh project*), Bash(make *), Bash(npm *), Bash(npx *), Bash(pnpm *), Bash(yarn *), Bash(pytest*), Bash(python *), Bash(python3 *), Bash(uv *), Bash(go *), Bash(cargo *), Bash(dotnet *), Bash(mvn *), Bash(gradle *), Bash(./gradlew*), Bash(bundle *), Bash(rake *), Bash(composer *), Bash(php *), PowerShell(git status*), PowerShell(git diff*), PowerShell(git add*), PowerShell(git commit*), PowerShell(git log*), PowerShell(git rev-parse*), PowerShell(git merge-base*), PowerShell(git branch*), PowerShell(git fetch*), PowerShell(git checkout*), PowerShell(git switch*), PowerShell(git pull*), PowerShell(git push*), PowerShell(gh auth status*), PowerShell(gh repo view*), PowerShell(gh label list*), PowerShell(gh issue*), PowerShell(gh pr*), PowerShell(gh api*), PowerShell(gh run*), PowerShell(gh project*), PowerShell(make *), PowerShell(npm *), PowerShell(npx *), PowerShell(pnpm *), PowerShell(yarn *), PowerShell(pytest*), PowerShell(python *), PowerShell(uv *), PowerShell(go *), PowerShell(cargo *), PowerShell(dotnet *), PowerShell(mvn *), PowerShell(.\mvnw*), PowerShell(./mvnw*), PowerShell(gradle *), PowerShell(.\gradlew*), PowerShell(./gradlew*), PowerShell(bundle *), PowerShell(rake *), PowerShell(composer *), PowerShell(php *)
 ---
 
 # GitHub issue → shipped feature
@@ -42,7 +42,7 @@ every binding:
 | `TICKET` | `gh issue view <n> --json ...` (full field list in Phase 1) — includes `parent`/`subIssues`/`subIssuesSummary`, the sub-issue relation Step A already asks for generically ("its parent and subissues"); an issue with none just returns empty |
 | `STATUS→IN-PROGRESS` / `STATUS→IN-REVIEW` | GitHub has no native status field. Phase 1 detects whether the repo uses **labels** or **Projects v2** and resolves accordingly — see below. |
 | `COMMENT` | `gh issue comment <n> --body "<text>"` |
-| `BRANCH` | `feature/<n>-<short-slug>` — same pattern as the other delivery skills, branch name **must** contain the issue number |
+| `BRANCH` | `<prefix>/<n>-<short-slug>` — the branch name **must** contain the issue number. The prefix is the repo's own: what `git branch -r` already shows (`feat/`, `fix/`, `docs/` in this monorepo), or a convention written in `AGENTS.md`; `feature/` only when the repo has neither. A skill that imposes `feature/` on a `feat/` repo makes its own branch the odd one out |
 | `LINK-TOKEN` | `Closes #<n>` / `Fixes #<n>` / `Resolves #<n>` — GitHub's native auto-close syntax, placed in the commit message or the PR body |
 | `OPEN-PR` | `gh pr create --base <BASE-BRANCH> --title "<title>" --body "<body with Closes #<n>>"` — never without `--base`: `gh` would default to the repository's default branch, which is not always where the team integrates (see `BASE-BRANCH` below) |
 | `CI` | `gh pr checks <pr> --watch` to wait; `gh run view --log-failed` for logs; `gh run rerun --failed` to retry a flaky job |
@@ -61,7 +61,8 @@ targets. Resolved **once, in Phase 2, by repo convention before default**:
 1. An explicit rule in `AGENTS.md` / `CLAUDE.md` / `docs/` naming the integration branch
    ("PRs go to `dev`", "`main` is a snapshot", a "Branching" section) wins.
 2. Otherwise the remote's default branch:
-   `git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@'`.
+   `gh repo view --json defaultBranchRef --jq .defaultBranchRef.name` — one `gh` call, no
+   `sed`, identical in PowerShell and bash.
 
 Say which one you resolved to, once, and use it in Phase 2, in Step G's `git merge-base`, and in
 `OPEN-PR`. The case this exists for is common: a repository whose default branch is a protected
@@ -198,13 +199,15 @@ don't silently operate on the wrong repo.
    integration branch first, the remote's default branch only as the fallback. Say which.
 2. `git fetch origin`.
 3. **If the working tree is dirty, stop and report.** Do not stash, do not discard.
-4. `git checkout <BASE-BRANCH> && git pull --ff-only origin <BASE-BRANCH>`.
+4. `git checkout <BASE-BRANCH>`, then `git pull --ff-only origin <BASE-BRANCH>` — two commands,
+   one after the other, never joined with `&&` (it does not exist in Windows PowerShell 5.1).
 5. Check for an in-flight sibling: `gh pr list --state open --json number,headRefName,files`.
    If an open PR's files overlap the ticket's area, say so and ask via `AskUserQuestion`
    whether to branch from it instead — don't block, don't assume.
-6. Create `feature/<n>-<short-slug>`. The branch name **must** contain the issue
-   number. If you are already on that branch with prior work on it, stay on it and
-   continue rather than recreating it.
+6. Create `BRANCH` (`<prefix>/<n>-<short-slug>`, prefix resolved as the bindings table says —
+   read `git branch -r` once). The branch name **must** contain the issue number. If you are
+   already on that branch with prior work on it, stay on it and continue rather than recreating
+   it.
 
 ## Phase 3 — Present the issue summary
 
@@ -244,6 +247,11 @@ failures, and issue writes on `TICKET` itself — decide and proceed. Do not che
 
 ## Notes
 
+- **Shell-neutral commands.** Everything this skill runs works unchanged in Windows PowerShell
+  5.1, PowerShell 7 and bash: `git`, `gh` (with `--jq` for any filtering), the repo's own gate
+  runner — no `&&`/`||`, no `$(...)`, no `sed`/`grep`/`cut`/`tr` in a pipeline. Two steps are two
+  commands. On Windows the Maven wrapper is `.\mvnw.cmd`, not `./mvnw`. The plugin `README.md`
+  states the rule once for every skill.
 - **Keep secrets out of the shell and the commit.** Don't stage `.env` files, keys,
   or tokens, and don't echo secret values into commands, commit messages, or PR
   bodies.

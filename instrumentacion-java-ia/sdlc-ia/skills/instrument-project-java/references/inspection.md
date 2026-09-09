@@ -21,10 +21,8 @@ Gradle repo.
 
 ## 2. Wrapper and version pin
 
-```bash
-ls mvnw mvnw.cmd .mvn/wrapper/maven-wrapper.properties
-cat .mvn/wrapper/maven-wrapper.properties
-```
+Glob for `mvnw`, `mvnw.cmd` and `.mvn/wrapper/maven-wrapper.properties`, then Read the
+properties file — the agent's own tools, no `ls`/`cat` to translate between shells.
 
 Record `distributionUrl`. It must be a **literal** version (`.../apache-maven-3.9.11-bin.zip`),
 never a moving target. If the wrapper is absent, control 1 has to install it
@@ -60,10 +58,9 @@ or inherits it. Divergence across modules is a Phase 2 question, not a guess.
 
 ## 6. Dependency management (control 1's other half)
 
-```bash
-grep -n "<dependencyManagement>" -A5 pom.xml
-grep -n "<version>" pom.xml   # then manually exclude matches inside <dependencyManagement> and <parent>
-```
+Grep tool on `pom.xml`: pattern `<dependencyManagement>` with 5 lines of context after, then
+pattern `<version>` — and manually exclude the matches inside `<dependencyManagement>` and
+`<parent>`.
 
 - BOM imports (`<scope>import</scope>`, `<type>pom</type>`) inside `<dependencyManagement>` are
   the Java equivalent of .NET's Central Package Management — record every one, with its version
@@ -108,13 +105,10 @@ these out explicitly in the report.
 
 ## 9. CI
 
-```bash
-ls .github/workflows/ 2>/dev/null
-ls Jenkinsfile .gitlab-ci.yml azure-pipelines*.yml 2>/dev/null
-```
+Glob `.github/workflows/*.yml`, then Glob `Jenkinsfile`, `.gitlab-ci.yml`, `azure-pipelines*.yml`.
 
 A workflow under `.github/workflows/` is control 8, `present` or `partial` (table above). Nothing
-there → ask in Phase 3 whether to write one. CI on another platform (the second `ls`) is recorded
+there → ask in Phase 3 whether to write one. CI on another platform (the second Glob) is recorded
 and reported: this skill writes GitHub Actions only, so control 8 is **out of scope** for that
 repo, and the report names the `make ci` target the existing pipeline can call instead.
 
@@ -141,8 +135,8 @@ The `commit-msg` block is **not installed** by default here.
 
 ## 12. Environment facts
 
-```bash
-./mvnw -v          # or mvn -v if no wrapper yet
+```
+./mvnw -v          # .\mvnw.cmd -v in PowerShell; mvn -v if no wrapper yet
 java -version
 make --version
 lefthook version

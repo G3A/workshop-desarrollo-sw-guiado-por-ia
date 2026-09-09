@@ -10,7 +10,7 @@ description: >
   git. Invoke with `/sdlc-ia:requirement-to-spec-java <path to the requirement document>`.
 argument-hint: "<path to requirement document>"
 disable-model-invocation: true
-allowed-tools: Read, Glob, Grep, Write, AskUserQuestion, Bash(command -v pandoc*), Bash(pandoc*), Bash(gh auth status*), Bash(gh issue create*), Bash(gh issue edit*), Bash(gh issue view*), Bash(gh issue list*), Bash(gh api repos/*/issues*), Bash(gh api repos/*/milestones*), Bash(gh label list*), Bash(gh repo view*)
+allowed-tools: Read, Glob, Grep, Write, AskUserQuestion, Bash(command -v pandoc*), Bash(pandoc*), Bash(gh auth status*), Bash(gh issue create*), Bash(gh issue edit*), Bash(gh issue view*), Bash(gh issue list*), Bash(gh api repos/*/issues*), Bash(gh api repos/*/milestones*), Bash(gh label list*), Bash(gh repo view*), PowerShell(Get-Command pandoc*), PowerShell(pandoc*), PowerShell(gh auth status*), PowerShell(gh issue create*), PowerShell(gh issue edit*), PowerShell(gh issue view*), PowerShell(gh issue list*), PowerShell(gh api repos/*/issues*), PowerShell(gh api repos/*/milestones*), PowerShell(gh label list*), PowerShell(gh repo view*)
 ---
 
 # requirement-to-spec-java — Business document → spec and tasks, before a ticket exists

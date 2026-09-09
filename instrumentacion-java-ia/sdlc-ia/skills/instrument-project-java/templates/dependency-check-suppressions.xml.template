@@ -1,7 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <!-- Written to `dependency-check-suppressions.xml` at the repo root, referenced from the
      dependency-check-maven <suppressionFiles> in pom.xml (control 9). Ships empty on purpose.
-     Delete this header comment before writing the file. -->
-<?xml version="1.0" encoding="UTF-8"?>
+     Delete this header comment before writing the file; the XML declaration above stays first. -->
 <suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
   <!--
     One <suppress> per finding the team looked at and decided not to act on. Every entry carries

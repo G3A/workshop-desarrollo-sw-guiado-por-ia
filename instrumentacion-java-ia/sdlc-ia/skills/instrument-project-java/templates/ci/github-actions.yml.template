@@ -4,11 +4,16 @@
 #
 #   {{CHECKOUT_MAJOR}}       {{SETUP_JAVA_MAJOR}}       {{CACHE_MAJOR}}      {{UPLOAD_ARTIFACT_MAJOR}}
 #   {{JAVA_VERSION}}         the repo's own <java.version> / <maven.compiler.release>, never guessed
-#   {{GITLEAKS_VERSION}}     gh release view --repo gitleaks/gitleaks --json tagName --jq '.tagName' | tr -d v
+#   {{GITLEAKS_VERSION}}     gh release view --repo gitleaks/gitleaks --json tagName --jq .tagName
+#                            prints e.g. v8.30.1 -- write it WITHOUT the leading v (8.30.1): the URL
+#                            below adds the v itself and the archive name has none.
 #
-#   for a in actions/checkout actions/setup-java actions/cache actions/upload-artifact; do
-#     printf '%s %s\n' "$a" "$(gh api repos/$a/releases/latest --jq .tag_name | cut -d. -f1)"
-#   done
+#   Action majors, one gh call each, same in PowerShell 5.1, 7 and bash (no quotes inside --jq --
+#   Windows PowerShell 5.1 strips them before gh sees them):
+#     gh api repos/actions/checkout/releases/latest --jq .tag_name
+#   prints e.g. v4.2.1 -- write the major, v4. Likewise for actions/setup-java, actions/cache,
+#   actions/upload-artifact. You are resolving once, by hand, at install time; read the value,
+#   do not script the substring.
 #
 # Two lines carry the whole design:
 #   java-version: {{JAVA_VERSION}}   the runner installs the JDK the repo targets. Same version

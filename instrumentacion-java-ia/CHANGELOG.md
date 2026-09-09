@@ -29,7 +29,7 @@ All notable changes to the `sdlc-ia` plugin. Versions follow the `version` field
   reports findings instead of reinstalling from scratch.
 
 - **`instrument-agent-java`** — registers the team's MCP servers in `.mcp.json` and installs a
-  catalogue of seven Claude Code hooks in `.claude/settings.json`, backed by portable, dependency-
+  catalogue of eight Claude Code hooks in `.claude/settings.json`, backed by portable, dependency-
   free bash scripts (bash 3.2, no `jq`, `set -u` without `pipefail`): a secret read-guard, scoped
   Spotless auto-formatting, a dangerous-command blocker, a session-start dependency sweep, an
   audit log, and guards for centrally-managed dependency versions and Flyway/Liquibase migration
@@ -78,3 +78,11 @@ All notable changes to the `sdlc-ia` plugin. Versions follow the `version` field
   that already ships: fingerprints the stack, maps the seams Feathers-style, asks which layers
   to generate this run, and never edits production code — a seam that needs a production edit is
   proposed as a candidate issue (`Costura: <what>`, label `deuda-tecnica`) for the user to file.
+
+- **Shell-neutral commands across the plugin** — every command a skill runs works unchanged in
+  Windows PowerShell 5.1, PowerShell 7 and bash (the process viewer's copy-paste blocks, by
+  contrast, target PowerShell 5.1/7 and say so): `gh --jq` instead of `sed`/`tr`/`cut` pipelines
+  (and no quotes inside a `--jq` expression — PowerShell 5.1 strips them), two commands instead of `&&`, the
+  agent's Read/Glob/Grep tools instead of `ls`/`find`/`grep`, and PowerShell + bash side by side
+  where no neutral form exists. Skills that declare `allowed-tools` pre-approve the same commands
+  under `PowerShell(...)` as under `Bash(...)`.

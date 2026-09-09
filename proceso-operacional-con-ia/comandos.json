@@ -70,8 +70,9 @@
       "persistencia": "localStorage"
     },
     "SPRINT": {
-      "label": "Sprint actual (título del milestone en GitHub, ej. Sprint 12)",
+      "label": "Sprint actual (título del milestone en GitHub)",
       "type": "text",
+      "default": "Sprint 1",
       "persistencia": "localStorage"
     }
   },
@@ -154,7 +155,7 @@
       "clase": "T",
       "esGateway": true,
       "semantica": "idempotent",
-      "cmd": "gh auth status && claude doctor",
+      "cmd": "gh auth status; if ($?) { claude doctor }",
       "ramas": {"si": "G2", "no": "a2"},
       "porque": "Un chequeo de salud simple evita descubrir a mitad del bloque B que la autenticación nunca terminó de quedar bien configurada.",
       "guiaPasos": "<p>Si ambos comandos terminan sin error, sigues al bloque B. Si algo falla, vuelve a <b>«Configurar MCP y hooks del agente»</b> y revisa el paso que no cerró.</p>",
@@ -165,7 +166,7 @@
       "clase": "T",
       "esGateway": true,
       "semantica": "idempotent",
-      "cmd": "test -f AGENTS.md && echo \"existe\" || echo \"no existe\"",
+      "cmd": "if (Test-Path AGENTS.md) { 'existe' } else { 'no existe' }",
       "ramas": {"no": "b1", "si": "bi"},
       "porque": "Un archivo de contexto (AGENTS.md o equivalente) es lo que separa a un agente que adivina las convenciones del repo de uno que las lee. Vale la pena chequear si ya existe antes de regenerarlo de cero.",
       "guiaPasos": "<p>Si no existe, sigues a <b>«Generar contexto del repo»</b>. Si ya existe (por ejemplo, otra persona del equipo ya lo armó), sigues a <b>«Completar solo el andamiaje»</b> — se salta la generación y va directo a lo que falte.</p>",
@@ -202,7 +203,7 @@
       "clase": "T",
       "semantica": "idempotent",
       "requires": "Juez de CI configurado, con lefthook.yml ya creado (pz, pz2) — antes de este paso, ese archivo todavía no existe.",
-      "cmd": "test -f lefthook.yml && echo lefthook-ok; grep -q hooks .claude/settings.json 2>/dev/null && echo agente-hooks-ok",
+      "cmd": "if (Test-Path lefthook.yml) { 'lefthook-ok' }\nif ((Test-Path .claude/settings.json) -and (Select-String -Path .claude/settings.json -Pattern '\"hooks\"' -Quiet)) { 'agente-hooks-ok' }",
       "porque": "Los hooks (locales y del agente) son lo que convierte una convención escrita en una convención aplicada. Confirmar que el andamiaje llegó evita descubrir recién en la primera PR que nadie los activó. Este paso corre después de «Configurar el juez de CI» a propósito: <code>instrument-project-java</code> (pz) es quien escribe <code>lefthook.yml</code> — antes de que corra, no habría nada que verificar.",
       "guiaPasos": "<p>Son dos arneses distintos, no uno solo: <b>lefthook.yml</b> son los hooks de Git (pre-commit/pre-push — corren aunque el agente no esté abierto) y forman parte de la instrumentación <b>determinista</b> (los instala <code>instrument-project-java</code>, siguiente bloque); la clave <code>\"hooks\"</code> dentro de <code>.claude/settings.json</code> son los hooks del propio agente (Claude Code) — instrumentación <b>no determinista</b> (los instala <code>instrument-agent-java</code>, paso anterior) — y <b>nunca</b> una carpeta <code>.claude/hooks</code> aparte, eso no existe. Si tu agente no es Claude Code, el equivalente es su propio mecanismo de hooks o plugins.</p><p class=\"tip\">Que existan no confirma que funcionen — eso es <b>«Confirmar hooks del agente»</b>, dos pasos más adelante.</p>",
       "tipoInstrumentacion": "determinista",
@@ -245,7 +246,7 @@
       "clase": "T",
       "semantica": "idempotent",
       "requires": "Juez de CI configurado (pz).",
-      "cmd": "git commit --allow-empty -m \"chore: primera corrida del pipeline\" && git push",
+      "cmd": "git commit --allow-empty -m \"chore: primera corrida del pipeline\"; if ($?) { git push }",
       "porque": "Un pipeline que nunca corrió es un pipeline sin probar. Un commit vacío es la forma más barata de confirmar que el workflow realmente se dispara antes de depender de él para la primera PR real.",
       "guiaPasos": "<p>Revisa la pestaña <b>Actions</b> del repositorio en GitHub: el workflow debería aparecer corriendo (o ya haber corrido) para este commit.</p>",
       "tipoInstrumentacion": "determinista",
@@ -257,13 +258,13 @@
       "actor": "repo-lead",
       "requires": "gh autenticado (a1), pipeline ya disparado (pz2). Una sola vez por repositorio; el milestone, una vez por sprint.",
       "manualNote": "Dos cosas distintas, y el visor las separa a propósito: el <b>milestone</b> dice a qué sprint pertenece un issue (vive en el issue, se filtra con <code>gh issue list</code>) y el <b>Project v2</b> dice cómo va (Todo → In progress → In review → Done, un campo que el issue suelto no tiene). El comando de abajo crea cada uno <b>solo si no existe</b>: busca primero por título y crea únicamente cuando no encuentra nada, así puedes correrlo de nuevo cada sprint sin duplicar.",
-      "manualCmdTpl": "# 0) Una vez por máquina: gh necesita el scope 'project' para tocar Projects\ngh auth refresh -s project\n\n# 1) Project v2 del repo, solo si no existe uno con el nombre del repo\nN=$(gh project list --owner {GH_OWNER} --format json --jq '.projects[] | select(.title == \"{GH_REPO}\") | .number')\nif [ -z \"$N\" ]; then\n  N=$(gh project create --owner {GH_OWNER} --title \"{GH_REPO}\" --format json --jq '.number')\n  gh project link \"$N\" --owner {GH_OWNER} --repo {GH_REPO}\nfi\necho \"Project #$N\"\n\n# 2) Milestone del sprint, solo si no existe uno con ese título\ngh api \"repos/{GH_OWNER}/{GH_REPO}/milestones?state=all\" --jq '.[] | select(.title == \"{SPRINT}\") | .number' | grep -q . \\\n  || gh api -X POST repos/{GH_OWNER}/{GH_REPO}/milestones -f title=\"{SPRINT}\" -f due_on=\"{SPRINT_FIN}T23:59:59Z\"",
+      "manualCmdTpl": "# PowerShell 5.1 o 7. Sin acentos a proposito: si lo guardas como .ps1, 5.1 lo lee como ANSI.\n# 0) Una vez por maquina: gh necesita los scopes de Projects (abre el navegador)\ngh auth refresh -s 'project,read:project'\n\n# Si un comando de gh falla, parar ahi: un listado fallido no es 'no existe'\nfunction Assert-Gh { if ($LASTEXITCODE -ne 0) { throw \"gh fallo con codigo $LASTEXITCODE\" } }\n\n# 1) Project v2 del repo, solo si no existe uno con el nombre del repo\n$Lista = gh project list --owner {GH_OWNER} --format json | ConvertFrom-Json; Assert-Gh\n$N = $Lista.projects | Where-Object { $_.title -eq '{GH_REPO}' } | ForEach-Object { $_.number }\nif (-not $N) {\n  $N = (gh project create --owner {GH_OWNER} --title '{GH_REPO}' --format json | ConvertFrom-Json).number; Assert-Gh\n  gh project link $N --owner {GH_OWNER} --repo {GH_REPO}; Assert-Gh\n}\n\"Project #$N\"\n\n# 2) Milestone del sprint, solo si no existe uno con ese titulo\n$Hitos = gh api 'repos/{GH_OWNER}/{GH_REPO}/milestones?state=all' | ConvertFrom-Json; Assert-Gh\n$M = $Hitos | Where-Object { $_.title -eq '{SPRINT}' } | ForEach-Object { $_.number }\nif (-not $M) {\n  $Datos = @('-f', 'title={SPRINT}')\n  if ('{SPRINT_FIN}' -match '^\\d\\d\\d\\d-\\d\\d-\\d\\d$') { $Datos += @('-f', 'due_on={SPRINT_FIN}T23:59:59Z') }   # la fecha es opcional\n  $M = (gh api -X POST 'repos/{GH_OWNER}/{GH_REPO}/milestones' @Datos | ConvertFrom-Json).number; Assert-Gh\n}\n\"Milestone #$M\"\n\n# 3) Opcion 'In review' en el campo Status, solo si no existe. gh project no la expone: va por GraphQL,\n#    que reemplaza la lista completa de opciones. Se leen las actuales CON su id (asi conservan color,\n#    descripcion y los valores ya asignados a las tarjetas) y se agrega una sola.\n$Campo = (gh project field-list $N --owner {GH_OWNER} --format json | ConvertFrom-Json).fields | Where-Object { $_.name -eq 'Status' }; Assert-Gh\nif (-not ($Campo.options | Where-Object { $_.name -eq 'In review' })) {\n  $Lectura = 'query($id: ID!) { node(id: $id) { ... on ProjectV2SingleSelectField { options { id name color description } } } }'\n  $Actuales = (gh api graphql -f query=$Lectura -F \"id=$($Campo.id)\" | ConvertFrom-Json).data.node.options; Assert-Gh\n  $Opciones = @($Actuales | ForEach-Object { @{ id = $_.id; name = $_.name; color = $_.color; description = [string]$_.description } })\n  $Opciones += @{ name = 'In review'; color = 'PURPLE'; description = 'PR abierta, esperando revision' }\n  $Consulta = 'mutation($fieldId: ID!, $options: [ProjectV2SingleSelectFieldOptionInput!]!) { updateProjectV2Field(input: { fieldId: $fieldId, singleSelectOptions: $options }) { projectV2Field { ... on ProjectV2SingleSelectField { options { name } } } } }'\n  $Cuerpo = Join-Path $env:TEMP 'in-review.json'\n  [IO.File]::WriteAllText($Cuerpo, (@{ query = $Consulta; variables = @{ fieldId = $Campo.id; options = $Opciones } } | ConvertTo-Json -Depth 6 -Compress))\n  gh api graphql --input $Cuerpo | Out-Null; Assert-Gh\n}\n$Estados = ((gh project field-list $N --owner {GH_OWNER} --format json | ConvertFrom-Json).fields | Where-Object { $_.name -eq 'Status' }).options.name -join ', '\n\"Status: $Estados\"\n\n# 4) Auto-add (cada issue nuevo entra solo al tablero). No hay API para el workflow integrado del Project:\n#    Opcion A, por defecto y sin secretos: en el Project, menu ... > Workflows > Auto-add to project > Edit > este repo > Save and turn on.\n#    Opcion B, todo en el repo (equipos): el workflow add-to-project.yml de la guia de pasos + un token personal\n#    (classic, scopes project y repo) guardado como secreto. gh lo pide por consola, nunca lo pegues en el comando:\n#    gh secret set ADD_TO_PROJECT_PAT",
       "manualInputs": [
         {"name": "SPRINT", "label": "Sprint actual (título del milestone)", "placeholder": "ej. Sprint 12"},
         {"name": "SPRINT_FIN", "label": "Fecha de cierre del sprint (AAAA-MM-DD)", "placeholder": "ej. 2026-09-19"}
       ],
       "porque": "Sin esto, «tomar issue del sprint» no tiene dónde mirar: un issue asignado a ti no dice de qué sprint es, y «en progreso» o «en revisión» no existen en un issue suelto. <code>github-plan-build</code> mueve el estado del issue sola al aprobar el plan y al cerrar, pero solo si encuentra un Project v2 con campo Status (o etiquetas de estado); si no encuentra ninguno, salta esas escrituras y lo dice en su resumen. El milestone es el contenedor del sprint más simple que ofrece GitHub: nativo del issue, sin Project de por medio, y <code>gh issue list --milestone</code> lo filtra directo. No uses además el campo Iteration del Project: dos fuentes de verdad para el mismo sprint terminan desincronizadas, y ninguna skill de este taller lo lee.",
-      "guiaPasos": "<ol><li>Completa el sprint y su fecha de cierre; el título del sprint queda guardado en ⚙ Perfil y lo reutilizan <b>«Tomar issue del sprint»</b> y el gate de cierre.</li><li>Corre el bloque. <code>gh auth refresh -s project</code> abre el navegador una vez; <code>gh project</code> no funciona con el token por defecto de <code>gh auth login</code>.</li><li>Dos ajustes quedan en la interfaz del Project, porque <code>gh</code> no los expone: en el campo <b>Status</b> agrega la opción <b>In review</b> (viene con Todo, In Progress y Done), y en <b>Workflows</b> activa <b>Auto-add to project</b> para este repo, así cada issue nuevo entra solo al tablero.</li></ol><p class=\"tip\">El milestone se crea de nuevo cada sprint (cambia el título en el perfil y vuelve a correr solo la parte 2); el Project, una vez por repositorio. Los sub-issues que crea <code>requirement-to-spec-java</code> nacen en el backlog sin milestone hasta que alguien los planifica: eso es a propósito.</p>",
+      "guiaPasos": "<ol><li>Completa el sprint y su fecha de cierre; el título del sprint queda guardado en ⚙ Perfil y lo reutilizan <b>«Tomar issue del sprint»</b> y el gate de cierre.</li><li>Corre el bloque en PowerShell (funciona en 5.1 y en 7). <code>gh auth refresh -s project,read:project</code> abre el navegador una vez y hay que completar la autorización hasta ver <i>Authentication complete</i>; <code>gh project</code> no funciona con el token por defecto de <code>gh auth login</code>, y sin esos scopes el listado falla y <code>Assert-Gh</code> corta ahí en vez de intentar crear a ciegas. GitHub guarda la fecha de cierre del milestone como día, sin hora.</li><li>La parte 3 agrega la opción <b>In review</b> al campo Status (viene con Todo, In Progress y Done). <code>gh project</code> no sabe editar opciones, así que va por la API GraphQL con <code>gh api graphql</code>: la mutación reemplaza la lista completa, por eso el bloque lee las opciones actuales y suma una sola vez. El resultado se imprime al final como <code>Status: Todo, In Progress, Done, In review</code>.</li><li>La parte 4 es el auto-add, para que cada issue nuevo entre solo al tablero, y tiene dos salidas porque GitHub no expone ninguna API para activar el workflow integrado del Project. <b>Opción A, la recomendada para un repo de una persona:</b> en el Project, menú <b>⋯ → Workflows → Auto-add to project → Edit</b>, elige este repositorio y <b>Save and turn on</b>. Un clic, sin secretos que administrar. <b>Opción B, para equipos que quieren todo reproducible desde el repo:</b> un workflow con <code>actions/add-to-project</code>, que exige un token personal con scopes <code>project</code> y <code>repo</code> guardado como secreto (<code>GITHUB_TOKEN</code> no puede tocar Projects). Es un segundo token que expira y rota, ese es su costo. El archivo va en <code>.github/workflows/add-to-project.yml</code>:<pre class=\"mono\">name: Add issues to project\non:\n  issues:\n    types: [opened]\njobs:\n  add-to-project:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/add-to-project@v2\n        with:\n          project-url: https://github.com/users/&lt;owner&gt;/projects/&lt;numero del Project&gt;\n          github-token: ${{ secrets.ADD_TO_PROJECT_PAT }}</pre>Si el Project es de una organización, la URL es <code>https://github.com/orgs/&lt;org&gt;/projects/&lt;numero&gt;</code>.</li><li>El auto-add solo alcanza a los issues que se creen <b>después</b>. Los que ya existían entran uno por uno: <code>gh project item-add &lt;numero del Project&gt; --owner &lt;owner&gt; --url https://github.com/&lt;owner&gt;/&lt;repo&gt;/issues/&lt;n&gt;</code>. Sin eso, <code>github-plan-build</code> no puede mover el estado de ese issue, porque el campo Status vive en la tarjeta del Project, no en el issue.</li></ol><p class=\"tip\">El milestone se crea de nuevo cada sprint (cambia el título en el perfil y vuelve a correr solo la parte 2); el Project, una vez por repositorio. Los sub-issues que crea <code>requirement-to-spec-java</code> nacen en el backlog sin milestone hasta que alguien los planifica: eso es a propósito.</p>",
       "madurez": "1"
     },
     "ds": {
@@ -278,7 +279,7 @@
       "clase": "T",
       "esGateway": true,
       "semantica": "idempotent",
-      "cmd": "test -d test -o -d tests -o -d __tests__ && echo \"existe\" || echo \"no existe\"",
+      "cmd": "if ((Test-Path test) -or (Test-Path tests) -or (Test-Path __tests__)) { 'existe' } else { 'no existe' }",
       "ramas": {"si": "GT2", "no": "bt"},
       "porque": "Igual que con el contexto: vale la pena chequear si ya hay una estrategia de pruebas antes de armar una nueva de cero.",
       "guiaPasos": "<p>\"Existe\" acá no significa solo que haya una carpeta de tests — significa que hay una estrategia real (qué capas se prueban, con qué herramientas). Si tienes dudas, trátalo como \"no existe\".</p>",
@@ -335,9 +336,9 @@
     "bo1": {
       "clase": "T",
       "semantica": "idempotent",
-      "cmd": "gh issue list --assignee @me --milestone \"{SPRINT}\" --state open",
+      "cmd": "gh issue list --assignee '@me' --milestone \"{SPRINT}\" --state open",
       "porque": "Arranca acá cada vuelta del ciclo. Tomar un issue concreto (no \"lo que aparezca\") es lo que hace posible medir el ciclo: cuánto tarda de tomado a cerrado, dónde se traba. «Del sprint» significa «con el milestone del sprint actual»: sin ese filtro, la lista mezcla lo planificado para estas dos semanas con todo el backlog que alguien te asignó alguna vez.",
-      "guiaPasos": "<p>Elige un issue del sprint asignado a ti. Anota su número — lo vas a necesitar en varios pasos siguientes (rama, commit, PR).</p><p>El sprint sale de ⚙ Perfil (<code>SPRINT</code>), el mismo título del milestone que creaste en <b>«Crear Project y milestone del sprint»</b>. Si la lista sale vacía, primero confirma que el milestone existe y que los issues del sprint lo tienen asignado — planificar el sprint es justamente eso: ponerle el milestone a los issues que entran.</p><p class=\"tip\">Si tu equipo usa el tablero del Project, es la misma lista vista por columnas de estado; el milestone y el tablero no compiten, uno dice cuándo y el otro cómo va.</p>",
+      "guiaPasos": "<p>Elige un issue del sprint asignado a ti. Anota su número — lo vas a necesitar en varios pasos siguientes (rama, commit, PR).</p><p>El sprint sale de ⚙ Perfil (<code>SPRINT</code>), el mismo título del milestone que creaste en <b>«Crear Project y milestone del sprint»</b>. Si la lista sale vacía, primero confirma que el milestone existe y que los issues del sprint lo tienen asignado — planificar el sprint es justamente eso: ponerle el milestone a los issues que entran y asignarlos: <code>gh issue edit &lt;n&gt; --milestone \"&lt;sprint&gt;\" --add-assignee '@me'</code>. Las comillas alrededor de <code>'@me'</code> no son opcionales en PowerShell: <code>@me</code> a secas es sintaxis de <i>splatting</i> y desaparece del comando.</p><p class=\"tip\">Si tu equipo usa el tablero del Project, es la misma lista vista por columnas de estado; el milestone y el tablero no compiten, uno dice cuándo y el otro cómo va.</p>",
       "madurez": "3"
     },
     "c1": {
@@ -373,14 +374,14 @@
       "clase": "T",
       "semantica": "guarded",
       "requires": "Plan aprobado (G3, rama \"seguir\").",
-      "cmd": "git checkout -b feature/{ISSUE_ID}-{RESUMEN}",
+      "cmd": "git checkout -b feat/{ISSUE_ID}-{RESUMEN}",
       "inputs": [
         {"name": "RESUMEN", "label": "Resumen corto en kebab-case", "type": "text", "pattern": "^[a-z0-9-]+$"},
         {"name": "ISSUE_ID", "label": "Número del issue", "type": "text", "pattern": "^[0-9]+$"}
       ],
       "manualShared": ["ISSUE_ID"],
       "porque": "La rama se crea antes de escribir código, no después. Así, si algo sale mal a mitad de la implementación, el punto de partida (la rama base) sigue intacto y puedes volver a empezar sin arrastrar el intento fallido.",
-      "guiaPasos": "<p>El nombre de rama incluye el número de issue — hace que sea trivial encontrar qué rama corresponde a qué issue meses después. El número va primero, con el mismo patrón <code>feature/&lt;n&gt;-&lt;slug&gt;</code> que crea <code>github-plan-build</code>: así la rama hecha a mano y la de la skill se ven iguales en <code>git branch</code>.</p><p>Si vienes de <b>c1</b> con <code>github-plan-build</code>, esta rama ya existe: la skill la crea en su fase 2, <b>antes</b> de leer el issue a fondo y planificar, no después de aprobar el plan como muestra este diagrama. El orden es a propósito: el plan aprobado puede quedar como archivo en <code>docs/plans/</code> dentro de la misma rama, y el chequeo de árbol limpio de esa fase protege tu trabajo antes de que la skill escriba nada. Si ya estás parado en la rama con trabajo previo, la reutiliza en vez de recrearla. Para el ciclo a mano, ramificar después de aprobar el plan sigue siendo razonable.</p>",
+      "guiaPasos": "<p>El nombre de rama incluye el número de issue — hace que sea trivial encontrar qué rama corresponde a qué issue meses después. El número va primero, con el mismo patrón <code>&lt;prefijo&gt;/&lt;n&gt;-&lt;slug&gt;</code> que crea <code>github-plan-build</code>: así la rama hecha a mano y la de la skill se ven iguales en <code>git branch</code>. El prefijo es el que tu repo ya usa: este monorepo usa <code>feat/</code>, <code>fix/</code> y <code>docs/</code> (míralo con <code>git branch -r</code>), y la skill lo detecta de la misma forma; <code>feature/</code> es solo el valor por defecto cuando no hay convención.</p><p>Si vienes de <b>c1</b> con <code>github-plan-build</code>, esta rama ya existe: la skill la crea en su fase 2, <b>antes</b> de leer el issue a fondo y planificar, no después de aprobar el plan como muestra este diagrama. El orden es a propósito: el plan aprobado puede quedar como archivo en <code>docs/plans/</code> dentro de la misma rama, y el chequeo de árbol limpio de esa fase protege tu trabajo antes de que la skill escriba nada. Si ya estás parado en la rama con trabajo previo, la reutiliza en vez de recrearla. Para el ciclo a mano, ramificar después de aprobar el plan sigue siendo razonable.</p>",
       "madurez": "3"
     },
     "c2": {
@@ -450,9 +451,9 @@
       "clase": "manual",
       "semantica": "guarded",
       "requires": "Criterios de aceptación cumplidos (G4, rama \"sí\").",
-      "plantillaCommit": "{RESUMEN}\n\nCloses #{ISSUE_ID}\n\nAsistido-por-IA: {MODELO_IA}",
+      "plantillaCommit": "git commit -m \"{RESUMEN}\" -m \"Closes #{ISSUE_ID}\" -m \"Asistido-por-IA: {MODELO_IA}\"",
       "porque": "El pie <code>Closes #123</code> es la convención nativa de GitHub para enlazar un commit a un issue — cuando el commit llega a la rama principal, GitHub cierra el issue solo. Es lo contrario de lo que pediría una plataforma de work items separada: acá el commit y el issue son parte del mismo grafo. El segundo pie, <code>Asistido-por-IA: &lt;modelo&gt;</code>, deja registrado qué modelo asistió el cambio: es lo que después permite separar en las métricas el código asistido por IA del que no lo fue.",
-      "guiaPasos": "<p>Además de <code>Closes</code>, GitHub reconoce <code>Fixes</code> y <code>Resolves</code> como sinónimos — cualquiera de los tres cierra el issue automáticamente al mergear a la rama por defecto.</p><p><code>Asistido-por-IA</code> es un <i>trailer</i> de git: va en el último párrafo del mensaje, separado del <code>Closes</code> por una línea en blanco, y con formato <code>Clave: valor</code>. El modelo se completa una sola vez en ⚙ Perfil (<code>MODELO_IA</code>) y la plantilla lo interpola; si no lo completaste, queda el marcador <code>{MODELO_IA}</code> para que lo reemplaces a mano. Para consultarlo después: <code>git log --format='%h %(trailers:key=Asistido-por-IA,valueonly)'</code>.</p><p>Si el commit lo hizo el agente con <code>github-plan-build</code>, el skill ya pone este trailer solo (paso H del ciclo), con el modelo que corrió la sesión.</p>",
+      "guiaPasos": "<p>Además de <code>Closes</code>, GitHub reconoce <code>Fixes</code> y <code>Resolves</code> como sinónimos — cualquiera de los tres cierra el issue automáticamente al mergear a la rama por defecto.</p><p><code>Asistido-por-IA</code> es un <i>trailer</i> de git: va en el último párrafo del mensaje, separado del <code>Closes</code> por una línea en blanco, y con formato <code>Clave: valor</code>. Cada <code>-m</code> del comando es un párrafo, así el trailer queda solo en el último sin escribir líneas en blanco a mano, y funciona igual en PowerShell y en bash. El modelo se completa una sola vez en ⚙ Perfil (<code>MODELO_IA</code>) y la plantilla lo interpola; si no lo completaste, queda el marcador <code>{MODELO_IA}</code> para que lo reemplaces a mano. Para consultarlo después: <code>git log --format='%h %(trailers:key=Asistido-por-IA,valueonly)'</code>.</p><p>Si el commit lo hizo el agente con <code>github-plan-build</code>, el skill ya pone este trailer solo (paso H del ciclo), con el modelo que corrió la sesión.</p>",
       "madurez": "3"
     },
     "c4c": {
@@ -468,9 +469,10 @@
       "clase": "T",
       "semantica": "guarded",
       "requires": "Rama pusheada (c4c).",
-      "cmd": "gh pr create --fill --base dev",
-      "porque": "Abrir la PR es lo que dispara el \"juez\" de CI configurado en el bloque B — el Ruleset exige que ese check pase antes de poder mergear, así que a partir de acá el pipeline entra en juego automáticamente.",
-      "guiaPasos": "<p><code>--fill</code> usa el título y cuerpo del último commit para completar la PR — revísalo y ajústalo si hace falta antes de confirmar. <code>--base dev</code> asume que tu rama de integración se llama <code>dev</code>; cámbialo si tu equipo usa otro nombre.</p>",
+      "cmd": "$cuerpo = @\"\n{RESUMEN}\n\nCloses #{ISSUE_ID}\n\nAsistido-por-IA: {MODELO_IA}\n\"@\ngh pr create --base dev --title \"{RESUMEN}\" --body $cuerpo",
+      "inputs": [{"name": "RESUMEN", "label": "Título de la PR (una línea, qué resuelve)", "type": "text", "placeholder": "ej. agrega validación de email al registro"}],
+      "porque": "Abrir la PR es lo que dispara el \"juez\" de CI configurado en el bloque B — el Ruleset exige que ese check pase antes de poder mergear, así que a partir de acá el pipeline entra en juego automáticamente. El cuerpo se escribe explícito, con <code>Closes #N</code> y el pie <code>Asistido-por-IA</code> en sus propios párrafos, por la misma razón que en el merge (actividad mg): es lo que sobrevive al squash. <code>--fill</code> no sirve con varios commits — toma el título del nombre de la rama y el cuerpo de la lista de asuntos, y el <code>Closes</code> que vive en el cuerpo del último commit se pierde.",
+      "guiaPasos": "<p>El bloque es PowerShell: el <i>here-string</i> <code>@\"…\"@</code> arma el cuerpo con sus párrafos (el cierre <code>\"@</code> va en la primera columna). <code>--base dev</code> asume que tu rama de integración se llama <code>dev</code>; cámbialo si tu equipo usa otro nombre. Es lo mismo que hace <code>github-plan-build</code> en su paso H: <code>--base</code> con la rama de integración resuelta y el cuerpo con el <code>Closes</code> y el trailer, nunca <code>--fill</code>.</p>",
       "madurez": "3"
     },
     "G5": {
@@ -501,7 +503,7 @@
       "manualNote": "Dos capas de revisión, no una: 1) una pasada local gratis con un comando de revisión de código antes de pedir revisión humana (evita gastar el tiempo de una persona en cosas que un agente ya detecta) — si vienes de <b>c1</b>, <code>github-plan-build</code> ya la corrió antes del commit (su paso G), así que acá solo la repites si cambiaste algo después del push —, y 2) revisión humana, con CODEOWNERS asignando automáticamente a quien corresponda por carpeta.",
       "manualCmd": "/code-review",
       "porque": "La revisión de un agente y la de una persona buscan cosas distintas: el agente es bueno detectando bugs mecánicos, duplicación, simplificaciones obvias; una persona es quien evalúa si el enfoque tiene sentido para el negocio. Ninguna reemplaza a la otra.",
-      "guiaPasos": "<p>Si instalaste la GitHub Action oficial de Claude Code (<code>anthropics/claude-code-action</code>, con <code>/install-github-app</code>), también puedes pedirle una revisión directamente en la PR comentando <code>@claude revisá esta PR</code> — deja comentarios inline en el diff, igual que una persona.</p>",
+      "guiaPasos": "<p>Si instalaste la GitHub Action oficial de Claude Code (<code>anthropics/claude-code-action</code>, con <code>/install-github-app</code>), también puedes pedirle una revisión directamente en la PR comentando <code>@claude revisa esta PR</code> — deja comentarios inline en el diff, igual que una persona.</p>",
       "madurez": "3"
     },
     "G6": {
@@ -526,9 +528,9 @@
       "clase": "T",
       "semantica": "guarded",
       "requires": "PR aprobada (G6, rama \"sí\").",
-      "cmd": "gh pr merge --squash --delete-branch --body \"$(gh pr view --json body -q .body)\"",
+      "cmd": "$cuerpo = (gh pr view --json body -q .body) -join \"`n\"\ngh pr merge --squash --delete-branch --body $cuerpo",
       "porque": "El Ruleset configurado en el bloque B es lo que realmente bloquea este comando si algún check requerido no pasó — no depende de que nadie se acuerde de chequearlo a mano.",
-      "guiaPasos": "<p><code>--squash</code> deja un commit limpio en la rama principal; <code>--delete-branch</code> limpia la rama de feature ya mergeada.</p><p><b>El <code>--body</code> explícito no es opcional:</b> por defecto, <code>gh pr merge --squash</code> arma el mensaje del commit final a partir de los commits individuales, no del cuerpo de la PR — si el <code>Closes #N</code> vive solo ahí (como en la actividad 24) y no en el último commit, el squash lo pierde y el issue no se cierra solo. Pasarle el cuerpo de la PR de forma explícita, como en el comando de arriba, es lo que garantiza que <code>Closes #N</code> llegue al commit real que queda en la rama principal. Lo mismo aplica al trailer <code>Asistido-por-IA</code>: <code>gh pr create --fill</code> (actividad 26) lo copia del último commit al cuerpo de la PR, y este comando lo lleva al commit del squash — si editaste el cuerpo de la PR a mano, revisa que el trailer siga ahí.</p>",
+      "guiaPasos": "<p><code>--squash</code> deja un commit limpio en la rama principal; <code>--delete-branch</code> limpia la rama de feature ya mergeada.</p><p><b>El <code>--body</code> explícito no es opcional:</b> por defecto, <code>gh pr merge --squash</code> arma el mensaje del commit final a partir de los commits individuales, no del cuerpo de la PR — si el <code>Closes #N</code> vive solo ahí (como en la actividad 24) y no en el último commit, el squash lo pierde y el issue no se cierra solo. Pasarle el cuerpo de la PR de forma explícita, como en el comando de arriba, es lo que garantiza que <code>Closes #N</code> llegue al commit real que queda en la rama principal. Lo mismo aplica al trailer <code>Asistido-por-IA</code>: la actividad 26 lo escribe en el cuerpo de la PR, y este comando lo lleva al commit del squash — si editaste el cuerpo de la PR a mano, revisa que el trailer siga ahí.</p>",
       "madurez": "3"
     },
     "cd1": {
@@ -574,7 +576,7 @@
       "semantica": "idempotent",
       "ramas": {"si": "bo1", "no": "end_ok"},
       "porque": "Este es el cierre del ciclo PDCA: si quedan issues, el proceso vuelve a su propio comienzo (bo1) — no es una lista que se recorre una vez, es un hábito que se repite issue tras issue.",
-      "guiaPasos": "<p>Si quedan issues del sprint asignados a ti, vuelves a <b>«Tomar issue del sprint»</b>. Es el mismo filtro de bo1: <code>gh issue list --assignee @me --milestone \"{SPRINT}\" --state open</code>. Si sale vacío, el sprint (para ti) está cerrado; cuando el equipo cierra el milestone, el siguiente sprint arranca creando el próximo en <b>«Crear Project y milestone del sprint»</b>.</p>",
+      "guiaPasos": "<p>Si quedan issues del sprint asignados a ti, vuelves a <b>«Tomar issue del sprint»</b>. Es el mismo filtro de bo1: <code>gh issue list --assignee '@me' --milestone \"&lt;sprint&gt;\" --state open</code>. Si sale vacío, el sprint (para ti) está cerrado; cuando el equipo cierra el milestone, el siguiente sprint arranca creando el próximo en <b>«Crear Project y milestone del sprint»</b>.</p>",
       "madurez": "3"
     }  },
   "eventos": {
