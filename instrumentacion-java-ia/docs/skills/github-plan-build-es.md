@@ -47,7 +47,8 @@ que sabe manejar, no una condición para funcionar.
    prefijo que el repositorio ya usa (`feat/`, `fix/`, `docs/` en este monorepo; `feature/` solo
    si no hay convención). El PR se abre
    contra esa misma rama de integración; si no es la rama por defecto, la skill avisa que
-   `Closes #<n>` no va a cerrar el issue solo al mergear.
+   `Closes #<n>` no va a cerrar el issue al mergear esa PR, sino cuando la rama de integración
+   se libere a la rama por defecto.
 4. **Presentar el resumen del issue** — antes de tocar código, muestra título, estado,
    etiquetas, la rama creada, y marca cualquier issue relacionado que no esté cerrado, porque el
    estado y las etiquetas de un issue no son necesariamente confiables por sí solos.

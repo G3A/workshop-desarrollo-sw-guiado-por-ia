@@ -59,17 +59,18 @@ Not one of `build-loop.md`'s nine either: the branch `BRANCH` is cut from and th
 targets. Resolved **once, in Phase 2, by repo convention before default**:
 
 1. An explicit rule in `AGENTS.md` / `CLAUDE.md` / `docs/` naming the integration branch
-   ("PRs go to `dev`", "`main` is a snapshot", a "Branching" section) wins.
+   ("PRs go to `dev`", "`main` is what has been released", a "Branching" section) wins.
 2. Otherwise the remote's default branch:
    `gh repo view --json defaultBranchRef --jq .defaultBranchRef.name` — one `gh` call, no
    `sed`, identical in PowerShell and bash.
 
 Say which one you resolved to, once, and use it in Phase 2, in Step G's `git merge-base`, and in
-`OPEN-PR`. The case this exists for is common: a repository whose default branch is a protected
-snapshot (`main`) while the team integrates on `dev` — branching from and opening the PR against
-`main` there yields a PR nobody can merge, or one that merges into the wrong branch. When
-`BASE-BRANCH` is **not** the default branch, GitHub's auto-close on `LINK-TOKEN` does not fire at
-merge time; Step J says so (see `build-loop-execute.md`).
+`OPEN-PR`. The case this exists for is common: a repository that integrates on `dev` and releases
+to `main` by a `dev` → `main` PR — branching from and opening a feature PR against `main` there
+skips integration and, if `main` is protected, yields a PR nobody can merge. When `BASE-BRANCH`
+is **not** the default branch, GitHub's auto-close on `LINK-TOKEN` does not fire when the feature
+PR merges; it fires later, when the release PR lands on the default branch. Step J says so (see
+`build-loop-execute.md`).
 
 ## `CHILD-LINK` — decomposing a ticket into sub-issues
 

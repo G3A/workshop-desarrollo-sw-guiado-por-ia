@@ -1,0 +1,45 @@
+# AGENTS.md — workshop-desarrollo-sw-guiado-por-ia
+
+Monorepo del taller de desarrollo de software guiado por IA. Tres piezas, cada una con su propio
+contexto:
+
+- `base-conocimiento/` — la aplicación Java/Spring del taller. Tiene su `AGENTS.md`.
+- `instrumentacion-java-ia/` — el plugin `sdlc-ia` de Claude Code (siete skills). Tiene su `AGENTS.md`.
+- `proceso-operacional-con-ia/` — el visor BPMN del proceso, que enseña con comandos lo que las
+  skills ejecutan.
+
+## Ramas y pull requests
+
+- **`dev` es la rama de integración.** Toda rama de trabajo abre su PR contra `dev`.
+- **`main` es la rama estable, lo liberado.** Solo recibe PRs de liberación desde `dev`, cuando
+  `dev` está en verde y se decide publicar. Ninguna rama de trabajo abre PR contra `main`. Lo que
+  `main` tenía antes de este esquema vive en `snapshot/main-antes-del-primer-release`.
+- Ramas de trabajo: `feat/`, `fix/` o `docs/`, más el número del issue y un slug:
+  `feat/62-visor-y-skills-alineados`.
+- `Closes #N` cierra el issue cuando el commit llega a `main`, es decir, con la PR de liberación;
+  el merge de la rama de trabajo a `dev` no lo cierra. Si el issue debe cerrarse antes, se cierra a
+  mano y se dice en el comentario final.
+- El merge a `dev` es por squash con el cuerpo de la PR como mensaje, para que el `Closes` y el
+  trailer lleguen al commit final. La PR de liberación `dev` → `main` se mergea con merge commit,
+  para conservar esos commits tal cual.
+
+## Commits
+
+- Un commit por paso en verde, con `Refs #N`; el que completa el último paso lleva `Closes #N`.
+- Todo commit asistido por IA termina con el trailer `Asistido-por-IA: <modelo>` en su propio
+  párrafo, separado del `Closes` por una línea en blanco.
+
+## Reglas duras
+
+- **Visor y skills coinciden.** Al tocar una skill, revisa el nodo del visor que la cita; al tocar
+  el visor, verifica la afirmación contra el `SKILL.md`. Lo que el alumno hace a mano y lo que
+  corre la skill tiene que ser lo mismo.
+- **Comandos.** Los bloques del visor están en PowerShell 5.1 y 7; los comandos de las skills son
+  neutrales entre PowerShell y bash.
+- **Versión del plugin.** La PR de liberación `dev` → `main` sube la versión de `plugin.json` y
+  fecha su entrada del CHANGELOG; las PR a `dev` registran lo suyo bajo la entrada «unreleased».
+  La actualización en cualquier equipo es `instrumentacion-java-ia/update.ps1` o `update.sh`.
+  Detalle en `instrumentacion-java-ia/AGENTS.md`.
+- **Idioma.** Todo texto en español va en español latinoamericano neutro con tuteo: sin voseo y
+  sin formas peninsulares.
+- Los `SKILL.md` del plugin van en inglés.
