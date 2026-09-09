@@ -33,7 +33,7 @@ real markers — no template ships for this, it is a heads-up.
 ## 4 — Entry point
 
 Patch, never replace, an existing `Makefile` — see `templates/Makefile.patch.md` for the exact diff
-against this repo's own file. New targets: `format`, `lint`, `secrets`, `check`, `ci`, `hooks`. Keep
+against this repo's own file. New targets: `format`, `lint`, `secrets`, `sca`, `check`, `ci`, `hooks`. Keep
 `.PHONY` and the `## comment` convention `make help` already parses.
 
 ## 5 — Shift-left
@@ -67,7 +67,8 @@ to build or read the test class. **Two cases:**
 
 `templates/ci/github-actions.yml.template` → `.github/workflows/ci.yml`. GitHub Actions is the only
 platform this skill writes (scope question 4). Resolve and pin gitleaks once
-(`gh release view --repo gitleaks/gitleaks --json tagName --jq '.tagName'`), verify SHA256 against
+(`gh release view --repo gitleaks/gitleaks --json tagName --jq .tagName` prints `v8.30.1`; write
+`8.30.1`, **without** the `v` — the template's URL adds it and the archive name has none), verify SHA256 against
 `checksums.txt` before extracting, install to `$HOME/.local/bin` without `sudo` — never re-resolve
 `releases/latest` per run. The workflow calls `make ci`, nothing else. Every push, every branch,
 `concurrency`+`cancel-in-progress` so a second push cancels the first.
@@ -81,9 +82,12 @@ Dependency-Check** is the gate (fails `make ci` on a known CVE at or above the t
 **Gate.** Declare `org.owasp:dependency-check-maven` under `<build><plugins>` in the root `pom.xml`.
 Resolve the version once, at install time, from the source of truth, then pin it:
 
+```powershell
+([xml](Invoke-WebRequest -UseBasicParsing 'https://repo1.maven.org/maven2/org/owasp/dependency-check-maven/maven-metadata.xml').Content).metadata.versioning.latest
+```
+
 ```bash
-curl -fsSL https://repo1.maven.org/maven2/org/owasp/dependency-check-maven/maven-metadata.xml \
-  | grep -o '<latest>[^<]*' | cut -d'>' -f2
+curl -fsSL https://repo1.maven.org/maven2/org/owasp/dependency-check-maven/maven-metadata.xml | grep -o '<latest>[^<]*' | cut -d'>' -f2
 ```
 
 ```xml

@@ -43,7 +43,9 @@ que sabe manejar, no una condición para funcionar.
 3. **Preparar el entorno de git** — resuelve la rama de integración (la que declare `AGENTS.md`
    o `CLAUDE.md`; si no hay convención escrita, la rama por defecto del remoto), la sincroniza,
    confirma que el árbol de trabajo está limpio (si no lo está, se detiene y avisa) y crea desde
-   ahí una rama `feature/<número>-<slug>` que siempre incluye el número del issue. El PR se abre
+   ahí una rama `<prefijo>/<número>-<slug>` que siempre incluye el número del issue, con el
+   prefijo que el repositorio ya usa (`feat/`, `fix/`, `docs/` en este monorepo; `feature/` solo
+   si no hay convención). El PR se abre
    contra esa misma rama de integración; si no es la rama por defecto, la skill avisa que
    `Closes #<n>` no va a cerrar el issue solo al mergear.
 4. **Presentar el resumen del issue** — antes de tocar código, muestra título, estado,
@@ -82,7 +84,7 @@ Esta skill no genera plantillas propias: opera directamente sobre el código del
 según lo que el plan aprobado indique — puede crear o modificar cualquier archivo de la rama de
 trabajo. Además:
 
-- Crea la rama `feature/<número>-<slug>`.
+- Crea la rama `<prefijo>/<número>-<slug>`, con el prefijo que el repositorio ya usa.
 - Escribe comentarios y cambia etiquetas o el campo de estado del issue en GitHub (nunca en otro
   issue que no sea el que está trabajando).
 - Abre el pull request correspondiente.

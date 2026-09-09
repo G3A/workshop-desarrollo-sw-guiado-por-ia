@@ -22,8 +22,8 @@ the install, silently undoing your own work. `git checkout` is safe for exactly 
 ## Procedure
 
 1. Note the exact file and the exact edit.
-2. **Snapshot the file first**, outside the repo (`cp <file> <tmp>/<file>.bak`). One file, one
-   break, one restore — never break two gates at once.
+2. **Snapshot the file first**, outside the repo (`Copy-Item <file> <tmp>/<file>.bak` in
+   PowerShell, `cp` in bash). One file, one break, one restore — never break two gates at once.
 3. Make the edit.
 4. Run the gate's command.
 5. Confirm it **fails**, and that the message names the problem.
@@ -101,26 +101,37 @@ build/test in order.
 swallow the real reason. Supply a disposable identity so a machine with no `user.name`/`user.email`
 configured does not produce a false `BLOCKED`:
 
-```bash
+PowerShell (5.1 and 7):
+
+```powershell
 make hooks                                    # install the hooks first
-GC='git -c user.name=instrument-check -c user.email=check@example.invalid -c commit.gpgSign=false'
-HEAD_BEFORE=$(git rev-parse HEAD)
+$before = git rev-parse HEAD
 git add <file>
-$GC commit -m "test: hook check"              # expected to fail
-[ "$HEAD_BEFORE" = "$(git rev-parse HEAD)" ] \
-  && echo "BLOCKED — no commit was written" \
-  || { echo "NOT BLOCKED — undoing"; git reset --soft "$HEAD_BEFORE"; }
+git -c user.name=instrument-check -c user.email=check@example.invalid -c commit.gpgSign=false commit -m "test: hook check"   # expected to fail
+if ($before -eq (git rev-parse HEAD)) { "BLOCKED - no commit was written" } else { "NOT BLOCKED - undoing"; git reset --soft $before }
 ```
 
-**Before trusting a `BLOCKED`, prove the commit path works at all**: run the same `$GC commit` with
-hooks bypassed (`LEFTHOOK=0 $GC commit -m "test: baseline"`) on a trivial staged change and confirm
-history *does* move, then `git reset --soft` it. A `BLOCKED` on a repo where nothing can commit is
-the most convincing false positive here.
+bash:
+
+```bash
+make hooks
+HEAD_BEFORE=$(git rev-parse HEAD)
+git add <file>
+git -c user.name=instrument-check -c user.email=check@example.invalid -c commit.gpgSign=false commit -m "test: hook check"
+[ "$HEAD_BEFORE" = "$(git rev-parse HEAD)" ] && echo "BLOCKED - no commit was written" || { echo "NOT BLOCKED - undoing"; git reset --soft "$HEAD_BEFORE"; }
+```
+
+**Before trusting a `BLOCKED`, prove the commit path works at all**: run the same commit with
+hooks bypassed on a trivial staged change — PowerShell `$env:LEFTHOOK = '0'; git -c ... commit -m "test: baseline"; Remove-Item Env:LEFTHOOK`,
+bash `LEFTHOOK=0 git -c ... commit -m "test: baseline"` — confirm history *does* move, then
+`git reset --soft` it. A `BLOCKED` on a repo where nothing can commit is the most convincing false
+positive here.
 
 If it prints `NOT BLOCKED`, the reset already undid the commit — fix the hook (most often
 `lefthook install` was never run: `.git/hooks` still holds only `.sample` files) and try again.
 
-Also confirm the escape hatch and mention it in the report: `LEFTHOOK=0 git commit …`.
+Also confirm the escape hatch and mention it in the report: `$env:LEFTHOOK = '0'; git commit …`
+in PowerShell, `LEFTHOOK=0 git commit …` in bash.
 
 ## Control 6 — Secrets
 
@@ -129,11 +140,12 @@ AWS's own published example and gitleaks allowlists it by design, so the scan pa
 like a broken gate when the gate is actually correct. Use a fake key that is not a documentation
 sample, e.g. `AKIA4SFODNN7QWERTZXC`.
 
-```bash
-git add <file>
-git -c user.name=instrument-check -c user.email=check@example.invalid -c commit.gpgSign=false \
-  commit -m "test: secret check"
 ```
+git add <file>
+git -c user.name=instrument-check -c user.email=check@example.invalid -c commit.gpgSign=false commit -m "test: secret check"
+```
+
+(One line, same in PowerShell and bash.)
 
 **Expect:** `gitleaks protect --staged` blocks the commit before it exists, naming the rule and the
 redacted match. If it passes on your test string, run `gitleaks detect --no-banner` directly on a

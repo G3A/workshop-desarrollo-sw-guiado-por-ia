@@ -44,7 +44,8 @@ tracker exists. This is a separate question from the six above, asked once, not 
 ambiguity sweep.
 
 When the answer is GitHub, ask one follow-up in the same call: **which milestone, if any**. List
-the repository's open milestones (`gh api repos/{owner}/{repo}/milestones --jq '.[].title'`) plus
+the repository's open milestones (`gh api 'repos/{owner}/{repo}/milestones' --jq '.[].title'` — the
+path quoted, because PowerShell reads a bare `{owner}` as a script block) plus
 `None — leave it in the backlog` as the first option. A milestone is how this plugin's process
 viewer represents a sprint, and putting an issue into a sprint is a planning decision — the user's,
 never this skill's. If the repository has no milestones, skip the follow-up and say so in the
