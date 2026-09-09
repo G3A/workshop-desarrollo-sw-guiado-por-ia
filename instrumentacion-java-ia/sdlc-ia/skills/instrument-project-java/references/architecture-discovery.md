@@ -18,11 +18,9 @@ must pass the moment you write it.
 package under the application's base package that carries a `package-info.java` annotated
 `@org.springframework.modulith.ApplicationModule` is a declared module.
 
-```bash
-# Every declared module, by convention one top-level package per business capability.
-find src/main/java -name package-info.java
-grep -l "@org.springframework.modulith.ApplicationModule" $(find src/main/java -name package-info.java)
-```
+Every declared module, by convention one top-level package per business capability: Grep tool,
+pattern `@org.springframework.modulith.ApplicationModule`, glob `src/main/java/**/package-info.java`,
+files-with-matches mode — shell-neutral, no `find`/`grep` pipeline.
 
 `ApplicationModules.of(<Application>.class).verify()` (control 7's fourth rule in the worked
 example below) already checks the Modulith-level boundary and cycle rules **automatically** —

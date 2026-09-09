@@ -1,6 +1,6 @@
 ---
 name: legacy-test-harness
-description: Condition a legacy repository of any stack/architecture and grow real, maintainable tests across five layers — unit/collaboration, contract, acceptance, performance, security — targeting code that already ships in production, never a self-contained walking-skeleton. Maps seams first, Feathers-style; a seam that would require a production edit is proposed and filed as a separate issue, never applied inline. Stack-agnostic. Invoke with `/sdlc-ia:legacy-test-harness [path] [layer,...]`.
+description: Condition a legacy repository of any stack/architecture and grow real, maintainable tests across five layers — unit/collaboration, contract, acceptance, performance, security — targeting code that already ships in production, never a self-contained walking-skeleton. Maps seams first, Feathers-style; a seam that would require a production edit is proposed as a separate issue for the user to file, never applied inline. Stack-agnostic. Invoke with `/sdlc-ia:legacy-test-harness [path] [layer,...]`.
 disable-model-invocation: true
 argument-hint: "[path] [layer,...]"
 ---
@@ -71,7 +71,10 @@ passes unconditionally, or never imports production code, is scaffolding — it 
 Report, per layer generated: files added, what they test, and the reality-gate result. Report,
 separately, every seam found that requires a production edit — as a candidate issue title plus a
 one-line reason. Do not open the issue yourself unless asked; that decision belongs to the user (or
-to `github-plan-build`, if this run feeds one).
+to `github-plan-build`, if this run feeds one). Hand the user the exact command so filing costs one
+paste: `gh issue create --title "Costura: <what>" --label deuda-tecnica` — the title prefix and
+label are the convention this monorepo's process viewer (`proceso-operacional-con-ia`, node `bi2`)
+already uses, so the backlog stays searchable by one label.
 
 ## Rules
 

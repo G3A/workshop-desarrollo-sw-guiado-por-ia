@@ -56,6 +56,7 @@
         <bpmn:flowNodeRef>c5</bpmn:flowNodeRef>
       </bpmn:lane>
       <bpmn:lane id="Lane_issues" name="GitHub Issues / Projects">
+        <bpmn:flowNodeRef>pj</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>bi2</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>bo1</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>bo2</bpmn:flowNodeRef>
@@ -149,9 +150,14 @@
       <bpmn:incoming>e17</bpmn:incoming>
       <bpmn:outgoing>e18</bpmn:outgoing>
     </bpmn:task>
+    <bpmn:task id="pj" name="Crear Project y milestone del sprint">
+      <bpmn:documentation>Una vez por repositorio: el Project v2 donde vive el estado de cada issue y el milestone que representa el sprint. Solo se crean si no existen.</bpmn:documentation>
+      <bpmn:incoming>e18</bpmn:incoming>
+      <bpmn:outgoing>e61</bpmn:outgoing>
+    </bpmn:task>
     <bpmn:task id="b3" name="Verificar que llegó el arnés">
       <bpmn:documentation>Confirma que el arnés de pruebas y herramientas quedó operativo localmente.</bpmn:documentation>
-      <bpmn:incoming>e18</bpmn:incoming>
+      <bpmn:incoming>e61</bpmn:incoming>
       <bpmn:outgoing>e15</bpmn:outgoing>
     </bpmn:task>
     <bpmn:task id="b4" name="Activar hooks locales">
@@ -370,7 +376,8 @@
     <bpmn:sequenceFlow id="e13" sourceRef="bi" targetRef="b2" />
     <bpmn:sequenceFlow id="e14" sourceRef="b2" targetRef="pz" />
     <bpmn:sequenceFlow id="e17" sourceRef="pz" targetRef="pz2" />
-    <bpmn:sequenceFlow id="e18" sourceRef="pz2" targetRef="b3" />
+    <bpmn:sequenceFlow id="e18" sourceRef="pz2" targetRef="pj" />
+    <bpmn:sequenceFlow id="e61" sourceRef="pj" targetRef="b3" />
     <bpmn:sequenceFlow id="e15" sourceRef="b3" targetRef="b4" />
     <bpmn:sequenceFlow id="e16" sourceRef="b4" targetRef="b5" />
     <bpmn:sequenceFlow id="e60" sourceRef="b5" targetRef="ds" />
@@ -496,6 +503,9 @@
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="pz2_di" bpmnElement="pz2">
         <dc:Bounds x="2620" y="1185" width="160" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="pj_di" bpmnElement="pj">
+        <dc:Bounds x="2620" y="825" width="160" height="70" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="b3_di" bpmnElement="b3">
         <dc:Bounds x="2820" y="195" width="160" height="70" />
@@ -729,6 +739,10 @@
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="e18_di" bpmnElement="e18">
         <di:waypoint x="2700" y="1185" />
+        <di:waypoint x="2700" y="895" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e61_di" bpmnElement="e61">
+        <di:waypoint x="2700" y="825" />
         <di:waypoint x="2700" y="230" />
         <di:waypoint x="2820" y="230" />
       </bpmndi:BPMNEdge>

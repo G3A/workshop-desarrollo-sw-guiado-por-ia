@@ -1,6 +1,6 @@
 ---
 name: instrument-project-java
-description: Install the deterministic instrumentation layer in a Maven-based Java/Spring repository so an AI coding agent cannot ship work that breaks the team's rules — reproducible inputs (wrapper pin, BOM-managed versions), a strict `-Werror` build, verifiable style (Spotless + Checkstyle), a single Makefile entry point, pre-commit/pre-push gates (Lefthook), secret scanning (gitleaks), Spring-Modulith-aware architecture fitness functions (ArchUnit), and a CI pipeline (GitHub Actions or Azure Pipelines). Every gate is proven to fail before the run ends. Invoke with `/sdlc-ia:instrument-project-java`.
+description: Install the deterministic instrumentation layer in a Maven-based Java/Spring repository so an AI coding agent cannot ship work that breaks the team's rules — reproducible inputs (wrapper pin, BOM-managed versions), a strict `-Werror` build, verifiable style (Spotless + Checkstyle), a single Makefile entry point, pre-commit/pre-push gates (Lefthook), secret scanning (gitleaks), Spring-Modulith-aware architecture fitness functions (ArchUnit), a GitHub Actions CI workflow, and dependency vulnerability scanning (OWASP Dependency-Check plus Dependabot). Every gate is proven to fail before the run ends. Invoke with `/sdlc-ia:instrument-project-java`.
 disable-model-invocation: true
 ---
 
@@ -10,7 +10,7 @@ You are installing the **deterministic instrumentation** layer: everything a mac
 its own, in milliseconds, with no ambiguity — a sensor the agent hits by itself, **before any human
 reads the diff**.
 
-You install eight controls, prove each one fails when it should, and record them in `AGENTS.md`.
+You install nine controls, prove each one fails when it should, and record them in `AGENTS.md`.
 
 | # | Control | Artifact | What it prevents |
 |---|---------|----------|-------------------|
@@ -21,7 +21,8 @@ You install eight controls, prove each one fails when it should, and record them
 | 5 | Shift-left | `lefthook.yml` | Errors surfacing at review time |
 | 6 | Secrets | `gitleaks` | A credential reaching the history |
 | 7 | Architecture tests | `archunit-junit5` / Spring Modulith | The dependency rule silently breaking |
-| 8 | CI | Workflow / pipeline | Local gates being skipped |
+| 8 | CI | `.github/workflows/ci.yml` | Local gates being skipped |
+| 9 | Dependency vulnerabilities (SCA) | `dependency-check-maven`, `dependency-check-suppressions.xml`, `.github/dependabot.yml` | A dependency with a known CVE shipping unnoticed |
 
 ## Philosophy
 
@@ -51,7 +52,8 @@ You install eight controls, prove each one fails when it should, and record them
 
 Use Glob, Grep, Read, and read-only Bash. Work through `references/inspection.md` in full: Maven
 (or Gradle), module graph, Java target, BOM-managed vs. inline dependency versions, test setup,
-which of the eight controls already exist and in what state, CI platform, and context docs. Then
+which of the nine controls already exist and in what state, existing GitHub Actions workflows, and
+context docs. Then
 classify the architecture shape with `references/architecture-discovery.md`.
 
 Report the state as a table (control, `present`/`partial`/`missing`, what you found), plus JDK/Maven
@@ -70,6 +72,7 @@ Check tooling per OS; install nothing yourself.
 | Lefthook | `lefthook version` | `brew install lefthook` | `winget install evilmartians.lefthook` | `go install github.com/evilmartians/lefthook@latest` |
 | `make` | `make --version` | ships with Xcode CLT | `winget install ezwinports.make` | ships with the distro |
 | gitleaks (opt-in) | `gitleaks version` | `brew install gitleaks` | `winget install gitleaks` | `apt install gitleaks` on Debian trixie+/Ubuntu 25.04+; older LTS needs the release binary |
+| NVD API key (opt-in, control 9) | `NVD_API_KEY` set in the environment | request one at `https://nvd.nist.gov/developers/request-an-api-key` — free, no install; without it the scan still runs, throttled (first run 20+ min) | same | same |
 
 `make` does not ship with Windows. If missing, surface the `winget` command as a prerequisite; do
 not silently switch task runners.
@@ -86,7 +89,7 @@ own untracked tooling). If not, stop and tell the user.
 
 Ask only what Phase 1 could not answer, in plain language (spell out acronyms, state costs):
 
-1. **Which controls to install** — default all eight; `present` controls are reported, not
+1. **Which controls to install** — default all nine; `present` controls are reported, not
    reinstalled; `partial` ones get both exits (complete it, or remove the dead config).
 2. **Style formatter** — `spotless-maven-plugin` needs one. `google-java-format` is the zero-config
    default (2-space); `palantir-java-format` suits teams wanting 4-space. Pick one, say why in the
@@ -95,14 +98,22 @@ Ask only what Phase 1 could not answer, in plain language (spell out acronyms, s
    in one commit. Offer `Reformat now` or `ratchetFrom` scoped to a base branch (only files changed
    since `origin/<default>`, needs CI `fetchDepth: 0`, already in the templates). Never reformat
    silently.
-4. **CI platform** — only if Phase 1 found none or both: `GitHub Actions` / `Azure Pipelines` /
-   `Skip for now`.
+4. **CI** — only if Phase 1 found no workflow under `.github/workflows/`: `GitHub Actions` /
+   `Skip for now`. This skill writes **GitHub Actions only** — the scope the plugin `README.md`
+   declares. A repository whose CI lives elsewhere (Jenkins, GitLab, Azure Pipelines) gets control
+   8 reported as out of scope, with the `make ci` target it can call from there — never a
+   hand-adapted pipeline for a platform this skill has no template for.
 5. **Secret scanning** — off by default (curation cost, one `.gitleaksignore` entry per false
    positive). Offer `Yes — pre-commit and CI`, `CI only`, `Skip`.
 6. **`commit-msg` (Conventional Commits)** — **not proposed by default.** Install only when
    `git log --oneline -20` already follows the convention. Descriptive, unprefixed subjects (this
    monorepo's log) get no hook — imposing a convention nobody uses is a team decision, not an
    instrumentation fix, and the report says so.
+7. **Dependency vulnerability scan (SCA)** — off by default, like secrets, because it has a running
+   cost: an NVD API key (free) or a throttled first run of 20+ minutes, a suppression file to
+   curate (one entry per accepted finding, with its reason), and a pre-existing tree that may
+   already carry a High CVE and block `make ci` from day one — say so. Offer
+   `Yes — make ci and Dependabot`, `Report only (never fails the build)`, `Skip`.
 
 Then install **in the order given in `references/apply.md`** — each control builds on the previous
 one, and that file carries the per-control detail (artifact, key snippet, template pointer, the two
@@ -128,6 +139,7 @@ Summary:
 | 6 | Secrets | Stage `AKIA4SFODNN7QWERTZXC` — never `AKIAIOSFODNN7EXAMPLE` | Blocked, naming the rule |
 | 7 | Architecture | Add a forbidden dependency + real usage | `mvn test` fails, naming rule and type |
 | 8 | CI | Cannot be broken locally | Verify by inspection — pinned JDK, calls `make ci`, every branch |
+| 9 | Dependency vulnerabilities | Add a compile-scope dependency with a known High CVE | `make sca` fails, naming the CVE and the artifact; `dependabot.yml` verified by inspection |
 
 Controls 5–6 are verified by a **real commit**; if the hook does not fire, undo it with
 `git reset --soft HEAD~1`. Restore every change, run `make check`, capture the real output. **Do
@@ -140,6 +152,12 @@ not report success with a gate in the red.**
 Update `AGENTS.md`/`CLAUDE.md` if present — a "Checks to run" section, `make hooks` in setup, the
 layering rules now enforced, the CI paragraph. **Update what exists; do not create the doc pack** —
 if missing, report the gap and point at `/sdlc-ia:agent-context-java`.
+
+For control 8 on GitHub, say explicitly that the workflow is **written but not yet enforced**:
+nothing blocks a merge until a Ruleset on the integration branch requires that workflow as a status
+check and at least one approval. That Ruleset, a `CODEOWNERS` file and any deployment Environment
+are GitHub repository settings this skill never writes — report them as the remaining manual step
+for whoever administers the repo.
 
 Report: tree of files created/modified; resolved versions (JDK, Maven, gitleaks, action majors); the
 real `make check` output, green; every suppressed warning or `allowEmptyShould` and its reason;
@@ -166,5 +184,7 @@ restated with the evidence this run produced. Do not commit — leave the diff f
 - Do NOT report success until `make check` is green and every gate has been proven to fail.
 - Do NOT install a `commit-msg` Conventional Commits hook without evidence from `git log`.
 - Do NOT commit or push.
+- Do NOT touch GitHub repository settings (Rulesets, Environments, `CODEOWNERS`) — name them as
+  the manual step that remains.
 - DO leave every exception (`allowEmptyShould`, suppression) commented with a reason.
 - DO tell the user what you skipped and why.
