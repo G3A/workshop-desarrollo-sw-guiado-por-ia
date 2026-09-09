@@ -15,7 +15,10 @@ contexto:
   `dev` está en verde y se decide publicar. Ninguna rama de trabajo abre PR contra `main`. Lo que
   `main` tenía antes de este esquema vive en `snapshot/main-antes-del-primer-release`.
 - Ramas de trabajo: `feat/`, `fix/` o `docs/`, más el número del issue y un slug:
-  `feat/62-visor-y-skills-alineados`.
+  `feat/62-visor-y-skills-alineados`. Las tareas de mantenimiento sin issue, como preparar una
+  liberación, usan `chore/` con un slug: `chore/release-0.2.0`.
+- Liberar es dos PR: una `chore/release-<versión>` a `dev` que sube la versión del plugin y fecha
+  el CHANGELOG, y después la PR `dev` → `main`.
 - `Closes #N` cierra el issue cuando el commit llega a `main`, es decir, con la PR de liberación;
   el merge de la rama de trabajo a `dev` no lo cierra. Si el issue debe cerrarse antes, se cierra a
   mano y se dice en el comentario final.
