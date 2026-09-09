@@ -61,12 +61,14 @@
         <bpmn:flowNodeRef>bo1</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>bo2</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>G7</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>cs</bpmn:flowNodeRef>
       </bpmn:lane>
       <bpmn:lane id="Lane_repo" name="GitHub — Pull Requests &#38; Rulesets">
         <bpmn:flowNodeRef>p1</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>cr</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>G6</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>mg</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>rl</bpmn:flowNodeRef>
       </bpmn:lane>
       <bpmn:lane id="Lane_actions" name="GitHub Actions (CI/CD)">
         <bpmn:flowNodeRef>pz</bpmn:flowNodeRef>
@@ -357,9 +359,19 @@
       <bpmn:outgoing>e58</bpmn:outgoing>
       <bpmn:outgoing>e59</bpmn:outgoing>
     </bpmn:exclusiveGateway>
+    <bpmn:task id="rl" name="Liberar dev a main">
+      <bpmn:documentation>Decisión de liberar: una PR chore/release con la versión y la fecha a dev, y de inmediato la PR dev → main con merge commit. main es lo estable.</bpmn:documentation>
+      <bpmn:incoming>e59</bpmn:incoming>
+      <bpmn:outgoing>e62</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="cs" name="Cerrar el sprint">
+      <bpmn:documentation>Cierra el milestone del sprint, confirma el tablero del Project y deja la retrospectiva de equipo; el próximo sprint arranca creando el milestone siguiente.</bpmn:documentation>
+      <bpmn:incoming>e62</bpmn:incoming>
+      <bpmn:outgoing>e63</bpmn:outgoing>
+    </bpmn:task>
     <bpmn:endEvent id="end_ok" name="Sprint cerrado">
       <bpmn:documentation>Cierre del sprint: no quedan issues pendientes en el ciclo PDCA.</bpmn:documentation>
-      <bpmn:incoming>e59</bpmn:incoming>
+      <bpmn:incoming>e63</bpmn:incoming>
     </bpmn:endEvent>
     <bpmn:sequenceFlow id="e01" sourceRef="start1" targetRef="f0" />
     <bpmn:sequenceFlow id="e02" sourceRef="f0" targetRef="fd1" />
@@ -424,7 +436,9 @@
     <bpmn:sequenceFlow id="e56" sourceRef="df" targetRef="cd1" />
     <bpmn:sequenceFlow id="e57" sourceRef="c5" targetRef="G7" />
     <bpmn:sequenceFlow id="e58" name="Sí" sourceRef="G7" targetRef="bo1" />
-    <bpmn:sequenceFlow id="e59" name="No" sourceRef="G7" targetRef="end_ok" />
+    <bpmn:sequenceFlow id="e59" name="No" sourceRef="G7" targetRef="rl" />
+    <bpmn:sequenceFlow id="e62" sourceRef="rl" targetRef="cs" />
+    <bpmn:sequenceFlow id="e63" sourceRef="cs" targetRef="end_ok" />
     <bpmn:textAnnotation id="Anno_1">
       <bpmn:text>Todo el proceso es un ciclo PDCA (Deming) — Bloque C se repite por cada issue del sprint y cierra en G7.</bpmn:text>
     </bpmn:textAnnotation>
@@ -644,6 +658,12 @@
         <bpmndi:BPMNLabel>
           <dc:Bounds x="9259" y="894.5" width="81" height="27" />
         </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="rl_di" bpmnElement="rl">
+        <dc:Bounds x="9360" y="1005" width="160" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="cs_di" bpmnElement="cs">
+        <dc:Bounds x="9560" y="825" width="160" height="70" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="end_ok_di" bpmnElement="end_ok">
         <dc:Bounds x="9482" y="212" width="36" height="36" />
@@ -1030,11 +1050,21 @@
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="e59_di" bpmnElement="e59">
         <di:waypoint x="9325" y="860" />
-        <di:waypoint x="9500" y="860" />
-        <di:waypoint x="9500" y="248" />
+        <di:waypoint x="9440" y="860" />
+        <di:waypoint x="9440" y="1005" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="9392" y="833" width="15" height="14" />
+          <dc:Bounds x="9350" y="840" width="15" height="14" />
         </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e62_di" bpmnElement="e62">
+        <di:waypoint x="9520" y="1040" />
+        <di:waypoint x="9640" y="1040" />
+        <di:waypoint x="9640" y="895" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e63_di" bpmnElement="e63">
+        <di:waypoint x="9640" y="825" />
+        <di:waypoint x="9640" y="230" />
+        <di:waypoint x="9518" y="230" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Anno_1_assoc_di" bpmnElement="Anno_1_assoc">
         <di:waypoint x="500" y="195" />

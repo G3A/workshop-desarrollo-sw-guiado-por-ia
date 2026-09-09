@@ -26,7 +26,7 @@ y abre la URL que te indique en el navegador.
 ## Qué hay acá
 
 - `proceso-operacional-con-ia.html` — el visor (bpmn-js + panel de detalle por paso).
-- `proceso-operacional-con-ia.bpmn` — el diagrama del proceso (BPMN 2.0): 6 carriles, ~48 pasos.
+- `proceso-operacional-con-ia.bpmn` — el diagrama del proceso (BPMN 2.0): 6 carriles, ~50 pasos.
 - `comandos.json` — el contenido de cada paso (por qué importa, cómo hacerlo, comandos copiables).
 - `img/` — las imágenes del panel "Acerca de" (retrato de Deming, el ciclo PDCA), de dominio
   público vía Wikimedia Commons.
