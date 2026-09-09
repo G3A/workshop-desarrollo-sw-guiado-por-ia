@@ -13,7 +13,7 @@ version bump (verified 0.1.0 → 0.2.0). Updating on any machine is `update.ps1`
 the plugin root, which uninstalls and reinstalls (see the README, "Actualizar cuando sale una
 versión nueva", and `AGENTS.md`).
 
-## [0.2.0] — unreleased (first release to `main`)
+## [0.2.0] — 2026-09-09 (first release to `main`)
 
 ### Added
 

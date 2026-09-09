@@ -7,6 +7,8 @@ contexto:
 - `instrumentacion-java-ia/` — el plugin `sdlc-ia` de Claude Code (siete skills). Tiene su `AGENTS.md`.
 - `proceso-operacional-con-ia/` — el visor BPMN del proceso, que enseña con comandos lo que las
   skills ejecutan.
+- `docs/adrs/` — decisiones que atraviesan el monorepo (ramas, liberaciones). Las de cada pieza
+  viven en su carpeta.
 
 ## Ramas y pull requests
 
@@ -15,7 +17,14 @@ contexto:
   `dev` está en verde y se decide publicar. Ninguna rama de trabajo abre PR contra `main`. Lo que
   `main` tenía antes de este esquema vive en `snapshot/main-antes-del-primer-release`.
 - Ramas de trabajo: `feat/`, `fix/` o `docs/`, más el número del issue y un slug:
-  `feat/62-visor-y-skills-alineados`.
+  `feat/62-visor-y-skills-alineados`. Las tareas de mantenimiento sin issue, como preparar una
+  liberación, usan `chore/` con un slug: `chore/release-0.2.0`.
+- **Liberar es una decisión, no un efecto del trabajo en `dev`.** La toma quien libera, cuando
+  `dev` está en verde y se decide publicar, y se ejecuta en dos PR seguidas: primero
+  `chore/release-<versión>` a `dev`, que sube la versión del plugin y fecha el CHANGELOG, y de
+  inmediato la PR `dev` → `main`. La PR `chore/release` no forma parte de ninguna feature y no se
+  abre «por si acaso»: abrirla es decidir liberar. Por qué así y no con una rama `release/` al
+  estilo git-flow: `docs/adrs/0001-liberar-con-chore-release-a-dev.md`.
 - `Closes #N` cierra el issue cuando el commit llega a `main`, es decir, con la PR de liberación;
   el merge de la rama de trabajo a `dev` no lo cierra. Si el issue debe cerrarse antes, se cierra a
   mano y se dice en el comentario final.
