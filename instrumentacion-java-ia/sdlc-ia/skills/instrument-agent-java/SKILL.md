@@ -143,9 +143,11 @@ spelling it out. Use `AskUserQuestion` for the closed questions (max 4 options p
 **Confirm the working tree is clean first** (`git status`). If it is not, stop and say so — from
 here the tree is dirty by design and Phase 5 can no longer tell your edits from the user's.
 
-Ignore the agent's own footprint when counting:
-`git status --porcelain | grep -vE '^\?\? (\.claude/|skills-lock\.json)' | wc -l` — read the
-count, never `grep`'s exit code (1 on no matches is the clean case).
+Ignore the agent's own footprint when counting: run `git status --porcelain`, drop the lines
+matching `^\?\? (\.claude/|skills-lock\.json)`, and count what is left — zero is clean. In
+PowerShell: `(git status --porcelain | Where-Object { $_ -notmatch '^\?\? (\.claude/|skills-lock\.json)' }).Count`;
+in bash: `git status --porcelain | grep -vE '^\?\? (\.claude/|skills-lock\.json)' | wc -l` (read
+the count, never `grep`'s exit code — 1 on no matches is the clean case).
 
 Write in this order:
 
@@ -160,13 +162,15 @@ Write in this order:
    chosen, add `logs/` to `.gitignore` before writing `audit-log.sh`** — reversed, the user's next
    `git add -A` publishes it. Then:
 
-   ```bash
-   chmod +x scripts/agent-hooks/*.sh
-   for f in scripts/agent-hooks/*.sh; do bash -n "$f" || echo "SYNTAX ERROR: $f"; done
-   ```
+   Then syntax-check every script with `bash -n` (the hooks are bash by design; on Windows the
+   `bash` is Git's). PowerShell:
+   `Get-ChildItem scripts/agent-hooks/*.sh | ForEach-Object { bash -n $_.FullName; if (-not $?) { "SYNTAX ERROR: $($_.Name)" } }`;
+   bash: `for f in scripts/agent-hooks/*.sh; do bash -n "$f" || echo "SYNTAX ERROR: $f"; done`,
+   preceded by `chmod +x scripts/agent-hooks/*.sh` (no-op on Windows).
 3. **`.claude/settings.json`** — `templates/settings.json.template`, carrying only the handlers
    chosen. Merge: keep every key and event you did not add, **append** your matcher group to an
-   existing event's array. Confirm it still parses:
+   existing event's array. Confirm it still parses — PowerShell:
+   `Get-Content -Raw .claude/settings.json | ConvertFrom-Json | Out-Null; 'ok'`; bash:
    `python3 -c "import json;json.load(open('.claude/settings.json'));print('ok')"`.
 
 Report every resolved version alongside the file. Never write a secret in either file. After

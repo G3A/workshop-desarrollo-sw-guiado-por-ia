@@ -29,9 +29,12 @@ Work through, and report as a table (artifact, status, what you found):
 
    | Hook | Precondition | Check |
    |---|---|---|
-   | 6 | centralised dependency versions | `grep -c '<dependencyManagement>' pom.xml`, or a parent BOM import |
-   | 7a | Flyway | `find . -path '*/src/main/resources/db/migration' -type d` |
-   | 7b | Liquibase | `find . -path '*/src/main/resources/db/changelog' -type d` |
+   | 6 | centralised dependency versions | Grep tool, pattern `<dependencyManagement>` in `pom.xml`, or a parent BOM import |
+   | 7a | Flyway | Glob tool, `**/src/main/resources/db/migration/**` |
+   | 7b | Liquibase | Glob tool, `**/src/main/resources/db/changelog/**` |
+
+   The Glob and Grep tools are shell-neutral — no `find`/`grep` to translate between PowerShell
+   and bash.
 
    A failed precondition is reported and hidden, not worked around — say which and why.
 7. **Git facts.** Remote host (`github.com` → GitHub MCP), default branch

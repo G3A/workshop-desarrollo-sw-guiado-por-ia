@@ -23,7 +23,8 @@ same way whatever tracker the issue came from.
 | `PR-COMMENTS` | how to read and reply to review comments |
 
 Run steps A → J in order: **A–E here, F–J in `references/build-loop-execute.md`**. Only Step E
-pauses for the user; everything else is **act and self-verify.** See **Escalation** at the end of
+pauses for the user (plus Step H's push pause when the calling skill's `confirm-push` argument
+was given); everything else is **act and self-verify.** See **Escalation** at the end of
 `build-loop-execute.md` for the complete list of things that stop you.
 
 ---
@@ -174,6 +175,13 @@ plan is approved — before `STATUS→IN-PROGRESS`. Most trackers define nothing
 this is a no-op; where one does, it decides whether the approved plan gets copied
 somewhere durable or stays only the ephemeral record the approval checkpoint already
 produced.
+
+**Post the approved plan on `TICKET` via `COMMENT`** (pre-authorized — do not ask): the step
+list, the **Decisions** and **Assumptions** verbatim, and what is out of scope — the plan as
+approved, not the draft. This is the copy the rest of the team can read without opening a Claude
+session; `PLAN-PERSIST` (where defined) is the versioned one, and the two say the same thing. Post
+it once, after approval — never before the checkpoint and never again after a Step F adjustment;
+Step J's summary reports the deltas.
 
 Set `STATUS→IN-PROGRESS` here (pre-authorized — do not ask).
 

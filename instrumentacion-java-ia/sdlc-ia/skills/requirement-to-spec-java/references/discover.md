@@ -9,7 +9,7 @@ Work through in order. Report the whole phase as one table (artifact/signal, sta
 finding) — never a running commentary as you go.
 
 1. **Convert the document to Markdown, if it needs converting.** Plain text and Markdown need no
-   conversion — read them directly. For `.docx`, check `command -v pandoc` first; when present,
+   conversion — read them directly. For `.docx`, check that `pandoc` is on `PATH` first (`Get-Command pandoc` in PowerShell, `command -v pandoc` in bash); when present,
    `pandoc <path> -o <tmpfile>.md` converts it directly, no install step, no package to pin (this
    is a real, already-installed system binary, not an `npx`-resolved package — do not invent one).
    Record the resolved `pandoc --version` in the report, the same evidence discipline as any other
