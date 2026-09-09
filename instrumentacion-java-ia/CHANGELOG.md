@@ -1,11 +1,30 @@
 # Changelog
 
 All notable changes to the `sdlc-ia` plugin. Versions follow the `version` field in
-`sdlc-ia/.claude-plugin/plugin.json`. Dates are the date the work landed on `main`.
+`sdlc-ia/.claude-plugin/plugin.json`. `dev` is the integration branch; **`main` is what has been
+released**. Dates are the date a release PR (`dev` → `main`) landed on `main`.
 
-## [0.1.0] — unreleased
+**One version per release.** A PR to `dev` that changes a skill files its entry under the
+"unreleased" heading; the release PR `dev` → `main` bumps the `version` field, turns that heading
+into the new version and dates it. The version is what lets a machine say which copy it runs
+(`claude plugin list`) — it is not what refreshes the install: Claude Code copies the plugin into
+a cache and `claude plugin install` never refreshes an already-installed plugin, even after a
+version bump (verified 0.1.0 → 0.2.0). Updating on any machine is `update.ps1` / `update.sh` at
+the plugin root, which uninstalls and reinstalls (see the README, "Actualizar cuando sale una
+versión nueva", and `AGENTS.md`).
+
+## [0.2.0] — unreleased (first release to `main`)
 
 ### Added
+
+- **`update.ps1` / `update.sh`** — one command to bring any machine to the plugin version in its
+  clone: `git pull --ff-only`, register the `sdlc-ia` marketplace on that folder (or re-point it),
+  `marketplace update` + `install`, uninstall-and-reinstall when the version did not change, and
+  a file-by-file check that the installed cache equals the source.
+- **`AGENTS.md`** for the plugin, with the version-bump rule above as a hard rule, and an
+  `AGENTS.md` at the monorepo root with the conventions the skills already look for there
+  (integration branch `dev`, releases to `main` by PR, `feat/`/`fix/`/`docs/` prefixes, the
+  `Asistido-por-IA` trailer, viewer/skill sync, PowerShell-compatible commands).
 
 - **`agent-context-java`** — generates a documentation pack for a Java/Spring repository
   (`AGENTS.md`, `CLAUDE.md`, `docs/business.md`, `docs/architecture.md`, `docs/data-model.md`,
@@ -50,7 +69,7 @@ All notable changes to the `sdlc-ia` plugin. Versions follow the `version` field
   rest of the loop autonomous. The branch is cut from, and the PR opened against, a resolved
   `BASE-BRANCH` — the integration branch the repo documents, falling back to the remote's
   default — instead of always the default branch, which on a repo that integrates on `dev` and
-  keeps `main` as a snapshot produced PRs against the wrong branch. Once the plan is approved it
+  releases to `main` produced PRs against the wrong branch. Once the plan is approved it
   is posted on the issue as a comment (steps, decisions, assumptions, out of scope), and Step F
   commits one green step at a time with `Refs #<n>`, the last one carrying `Closes #<n>`, so the
   history reads task by task. A missing milestone is reported as "in no sprint", and a repository
