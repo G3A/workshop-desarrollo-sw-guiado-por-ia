@@ -31,6 +31,13 @@ contexto:
 - El merge a `dev` es por squash con el cuerpo de la PR como mensaje, para que el `Closes` y el
   trailer lleguen al commit final. La PR de liberación `dev` → `main` se mergea con merge commit,
   para conservar esos commits tal cual.
+- Dos Rulesets lo hacen cumplir: `integration-dev` (PR con una aprobación, check `check` en verde
+  y la rama al día con `dev`, solo squash) y `release-main` (PR con una aprobación, check en verde,
+  solo merge commit). En `release-main` el check **no** exige que `dev` esté al día con `main`:
+  como `dev` se integra por squash, nunca contiene los merge commits de las liberaciones
+  anteriores, y con esa exigencia toda liberación quedaría bloqueada como «behind». Mientras el
+  repo tenga una sola persona, ambos Rulesets llevan bypass del rol Administrador, porque nadie
+  puede aprobar su propia PR; al sumarse alguien, se retira.
 
 ## Commits
 
