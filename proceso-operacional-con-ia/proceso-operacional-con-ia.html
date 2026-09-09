@@ -345,25 +345,26 @@ python -m http.server</pre>
       a1:"A", a2:"A", G1:"A",
       G2:"B", b1:"B", bi:"B", b2:"B", b3:"B", b4:"B", pz:"B", pz2:"B", pj:"B", ds:"B", GT:"B", bt:"B", GT2:"B", bi2:"B",
       GR:"C", r1:"C", bo1:"C", c1:"C", bo2:"C", G3:"C", c4a:"C", c2:"C", GUI:"C", v0:"C", vw:"C", c3:"C", G4:"C", c4p:"C",
-      c4b:"C", c4c:"C", p1:"C", G5:"C", pf:"C", cr:"C", G6:"C", ac:"C", mg:"C", cd1:"C", G8:"C", df:"C", c5:"C", G7:"C"
+      c4b:"C", c4c:"C", p1:"C", G5:"C", pf:"C", cr:"C", G6:"C", ac:"C", mg:"C", cd1:"C", G8:"C", df:"C", c5:"C", G7:"C", rl:"C", cs:"C"
     };
     var CANON = {
       F: ["f0","fd1","fd2","fd3"],
       A: ["a1","a2"],
       B: ["b1","b2","b3","b4","pz","pz2","pj","ds"],
-      C: ["r1","bo1","c1","bo2","c4a","c2","c3","c4b","c4c","p1","cr","mg","cd1","c5"]
+      C: ["r1","bo1","c1","bo2","c4a","c2","c3","c4b","c4c","p1","cr","mg","cd1","c5","rl","cs"]
     };
     var PART_LABEL = { F: "Fundamentos", A: "Máquina", B: "Proyecto", C: "Ciclo" };
 
     var catalog = null, viewer = null, overlays = null, canvas = null, elementRegistry = null;
     var laneFilter = "";
     var currentNodeId = null;
-    var navHistory = [];
+    // Navegación: dos pilas al estilo navegador (atrás / adelante) sobre los nodos visitados,
+    // y el flujo del diagrama como respaldo cuando la pila está vacía: «Atrás» va al paso
+    // anterior del proceso y «Siguiente» al paso siguiente.
+    var navHistory = [], navForward = [];
     function leaveCurrentNode() {
-      // Guarda el nodo que se está por abandonar en el historial, salvo que ya sea
-      // el resultado de apretar "Atrás" (evita que ir hacia atrás vuelva a empujar
-      // hacia adelante el mismo paso).
-      if (currentNodeId) navHistory.push(currentNodeId);
+      // Guarda el nodo que se está por abandonar en el historial, sin repetirlo si ya es el último.
+      if (currentNodeId && navHistory[navHistory.length - 1] !== currentNodeId) navHistory.push(currentNodeId);
     }
     var $ = function (s, r) { return (r || document).querySelector(s); };
     var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
@@ -413,8 +414,12 @@ python -m http.server</pre>
     }).then(function () {
       overlays = viewer.get("overlays"); canvas = viewer.get("canvas"); elementRegistry = viewer.get("elementRegistry");
       viewer.get("canvas").zoom("fit-viewport");
-      viewer.on("element.click", function (e) { if (e.element && e.element.type && e.element.type.indexOf("bpmn:") === 0 &&
-        e.element.type !== "bpmn:SequenceFlow" && e.element.businessObject) showNode(e.element); });
+      viewer.on("element.click", function (e) {
+        // Solo pasos del proceso: un clic en un carril, el participante o una anotación no abre
+        // panel ni entra al historial (antes sí entraba, y «Atrás» aterrizaba en un carril).
+        var bo = e.element && e.element.businessObject;
+        if (bo && (PART[bo.id] || (catalog.eventos && catalog.eventos[bo.id]))) showNode(e.element);
+      });
       buildLaneFilter(); buildPerfilPopover(); buildIssuePopover(); refreshOverlays(); refreshProgress(); applyMarkers();
     }).catch(function (err) { console.error(err); fatal(String(err && err.message || err)); });
 
@@ -445,7 +450,12 @@ python -m http.server</pre>
       opts = opts || {};
       var id = element.businessObject.id, node = contenido(id), name = element.businessObject.name || id;
       var lane = laneOf(element), laneKey = LANE_COLOR[lane] || "l1";
-      if (!opts.fromBack && currentNodeId !== id) leaveCurrentNode();
+      if (!opts.fromBack && currentNodeId !== id) {
+        leaveCurrentNode();
+        // Una navegación nueva (clic en el diagrama o «Siguiente» por el flujo) descarta la pila
+        // de adelante, igual que un navegador; volver adelante por la pila la conserva.
+        if (!opts.fromForward) navForward = [];
+      }
       currentNodeId = id; applyMarkers();
       var panel = $("#panel"); panel.innerHTML = ""; panel.scrollTop = 0;
       var head = el('<div class="node-head"><div class="nodehead"></div><button class="btn ghost panel-x" aria-label="Cerrar">✕</button></div>');
@@ -793,32 +803,62 @@ python -m http.server</pre>
       canvas.addMarker(element, "flash-decision");
       setTimeout(function () { canvas.removeMarker(element, "flash-decision"); }, 900);
     }
+    function incomingFlows(id) {
+      var element = elementRegistry && elementRegistry.get(id);
+      if (!element) return [];
+      return (element.incoming || []).filter(function (f) { return f.type === "bpmn:SequenceFlow"; });
+    }
+    // Paso anterior por el flujo del diagrama. Si llegan varios flujos (un join), prefiere el que
+    // viene de un paso normal sobre el que vuelve desde un gateway (los "reintentos" y los bucles).
+    function singlePrev(id) {
+      var flows = incomingFlows(id);
+      if (!flows.length) return null;
+      var normales = flows.filter(function (f) { return f.source.type !== "bpmn:ExclusiveGateway"; });
+      return (normales[0] || flows[0]).source.id;
+    }
+    function forwardTop() { return navForward.length ? navForward[navForward.length - 1] : null; }
+    function goTo(id, opts) {
+      var element = elementRegistry.get(id);
+      if (!element) return false;
+      canvas.scrollToElement(id); showNode(element, opts);
+      return true;
+    }
     function updateNextButton() {
       var btn = $("#btn-next");
       var atGateway = currentNodeId && outgoingFlows(currentNodeId).length >= 2;
-      btn.disabled = !!atGateway;
-      btn.title = atGateway ? "Este paso es un gateway: elige la rama a mano en el diagrama." : "";
+      // Con pila de adelante, «Siguiente» deshace el último «Atrás» aunque esté en un gateway;
+      // sin ella, en un gateway hay que elegir la rama a mano.
+      var puedeSeguir = !!forwardTop() || !atGateway;
+      btn.disabled = !puedeSeguir;
+      btn.title = puedeSeguir ? "" : "Este paso es un gateway: elige la rama a mano en el diagrama.";
     }
     function updateBackButton() {
-      $("#btn-back").disabled = navHistory.length === 0;
+      var hayAnterior = navHistory.length > 0 || (currentNodeId && !!singlePrev(currentNodeId));
+      $("#btn-back").disabled = !hayAnterior;
+      $("#btn-back").title = navHistory.length ? "" : (hayAnterior ? "Paso anterior del proceso" : "");
     }
     $("#btn-back").onclick = function () {
-      if (!navHistory.length) return;
-      var prevId = navHistory.pop();
-      var element = elementRegistry.get(prevId);
-      if (element) { canvas.scrollToElement(prevId); showNode(element, { fromBack: true }); }
-      else { updateBackButton(); }
+      // Primero el historial de lo visitado; si está vacío, el paso anterior por el flujo.
+      var prevId = navHistory.length ? navHistory.pop() : (currentNodeId ? singlePrev(currentNodeId) : null);
+      if (!prevId) { updateBackButton(); return; }
+      if (currentNodeId && currentNodeId !== prevId) navForward.push(currentNodeId);
+      if (!goTo(prevId, { fromBack: true })) updateBackButton();
     };
     $("#btn-next").onclick = function () {
-      var targetId = null;
-      if (currentNodeId) {
+      // Simetría con «Atrás»: si hay pila de adelante, «Siguiente» la deshace (vuelve a donde se
+      // estaba antes de ir atrás). Solo cuando la pila está vacía sigue el flujo del diagrama.
+      var targetId = forwardTop();
+      if (!targetId && currentNodeId) {
         var flows = outgoingFlows(currentNodeId);
-        if (flows.length >= 2) { flashDecision(currentNodeId); return; } // gateway: el usuario elige la rama a mano
+        if (flows.length >= 2) { flashDecision(currentNodeId); return; } // gateway: la rama se elige a mano
         if (flows.length === 1) targetId = flows[0].target.id;
       }
+      var fwd = forwardTop();
       if (!targetId) targetId = firstPendiente();
       if (!targetId) { alert("¡Recorriste todo el camino principal! Revisa si quedan issues del sprint (G7)."); return; }
-      var element = elementRegistry.get(targetId); if (element) { canvas.scrollToElement(targetId); showNode(element); }
+      var porLaPila = fwd === targetId;
+      if (porLaPila) navForward.pop();
+      goTo(targetId, { fromForward: porLaPila });
     };
     $("#reset-issue").onclick = function () {
       if (!confirm("¿Reiniciar el progreso del issue activo?")) return;
