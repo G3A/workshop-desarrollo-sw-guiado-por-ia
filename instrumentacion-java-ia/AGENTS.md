@@ -7,8 +7,11 @@ están en el `AGENTS.md` de la raíz; este archivo cubre solo lo propio del plug
 
 - **Una versión por liberación.** `main` es lo publicado; `dev` es integración. Cada PR a `dev`
   que cambie una skill registra su entrada en el `CHANGELOG.md` bajo la sección «unreleased». La
-  **PR de liberación `dev` → `main`** sube `version` en `sdlc-ia/.claude-plugin/plugin.json`,
-  convierte esa sección en la versión nueva y le pone la fecha del merge a `main`. La versión es lo
+  liberación sube `version` en `sdlc-ia/.claude-plugin/plugin.json`, convierte esa sección en la
+  versión nueva y le pone la fecha. Quién y cuándo: quien libera, en el momento de liberar, nunca
+  como parte de una feature; mecánicamente es una PR `chore/release-<versión>` a `dev` con ese
+  único cambio, seguida de inmediato por la PR `dev` → `main` (ADR 0001 en la raíz del
+  monorepo). La versión es lo
   que permite saber qué copia corre cada equipo (`claude plugin list`); no es lo que dispara la
   actualización.
 - Un equipo que quiere lo estable mantiene su clon en `main`; el que quiere lo último, en `dev`.
