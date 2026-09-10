@@ -121,6 +121,28 @@
     .badge.mad-2 { color: var(--l1); border-color: var(--l1); background: color-mix(in srgb, var(--l1) 10%, transparent); }
     .badge.mad-3 { color: var(--l5); border-color: var(--l5); background: color-mix(in srgb, var(--l5) 10%, transparent); }
     .badge.mad-transversal { color: var(--muted); border-color: var(--line); }
+    /* Tipo de instrumentación: azul = determinista, naranja = no determinista (mismos colores que
+       las etiquetas del manual de feedback). Un nodo puede llevar los dos a la vez (a2). */
+    .badge.tipo-determinista { color: var(--accent); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+    .badge.tipo-noDeterminista { color: var(--warn); border-color: var(--warn); background: color-mix(in srgb, var(--warn) 10%, transparent); }
+    .badge.mad-none { color: var(--muted); border-color: var(--line); border-style: dashed; }
+    /* Tablas de instrumentación (panel del nodo y leyenda): scroll propio, nunca el body. */
+    .inst-wrap { overflow-x: auto; margin: 10px 0; }
+    .inst-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .inst-table th, .inst-table td { text-align: left; vertical-align: top; padding: 6px 8px; border-top: 1px solid var(--line); }
+    .inst-table th { font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); border-top: none; white-space: nowrap; }
+    .inst-table td code { background: var(--code-bg); color: var(--code-ink); padding: 1px 5px; border-radius: 4px; font-size: 11px; }
+    .inst-table .badge { font-size: 10px; padding: 2px 7px; }
+    .inst-table .inst-group td { font-weight: 700; color: var(--ink-soft); background: color-mix(in srgb, var(--line) 40%, transparent); }
+    .legend-cita { margin: 6px 0; padding: 6px 10px; border-left: 3px solid var(--accent); color: var(--ink-soft); font-style: italic; font-size: 12px; }
+    /* Fichas del catálogo de mecanismos en la leyenda */
+    .inst-grupo { font-size: 11px; font-weight: 700; color: var(--ink-soft); background: color-mix(in srgb, var(--line) 40%, transparent); padding: 5px 8px; border-radius: 4px; margin-top: 10px; }
+    .legend-row.inst-ficha { display: block; } /* .legend-row es flex y se declara más abajo: hace falta la doble clase para ganar */
+    .inst-titulo { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+    .inst-titulo .badge { flex: 0 0 auto; font-size: 10px; padding: 2px 7px; }
+    .inst-eje { display: flex; gap: 8px; margin-top: 5px; font-size: 12px; }
+    .inst-k { flex: 0 0 92px; font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 700; padding-top: 1px; }
+    .inst-ficha code, .legend-row code { background: var(--code-bg); color: var(--code-ink); padding: 1px 5px; border-radius: 4px; font-size: 11px; }
 
     .doc { color: var(--ink-soft); background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; margin: 10px 0; font-size: 12.5px; }
     details.why { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); margin: 10px 0; }
@@ -355,6 +377,21 @@ python -m http.server</pre>
     };
 
     var CLASE_LABEL = { T: "Comando de terminal", S: "Skill del agente", manual: "Manual" };
+    var TIPO_LABEL = { determinista: "Instrumentación determinista", noDeterminista: "Instrumentación no determinista" };
+    var TIPO_CORTO = { determinista: "determinista", noDeterminista: "no determinista" };
+    // Un nodo declara su tipo con `tipoInstrumentacion` (uno solo) o lo deriva de su tabla
+    // `instrumentacion` (una fila por pieza, puede mezclar los dos tipos, como a2).
+    function tiposDeNodo(node) {
+      var out = [];
+      if (node.tipoInstrumentacion) out.push(node.tipoInstrumentacion);
+      (node.instrumentacion || []).forEach(function (r) { if (r.tipo && out.indexOf(r.tipo) < 0) out.push(r.tipo); });
+      return out;
+    }
+    function tipoBadges(node, corto) {
+      return tiposDeNodo(node).map(function (t) {
+        return '<span class="badge tipo-' + esc(t) + '">' + esc((corto ? TIPO_CORTO : TIPO_LABEL)[t] || t) + "</span>";
+      }).join("");
+    }
 
     var PART = {
       f0:"F", fd1:"F", fd2:"F", fd3:"F",
@@ -477,6 +514,7 @@ python -m http.server</pre>
           : "Fase " + node.madurez + " · " + (catalog.meta.madurez[node.madurez] || "");
         out += '<div class="ht-row"><span class="badge mad-' + esc(node.madurez) + '">' + esc(mtxt) + "</span></div>";
       }
+      if (tiposDeNodo(node).length) out += '<div class="ht-row">' + tipoBadges(node, true) + "</div>";
       if (node.clase) {
         out += '<div class="ht-row"><span class="badge clase">' + esc(CLASE_LABEL[node.clase] || node.clase) + "</span></div>";
       }
@@ -499,7 +537,7 @@ python -m http.server</pre>
       var bo = element && element.businessObject;
       if (!bo || !(PART[bo.id] || (catalog.eventos && catalog.eventos[bo.id]))) return;
       var node = contenido(bo.id);
-      if (!node.madurez && !node.clase && !node.semantica) return;
+      if (!node.madurez && !node.clase && !node.semantica && !tiposDeNodo(node).length) return;
       var tip = $("#hover-tip");
       tip.innerHTML = hoverTipContent(element);
       tip.classList.remove("hidden");
@@ -536,7 +574,12 @@ python -m http.server</pre>
       if (node.madurez) {
         var mtxt = node.madurez === "transversal" ? "Transversal" + (node.madurezSub ? " · " + node.madurezSub : "") : "Fase " + node.madurez;
         badges.appendChild(el('<span class="badge mad-' + esc(node.madurez) + '">' + esc(mtxt) + "</span>"));
+      } else if (node.madurezNota) {
+        badges.appendChild(el('<span class="badge mad-none" title="' + esc(node.madurezNota) + '">Sin fase de madurez</span>'));
       }
+      tiposDeNodo(node).forEach(function (t) {
+        badges.appendChild(el('<span class="badge tipo-' + esc(t) + '">' + esc(TIPO_LABEL[t] || t) + "</span>"));
+      });
       panel.appendChild(badges);
 
       var doc = docOf(element);
@@ -551,6 +594,8 @@ python -m http.server</pre>
       if (node.requires) panel.appendChild(el('<p class="req"><b>Requiere:</b> ' + esc(node.requires) + "</p>"));
 
       if (node.guiaPasos) panel.appendChild(el('<div class="howto">' + node.guiaPasos + "</div>"));
+      if (node.instrumentacion) renderInstrumentacion(panel, node);
+      if (node.madurezNota) panel.appendChild(el('<p class="req"><b>Fase de madurez:</b> ' + esc(node.madurezNota) + "</p>"));
 
       if (node.checklist) { renderChecklist(panel, id, node); }
       else if (node.esGateway && node.clase !== "T") { renderRamas(panel, element, node); renderManual(panel, id, node); }
@@ -563,6 +608,21 @@ python -m http.server</pre>
       syncToggle(toggle, id);
       toggle.onclick = function () { setNodeDone(id, !nodeDone(id)); syncToggle(toggle, id); };
       panel.appendChild(toggle);
+    }
+
+    // Tabla «qué instala este paso y de qué tipo es cada pieza»: una fila por hook o servidor
+    // MCP de la librería, con su badge. El porqué de cada clasificación vive en la leyenda.
+    function renderInstrumentacion(panel, node) {
+      var html = '<div class="inst-wrap"><div class="eyebrow" style="margin-top:0;">Qué instala este paso, y de qué tipo es cada pieza</div>' +
+        '<table class="inst-table"><thead><tr><th>Pieza</th><th>Mecanismo</th><th>Efecto</th><th>Tipo</th></tr></thead><tbody>';
+      node.instrumentacion.forEach(function (r) {
+        html += "<tr><td><b>" + esc(r.item) + "</b></td><td>" + esc(r.mecanismo) + "</td><td>" + esc(r.efecto || "") +
+          '</td><td><span class="badge tipo-' + esc(r.tipo) + '">' + esc(TIPO_CORTO[r.tipo] || r.tipo) + "</span></td></tr>";
+      });
+      html += '</tbody></table><p style="color:var(--muted);font-size:12px;margin:8px 0 0;">Por qué cada mecanismo cae de un lado o del otro: capítulo «Tipos de instrumentación» de la <a href="#" class="go-legend">leyenda</a>.</p></div>';
+      var box = el(html);
+      box.querySelector(".go-legend").onclick = function (e) { e.preventDefault(); renderLegend(); };
+      panel.appendChild(box);
     }
 
     function syncToggle(btn, id) {
@@ -988,9 +1048,60 @@ python -m http.server</pre>
         var resumen = (catalog.meta.madurezResumen || {})[k];
         panel.appendChild(el('<div class="legend-row" style="display:block;"><span class="badge mad-' + k + '">Fase ' + k + " · " + esc(catalog.meta.madurez[k]) + '</span>' +
           (resumen ? '<p class="mono" style="margin:6px 0 0;color:var(--muted);font-size:11px;letter-spacing:.02em;">' + esc(resumen) + "</p>" : "") +
-          '<p style="margin:6px 0 0;color:var(--muted);font-size:12px;">' + esc(catalog.meta.madurezDetalle[k]) + "</p></div>"));
+          '<p style="margin:6px 0 0;color:var(--muted);font-size:12px;">' + catalog.meta.madurezDetalle[k] + "</p></div>"));
       });
       panel.appendChild(el('<div class="legend-row" style="display:block;"><span class="badge mad-transversal">Transversal</span><p style="margin:6px 0 0;color:var(--muted);font-size:12px;">' + esc(catalog.meta.madurezTransversal) + "</p></div>"));
+      renderLegendInstrumentacion(panel);
+    }
+
+    // Tres capítulos aparte de la pirámide: el catálogo de mecanismos con su tipo, la evidencia
+    // oficial que sostiene la clasificación, y las dos excepciones que la matizan. Los textos
+    // de comandos.json traen <code> a propósito, así que van sin escapar (igual que porque y
+    // guiaPasos); solo las citas literales y las URLs se escapan.
+    function renderLegendInstrumentacion(panel) {
+      var meta = catalog.meta, tipos = meta.instrumentacionTipos || {};
+      var cat = meta.instrumentacionCatalogo || [], evid = meta.instrumentacionEvidencia || [], exc = meta.instrumentacionExcepciones || [];
+      if (!cat.length && !evid.length && !exc.length) return;
+
+      panel.appendChild(el('<div class="eyebrow">Tipos de instrumentación</div>'));
+      if (meta.instrumentacionRegla) panel.appendChild(el('<p style="margin:0 0 4px;font-size:12.5px;">' + meta.instrumentacionRegla + "</p>"));
+      ["determinista", "noDeterminista"].forEach(function (k) {
+        if (!tipos[k]) return;
+        panel.appendChild(el('<div class="legend-row" style="display:block;"><span class="badge tipo-' + k + '">' + esc(TIPO_LABEL[k]) + '</span>' +
+          '<p style="margin:6px 0 0;color:var(--muted);font-size:12px;">' + tipos[k] + "</p></div>"));
+      });
+      // Una ficha apilada por mecanismo (no una tabla): el panel mide ~420px y cuatro columnas
+      // con el porqué adentro no se leen. Quién dispara y quién decide son las dos preguntas
+      // del eje, así que van como líneas propias, antes del porqué.
+      var grupo = null;
+      cat.forEach(function (r) {
+        if (r.grupo && r.grupo !== grupo) {
+          grupo = r.grupo;
+          panel.appendChild(el('<div class="inst-grupo">' + esc(grupo) + "</div>"));
+        }
+        panel.appendChild(el('<div class="legend-row inst-ficha"><div class="inst-titulo"><b>' + r.mecanismo + '</b><span class="badge tipo-' + esc(r.tipo) + '">' + esc(TIPO_CORTO[r.tipo] || r.tipo) + "</span></div>" +
+          '<div class="inst-eje"><span class="inst-k">Quién dispara</span><span>' + r.dispara + "</span></div>" +
+          '<div class="inst-eje"><span class="inst-k">Quién decide</span><span>' + r.decide + "</span></div>" +
+          (r.porque ? '<p style="margin:6px 0 0;color:var(--muted);font-size:12px;">' + r.porque + "</p>" : "") + "</div>"));
+      });
+
+      if (evid.length) {
+        panel.appendChild(el('<div class="eyebrow">Evidencia que lo sostiene</div>'));
+        evid.forEach(function (e) {
+          panel.appendChild(el('<div class="legend-row" style="display:block;"><b>' + esc(e.fuente) + "</b>" +
+            (e.url ? ' <a href="' + esc(e.url) + '" target="_blank" rel="noopener" style="font-size:11px;">abrir ↗</a>' : "") +
+            '<blockquote class="legend-cita">' + esc(e.cita) + "</blockquote>" +
+            '<p style="margin:4px 0 0;color:var(--muted);font-size:12px;">' + (e.porque || "") + "</p></div>"));
+        });
+      }
+
+      if (exc.length) {
+        panel.appendChild(el('<div class="eyebrow">' + (exc.length === 2 ? "Dos excepciones" : "Excepciones") + "</div>"));
+        exc.forEach(function (x, i) {
+          panel.appendChild(el('<div class="legend-row" style="display:block;"><b>' + (i + 1) + ". " + esc(x.titulo) + "</b>" +
+            '<p style="margin:6px 0 0;color:var(--muted);font-size:12px;">' + x.texto + "</p></div>"));
+        });
+      }
     }
     $("#btn-legend").onclick = renderLegend;
 

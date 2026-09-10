@@ -488,7 +488,7 @@
       <bpmndi:BPMNShape id="a1_di" bpmnElement="a1" bioc:fill="#5b6472" bioc:stroke="#f1f2f5">
         <dc:Bounds x="1220" y="195" width="160" height="70" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="a2_di" bpmnElement="a2" bioc:fill="#5b6472" bioc:stroke="#f1f2f5">
+      <bpmndi:BPMNShape id="a2_di" bpmnElement="a2">
         <dc:Bounds x="1420" y="490" width="160" height="70" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="G1_di" bpmnElement="G1" isMarkerVisible="true" bioc:fill="#5b6472" bioc:stroke="#f1f2f5">
