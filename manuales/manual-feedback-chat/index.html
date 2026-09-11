@@ -223,19 +223,34 @@ github.com
       </div>
     </div>
 
-    <h2><span class="num">6</span>Configurar MCP y hooks del agente<span class="nodo">nodo a2</span><span class="tipo-nodet">instrumentación no determinista</span></h2>
+    <h2><span class="num">6</span>Configurar MCP y hooks del agente<span class="nodo">nodo a2</span><span class="tipo-det">hooks: determinista</span><span class="tipo-nodet">MCP: no determinista</span></h2>
     <div class="nota"><b>Renombrado en esta misma revisión:</b> este nodo se llamaba "Configurar MCP
       de ejemplo" — quedó de una versión más simple del proceso, de antes de que
       <code>instrument-agent-java</code> creciera para incluir también el catálogo de hooks. El
       único "ejemplo" real que queda es el servidor de GitHub, citado como MCP suelto ilustrativo en
       el <code>guiaPasos</code> de este nodo — no era el alcance del paso completo.</div>
-    <div class="nota"><b>Dos tipos de instrumentación, no uno solo</b> — se distinguen desde acá porque las
-      actividades 9–13 dependen de la diferencia: <b>determinista</b> (etiqueta azul, la instala
-      <code>instrument-project-java</code>) son controles que deciden en milisegundos, con el mismo
-      resultado siempre que las mismas entradas — build estricto, Checkstyle, ArchUnit, CI.
-      <b>No determinista</b> (etiqueta naranja, la instala <code>instrument-agent-java</code>, este
-      mismo nodo) son controles cuyo motor es inferencia, no cómputo — aplican criterio en el
-      momento: ¿esto es un secreto real?, ¿este comando es peligroso?</div>
+    <div class="nota"><b>Dos tipos de instrumentación, y el eje que los separa</b> — se distinguen desde acá
+      porque las actividades 9–13 dependen de la diferencia. El eje es <b>quién dispara y quién
+      decide</b>, no cómo está implementado: un control es <b>determinista</b> (etiqueta azul) solo
+      si las dos cosas quedan fuera del razonamiento del modelo, y basta que una dependa del modelo
+      para que sea <b>no determinista</b> (etiqueta naranja). Con esa regla, este nodo mezcla los dos
+      tipos y hay que decirlo pieza por pieza: los <b>ocho hooks</b> que instala
+      <code>instrument-agent-java</code> son hooks de comando (<code>type: command</code>, bash
+      puro) — los dispara el ciclo de vida del agente y decide un script, así que son
+      <b>deterministas</b>, igual que build estricto, Checkstyle, ArchUnit y CI de
+      <code>instrument-project-java</code>. Los <b>tres servidores MCP</b> (GitHub, Context7,
+      DBHub) exponen herramientas que el modelo elige cuándo y cómo llamar — la especificación de
+      MCP las define «model-controlled» — y eso es lo <b>no determinista</b>. La versión anterior
+      de esta nota decía que los hooks «aplican criterio»: no es así, un hook de comando matchea
+      texto con una regla fija; el criterio lo pone quien escribió la regla, no el modelo.</div>
+    <div class="nota"><b>Sin fase de madurez, a propósito:</b> en <code>comandos.json</code> el nodo
+      <code>a2</code> ya no lleva <code>"madurez"</code> y en el BPMN su caja queda sin color de
+      fase. Instala Fase 1 y Fase 2 en una sola corrida, y además es instalación transversal: no
+      hay una casilla de la pirámide que lo describa sin mentir. En cambio sí lleva el tipo de cada
+      pieza, en una tabla propia del panel. Dos excepciones que la leyenda del visor deja escritas:
+      un MCP llamado desde un hook <code>mcp_tool</code> es determinista en su disparo, y los hooks
+      de tipo <code>prompt</code> o <code>agent</code> son no deterministas aunque vivan en el mismo
+      <code>settings.json</code>. Ninguna de las dos aplica a lo que instala esta skill hoy.</div>
     <p class="parrafo-original">Esta skill hace en un solo paso lo que antes describíamos a mano:
       registra los servidores MCP que tu equipo necesita (con las versiones fijadas, nunca "la
       última" sin pinear) y activa un catálogo de hooks de Claude Code que limitan lo que el agente
@@ -366,7 +381,7 @@ hooks del agente: presentes</pre>
       recién clonado el repo. Confundir "activar lefthook" con "los hooks del agente ya funcionan"
       es justo el hueco que la actividad siguiente cierra.</div>
 
-    <h2><span class="num">13</span>Confirmar hooks del agente<span class="nodo">nodo b5 — nuevo, agregado por esta misma revisión</span><span class="tipo-nodet">instrumentación no determinista</span></h2>
+    <h2><span class="num">13</span>Confirmar hooks del agente<span class="nodo">nodo b5 — nuevo, agregado por esta misma revisión</span><span class="tipo-det">instrumentación determinista</span></h2>
     <p class="parrafo-original">Un hook del agente que existe en <code>.claude/settings.json</code>
       pero nunca se vio disparar en esta máquina concreta no es un hook — es una promesa. A
       diferencia de lefthook, no hace falta instalarlo: hace falta <b>probarlo</b>, disparándolo de
