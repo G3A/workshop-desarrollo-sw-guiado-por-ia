@@ -1,0 +1,63 @@
+<!--
+TEMPLATE — impact report for leadership
+
+WHAT THE SKILL DOES WHEN GENERATING IT
+  - Substitute <PERIOD>, <PREVIOUS> and every number from docs/metricas/metricas-<PERIOD>.csv.
+    The report is DERIVED from the aggregate, never the other way round.
+  - Every figure carries where it came from. A report whose numbers cannot be recomputed is an
+    anecdote with numbers in it.
+  - With no previous period, drop the comparison column and label this one the BASELINE. That is
+    the Etapa 1 advancement criterion, and saying it beats inventing a trend.
+  - Missing metrics keep their row and their reason; they are never omitted.
+  - GENERATE, DO NOT SEND: open the pull request and stop. Sending is a person's job.
+  - Delete this header before writing the target file.
+-->
+
+# Impact of AI-assisted delivery — <PERIOD>
+
+## Diagnosis
+
+<!-- Three or four sentences. Where the team is today, in business language, without tool jargon.
+     What changed since the previous period, and what did not. -->
+
+## The metrics
+
+| Metric | <PERIOD> | <PREVIOUS> | How it was measured |
+|---|---|---|---|
+| AI-assisted PRs | <PCT> % (<N_IA> of <N_TOTAL>) | <PCT_PREV> % | `git rev-list --first-parent --grep` on the integration branch |
+| Lead time, **median** | <MEDIAN> h (n=<N_PR>) | <MEDIAN_PREV> h | `gh pr list`, `createdAt` to `mergedAt` |
+| Rework | — | — | **Pending.** Definition agreed; not enough sample yet to compare assisted against unassisted |
+| Coverage | <COVERAGE> | <COVERAGE_PREV> | <COVERAGE_SOURCE> |
+
+**Lead time is reported as a median, not a mean**: one very long pull request drags the average
+until it describes the worst case as if it were typical. Mean for the period: <MEAN> h.
+
+<!-- A missing metric keeps its row and its reason. Dropping it suggests it did not matter. -->
+
+## What the numbers do not say
+
+Anonymous survey, 1-to-5 scale, n=<N_SURVEY>:
+
+| | <PERIOD> | <PREVIOUS> |
+|---|---|---|
+| Trust in the code it produces | <TRUST> | <TRUST_PREV> |
+| Friction on an ordinary day | <FRICTION> | <FRICTION_PREV> |
+| Value: work actually saved | <VALUE> | <VALUE_PREV> |
+| Alignment with how the team solves | <ALIGNMENT> | <ALIGNMENT_PREV> |
+
+It sits beside the hard figures because **all four can improve while the team is having a worse
+time**.
+
+<!-- With no survey, or an n below the agreed floor, this section says so in one line and shows no
+     distribution. "Insufficient sample" is information; an invented number is not. -->
+
+## Commitment for the next period
+
+<!-- One or two concrete, checkable things. Not "improve adoption": the number expected to move and
+     what will be done differently. -->
+
+---
+
+<!-- How to reproduce every figure, so nobody has to trust this document -->
+Data: `docs/metricas/metricas-<PERIOD>.csv` and `docs/metricas/encuesta-<PERIOD>.csv`.
+Commands: `instrumentacion-java-ia/sdlc-ia/skills/impact-metrics/references/metric-definitions.md`.
