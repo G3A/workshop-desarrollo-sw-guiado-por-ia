@@ -1,6 +1,6 @@
 # Instrumentación Java con IA
 
-Un plugin de Claude Code, `sdlc-ia`, con cuatro skills que instrumentan un repositorio Java/Spring
+Un plugin de Claude Code, `sdlc-ia`, con siete skills que instrumentan un repositorio Java/Spring
 para que un agente de código con IA pueda trabajar en él con las mismas garantías que un equipo
 humano exigiría: contexto legible, controles deterministas que se prueban fallando antes de
 reportar éxito, límites explícitos sobre qué puede hacer el agente solo, y un ciclo completo de
@@ -25,7 +25,7 @@ repositorio. Decir sin más que "hoy solo cubre .NET" ya no describe el plugin c
 |---|---|
 | [`agent-context-java`](docs/skills/agent-context-java-es.md) | Genera el paquete de contexto de un repo Java/Spring (`AGENTS.md`, `docs/architecture.md`, ADRs, `docs/java.md`) para que un agente de IA lo entienda sin adivinar. |
 | [`instrument-project-java`](docs/skills/instrument-project-java-es.md) | Instala 9 controles deterministas: build reproducible, build estricto, estilo, un solo punto de entrada, hooks de pre-commit/pre-push, escaneo de secretos, pruebas de arquitectura (ArchUnit), CI y escaneo de dependencias vulnerables (OWASP Dependency-Check + Dependabot). |
-| [`instrument-agent-java`](docs/skills/instrument-agent-java-es.md) | Registra servidores MCP y una catálogo de 8 hooks de Claude Code (bash puro, sin Node/jq) que limitan lo que el agente puede hacer solo. |
+| [`instrument-agent-java`](docs/skills/instrument-agent-java-es.md) | Registra servidores MCP (no deterministas: el modelo decide cuándo llamarlos) y un catálogo de 8 hooks de comando de Claude Code (deterministas, bash puro, sin Node/jq) que limitan lo que el agente puede hacer solo. |
 | [`requirement-to-spec-java`](docs/skills/requirement-to-spec-java-es.md) | Convierte un documento de requisitos de negocio en una especificación y un desglose de tareas, antes de que exista un issue — nunca escribe código, nunca abre PR. |
 | [`github-plan-build`](docs/skills/github-plan-build-es.md) | El ciclo completo: toma un issue de GitHub, arma un plan, lo implementa test-first, y abre una PR verificada. |
 | [`debt-triage`](docs/skills/debt-triage-es.md) | Triaja con criterio los hallazgos que un analizador estático ya reportó (Sonar, CodeQL, Checkstyle...) — nunca instala un sensor nuevo ni aplica un auto-fix a ciegas. |

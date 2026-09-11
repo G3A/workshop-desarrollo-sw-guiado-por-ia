@@ -1,17 +1,26 @@
 ---
 name: instrument-agent-java
-description: Install the non-deterministic instrumentation layer in a Java/Maven repository — project-scoped MCP servers in .mcp.json, plus a catalogue of Claude Code hooks in .claude/settings.json backed by portable shell scripts. The catalogue covers a secret read-guard, scoped Spotless formatting, a dangerous-command blocker, a dependency sweep, an audit log, and guards for centrally-managed dependency versions and Flyway/Liquibase migrations. Every hook is proven to fire before the run ends. Invoke with `/sdlc-ia:instrument-agent-java`.
+description: Install the agent-facing instrumentation layer in a Java/Maven repository — project-scoped MCP servers in .mcp.json (non-deterministic: the model decides when to call them), plus a catalogue of deterministic Claude Code command hooks in .claude/settings.json backed by portable shell scripts. The catalogue covers a secret read-guard, scoped Spotless formatting, a dangerous-command blocker, a dependency sweep, an audit log, and guards for centrally-managed dependency versions and Flyway/Liquibase migrations. Every hook is proven to fire before the run ends. Invoke with `/sdlc-ia:instrument-agent-java`.
 disable-model-invocation: true
 ---
 
 # instrument-agent-java — Give the Agent Tools, and Limits
 
-You are installing the **non-deterministic instrumentation** layer: the sensors whose engine is
-inference rather than computation. Its sibling, `instrument-project-java`, installs the
-deterministic half — the controls that decide, in milliseconds and with no ambiguity, whether the
-code is fine. This skill installs the half that applies **the team's judgement to the work that
-actually requires judgement**: which systems the agent may reach, which files it may open, what
-happens to a file the moment it is written.
+You are installing the **agent-facing instrumentation** layer: which systems the agent may reach,
+which files it may open, what happens to a file the moment it is written. Its sibling,
+`instrument-project-java`, installs the code-facing half — the sensors that run on the repository
+itself (build, style, architecture, CI) whether or not an agent is open.
+
+The two artifacts you install sit on **opposite sides of the instrumentation axis**. A control is
+deterministic only when both the trigger and the decision stay outside the model's reasoning:
+
+- **MCP servers are non-deterministic.** The model decides when to call a tool, and with which
+  arguments. They add capability; they do not constrain it.
+- **The eight `type: command` hooks are deterministic.** The agent's lifecycle fires them at a
+  fixed point (`PreToolUse`, `PostToolUse`, `SessionStart`…) and a shell script — not the model —
+  decides allow, block or report. This is why they are a limit and MCP is not.
+
+Do not describe this skill as "the non-deterministic layer": it installs one half of each.
 
 Two artifacts, in this order:
 
