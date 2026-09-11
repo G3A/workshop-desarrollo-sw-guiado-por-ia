@@ -81,8 +81,14 @@ variable with no default, and the export line in `README.md`.
 with a `[[tools]]` section, at the time of writing) before offering it, and say in the report that
 an agent with a database connection reads whatever the DSN points at.
 
-**Never write to `.claude/settings.local.json`, and never touch `permissions`.** Both belong to the
-user.
+**Never write to `.claude/settings.local.json`.** It belongs to the user.
+
+**`permissions` is the other half of this file, and it is not optional reading.** Registering a
+server here widens what the agent can reach on its own; the `mcp__*` rules of Phase 4 are the only
+deterministic way to narrow it again. Writing one without the other leaves the skill's own ordering
+rule — *MCP first, hooks second, because MCP only adds capability and hooks take it away* — executed
+halfway. The posture, the two rejected alternatives and the merge rules are in
+`templates/permissions.json.template`.
 
 **Merge, never replace.** An existing `mcpServers` object holds the team's work.
 

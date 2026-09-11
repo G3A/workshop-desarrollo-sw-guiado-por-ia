@@ -17,6 +17,39 @@ versión nueva", and `AGENTS.md`).
 
 ### Added
 
+- **`instrument-agent-java` now narrows what MCP widened** — permission rules over `mcp__*` plus a
+  ninth hook. The skill's own ordering rule, *"MCP first, hooks second, because MCP only adds
+  capability and hooks take it away"*, was being executed halfway: it registered the servers that
+  widen the agent's reach and then declined to configure the one deterministic mechanism that
+  narrows them.
+  - **A hard rule was lifted, deliberately and narrowly.** The skill used to declare it *never*
+    touches `permissions`. That was incoherent with itself: `references/hook-catalog.md` already
+    tells the user to close a gap with "a `Read` deny rule in permissions, not a hook" while the
+    skill refused to write one. It now writes that key **only after an explicit scope answer** and
+    **only `mcp__*` matchers**; every other entry stays the user's.
+  - **Two mechanisms, split by what they can decide on.** Permission rules decide on the **tool
+    name** — the general posture, readable at a glance and auditable in a diff. **Hook 9**
+    (`mcp-write-guard.sh`) decides on the **arguments**: which repository, which SQL statement —
+    what a name cannot express. The same division the skill already makes between Git hooks and
+    agent hooks.
+  - **The posture is deny writes, allow reads**, sorted by consequence rather than by server.
+    Two alternatives are rejected in writing: `ask` for everything is safe and exhausting, and gets
+    switched off within days; and a server's own `readOnlyHint` is not usable, because the
+    specification says to treat annotations as untrusted — the server declaring them is the one you
+    would be watching.
+  - **Verification needs both halves.** A deny that fires, *and* a read that still works: a posture
+    that also blocks reads turns the servers just registered into dead weight, and that is found
+    mid-task a week later. Hook 9 is then triggered with a call the rules allow but whose arguments
+    should not pass — a hook that never fires because the rules caught everything is one to delete.
+  - **It does not break `github-plan-build`, and the report says so.** That skill goes through the
+    `gh` CLI over Bash, not the GitHub MCP server, so none of the deny matchers apply to it.
+    Without that sentence, the first reader of the deny list switches the control off to unblock
+    something that was never blocked.
+  - The regression suite grows from 146 to **225 cases**, all green. The new ones cover what an
+    allow-list keyed on tool names would let through: a write aimed at another repository, and a
+    `DELETE` through a read-shaped query tool — including the anchoring that keeps
+    `SELECT updated_at …` and a literal containing `DELETE` passing.
+
 - **`instrument-github-repo`, a new skill** — the eighth — closing the box that left every other
   control decorative. `instrument-project-java` installs twelve controls and writes the CI
   workflow, and **a workflow that runs blocks nothing**: what stops a merge is the Ruleset that
