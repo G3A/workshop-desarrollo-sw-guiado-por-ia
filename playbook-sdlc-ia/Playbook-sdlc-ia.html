@@ -222,7 +222,7 @@ subgraph P2["FASE 2 · Preparación del terreno — donde el plugin hace casi to
   subgraph P2C["Instrumentación no determinista · guía escrita y capacidades"]
     direction TB
     N1["Archivo guía<br/>AGENTS.md, con CLAUDE.md que lo importa<br/>SKILL · agent-context-java"]:::skill
-    N2["Criterios de revisión · REVIEW.md<br/>HUECO · nadie lo genera"]:::hueco
+    N2["Criterios de revisión · REVIEW.md<br/>SKILL · agent-context-java, con plantilla de PR"]:::skill
     N4["Skills, subagentes y plugins propios<br/>HUECO · el plugin es skills, pero no crea skills"]:::hueco
     N6["Code review por IA<br/>PARCIAL · github-plan-build corre /code-review y /security-review;<br/>claude-code-action en el pipeline es a mano, visor cr"]:::parcial
     N1-->N2-->N4-->N6
@@ -298,7 +298,7 @@ subgraph P3["FASE 3 · Ciclo por feature — por cada funcionalidad"]
     VL1["1 · Local — el agente rompe lo obvio antes de subir<br/>SKILL · github-plan-build"]:::skill
     VL2["2 · CI, el juez — Actions corre los checks y el Ruleset bloquea<br/>SKILL · github-plan-build vigila hasta verde"]:::skill
     VL3["3 · Seguridad — /security-review y OWASP Dep-Check<br/>PARCIAL · sin SAST de código, sin DAST"]:::parcial
-    VL4["<b>4 · Revisión humana — checklist</b><br/>• alucinaciones de API<br/>• fidelidad al proyecto<br/>• tests de la spec<br/>• deuda técnica<br/>• trade-offs<br/>• corre el cambio tú mismo<br/>HUECO · el checklist no existe escrito en el repo"]:::hueco
+    VL4["<b>4 · Revisión humana — checklist</b><br/>• alucinaciones de API<br/>• fidelidad al proyecto<br/>• tests de la spec<br/>• deuda técnica<br/>• trade-offs<br/>• corre el cambio tú mismo<br/>SKILL · REVIEW.md + plantilla de PR"]:::skill
     VL1-->VL2-->VL3-->VL4
   end
   VL4 --> GV{"¿Aprueba la verificación?"}:::dec
@@ -515,7 +515,7 @@ style P6 fill:#0b0f15,stroke:#6b2018,color:#FF9C8C
     DCA:B("Azure DevOps","fuera","Frontera declarada en el README del plugin: escribe GitHub Actions y GitHub Issues; otra plataforma se reporta fuera de alcance, no se adapta a mano.",P.f2,"DCA"),
     // Fase 2 · no deterministas
     N1:B("Archivo guía","skill","AGENTS.md como índice de menos de 80 líneas, y CLAUDE.md como una sola línea que lo importa.",P.f2,"N1"),
-    N2:B("REVIEW.md","hueco","Es un archivo distinto de AGENTS.md a propósito: se carga en el revisor de PRs en la nube, no en el /code-review local. Ninguna skill lo genera.",P.f2,"N2"),
+    N2:B("REVIEW.md","skill","Lo genera agent-context-java junto al archivo guía, con una plantilla de PR que enlaza a él. Sigue siendo un archivo distinto de AGENTS.md a propósito: el revisor de PRs en la nube carga REVIEW.md y la revisión local carga el archivo guía.",P.f2,"N2"),
     N4:B("Skills y subagentes propios","hueco","El plugin es un conjunto de skills, pero ninguna de ellas crea skills ni subagentes en el repo del usuario.",P.f2,"N4"),
     N6:B("Code review por IA","parcial","github-plan-build corre /code-review y /security-review antes de abrir la PR. Instalar claude-code-action en el pipeline es a mano, visor cr.",P.f2,"N6"),
     // Fase 2 · hooks
@@ -550,7 +550,7 @@ style P6 fill:#0b0f15,stroke:#6b2018,color:#FF9C8C
     VL1:B("1 · Local","skill","El agente rompe lo obvio antes de subir.",P.f3,"VL1"),
     VL2:B("2 · CI, el juez","skill","github-plan-build vigila la corrida hasta que quede verde y atiende los comentarios uno por uno.",P.f3,"VL2"),
     VL3:B("3 · Seguridad","parcial","/security-review busca vulnerabilidades pero no las clasifica por CWE, y OWASP Dependency-Check cubre dependencias. Falta SAST del código propio y falta DAST.",P.f3,"VL3"),
-    VL4:B("4 · Revisión humana","hueco","Los 15 ítems del checklist no existen escritos en ninguna pieza del repositorio. El visor cr explica por qué la revisión humana no se reemplaza, pero no trae la lista.",P.f3,"VL4"),
+    VL4:B("4 · Revisión humana","skill","Las seis categorías son del método; los quince ítems concretos los redacta la plantilla de agent-context-java, y lo dice como tal en vez de atribuirlos a una fuente. Viven en REVIEW.md, y la plantilla de PR trae las seis como casillas — nunca como check de CI, porque exigirlas convierte el juicio en trámite.",P.f3,"VL4"),
     GV:L("¿Aprueba la verificación?",P.f3,"GV"),
     M1:B("Merge y marcado","skill","El trailer Asistido-por-IA va en cada commit y en el cuerpo de la PR, así sobrevive al squash. El merge lo corres tú.",P.f3,"M1"),
     MF:L("¿Más issues?",P.f3,"MF"),

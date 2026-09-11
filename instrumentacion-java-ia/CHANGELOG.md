@@ -17,6 +17,29 @@ versión nueva", and `AGENTS.md`).
 
 ### Added
 
+- **`agent-context-java` now writes `REVIEW.md` and a PR template**, closing the last two boxes of
+  the method's fourth verification layer — the one no sensor replaces.
+  - **A third file, separate on purpose.** `AGENTS.md` holds the rules the agent respects *while
+    generating*; `REVIEW.md` holds what to look at in a diff that *already exists*. They load in
+    different places: the cloud PR-review service reads `REVIEW.md`, the local `/code-review` reads
+    the guide file. A criterion that must hold in both belongs in `AGENTS.md`.
+  - **Six categories, fifteen items.** The six categories are the method's (verification layer 4:
+    API hallucinations, project fidelity, tests of the spec, technical debt, trade-offs, running
+    the change yourself). The **fifteen concrete items are this template's own wording, not a
+    quotation** of any source — the skill says so when it reports, and invites the team to change
+    them.
+  - **The PR template links instead of repeating.** Six boxes, one per category, pointing at
+    `REVIEW.md`. A second copy of the list drifts from the first within a few sprints.
+  - **Never a CI check**, deliberately: a workflow that requires the boxes ticked turns judgement
+    into paperwork — all six get ticked unread and the record starts lying. They leave a trace of
+    what was reviewed; they do not guarantee it.
+  - Both files honour augment mode: an existing `REVIEW.md` or PR template is filled and appended
+    to, never replaced. Phase 6 now also checks the template's relative link to `REVIEW.md`
+    resolves — a broken one only shows up months later, mid-review.
+  - The template closes with the promotion rule in both directions: something said by hand for the
+    third time is a criterion missing from the file, and a criterion a machine could check stops
+    being text and becomes a sensor.
+
 - **`instrument-project-java` grows from nine controls to twelve**, closing four boxes the
   `playbook-sdlc-ia` diagram had in red or amber. Every parameter below was decided in the coverage
   questionnaire, not chosen here.

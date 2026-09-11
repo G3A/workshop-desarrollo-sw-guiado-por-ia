@@ -1,6 +1,6 @@
 ---
 name: agent-context-java
-description: Generate a documentation pack for a Java/Spring repository so AI coding agents can reason about it — AGENTS.md, architecture, ADRs, data model, infrastructure, plus a `docs/java.md` deep-dive covering the Maven/Gradle module graph, JDK target, Spring DI, JPA/Hibernate or Spring Data persistence, Spring profiles & config, Spring Modulith module boundaries, quality gates, and CI. Output docs default to Spanish; pass `en` for English. Invoke with `/sdlc-ia:agent-context-java` (or `/sdlc-ia:agent-context-java en`).
+description: Generate a documentation pack for a Java/Spring repository so AI coding agents can reason about it — AGENTS.md, REVIEW.md and a PR template for the human review layer, architecture, ADRs, data model, infrastructure, plus a `docs/java.md` deep-dive covering the Maven/Gradle module graph, JDK target, Spring DI, JPA/Hibernate or Spring Data persistence, Spring profiles & config, Spring Modulith module boundaries, quality gates, and CI. Output docs default to Spanish; pass `en` for English. Invoke with `/sdlc-ia:agent-context-java` (or `/sdlc-ia:agent-context-java en`).
 disable-model-invocation: true
 ---
 
@@ -147,6 +147,7 @@ For each doc, read `templates/<lang>/<doc>.md.template` (`<lang>` resolved above
 (`{{UPPER_SNAKE}}`, declared at the top of each template), write to the target path:
 
 - `AGENTS.md`, `CLAUDE.md` (repo root) — see Phase 4
+- `REVIEW.md` (repo root) + `.github/pull_request_template.md` — see Phase 4
 - `docs/business.md`, `docs/architecture.md`, `docs/data-model.md`, `docs/infrastructure.md`,
   `docs/java.md`
 - `docs/adrs/README.md` + `docs/adrs/adr-template.md` + `docs/adrs/0001-<slug>.md` (1–3 seed ADRs)
@@ -163,13 +164,43 @@ What each doc must carry from the Java discovery, and the ADR seeds, are in
 
 ---
 
-## Phase 4 — Wire (AGENTS.md + CLAUDE.md)
+## Phase 4 — Wire (AGENTS.md + CLAUDE.md + REVIEW.md)
 
 Generate `AGENTS.md` strictly as a **table of contents** — the section list and what goes in each
 is in `references/doc-content-map.md`. Enforce the ~80-line ceiling — move overflow into
 `docs/java.md`.
 
 `CLAUDE.md` is one line: `@AGENTS.md`, with a comment explaining that it delegates.
+
+### `REVIEW.md` — a third file, and a separate one on purpose
+
+`AGENTS.md` holds the rules the agent must respect **while generating**; `REVIEW.md` holds the
+criteria for **what to look at in a diff that already exists**. They are different files because
+they load in different places: the cloud PR-review service reads `REVIEW.md`, while the local
+`/code-review` reads the guide file. A criterion that must hold in both goes in `AGENTS.md`; one
+that only applies while reviewing goes in `REVIEW.md`. Say this in the report — a team that copies
+the same lines into both ends up maintaining neither.
+
+Write it from `templates/<lang>/REVIEW.md.template`: six categories, fifteen items. **The six
+categories are the method's** (verification layer 4). **The fifteen concrete items are this
+template's own wording, not a quotation** — say so when you report, and invite the team to change
+them.
+
+Then write `.github/pull_request_template.md` from
+`templates/<lang>/pull_request_template.md.template`. It is deliberately **short and links to
+`REVIEW.md` instead of repeating it** — a second copy of the list drifts from the first within a
+few sprints. Its six boxes are the categories, not the fifteen items.
+
+Three rules for this pair:
+
+- **Never make the boxes a CI check.** A workflow that requires them ticked turns judgement into
+  paperwork: all six get ticked unread and the record starts lying. They leave a trace of what was
+  reviewed; they do not guarantee it.
+- **An existing `REVIEW.md` or PR template is never replaced** — augment mode applies here too:
+  fill gaps, append a marked section, report what you left alone.
+- **Tailor, do not pad.** Add an item only when discovery justifies it (a migrations item if the
+  repo has Flyway or Liquibase), and mark it as added. Fifteen items people read beat twenty-five
+  they skim.
 
 ---
 
@@ -188,11 +219,13 @@ the ledger to `docs/claims-ledger.md`.
 
 1. Print a tree of files written (or augmented) — in the resolved language.
 2. Check every link in `AGENTS.md` and `docs/java.md` resolves to a file that exists (use Read).
+   Include the PR template's link to `REVIEW.md`: a relative path that does not resolve is the
+   failure mode of this pair, and it only shows up months later, when someone clicks it mid-review.
 3. Remind the user, in the resolved language, to commit — suggest a commit message matching that
    language (e.g. `docs: bootstrap Java context pack for AI coding agents` in English,
    `docs: agrega el paquete de contexto Java para agentes de IA` in Spanish):
-   `git add AGENTS.md CLAUDE.md docs/` then `git commit -m "<message>"` (two commands, no `&&`,
-   so it works in Windows PowerShell 5.1 too);
+   `git add AGENTS.md CLAUDE.md REVIEW.md .github/ docs/` then `git commit -m "<message>"` (two
+   commands, no `&&`, so it works in Windows PowerShell 5.1 too);
    fill `<!-- TODO -->` markers, review the ADRs, skim `docs/claims-ledger.md` for anything
    unverified; if quality gates were absent, consider Checkstyle/Spotless + an arch-linting test
    (ArchUnit, or `ApplicationModules.verify()` if modules exist); re-run

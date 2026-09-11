@@ -1,0 +1,45 @@
+<!--
+TEMPLATE — .github/pull_request_template.md
+
+WHY IT EXISTS AND WHY IT IS SHORT
+  REVIEW.md carries the fifteen items and the reasoning behind each. This template does NOT
+  repeat them: it shows up on its own at review time and links to the source. Copying the
+  fifteen here would create a second list that drifts from the first by the third sprint.
+
+WHY IT IS NOT A CI CHECK
+  Deliberately, no workflow requires these boxes ticked. A check that demands them turns human
+  judgement into paperwork: all six get ticked unread, and now the record lies. The boxes leave
+  a trace of what was reviewed; they do not guarantee it.
+
+WHAT THE SKILL DOES WHEN GENERATING IT
+  - Substitute <INTEGRATION-BRANCH> with the branch the repository actually declares.
+  - If a PR template already exists, do NOT replace it: append the review section and say so
+    in the report.
+  - Delete this header before writing the target file.
+-->
+
+## What changes and why
+
+<!-- One or two sentences. The "why" matters more than the "what" — the diff already says the what. -->
+
+Closes #
+
+## What was decided that the diff does not show
+
+<!-- Trade-offs, the rejected alternative, what got worse so this could ship.
+     If there is nothing, write "nothing" — a valid answer that saves the question at review time. -->
+
+## Human review
+
+The full criteria, with their reasoning, are in [`REVIEW.md`](../REVIEW.md). Tick what you actually
+reviewed; a box ticked unread is worse than an empty one.
+
+- [ ] **API hallucinations** — methods, signatures and config keys that exist in the pinned version
+- [ ] **Project fidelity** — solves the way this repo solves, without opening a second way to do the same thing
+- [ ] **Tests of the spec** — verify the requirement and fail when the change is reverted
+- [ ] **Technical debt** — what got worse is named; no suppression without a reason
+- [ ] **Trade-offs** — the rejected alternative is stated
+- [ ] **I ran the change myself** — not just watched CI go green
+
+<!-- Said something by hand for the third time in a review? That is not author indiscipline:
+     it is a criterion missing from REVIEW.md. Add it in this same PR. -->
