@@ -17,6 +17,35 @@ versión nueva", and `AGENTS.md`).
 
 ### Added
 
+- **`instrument-github-repo`, a new skill** — the eighth — closing the box that left every other
+  control decorative. `instrument-project-java` installs twelve controls and writes the CI
+  workflow, and **a workflow that runs blocks nothing**: what stops a merge is the Ruleset that
+  requires it. Until now that step was manual, so an instrumented repository had every sensor and
+  no judge.
+  - **Its own skill, not a phase of the other one**, because it changes repository settings through
+    the GitHub API rather than files in the working tree: different permissions, different failure
+    modes, and no `git checkout` to undo them.
+  - **Never overwrites an existing ruleset.** It fetches it, compares field by field, and reports a
+    three-column table — what it has, what the skill would write, what that would change — then
+    stops. Updating is a person's call. It never deletes one, for any reason.
+  - **Proves the gate by blocking**, not by trusting a `201`. It opens a throwaway PR against the
+    protected branch and confirms GitHub reports `BLOCKED` for the reason that was configured. Three
+    ways a ruleset is accepted and still protects nothing are documented, and all three return
+    `201`: a bare branch name instead of a full ref, `enforcement: evaluate`, and a required context
+    no run ever produces.
+  - **The asymmetry between the two branches is encoded, not copied.** The release ruleset uses
+    `strict_required_status_checks_policy: false` on purpose: because integration merges by squash,
+    the integration branch never carries previous releases' merge commits, so with `true` every
+    release would be blocked forever as out of date.
+  - **Every bypass is explained.** The one honest reason to open one — a single-person repository
+    cannot satisfy a required approval, since nobody approves their own PR — is stated out loud,
+    with its removal condition recorded in `AGENTS.md`.
+  - The required status check's `context` is read from a real completed run, never guessed from the
+    workflow file name; the skill refuses to proceed without one, because a context that never
+    appears blocks every merge forever and looks like a working gate for the first hour.
+  - Every rule shape in `references/ruleset-anatomy.md` was read from live rulesets via the API,
+    not from documentation.
+
 - **`agent-context-java` now writes `REVIEW.md` and a PR template**, closing the last two boxes of
   the method's fourth verification layer — the one no sensor replaces.
   - **A third file, separate on purpose.** `AGENTS.md` holds the rules the agent respects *while

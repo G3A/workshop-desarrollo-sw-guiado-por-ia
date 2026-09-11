@@ -26,7 +26,7 @@ navegador basado en Chromium.
 | **Hueco** | Nadie la cubre acá: ni skill, ni visor, ni manual. |
 | **Fuera de alcance** | Frontera declarada del plugin, no un olvido: Azure DevOps, memoria semántica entre sesiones, agentes especialistas por stack. |
 
-Cobertura al momento de escribir esto: **30 skill · 5 parcial · 9 a mano · 25 hueco · 2 fuera de
+Cobertura al momento de escribir esto: **31 skill · 5 parcial · 8 a mano · 25 hueco · 2 fuera de
 alcance**, sobre 71 cajas con badge.
 
 ## Cómo se usa el diagrama
@@ -55,7 +55,7 @@ el `SKILL.md` del que sale; cada caja *A mano* nombra el nodo concreto del visor
 
 | Pieza | Qué aporta |
 |---|---|
-| `instrumentacion-java-ia/` | El plugin `sdlc-ia` y sus siete skills. |
+| `instrumentacion-java-ia/` | El plugin `sdlc-ia` y sus ocho skills. |
 | `proceso-operacional-con-ia/` | El visor BPMN del proceso, con comandos copiables por nodo. |
 | `manuales/` | Los recorridos ya grabados, con capturas y transcripciones reales. |
 | `base-conocimiento/` | La aplicación Java/Spring donde cada skill se probó de verdad. |
@@ -72,7 +72,7 @@ Playbook-Fases/
   index.html                     Índice de las fases.
   styles.css                     Estilos de las páginas, con los badges de cobertura.
   nav.js                         Modo foco y cierre de pestaña.
-  00-referencia-e-inicio.html    Las 7 skills, los 5 badges, el eje, las piezas del repo.
+  00-referencia-e-inicio.html    Las 8 skills, los 5 badges, el eje, las piezas del repo.
   01-fundamentos.html            Fase 0.
   02-cultura.html                Fase 1.
   03-preparacion-del-terreno.html  Fase 2 — contexto, 9 sensores, el juez, hooks y MCP.
