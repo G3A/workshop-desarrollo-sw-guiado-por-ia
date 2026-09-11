@@ -4,7 +4,7 @@ Monorepo del taller de desarrollo de software guiado por IA. Tres piezas, cada u
 contexto:
 
 - `base-conocimiento/` — la aplicación Java/Spring del taller. Tiene su `AGENTS.md`.
-- `instrumentacion-java-ia/` — el plugin `sdlc-ia` de Claude Code (siete skills). Tiene su `AGENTS.md`.
+- `instrumentacion-java-ia/` — el plugin `sdlc-ia` de Claude Code (ocho skills). Tiene su `AGENTS.md`.
 - `proceso-operacional-con-ia/` — el visor BPMN del proceso, que enseña con comandos lo que las
   skills ejecutan.
 - `playbook-sdlc-ia/` — el diagrama de las 7 fases del método con un badge de cobertura por caja

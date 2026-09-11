@@ -1,0 +1,61 @@
+// TEMPLATE — ruleset for the RELEASE branch (the stable one, fed only by release PRs).
+// Write this one ONLY if the repository actually has a release branch. A single-branch repo
+// gets the integration template and nothing else.
+//
+// PLACEHOLDERS
+//   <RULESET-NAME>     e.g. release-main
+//   <RELEASE-BRANCH>   bare branch name; it goes inside a FULL ref below
+//   <CHECK-CONTEXT>    the same job name the integration ruleset requires
+//
+// THE TWO FIELDS THAT DIFFER FROM THE INTEGRATION TEMPLATE, AND WHY
+//
+//   allowed_merge_methods = ["merge"]  (integration uses ["squash"])
+//     The release PR must PRESERVE the commits the integration branch already squashed.
+//     Squashing here would collapse a whole release into one opaque commit.
+//
+//   strict_required_status_checks_policy = FALSE  (integration uses true)
+//     This looks like an oversight and is not. `strict` means "the branch must be up to date with
+//     its base before merging". Because integration merges by squash, the integration branch never
+//     contains the merge commits of previous releases — so it is permanently "behind" this branch.
+//     With `true` here, EVERY RELEASE IS BLOCKED FOREVER as out of date.
+//     Do not "fix" this to match the other template.
+//
+// BEFORE WRITING: delete every // comment line — the API rejects a body that is not strict JSON.
+// APPLY: gh api repos/{owner}/{repo}/rulesets --method POST --input <this file>
+{
+  "name": "<RULESET-NAME>",
+  "target": "branch",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": {
+      "include": ["refs/heads/<RELEASE-BRANCH>"],
+      "exclude": []
+    }
+  },
+  "bypass_actors": [],
+  "rules": [
+    { "type": "deletion" },
+    { "type": "non_fast_forward" },
+    {
+      "type": "pull_request",
+      "parameters": {
+        "allowed_merge_methods": ["merge"],
+        "required_approving_review_count": 1,
+        "dismiss_stale_reviews_on_push": true,
+        "required_review_thread_resolution": true,
+        "require_code_owner_review": false,
+        "require_last_push_approval": false,
+        "require_extra_approval_for_unattributed_changes": true,
+        "required_reviewers": []
+      }
+    },
+    {
+      "type": "required_status_checks",
+      "parameters": {
+        "required_status_checks": [{ "context": "<CHECK-CONTEXT>" }],
+        "strict_required_status_checks_policy": false,
+        "do_not_enforce_on_create": false
+      }
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # AGENTS.md — instrumentacion-java-ia (plugin `sdlc-ia`)
 
-Plugin de Claude Code con siete skills. Las convenciones del monorepo (ramas, commits, idioma)
+Plugin de Claude Code con ocho skills. Las convenciones del monorepo (ramas, commits, idioma)
 están en el `AGENTS.md` de la raíz; este archivo cubre solo lo propio del plugin.
 
 ## Regla dura: versión y actualización

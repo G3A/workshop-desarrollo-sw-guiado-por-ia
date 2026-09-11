@@ -156,7 +156,7 @@ flowchart TD
 %% ============ REFERENCIA TRANSVERSAL ============
 subgraph REF["REFERENCIA · aplica en todo el flujo"]
   direction LR
-  RS["<b>Las 7 skills de sdlc-ia</b><br/>agent-context-java<br/>instrument-project-java<br/>instrument-agent-java<br/>requirement-to-spec-java<br/>github-plan-build<br/>debt-triage<br/>legacy-test-harness"]:::ref
+  RS["<b>Las 8 skills de sdlc-ia</b><br/>agent-context-java<br/>instrument-project-java<br/>instrument-agent-java<br/>instrument-github-repo<br/>requirement-to-spec-java<br/>github-plan-build<br/>debt-triage<br/>legacy-test-harness"]:::ref
   RB["<b>Los 5 badges de cobertura</b><br/>SKILL · la corre el plugin<br/>PARCIAL · hay skill, no alcanza<br/>A MANO · la haces tú, el repo la enseña<br/>HUECO · nadie la cubre todavía<br/>FUERA · frontera declarada del plugin"]:::ref
   RD["<b>El eje de la instrumentación</b><br/>Determinista si el disparo Y la decisión<br/>quedan fuera del modelo.<br/>Basta que una dependa del modelo<br/>para que sea no determinista."]:::refeje
   RV["<b>Las piezas del repositorio</b><br/>instrumentacion-java-ia · el plugin<br/>proceso-operacional-con-ia · el visor paso a paso<br/>manuales · los recorridos ya grabados<br/>base-conocimiento · el repo Java donde se prueba"]:::ref
@@ -214,7 +214,7 @@ subgraph P2["FASE 2 · Preparación del terreno — donde el plugin hace casi to
     DS["Seguridad del código<br/>PARCIAL · OWASP Dep-Check y gitleaks sí; FindSecBugs no"]:::parcial
     DQ["SonarQube · quality gate<br/>HUECO · debt-triage consume hallazgos, nadie instala el gate"]:::hueco
     DCI["Workflow de CI en GitHub Actions<br/>SKILL · instrument-project-java"]:::skill
-    DCJ["El juez · el Ruleset exige el check en verde y la PR aprobada<br/>A MANO · visor pz"]:::mano
+    DCJ["El juez · el Ruleset exige el check en verde y la PR aprobada<br/>SKILL · instrument-github-repo"]:::skill
     DCA["Azure DevOps · Pipelines y Branch Policies<br/>FUERA · el plugin solo escribe GitHub"]:::fuera
     D1-->DF-->DB-->DT-->DU-->DI-->DA-->DM-->DS-->DQ-->DCI-->DCJ
     DCI-.->DCA
@@ -480,7 +480,7 @@ style P6 fill:#0b0f15,stroke:#6b2018,color:#FF9C8C
     START:L("Empiezas aquí",P.ref,"START"),
     B0:B("Selecciona el repositorio","mano","Brownfield, Java con Maven. El visor lo chequea en sus nodos f0 y G1 antes de dejarte seguir.",P.ref,"B0"),
     IP:B("Instala el plugin","skill","update.ps1 en PowerShell 5.1 o 7, update.sh en bash. Desinstala e instala, porque claude plugin install nunca refresca un plugin ya instalado.",P.ref,"IP"),
-    RS:L("Las 7 skills",P.ref,"RS"), RB:L("Los 5 badges",P.ref,"RB"),
+    RS:L("Las 8 skills",P.ref,"RS"), RB:L("Los 5 badges",P.ref,"RB"),
     RD:B("El eje de la instrumentación","","Determinista solo si el disparo Y la decisión quedan fuera del modelo. Basta que una dependa del modelo para que sea no determinista.",P.ref,"RD"),
     RV:L("Las piezas del repositorio",P.ref,"RV"),
     // Fase 0
@@ -511,7 +511,7 @@ style P6 fill:#0b0f15,stroke:#6b2018,color:#FF9C8C
     DS:B("Seguridad del código","parcial","gitleaks para secretos y OWASP Dependency-Check para CVEs, los dos opt-in. SpotBugs con FindSecBugs, que es el SAST del código, no está.",P.f2,"DS"),
     DQ:B("SonarQube","hueco","debt-triage triaja hallazgos que Sonar ya reportó, pero ninguna skill instala el quality gate. Sin gate, no hay hallazgos que triajar.",P.f2,"DQ"),
     DCI:B("Workflow de CI","skill","instrument-project-java escribe .github/workflows/ci.yml. Es la única plataforma de CI que el plugin escribe.",P.f2,"DCI"),
-    DCJ:B("El juez","mano","Visor pz. El workflow informa; lo que bloquea el merge es el Ruleset que exige el check en verde y la PR aprobada. Ninguna skill lo configura.",P.f2,"DCJ"),
+    DCJ:B("El juez","skill","Lo escribe instrument-github-repo, la octava skill. Nunca sobrescribe un Ruleset existente: lo compara campo por campo y reporta las diferencias. Y lo prueba bloqueando una PR desechable, porque un 201 de la API no significa que el juez funcione.",P.f2,"DCJ"),
     DCA:B("Azure DevOps","fuera","Frontera declarada en el README del plugin: escribe GitHub Actions y GitHub Issues; otra plataforma se reporta fuera de alcance, no se adapta a mano.",P.f2,"DCA"),
     // Fase 2 · no deterministas
     N1:B("Archivo guía","skill","AGENTS.md como índice de menos de 80 líneas, y CLAUDE.md como una sola línea que lo importa.",P.f2,"N1"),
