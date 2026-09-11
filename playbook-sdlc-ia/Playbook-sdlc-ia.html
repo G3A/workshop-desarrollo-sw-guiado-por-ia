@@ -156,7 +156,7 @@ flowchart TD
 %% ============ REFERENCIA TRANSVERSAL ============
 subgraph REF["REFERENCIA · aplica en todo el flujo"]
   direction LR
-  RS["<b>Las 8 skills de sdlc-ia</b><br/>agent-context-java<br/>instrument-project-java<br/>instrument-agent-java<br/>instrument-github-repo<br/>requirement-to-spec-java<br/>github-plan-build<br/>debt-triage<br/>legacy-test-harness"]:::ref
+  RS["<b>Las 9 skills de sdlc-ia</b><br/>agent-context-java<br/>instrument-project-java<br/>instrument-agent-java<br/>instrument-github-repo<br/>requirement-to-spec-java<br/>github-plan-build<br/>impact-metrics<br/>debt-triage<br/>legacy-test-harness"]:::ref
   RB["<b>Los 5 badges de cobertura</b><br/>SKILL · la corre el plugin<br/>PARCIAL · hay skill, no alcanza<br/>A MANO · la haces tú, el repo la enseña<br/>HUECO · nadie la cubre todavía<br/>FUERA · frontera declarada del plugin"]:::ref
   RD["<b>El eje de la instrumentación</b><br/>Determinista si el disparo Y la decisión<br/>quedan fuera del modelo.<br/>Basta que una dependa del modelo<br/>para que sea no determinista."]:::refeje
   RV["<b>Las piezas del repositorio</b><br/>instrumentacion-java-ia · el plugin<br/>proceso-operacional-con-ia · el visor paso a paso<br/>manuales · los recorridos ya grabados<br/>base-conocimiento · el repo Java donde se prueba"]:::ref
@@ -322,9 +322,9 @@ R3 --> K1
 %% ============ FASE 5 · MÉTRICAS Y REPORTE ============
 subgraph P5["FASE 5 · Métricas y reporte a liderazgo"]
   direction TB
-  K1["Mide del historial de PRs<br/>% de PRs con IA · lead time · retrabajo · cobertura<br/>HUECO · el dato ya existe: git log del trailer Asistido-por-IA"]:::hueco
-  K2["Aplica la encuesta cualitativa 1 a 5<br/>confianza · fricción · valor · alineación<br/>HUECO"]:::hueco
-  K3["Reporta: diagnóstico, métricas comparadas y compromiso<br/>HUECO"]:::hueco
+  K1["Mide del historial de PRs<br/>SKILL · impact-metrics: 2 métricas de 4<br/>las otras dos, reportadas como faltantes con su motivo"]:::skill
+  K2["Aplica la encuesta cualitativa 1 a 5<br/>SKILL · el cuestionario y el agregado;<br/>la captura, el formulario que el equipo ya tenga"]:::skill
+  K3["Reporta: diagnóstico, métricas comparadas y compromiso<br/>SKILL · genera y abre la PR; enviarlo es tuyo"]:::skill
   K1-->K2-->K3
 end
 K3 --> GA{"¿Se cumple el criterio de avance<br/>de tu etapa actual?"}:::dec
@@ -559,9 +559,9 @@ style P6 fill:#0b0f15,stroke:#6b2018,color:#FF9C8C
     R2:B("Enruta la lección","hueco","Regla a AGENTS.md, criterio a REVIEW.md, porqué a un ADR, comprobable a un sensor. Ninguna skill lo hace, y REVIEW.md ni siquiera existe.",P.f4,"R2"),
     R3:B("Memoria entre sesiones","fuera","El README del plugin lo declara: lo único que un ciclo nuevo recuerda del anterior es lo que quedó escrito en AGENTS.md.",P.f4,"R3"),
     // Fase 5
-    K1:B("Las 4 métricas","hueco","El dato para la primera ya existe y nadie lo lee: git log --format='%(trailers:key=Asistido-por-IA)' separa los commits asistidos del resto.",P.f5,"K1"),
-    K2:B("Encuesta cualitativa","hueco","Cuatro preguntas en escala de 1 a 5. No está en ninguna pieza del repositorio.",P.f5,"K2"),
-    K3:B("Reporte a liderazgo","hueco","No está en ninguna pieza del repositorio.",P.f5,"K3"),
+    K1:B("Las 4 métricas","skill","impact-metrics entrega dos de las cuatro, no por dificultad sino por certeza de la definición: un primer reporte con un número discutible desacredita los otros tres. Las otras dos se reportan como faltantes con su motivo, nunca se omiten.",P.f5,"K1"),
+    K2:B("Encuesta cualitativa","skill","El plugin posee el cuestionario, el requisito de anonimato y el formato de agregación; la captura es del formulario que el equipo ya tenga. Solo se versiona el agregado: quitar el nombre de una fila por persona no da anonimato con un equipo chico.",P.f5,"K2"),
+    K3:B("Reporte a liderazgo","skill","Se deriva del agregado, con cada cifra citando de dónde salió. La skill lo escribe y abre la PR, y ahí se detiene: enviarlo es de una persona, como todo lo que este paquete deja fuera.",P.f5,"K3"),
     GA:L("¿Criterio de avance?",P.f5,"GA"),
     // Fase 6
     AJ:B("Consolida y ajusta","hueco","No está en ninguna pieza del repositorio.",P.f6,"AJ"),

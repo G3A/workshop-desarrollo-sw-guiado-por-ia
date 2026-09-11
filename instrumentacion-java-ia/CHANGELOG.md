@@ -17,6 +17,39 @@ versión nueva", and `AGENTS.md`).
 
 ### Added
 
+- **`impact-metrics`, a new skill** — the ninth — filling Fase 5, which was empty end to end, and
+  unblocking Fase 6: two of its four advancement criteria are evaluated with these numbers.
+  - **Two metrics of the four, and the other two reported as missing with their reason.** Not
+    difficulty — all four come from git and `gh` — but **certainty of definition**. A first report
+    carrying one disputable number discredits the other three, and the meeting becomes about
+    methodology instead of the work. An omitted metric reads as "it did not matter"; a named one
+    says what is not known yet.
+  - **Both shipped commands are identical in Windows PowerShell 5.1, PowerShell 7 and bash**, and
+    were run against a live repository before being written down — no pipes, no `&&`, no command
+    substitution, and the whole lead-time computation inside `--jq`.
+  - `--first-parent` is treated as mandatory (without it the worked repository counts 93 commits
+    instead of 26 pull requests), and `--grep` is used instead of git's trailer reader, which
+    returns empty on the marker for the reason reported in the trailer issue.
+  - **Zero is not a result.** A repository that has been running the loop and reports `0 %` is
+    saying the marker is not being written, not that no pull request used AI. The skill says which.
+  - **Median, never mean, for lead time** — 14 h against 62 h on the worked period, dragged by one
+    172-hour pull request. The mean describes the worst case dressed as the typical one.
+  - **The survey's raw answers never reach git; only the aggregate does.** Stripping the name from a
+    per-person row is not anonymity: on a small team the *pattern* of four answers identifies
+    someone, and git is permanent. Below the agreed sample floor, nothing is published. The template
+    carries the full procedure, including which checkbox to turn off in each common form tool —
+    Microsoft Forms records names by default on work accounts — and the step of checking it by
+    answering once yourself.
+  - **Rework's definition is agreed and written now, measured later**: fix-up or revert pull
+    requests referencing one integrated in the last 14 days. Changing it afterwards would break the
+    comparison with the previous period, and the metric that matters most is the one that behaves
+    worst with a small sample.
+  - **It generates and never sends.** It opens the pull request and stops — no email, no chat, no
+    Discussion. Consistent with the rest of the package, which never merges, deploys or sends a real
+    communication.
+  - With no previous period it labels the report the **baseline** and says so, rather than inventing
+    a trend — that is the Etapa 1 advancement criterion.
+
 - **`instrument-project-java` closes the code-security blind spot and the pipeline half of review**
   — controls 11b, 11c and 9b. Until now the plugin checked third-party dependencies and secrets, and
   nothing looked at the code the agent had just written, which is the code no human had reviewed.
