@@ -12,6 +12,10 @@ Monorepo del taller de desarrollo de software guiado por IA.
   (`sdlc-ia`) con 7 skills que instrumentan un repo Java/Spring para desarrollo guiado por IA:
   contexto, controles deterministas, hooks del agente, requisito→spec, el ciclo ticket→PR sobre
   GitHub, triaje de deuda y pruebas sobre código legacy.
+- [`playbook-sdlc-ia/`](playbook-sdlc-ia/README.md) — diagrama interactivo de las 7 fases del
+  método donde cada caja dice **quién la ejecuta hoy**: una skill del plugin, tú a mano con el
+  visor al lado, o nadie todavía. Mapa del método y backlog de cobertura en el mismo archivo;
+  funciona offline con doble clic.
 
 ## Ramas
 
