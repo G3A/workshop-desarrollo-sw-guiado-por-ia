@@ -13,6 +13,27 @@ version bump (verified 0.1.0 → 0.2.0). Updating on any machine is `update.ps1`
 the plugin root, which uninstalls and reinstalls (see the README, "Actualizar cuando sale una
 versión nueva", and `AGENTS.md`).
 
+## [unreleased]
+
+### Changed
+
+- **`instrument-agent-java` no longer calls itself "the non-deterministic instrumentation layer".**
+  It installs one half of each: MCP servers are non-deterministic (the model decides when to call
+  a tool and with which arguments), while the eight `type: command` hooks are deterministic (the
+  agent's lifecycle fires them at a fixed point and a shell script, not the model, decides allow /
+  block / report). The old label contradicted the axis the `proceso-operacional-con-ia` viewer
+  states — deterministic only when both the trigger and the decision stay outside the model — and
+  the viewer already tags all eight hooks `determinista` and the three MCP servers
+  `noDeterminista`. Wording only; no change to what the skill installs.
+
+### Fixed
+
+- **`README.md` said the plugin has four skills** while the table below it listed seven, and typed
+  "una catálogo de 8 hooks".
+- **`docs/skills/instrument-agent-java-es.md` listed seven hook scripts of eight** under "Qué
+  archivos toca o crea", omitting `block-dangerous-powershell.sh` — hook 8 of its own table, and a
+  file that ships in `templates/hooks/`.
+
 ## [0.2.0] — 2026-09-09 (first release to `main`)
 
 ### Added
