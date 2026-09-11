@@ -234,7 +234,7 @@ subgraph P2["FASE 2 · Preparación del terreno — donde el plugin hace casi to
       DH["Hook de Git · lefthook<br/>pre-commit y pre-push<br/>SKILL · instrument-project-java"]:::skill
       DAH["Hook de comando del agente · type command<br/>los 8 del catálogo<br/>SKILL · instrument-agent-java"]:::skill
       DHH["Hook HTTP del agente · type http<br/>HUECO"]:::hueco
-      DMH["Hook de herramienta MCP · type mcp_tool<br/>HUECO"]:::hueco
+      DMH["Hook de herramienta MCP · type mcp_tool<br/>FUERA · derivada: su único caso era la memoria, que ya está fuera"]:::fuera
       NHP["Hook de prompt · type prompt<br/>HUECO"]:::hueco
       NHA["Hook de agente · type agent<br/>HUECO"]:::hueco
       DH-->DAH-->DHH-->DMH-->NHP-->NHA
@@ -313,7 +313,7 @@ MF -->|No, por ahora| R1
 subgraph P4["FASE 4 · Retroalimentación · evolución constante"]
   direction TB
   R1["Guarda la lección de la vuelta<br/>A MANO · visor c5"]:::mano
-  R2["Enruta cada lección a donde pertenece<br/>regla a AGENTS.md · criterio a REVIEW.md · porqué a un ADR · comprobable a un sensor<br/>HUECO · ninguna skill lo hace"]:::hueco
+  R2["Enruta cada lección a donde pertenece<br/>regla a AGENTS.md · criterio a REVIEW.md · porqué a un ADR · comprobable a un sensor<br/>lo que aún no es regla, a docs/lecciones.md con fecha<br/>SKILL · github-plan-build, paso K: propone destino y texto; aplicar es tuyo"]:::skill
   R3["Memoria entre sesiones<br/>FUERA · el plugin declara que no la tiene"]:::fuera
   R1-->R2-->R3
 end
@@ -333,7 +333,7 @@ K3 --> GA{"¿Se cumple el criterio de avance<br/>de tu etapa actual?"}:::dec
 GA -->|No| AJ["Consolida y ajusta la etapa actual<br/>A MANO · mismo alcance, y volver a medir"]:::mano
 AJ --> S1
 GA -->|Sí, amplía el alcance| ES
-subgraph P6["FASE 6 · Adopción por etapas — sin cobertura, de punta a punta"]
+subgraph P6["FASE 6 · Adopción por etapas — el playbook la enseña, ninguna skill la corre"]
   direction LR
   E1["<b>Etapa 1 · Piloto individual</b><br/>A MANO · archivo guía y línea base medida"]:::mano --> E2["<b>Etapa 2 · Escuadra de 3 a 5</b><br/>A MANO · acuerdo escrito de marcado"]:::mano --> E3["<b>Etapa 3 · Equipo completo</b><br/>A MANO · un dato presentable a liderazgo"]:::mano --> E4["<b>Etapa 4 · Organización</b><br/>A MANO · política, presupuesto y DORA"]:::mano
 end
@@ -522,7 +522,7 @@ style P6 fill:#0b0f15,stroke:#6b2018,color:#FF9C8C
     DH:B("Hook de Git · lefthook","skill","Determinista. Dispara Git en el evento; decide el script. Corre aunque el agente no esté abierto. Lo escribe instrument-project-java.",P.f2,"DH"),
     DAH:B("Hook de comando del agente","skill","Determinista. Dispara el ciclo del agente en un punto fijo; decide un script de shell. Son los 8 del catálogo de instrument-agent-java.",P.f2,"DAH"),
     DHH:B("Hook HTTP","hueco","Determinista, misma garantía que el de comando con el trabajo hecho fuera de la máquina. El catálogo no lo incluye.",P.f2,"DHH"),
-    DMH:B("Hook de herramienta MCP","hueco","Determinista, y es la excepción que rompe la intuición: un MCP que NO elige el modelo, porque lo llama el hook en un punto fijo. El catálogo no lo incluye.",P.f2,"DMH"),
+    DMH:B("Hook de herramienta MCP","fuera","Determinista, y es la excepción que rompe la intuición: un MCP que NO elige el modelo, porque lo llama el hook en un punto fijo. Frontera derivada: su único caso de uso aquí era inyectar memoria al arrancar, y esa memoria ya está fuera de alcance.",P.f2,"DMH"),
     NHP:B("Hook de prompt","hueco","No determinista: el disparo es fijo, pero la decisión sale de un modelo en una vuelta. El catálogo no lo incluye.",P.f2,"NHP"),
     NHA:B("Hook de agente","hueco","No determinista, con más alcance que el de prompt: un subagente lee archivos y corre comandos antes de decidir. El catálogo no lo incluye.",P.f2,"NHA"),
     // Fase 2 · MCP
@@ -556,7 +556,7 @@ style P6 fill:#0b0f15,stroke:#6b2018,color:#FF9C8C
     MF:L("¿Más issues?",P.f3,"MF"),
     // Fase 4
     R1:B("Guarda la lección","mano","Visor c5: sin este paso, cada vuelta del ciclo aprende lo mismo que la anterior.",P.f4,"R1"),
-    R2:B("Enruta la lección","hueco","Regla a AGENTS.md, criterio a REVIEW.md, porqué a un ADR, comprobable a un sensor. Ninguna skill lo hace, y REVIEW.md ni siquiera existe.",P.f4,"R2"),
+    R2:B("Enruta la lección","skill","Paso K de github-plan-build, al cerrar la vuelta. Regla a AGENTS.md, criterio a REVIEW.md, porqué a un ADR, comprobable a un sensor, y lo que aún no es regla a docs/lecciones.md con fecha. Propone destino y texto; aplicarlo es tuyo.",P.f4,"R2"),
     R3:B("Memoria entre sesiones","fuera","El README del plugin lo declara: lo único que un ciclo nuevo recuerda del anterior es lo que quedó escrito en AGENTS.md.",P.f4,"R3"),
     // Fase 5
     K1:B("Las 4 métricas","skill","impact-metrics entrega dos de las cuatro, no por dificultad sino por certeza de la definición: un primer reporte con un número discutible desacredita los otros tres. Las otras dos se reportan como faltantes con su motivo, nunca se omiten.",P.f5,"K1"),
