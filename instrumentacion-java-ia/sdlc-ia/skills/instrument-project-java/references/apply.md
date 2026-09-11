@@ -1,4 +1,4 @@
-# Applying the nine controls
+# Applying the twelve controls
 
 > Called from **Phase 3** of `SKILL.md`, after the scope questions are answered.
 
@@ -20,6 +20,21 @@ Declare (or extend) `maven-compiler-plugin`'s `<configuration>` with
 `<compilerArgs><arg>-Xlint:all</arg><arg>-Werror</arg></compilerArgs>`. Under
 `spring-boot-starter-parent` the plugin is already version-managed — add only `<configuration>`,
 never a `<version>`.
+
+Then add **Error Prone** to the same plugin, as an annotation processor path plus the
+`-XDcompilePolicy=simple` and `-Xplugin:ErrorProne` compiler args. `-Werror` catches what `javac`
+already emits; Error Prone catches the type-level defects that compile clean — self-comparisons,
+format strings that do not match their arguments, nullness annotations ignored.
+
+- **Severity: the ERROR set only.** Leave the WARNING checks visible but non-fatal
+  (`-Xep:<Check>:WARN` is not needed — the default WARNING severity already behaves that way; do
+  not promote them with `-XepAllErrorsAsWarnings` inverted). The ERROR set is tuned for no false
+  positives, so it starts green on almost any repository. Turning everything into an error breaks a
+  brownfield on day one, and the team uninstalls the tool instead of raising the bar.
+- Resolve the Error Prone version at install time and pin it, like every other version here.
+- On JDK 16+ the compiler needs `--add-exports`/`--add-opens` flags for Error Prone to reach the
+  compiler internals; read the project's current Error Prone installation notes rather than
+  reproducing a flag list from memory, and confirm `./mvnw -q compile` is green before moving on.
 
 ## 3 — Style
 
@@ -136,3 +151,62 @@ through the same Ruleset as everyone else's.
 needs: an `actions/cache` step for the NVD mirror and `NVD_API_KEY: ${{ secrets.NVD_API_KEY }}` on
 the `make ci` step. Tell the user to create that repository secret; without it CI still passes,
 just slower.
+
+## 10 — Test coverage
+
+On by default. Declare `org.jacoco:jacoco-maven-plugin`, version resolved at install time and
+pinned, with two executions: `prepare-agent` (bound to `initialize`) and `report` (bound to
+`verify`).
+
+**The rule is scoped to new code, never to the repository.** A repo-wide `LINE` ratio on a
+brownfield is born red, and its only exit is lowering it until it means nothing — the same failure
+mode control 7 avoids by encoding what the repo already does. Scope the `check` goal to the classes
+the branch touched, and confirm the percentage with the user in scope question 8 instead of
+inventing one.
+
+**It fails CI only, never `make check`.** Coverage needs a full test run plus report generation; a
+local gate that slow gets bypassed with `--no-verify` inside a week. Bind the `check` goal behind
+the CI profile and let `make ci` chain it — the same split controls 6 and 9 already use.
+
+Read the report path the plugin writes (`target/site/jacoco/jacoco.xml`) and record it in the
+report: the metrics skill of the Fase 5 backlog reads coverage from there, and a moved path
+silently produces a missing metric rather than an error.
+
+## 11 — Bug patterns
+
+Only if scope question 9 said yes — **off by default**, like controls 6 and 9 and for the same
+reason: Checkstyle in strict mode prevents new debt and starts green, while SpotBugs over a
+brownfield starts red.
+
+Declare `com.github.spotbugs:spotbugs-maven-plugin`, version resolved and pinned, with
+`<effort>Max</effort>` and a `<threshold>` agreed with the user. **SpotBugs alone — never PMD
+alongside it.** Two new analyzers shouting at once is the fastest way to get both muted, and PMD
+overlaps Checkstyle across much of its ruleset.
+
+Bind the `check` goal so it **fails `make check`**: a sensor that only reports is a sensor nobody
+reads, and this one was switched on deliberately. Before wiring the gate, run it once and report
+the existing findings for triage, exactly as control 9 does — a pre-existing tree that already
+trips a dozen patterns blocks every build otherwise. An exclusion goes in a
+`spotbugs-exclude.xml` with its reason, never by lowering the threshold.
+
+This control is what makes **FindSecBugs** possible later: it is a SpotBugs plugin, and pinning the
+pair (SpotBugs and the plugin) is its own decision. Note in the report that the security half is
+not installed here.
+
+## 12 — Test suite separation
+
+On by default. Split the fast set from the slow one so each can be required where it belongs:
+`maven-surefire-plugin` keeps `*Test`, `maven-failsafe-plugin` takes `*IT` / `*ITCase` and binds
+`integration-test` and `verify`.
+
+New Makefile targets: `test` (surefire only) and `verify` (both). `make check` chains `test`;
+`make ci` chains `verify`.
+
+**Install the split and the profile only.** Never add Testcontainers, RestAssured, WireMock or any
+other test framework: choosing a testing stack for the team is more invasive than anything else this
+skill does, and contradicts its own rule of encoding what the repo already does. Growing the tests
+themselves is `/sdlc-ia:legacy-test-harness`.
+
+If the repo has no integration tests yet, the control still installs — an empty Failsafe run is
+green, and the separation is what lets the first `*IT` land without slowing the loop for everyone.
+Say so in the report rather than skipping the control.

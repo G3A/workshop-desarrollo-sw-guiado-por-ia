@@ -4,9 +4,10 @@
 
 Instala la capa de **instrumentación determinística** en un repositorio Java/Maven: un conjunto
 de controles que una máquina puede verificar por sí sola, en milisegundos y sin ambigüedad, antes
-de que una persona revise el cambio. Cubre nueve controles — desde builds reproducibles hasta un
-pipeline de CI y el escaneo de dependencias vulnerables — y prueba que cada uno realmente falla
-cuando debería fallar antes de dar la corrida por terminada.
+de que una persona revise el cambio. Cubre doce controles — desde builds reproducibles hasta un
+pipeline de CI, el escaneo de dependencias vulnerables, la cobertura del código nuevo y la
+separación de suites — y prueba que cada uno realmente falla cuando debería fallar antes de dar la
+corrida por terminada.
 
 Es el complemento de `instrument-agent-java`: esta skill instala lo que una computadora puede
 decidir sola (¿compila con warnings?, ¿el formato es correcto?, ¿hay un secreto en el commit?);
@@ -21,12 +22,12 @@ puede abrir).
 
 No recibe argumentos.
 
-## Los nueve controles
+## Los doce controles
 
 | # | Control | Qué instala | Qué evita |
 |---|---------|--------------|-----------|
 | 1 | Entradas reproducibles | Maven Wrapper fijado, versiones gestionadas por BOM | Que dos máquinas resuelvan un árbol de dependencias distinto |
-| 2 | Build estricto | `-Werror` en el compilador | Que un warning llegue a `main` |
+| 2 | Build estricto | `-Werror` en el compilador, más **Error Prone** | Que un warning llegue a `main`, y que un bug de tipo compile limpio |
 | 3 | Estilo | `.editorconfig`, Spotless, Checkstyle | Ruido de formato y nombres inconsistentes en cada diff |
 | 4 | Punto de entrada único | Un `Makefile` (parchado, no reemplazado) | Que nadie sepa cómo se verifica el repositorio |
 | 5 | Shift-left | Hooks de pre-commit/pre-push con Lefthook | Que los errores aparezcan recién en la revisión |
@@ -34,6 +35,9 @@ No recibe argumentos.
 | 7 | Pruebas de arquitectura | ArchUnit / verificación de Spring Modulith | Que la regla de dependencias se rompa en silencio |
 | 8 | CI | Workflow de GitHub Actions (la única plataforma de CI que escribe la skill) | Que los controles locales se salteen |
 | 9 | Dependencias vulnerables (SCA) | OWASP Dependency-Check detrás de `make sca` (falla `make ci` con CVSS ≥ 7), archivo de supresiones con motivo, y Dependabot en GitHub | Que una dependencia con un CVE conocido llegue a producción sin que nadie lo vea |
+| 10 | Cobertura de pruebas | JaCoCo con una regla **solo sobre el código nuevo**, que falla en CI y no en `make check` | Que el código recién escrito llegue sin una sola prueba, sin que nadie lo note |
+| 11 | Patrones de bug | SpotBugs (opt-in), que falla `make check` | Defectos que compilan y pasan el estilo |
+| 12 | Separación de suites | Failsafe para `*IT`, más `make test` y `make verify` | Que las pruebas rápidas y las lentas corran juntas, y por eso no se pueda exigir ninguna de las dos |
 
 ## Fases principales
 
