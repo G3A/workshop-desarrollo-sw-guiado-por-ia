@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fase 4 · Retroalimentación · Playbook del plugin sdlc-ia</title>
+<link rel="stylesheet" href="../vendor/fonts.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="../Playbook-sdlc-ia.html">← Volver al diagrama</a>
+  <div class="brand">Plugin sdlc-ia · Fase 4</div>
+  <h1>Retroalimentación</h1>
+  <p class="lead">El visor te dice que guardes la lección. Nadie te dice —ni hace— qué hacer con ella después. Es el hueco que más se paga con el tiempo: sin esta fase, la vuelta 20 aprende exactamente lo mismo que la vuelta 1.</p>
+  <div class="rule"></div>
+
+  <nav class="phases">
+    <a href="index.html">Índice</a>
+    <a href="00-referencia-e-inicio.html">Referencia</a>
+    <a href="01-fundamentos.html">Fase 0</a>
+    <a href="02-cultura.html">Fase 1</a>
+    <a href="03-preparacion-del-terreno.html">Fase 2</a>
+    <a href="04-ciclo-por-feature.html">Fase 3</a>
+    <a class="active" href="05-retroalimentacion.html">Fase 4</a>
+    <a href="06-metricas-y-reporte.html">Fase 5</a>
+    <a href="07-adopcion-por-etapas.html">Fase 6</a>
+  </nav>
+
+  <div class="cobertura">
+    <span class="k-mano"><b>1</b> · a mano</span>
+    <span class="k-hueco"><b>1</b> · hueco</span>
+    <span class="k-fuera"><b>1</b> · fuera de alcance</span>
+  </div>
+
+  <section id="R1" class="mano">
+    <span class="tag">R1</span><span class="badge mano">A mano</span>
+    <h2>Guarda la lección de la vuelta</h2>
+    <p>«Sin este paso, cada vuelta del ciclo aprende lo mismo que la anterior.» El visor lo pone como nodo propio al cerrar el ciclo, y la instrucción es simple: pídele al agente que resuma qué costó más de lo esperado, y si vale la pena que eso se vuelva una regla.</p>
+    <p>Dos preguntas deciden si lo que encontraste es una regla de verdad:</p>
+    <ul>
+      <li>Si quitaras esa línea del archivo guía, <strong>¿el agente empezaría a cometer errores?</strong></li>
+      <li><strong>¿Lo estás diciendo a mano por tercera vez</strong> en una revisión?</li>
+    </ul>
+    <p>Si la respuesta es sí, es una regla que falta. Lo que dices tres veces a mano no es un problema de disciplina del agente: es un hueco del sistema.</p>
+    <div class="fuente"><b>Fuente:</b> visor, nodo <code>c5</code>.</div>
+  </section>
+
+  <section id="R2" class="hueco">
+    <span class="tag">R2</span><span class="badge hueco">Hueco</span>
+    <h2>Enruta la lección a donde pertenece</h2>
+    <p>No hay un archivo único de lecciones aprendidas. La lección se enruta <strong>según en qué se convirtió</strong>, y cada destino tiene una razón distinta:</p>
+    <div class="ejecuadro">
+      <table class="rev">
+        <tr><th>Si la lección es…</th><th>Va a…</th><th>Con qué forma</th></tr>
+        <tr><td>Una regla que el agente debe respetar al generar</td><td><code>AGENTS.md</code> (<code>CLAUDE.md</code> lo importa)</td><td>Una línea corta</td></tr>
+        <tr><td>Un criterio que solo aplica al revisar</td><td><code>REVIEW.md</code></td><td>Una viñeta de qué mirar en el diff</td></tr>
+        <tr><td>El porqué de una decisión ya descartada</td><td>Un ADR en <code>docs/adrs/</code></td><td>Contexto, decisión, consecuencias</td></tr>
+        <tr><td>Algo que una máquina puede comprobar</td><td>Deja de ser texto</td><td>Se vuelve sensor: prueba, linter o hook</td></tr>
+        <tr><td>Una preferencia tuya, no del equipo</td><td><code>~/.claude/CLAUDE.md</code></td><td>Fuera del repositorio, a propósito</td></tr>
+      </table>
+    </div>
+    <p>La última fila es la que más rinde y la que menos se usa: <strong>toda lección que una máquina pueda comprobar debería terminar dejando de ser texto</strong>. Un criterio escrito se olvida; un sensor no.</p>
+    <div class="falta">
+      <b>Qué falta.</b> Ninguna skill enruta nada. Y el hueco tiene una capa más: la segunda fila apunta a <code>REVIEW.md</code>, que <a href="03-preparacion-del-terreno.html#N2">tampoco existe</a>, y la cuarta apunta a convertir la lección en sensor, que es trabajo de <code>instrument-project-java</code> — pero nadie conecta una cosa con la otra. Hoy la lección se escribe en el resumen del agente y se queda ahí.
+    </div>
+    <div class="hint"><b>Dónde guardar la experiencia que todavía no es regla.</b> El método no lo decide por ti: un <code>docs/lecciones.md</code> en el repositorio (simple, viaja con el código, se revisa en la PR) o un servidor MCP sobre una base de datos (cruza repositorios y habilita métricas). Con cualquiera de las dos, trátala como <b>sala de espera</b>: cada entrada debería terminar convertida en una de las cinco filas de arriba, o ser borrada.</div>
+  </section>
+
+  <section id="R3" class="fuera">
+    <span class="tag">R3</span><span class="badge fuera">Fuera de alcance</span>
+    <h2>Memoria entre sesiones</h2>
+    <p>El <code>README.md</code> del plugin lo declara sin rodeos: <strong>sin memoria semántica entre sesiones</strong> — lo único que un ciclo nuevo «recuerda» del anterior es lo que quedó escrito en <code>AGENTS.md</code>.</p>
+    <p>Es una frontera, no un olvido, y vale la pena entender el argumento a favor de esa frontera. Un servidor MCP de memoria tiene contras reales: la recuperación es <strong>no determinista</strong> —el modelo tiene que decidir buscar, y la búsqueda tiene que acertar—, sale del repositorio, nadie revisa lo que el agente inserta, y <strong>mata la presión de promover</strong>. Una biblioteca cómoda es una excusa perfecta para no convertir nunca la lección en regla ni en sensor.</p>
+    <div class="hint"><b>Si algún día se adopta, el requisito no es opcional:</b> un hook de <code>SessionStart</code> que consulte el servidor e inyecte las lecciones del repositorio actual. Eso convierte la recuperación no determinista en <b>inyección determinista</b>. Sin ese hook, es una biblioteca que el agente visita cuando se acuerda — y ese hook es justamente el tipo <code>mcp_tool</code> que <a href="03-preparacion-del-terreno.html#DMH">el catálogo todavía no cubre</a>.</div>
+    <div class="fuente"><b>Fuente:</b> <code>instrumentacion-java-ia/README.md</code>, «Alcance deliberado».</div>
+  </section>
+
+  <footer>Plugin <code>sdlc-ia</code> · monorepo <code>workshop-desarrollo-sw-guiado-por-ia</code></footer>
+</div>
+<script src="nav.js"></script>
+</body>
+</html>

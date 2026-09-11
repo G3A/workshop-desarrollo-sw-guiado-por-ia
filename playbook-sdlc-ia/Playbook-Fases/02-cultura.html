@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fase 1 · Cultura de IA · Playbook del plugin sdlc-ia</title>
+<link rel="stylesheet" href="../vendor/fonts.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="../Playbook-sdlc-ia.html">← Volver al diagrama</a>
+  <div class="brand">Plugin sdlc-ia · Fase 1</div>
+  <h1>Cultura de IA</h1>
+  <p class="lead">La única fase donde «hueco» no es un reproche al plugin. Ninguna herramienta instala una conversación de equipo.</p>
+  <div class="rule"></div>
+
+  <nav class="phases">
+    <a href="index.html">Índice</a>
+    <a href="00-referencia-e-inicio.html">Referencia</a>
+    <a href="01-fundamentos.html">Fase 0</a>
+    <a class="active" href="02-cultura.html">Fase 1</a>
+    <a href="03-preparacion-del-terreno.html">Fase 2</a>
+    <a href="04-ciclo-por-feature.html">Fase 3</a>
+    <a href="05-retroalimentacion.html">Fase 4</a>
+    <a href="06-metricas-y-reporte.html">Fase 5</a>
+    <a href="07-adopcion-por-etapas.html">Fase 6</a>
+  </nav>
+
+  <div class="cobertura">
+    <span class="k-mano"><b>1</b> · a mano</span>
+    <span class="k-hueco"><b>2</b> · hueco</span>
+  </div>
+
+  <section id="C1" class="mano">
+    <span class="tag">C1</span><span class="badge mano">A mano</span>
+    <h2>Confirma las 4 prácticas de equipo</h2>
+    <p>«Un agente de IA no arregla un equipo sin estas prácticas: las amplifica. Si nadie revisa código, el agente va a mergear más código sin revisar, más rápido.»</p>
+    <p>El visor lo pone como primer nodo del proceso, antes de instalar nada, y con una advertencia explícita: si falta alguna de las cuatro, <strong>la conversación es con tu equipo</strong>, no un paso que puedas resolver solo desde la terminal.</p>
+    <p>Vale la pena mirar esto junto con la Fase 2 de este mismo playbook: casi todo lo que el plugin instala ahí es la versión automatizada de una de estas prácticas. Instrumentar sin la práctica detrás produce un repositorio con gates que nadie respeta.</p>
+    <div class="fuente"><b>Fuente:</b> visor, nodo <code>f0</code>.</div>
+  </section>
+
+  <section id="C2" class="hueco">
+    <span class="tag">C2</span><span class="badge hueco">Hueco</span>
+    <h2>Da permiso para experimentar (y fallar)</h2>
+    <p>Un equipo que solo puede usar el agente cuando está seguro de que va a salir bien no aprende a usarlo: aprende a esconder cuándo lo usó. El permiso tiene que ser explícito y venir de quien puede darlo.</p>
+    <div class="falta"><b>Qué falta.</b> No está en ninguna pieza del repositorio, y es discutible que deba estarlo: es una decisión de liderazgo, no un artefacto. Lo que <em>sí</em> podría vivir acá es el acuerdo escrito que resulta de esa decisión — dónde se guarda y quién lo revisa.</div>
+  </section>
+
+  <section id="C3" class="hueco">
+    <span class="tag">C3</span><span class="badge hueco">Hueco</span>
+    <h2>Acuerda una visión compartida y recompensa el nuevo comportamiento</h2>
+    <p>Si el reconocimiento sigue puesto en «cuántas líneas escribiste», nadie va a invertir tiempo en escribir contexto, afinar el archivo guía o instrumentar un sensor — que es exactamente el trabajo que hace que el agente sirva.</p>
+    <div class="falta"><b>Qué falta.</b> No está en ninguna pieza del repositorio. Se conecta directo con la Fase 5: sin métricas, no hay con qué reconocer el comportamiento nuevo, y el incentivo se queda donde estaba.</div>
+  </section>
+
+  <footer>Plugin <code>sdlc-ia</code> · monorepo <code>workshop-desarrollo-sw-guiado-por-ia</code></footer>
+</div>
+<script src="nav.js"></script>
+</body>
+</html>
