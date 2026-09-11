@@ -24,9 +24,9 @@ navegador basado en Chromium.
 | **Parcial** | Hay una skill que toca el paso, pero no lo cubre entero. La sección dice qué queda afuera. |
 | **A mano** | La haces tú, y el repositorio te enseña cómo: un nodo del visor `proceso-operacional-con-ia` o un manual de `manuales/`. |
 | **Hueco** | Nadie la cubre acá: ni skill, ni visor, ni manual. |
-| **Fuera de alcance** | Frontera declarada del plugin, no un olvido: Azure DevOps, memoria semántica entre sesiones, agentes especialistas por stack. |
+| **Fuera de alcance** | Frontera declarada del plugin, no un olvido: Azure DevOps, memoria semántica entre sesiones, agentes especialistas por stack — y una derivada de la segunda, los hooks `type: mcp_tool`. |
 
-Cobertura al momento de escribir esto: **37 skill · 3 parcial · 13 a mano · 16 hueco · 2 fuera de
+Cobertura al momento de escribir esto: **38 skill · 3 parcial · 13 a mano · 14 hueco · 3 fuera de
 alcance**, sobre 71 cajas con badge.
 
 ## Cómo se usa el diagrama
@@ -55,7 +55,7 @@ el `SKILL.md` del que sale; cada caja *A mano* nombra el nodo concreto del visor
 
 | Pieza | Qué aporta |
 |---|---|
-| `instrumentacion-java-ia/` | El plugin `sdlc-ia` y sus ocho skills. |
+| `instrumentacion-java-ia/` | El plugin `sdlc-ia` y sus nueve skills. |
 | `proceso-operacional-con-ia/` | El visor BPMN del proceso, con comandos copiables por nodo. |
 | `manuales/` | Los recorridos ya grabados, con capturas y transcripciones reales. |
 | `base-conocimiento/` | La aplicación Java/Spring donde cada skill se probó de verdad. |

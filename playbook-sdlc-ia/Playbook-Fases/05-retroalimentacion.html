@@ -12,7 +12,7 @@
   <a class="back" href="../Playbook-sdlc-ia.html">← Volver al diagrama</a>
   <div class="brand">Plugin sdlc-ia · Fase 4</div>
   <h1>Retroalimentación</h1>
-  <p class="lead">El visor te dice que guardes la lección. Nadie te dice —ni hace— qué hacer con ella después. Es el hueco que más se paga con el tiempo: sin esta fase, la vuelta 20 aprende exactamente lo mismo que la vuelta 1.</p>
+  <p class="lead">El visor te dice que guardes la lección; el Paso K de <code>github-plan-build</code> la enruta. Es el único bucle que hace que la vuelta 20 sea distinta de la vuelta 1 — y la skill <strong>propone destino y texto, no los aplica</strong>.</p>
   <div class="rule"></div>
 
   <nav class="phases">
@@ -28,8 +28,8 @@
   </nav>
 
   <div class="cobertura">
+    <span class="k-skill"><b>1</b> · skill</span>
     <span class="k-mano"><b>1</b> · a mano</span>
-    <span class="k-hueco"><b>1</b> · hueco</span>
     <span class="k-fuera"><b>1</b> · fuera de alcance</span>
   </div>
 
@@ -46,9 +46,10 @@
     <div class="fuente"><b>Fuente:</b> visor, nodo <code>c5</code>.</div>
   </section>
 
-  <section id="R2" class="hueco">
-    <span class="tag">R2</span><span class="badge hueco">Hueco</span>
+  <section id="R2" class="skill">
+    <span class="tag">R2</span><span class="badge skill">Skill</span>
     <h2>Enruta la lección a donde pertenece</h2>
+    <p>Lo cubre el <strong>Paso K de <code>github-plan-build</code></strong>, al cerrar la vuelta. Tres preguntas sobre la vuelta que acaba de terminar —qué costó más de lo previsto, qué tuviste que decir a mano que el agente debería haber sabido, qué atrapó un gate tarde o no atrapó ninguno— y, por cada lección, el destino y el texto exacto.</p>
     <p>No hay un archivo único de lecciones aprendidas. La lección se enruta <strong>según en qué se convirtió</strong>, y cada destino tiene una razón distinta:</p>
     <div class="ejecuadro">
       <table class="rev">
@@ -58,13 +59,15 @@
         <tr><td>El porqué de una decisión ya descartada</td><td>Un ADR en <code>docs/adrs/</code></td><td>Contexto, decisión, consecuencias</td></tr>
         <tr><td>Algo que una máquina puede comprobar</td><td>Deja de ser texto</td><td>Se vuelve sensor: prueba, linter o hook</td></tr>
         <tr><td>Una preferencia tuya, no del equipo</td><td><code>~/.claude/CLAUDE.md</code></td><td>Fuera del repositorio, a propósito</td></tr>
+        <tr><td>Todavía ninguna de las anteriores</td><td><code>docs/lecciones.md</code>, la sala de espera</td><td>Una línea, <strong>con la fecha en que entró</strong></td></tr>
       </table>
     </div>
-    <p>La última fila es la que más rinde y la que menos se usa: <strong>toda lección que una máquina pueda comprobar debería terminar dejando de ser texto</strong>. Un criterio escrito se olvida; un sensor no.</p>
-    <div class="falta">
-      <b>Qué falta.</b> Ninguna skill enruta nada. Los <em>destinos</em> ya existen todos —<code>AGENTS.md</code> y ahora también <a href="03-preparacion-del-terreno.html#N2"><code>REVIEW.md</code></a>, las ADR, y los sensores de <code>instrument-project-java</code>—, así que lo que falta es justamente el paso que decide a cuál va cada lección y escribe el texto. Hoy la lección se escribe en el resumen del agente y se queda ahí.
-    </div>
-    <div class="hint"><b>Dónde guardar la experiencia que todavía no es regla.</b> El método no lo decide por ti: un <code>docs/lecciones.md</code> en el repositorio (simple, viaja con el código, se revisa en la PR) o un servidor MCP sobre una base de datos (cruza repositorios y habilita métricas). Con cualquiera de las dos, trátala como <b>sala de espera</b>: cada entrada debería terminar convertida en una de las cinco filas de arriba, o ser borrada.</div>
+    <p>La cuarta fila es la que más rinde y la que menos se usa: <strong>toda lección que una máquina pueda comprobar debería terminar dejando de ser texto</strong>. Un criterio escrito se olvida; un sensor no. Antes de proponer una línea de prosa, el paso se pregunta si la misma lección no sería mejor una prueba que falla.</p>
+    <div class="hint"><b>Propone y no aplica, por dos razones y la segunda es mecánica.</b> Un paso que edita el archivo que gobierna al agente cierra un bucle donde el agente escribe sus propias reglas y la vuelta siguiente las lee, sin que nadie haya mirado en el medio. Y para cuando llega el Paso K, <b>el PR ya está abierto y en verde</b>: una regla nueva es sobre el <i>proceso</i>, no sobre la feature, cambia todas las vueltas siguientes, se revisa distinto — y por eso va en su propio PR.</div>
+    <div class="hint"><b>«No hay ninguna» es una respuesta válida, y se dice.</b> Una vuelta que no enseñó nada es común; inventar una lección para llenar el paso envenena justamente los archivos a los que iría. Es el mismo criterio con el que <a href="06-metricas-y-reporte.html#K1"><code>impact-metrics</code></a> reporta una métrica faltante en vez de estimarla.</div>
+    <div class="hint"><b>La sala de espera lleva fecha, y la fecha es el mecanismo.</b> Cada entrada de <code>docs/lecciones.md</code> termina promovida a una de las cinco filas de arriba, o borrada. La fecha de entrada es lo que deja ver la que lleva meses ahí: eso no es una lección pendiente, es una lección que no era. Sin fecha, el archivo se vuelve el vertedero que el método dice que no debe ser.</div>
+    <div class="hint"><b>Y no se inyecta sola.</b> La skill no propone meter <code>docs/lecciones.md</code> en el contexto del agente al arrancar. La sala de espera tiene que incomodar: una recuperación cómoda mata la presión de promover, que es el mismo argumento con el que <a href="#R3">se descartó el servidor de memoria</a>.</div>
+    <div class="fuente"><b>Fuente:</b> <code>github-plan-build/references/build-loop-execute.md</code>, Paso K.</div>
   </section>
 
   <section id="R3" class="fuera">
@@ -72,7 +75,8 @@
     <h2>Memoria entre sesiones</h2>
     <p>El <code>README.md</code> del plugin lo declara sin rodeos: <strong>sin memoria semántica entre sesiones</strong> — lo único que un ciclo nuevo «recuerda» del anterior es lo que quedó escrito en <code>AGENTS.md</code>.</p>
     <p>Es una frontera, no un olvido, y vale la pena entender el argumento a favor de esa frontera. Un servidor MCP de memoria tiene contras reales: la recuperación es <strong>no determinista</strong> —el modelo tiene que decidir buscar, y la búsqueda tiene que acertar—, sale del repositorio, nadie revisa lo que el agente inserta, y <strong>mata la presión de promover</strong>. Una biblioteca cómoda es una excusa perfecta para no convertir nunca la lección en regla ni en sensor.</p>
-    <div class="hint"><b>Si algún día se adopta, el requisito no es opcional:</b> un hook de <code>SessionStart</code> que consulte el servidor e inyecte las lecciones del repositorio actual. Eso convierte la recuperación no determinista en <b>inyección determinista</b>. Sin ese hook, es una biblioteca que el agente visita cuando se acuerda — y ese hook es justamente el tipo <code>mcp_tool</code> que <a href="03-preparacion-del-terreno.html#DMH">el catálogo todavía no cubre</a>.</div>
+    <div class="hint"><b>Si algún día se adopta, el requisito no es opcional:</b> un hook de <code>SessionStart</code> que consulte el servidor e inyecte las lecciones del repositorio actual. Eso convierte la recuperación no determinista en <b>inyección determinista</b>. Sin ese hook, es una biblioteca que el agente visita cuando se acuerda.</div>
+    <div class="hint"><b>Esa frontera arrastró una segunda.</b> El hook que haría falta es del tipo <code>mcp_tool</code>, y <a href="03-preparacion-del-terreno.html#DMH">esa caja también quedó fuera de alcance</a> — no porque el mecanismo no sirva, sino porque su único caso de uso aquí era este, y sin servidor no hay a quién llamar. Las dos vuelven juntas o no vuelve ninguna.</div>
     <div class="fuente"><b>Fuente:</b> <code>instrumentacion-java-ia/README.md</code>, «Alcance deliberado».</div>
   </section>
 

@@ -22,7 +22,7 @@ same way whatever tracker the issue came from.
 | `CI` | how to read check status, failing logs, and rerun a job |
 | `PR-COMMENTS` | how to read and reply to review comments |
 
-Run steps A → J in order: **A–E here, F–J in `references/build-loop-execute.md`**. Only Step E
+Run steps A → K in order: **A–E here, F–K in `references/build-loop-execute.md`**. Only Step E
 pauses for the user (plus Step H's push pause when the calling skill's `confirm-push` argument
 was given); everything else is **act and self-verify.** See **Escalation** at the end of
 `build-loop-execute.md` for the complete list of things that stop you.
@@ -185,4 +185,4 @@ Step J's summary reports the deltas.
 
 Set `STATUS→IN-PROGRESS` here (pre-authorized — do not ask).
 
-**Steps F–J continue in `references/build-loop-execute.md`.**
+**Steps F–K continue in `references/build-loop-execute.md`.**

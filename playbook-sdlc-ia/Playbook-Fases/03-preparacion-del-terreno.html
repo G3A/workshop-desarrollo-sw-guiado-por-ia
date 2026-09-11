@@ -30,8 +30,8 @@
   <div class="cobertura">
     <span class="k-skill"><b>22</b> · skill</span>
     <span class="k-parcial"><b>2</b> · parcial</span>
-    <span class="k-hueco"><b>9</b> · hueco</span>
-    <span class="k-fuera"><b>1</b> · fuera de alcance</span>
+    <span class="k-hueco"><b>8</b> · hueco</span>
+    <span class="k-fuera"><b>2</b> · fuera de alcance</span>
   </div>
 
   <h2 class="muted" style="font-family:'Fraunces',serif;margin-top:30px">Contexto</h2>
@@ -273,11 +273,14 @@
     <div class="falta"><b>Qué falta.</b> El catálogo no lo incluye. Es el tipo natural para un equipo que quiere centralizar la política —un servicio que decide igual para todos los desarrolladores— en vez de repartir ocho scripts por máquina.</div>
   </section>
 
-  <section id="DMH" class="hueco det">
-    <span class="tag">DMH</span><span class="badge hueco">Hueco</span><span class="tipo det">Determinista</span>
+  <section id="DMH" class="fuera det">
+    <span class="tag">DMH</span><span class="badge fuera">Fuera de alcance</span><span class="tipo det">Determinista</span>
     <h2>Hook de herramienta MCP · <code>type: mcp_tool</code></h2>
     <p>Es la excepción que rompe la intuición: <strong>un MCP que no elige el modelo</strong>. La herramienta corre en un punto fijo del ciclo de vida, porque la llama el hook. El servidor es el mismo que sería no determinista si lo eligiera el modelo, pero cambió quién dispara, y con eso cambia el tipo.</p>
-    <div class="falta"><b>Qué falta.</b> El catálogo no lo incluye. Es justamente el mecanismo que convertiría en determinista la inyección de contexto de la Fase 4 — un MCP de memoria consultado siempre al arrancar la sesión, en vez de cuando el modelo se acuerde.</div>
+    <div class="hint"><b>Es la única frontera <i>derivada</i> del mapa, y por eso vale la pena leerla entera.</b> El mecanismo sirve. Lo que no existe en este plugin es algo a lo que llamar: su único caso de uso aquí era inyectar lecciones al arrancar la sesión desde un servidor MCP de memoria, y <a href="05-retroalimentacion.html#R3">esa memoria ya estaba fuera de alcance</a>. Un hook sin destinatario no es un hueco: es una caja que se quedó sin para qué.</div>
+    <div class="hint"><b>Y no se suple inyectando el archivo.</b> La sala de espera que eligió <a href="05-retroalimentacion.html#R2">el Paso K</a> es <code>docs/lecciones.md</code>, en el repositorio. Meterla sola en el contexto <b>mataría la presión de promover</b> — exactamente el argumento con el que se descartó el servidor de memoria. La sala de espera tiene que incomodar.</div>
+    <div class="hint"><b>Si algún día vuelve, vuelve con la otra.</b> Las dos fronteras son una sola decisión vista desde dos fases distintas.</div>
+    <div class="fuente"><b>Fuente:</b> <code>instrumentacion-java-ia/README.md</code>, «Alcance deliberado».</div>
   </section>
 
   <section id="NHP" class="hueco nodet">
