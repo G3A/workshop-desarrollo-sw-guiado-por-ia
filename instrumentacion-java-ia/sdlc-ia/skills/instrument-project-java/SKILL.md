@@ -1,6 +1,6 @@
 ---
 name: instrument-project-java
-description: Install the deterministic instrumentation layer in a Maven-based Java/Spring repository so an AI coding agent cannot ship work that breaks the team's rules — reproducible inputs (wrapper pin, BOM-managed versions), a strict `-Werror` build, verifiable style (Spotless + Checkstyle), a single Makefile entry point, pre-commit/pre-push gates (Lefthook), secret scanning (gitleaks), Spring-Modulith-aware architecture fitness functions (ArchUnit), a GitHub Actions CI workflow, and dependency vulnerability scanning (OWASP Dependency-Check plus Dependabot). Every gate is proven to fail before the run ends. Invoke with `/sdlc-ia:instrument-project-java`.
+description: Install the deterministic instrumentation layer in a Maven-based Java/Spring repository so an AI coding agent cannot ship work that breaks the team's rules — reproducible inputs (wrapper pin, BOM-managed versions), a strict `-Werror` build with Error Prone, verifiable style (Spotless + Checkstyle), a single Makefile entry point, pre-commit/pre-push gates (Lefthook), secret scanning (gitleaks), Spring-Modulith-aware architecture fitness functions (ArchUnit), a GitHub Actions CI workflow, dependency vulnerability scanning (OWASP Dependency-Check plus Dependabot), new-code test coverage (JaCoCo), bug-pattern analysis (SpotBugs) and unit/integration suite separation (Failsafe). Every gate is proven to fail before the run ends. Invoke with `/sdlc-ia:instrument-project-java`.
 disable-model-invocation: true
 ---
 
@@ -10,12 +10,12 @@ You are installing the **deterministic instrumentation** layer: everything a mac
 its own, in milliseconds, with no ambiguity — a sensor the agent hits by itself, **before any human
 reads the diff**.
 
-You install nine controls, prove each one fails when it should, and record them in `AGENTS.md`.
+You install twelve controls, prove each one fails when it should, and record them in `AGENTS.md`.
 
 | # | Control | Artifact | What it prevents |
 |---|---------|----------|-------------------|
 | 1 | Reproducible inputs | `.mvn/wrapper/*`, `pom.xml` BOMs | Two machines resolving a different Maven or dependency tree |
-| 2 | Strict build | `maven-compiler-plugin` `-Werror` | A warning reaching `main` |
+| 2 | Strict build | `maven-compiler-plugin` `-Werror` + Error Prone | A warning reaching `main`; a type-level bug compiling clean |
 | 3 | Style | `.editorconfig`, Spotless, Checkstyle | Formatting noise and naming drift in every diff |
 | 4 | Entry point | `Makefile` (patched) | Nobody knowing how the repo is verified |
 | 5 | Shift-left | `lefthook.yml` | Errors surfacing at review time |
@@ -23,6 +23,9 @@ You install nine controls, prove each one fails when it should, and record them 
 | 7 | Architecture tests | `archunit-junit5` / Spring Modulith | The dependency rule silently breaking |
 | 8 | CI | `.github/workflows/ci.yml` | Local gates being skipped |
 | 9 | Dependency vulnerabilities (SCA) | `dependency-check-maven`, `dependency-check-suppressions.xml`, `.github/dependabot.yml` | A dependency with a known CVE shipping unnoticed |
+| 10 | Test coverage | `jacoco-maven-plugin`, new-code rule | New code arriving with no test, unnoticed |
+| 11 | Bug patterns | `spotbugs-maven-plugin` | Defects that compile and pass style |
+| 12 | Test suite separation | `maven-failsafe-plugin`, `make test` / `make verify` | Fast and slow tests running as one, so neither can be required |
 
 ## Philosophy
 
@@ -89,7 +92,7 @@ own untracked tooling). If not, stop and tell the user.
 
 Ask only what Phase 1 could not answer, in plain language (spell out acronyms, state costs):
 
-1. **Which controls to install** — default all nine; `present` controls are reported, not
+1. **Which controls to install** — default all twelve; `present` controls are reported, not
    reinstalled; `partial` ones get both exits (complete it, or remove the dead config).
 2. **Style formatter** — `spotless-maven-plugin` needs one. `google-java-format` is the zero-config
    default (2-space); `palantir-java-format` suits teams wanting 4-space. Pick one, say why in the
@@ -114,6 +117,26 @@ Ask only what Phase 1 could not answer, in plain language (spell out acronyms, s
    curate (one entry per accepted finding, with its reason), and a pre-existing tree that may
    already carry a High CVE and block `make ci` from day one — say so. Offer
    `Yes — make ci and Dependabot`, `Report only (never fails the build)`, `Skip`.
+8. **Coverage threshold (control 10)** — on by default, but the rule is scoped to **new code only**
+   (`limit` on `CLASS`/`LINE` over the changed set), never a repo-wide number. A repo-wide
+   threshold on a brownfield is born red and its only exit is lowering it until it means nothing;
+   a new-code rule is born green and applies where it matters — the same "encode what the repo
+   already does" principle as control 7. It fails **CI only**, never `make check`: coverage is slow,
+   and a slow local gate gets bypassed with `--no-verify`. Confirm the percentage with the user;
+   do not invent one.
+9. **Bug patterns (control 11)** — off by default, like secrets and SCA, and for the same reason:
+   Checkstyle in strict mode prevents *new* debt and starts green, while SpotBugs over a brownfield
+   starts red, and a control born red is switched off in its first week. Install **SpotBugs only —
+   never PMD alongside it**: two new analyzers shouting at once is the fastest way to get both
+   muted, and PMD overlaps Checkstyle across much of its ruleset. When enabled it **fails
+   `make check`** — a sensor that only reports is a sensor nobody reads. Offer
+   `Yes — fails make check`, `Report only`, `Skip`.
+10. **Test suite separation (control 12)** — on by default. Split unit from integration via
+    `maven-failsafe-plugin` (`*IT` / `*ITCase`) so `make test` stays fast and `make verify` runs the
+    slow set. Install **the split and the profile only** — never Testcontainers, RestAssured or any
+    test framework the repo has not chosen: picking a testing stack for the team is more invasive
+    than anything else this skill does, and contradicts its own rule of encoding what the repo
+    already does. Growing the tests themselves is `/sdlc-ia:legacy-test-harness`, a different skill.
 
 Then install **in the order given in `references/apply.md`** — each control builds on the previous
 one, and that file carries the per-control detail (artifact, key snippet, template pointer, the two
@@ -132,7 +155,7 @@ Summary:
 | # | Control | Break | Expect |
 |---|---|---|---|
 | 1 | Reproducible inputs | Point `distributionUrl` at a non-existent Maven patch | `./mvnw -v` fails, naming the URL |
-| 2 | Strict build | Add an unused import | `mvn compile` fails with an ERROR, not a warning |
+| 2 | Strict build | Add an unused import; then a self-comparison (`x == x`) | `mvn compile` fails twice — once on the warning, once on the Error Prone check by name |
 | 3 | Style | Reorder imports in a real file | `make lint` fails, naming the file |
 | 4 | Entry point | No break needed | `make help` lists every target; `make check` chains them |
 | 5 | Shift-left | Stage a bad file, commit with a disposable identity | `BLOCKED` — confirmed by `HEAD` before/after, not the printed text |
@@ -140,6 +163,13 @@ Summary:
 | 7 | Architecture | Add a forbidden dependency + real usage | `mvn test` fails, naming rule and type |
 | 8 | CI | Cannot be broken locally | Verify by inspection — pinned JDK, calls `make ci`, every branch |
 | 9 | Dependency vulnerabilities | Add a compile-scope dependency with a known High CVE | `make sca` fails, naming the CVE and the artifact; `dependabot.yml` verified by inspection |
+| 10 | Test coverage | Add a new class with a branch and no test | The coverage check fails, naming the class and the missed percentage — and the same class **with** a test passes |
+| 11 | Bug patterns | Introduce a known pattern (e.g. a boxed comparison by `==`) | `make check` fails, naming the SpotBugs rule |
+| 12 | Suite separation | Add a failing `*IT` alongside a passing unit test | `make test` stays **green** and `make verify` fails — if both go red, the split did not take |
+
+Control 10's break has **two halves**: red without a test proves the rule fires, green with one
+proves it is scoped to new code and not to the whole repo. A rule that stays red either way is a
+repo-wide threshold in disguise, which scope question 8 ruled out.
 
 Controls 5–6 are verified by a **real commit**; if the hook does not fire, undo it with
 `git reset --soft HEAD~1`. Restore every change, run `make check`, capture the real output. **Do
@@ -183,6 +213,11 @@ restated with the evidence this run produced. Do not commit — leave the diff f
   shape — derive it from the module graph.
 - Do NOT report success until `make check` is green and every gate has been proven to fail.
 - Do NOT install a `commit-msg` Conventional Commits hook without evidence from `git log`.
+- Do NOT write a repo-wide coverage threshold. Control 10 is scoped to new code, or it is not
+  installed.
+- Do NOT install PMD next to SpotBugs, and do NOT turn control 11 on by default.
+- Do NOT add a test framework (Testcontainers, RestAssured, WireMock) under control 12 — it
+  separates the suites the repo already has and nothing more.
 - Do NOT commit or push.
 - Do NOT touch GitHub repository settings (Rulesets, Environments, `CODEOWNERS`) — name them as
   the manual step that remains.

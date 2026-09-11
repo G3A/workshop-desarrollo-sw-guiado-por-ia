@@ -30,7 +30,7 @@ reorder what is already there:
    pull-ministral pull-qwen35 pull-nemotron pull-granite41 pull-phi4mini pull-qwen25 \
 -  pin-embeddings-cpu seed ingest ingest-repos ingest-teams ingest-azdo psql health clean
 +  pin-embeddings-cpu seed ingest ingest-repos ingest-teams ingest-azdo psql health clean \
-+  format lint secrets sca check ci hooks
++  format lint secrets sca bugs coverage check ci hooks
 ```
 
 ## 2. Append a new section after `## ---------------------------------------------------------------- desarrollo`
@@ -55,10 +55,16 @@ secrets:  ## Scan the working tree for committed secrets
 sca:  ## Scan dependencies for known vulnerabilities (gate: OWASP Dependency-Check, fails on CVSS >= 7)
 	./mvnw -q dependency-check:check
 
-check: lint build test  ## Single local confidence signal
+bugs:  ## Scan for bug patterns (gate: SpotBugs -- only when control 11 is installed)
+	./mvnw -q spotbugs:check
+
+coverage:  ## Coverage report plus the new-code rule (gate runs in CI, not in check)
+	./mvnw -q -P coverage verify
+
+check: lint build test  ## Single local confidence signal (fast: no coverage, no SCA)
 	@echo "OK -- the repo is green"
 
-ci: lint build test secrets sca  ## What the CI pipeline runs
+ci: lint build verify secrets sca coverage  ## What the CI pipeline runs
 	@echo "OK -- CI gates passed"
 
 hooks:  ## Install git hooks (Lefthook)
@@ -73,6 +79,15 @@ Notes on this block:
   `./mvnw -B test` including the architecture gate) rather than restating `./mvnw` invocations —
   **one definition of "the code is fine"**, the same rule `verify` already follows by wrapping
   `./mvnw -B clean verify`.
+- **`check` runs `test`; `ci` runs `verify`.** That single difference is control 12: the fast set
+  gates every local loop, the slow set gates the pipeline. If both ran the same target the split
+  would exist in the POM and not in practice.
+- `coverage` and `sca` are in `ci` and deliberately **not** in `check`. Both need a full run and,
+  in the case of `sca`, the network. A local gate that slow gets bypassed with `--no-verify` inside
+  a week, and a bypassed gate is worse than an absent one because the team believes it is covered.
+- `bugs` is chained from `lint` when control 11 is installed — it is a gate, not a report, so it
+  belongs on the path `check` walks. Leave the target out entirely when the control was declined,
+  rather than shipping one that fails because the plugin is not declared.
 - `secrets` is **not** in `check` — mirrors the .NET sibling skill's reasoning: local `check` stays
   fast for the inner loop; `ci` is the one that must catch everything, and `lefthook.yml`'s
   pre-commit already runs `gitleaks protect --staged` on every commit regardless.
