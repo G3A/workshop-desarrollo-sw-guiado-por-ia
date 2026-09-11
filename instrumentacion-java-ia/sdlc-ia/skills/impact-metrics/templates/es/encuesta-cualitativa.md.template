@@ -1,0 +1,129 @@
+<!--
+PLANTILLA — encuesta cualitativa de la Fase 5
+
+QUÉ POSEE EL PLUGIN Y QUÉ NO
+  El plugin NO es una plataforma de encuestas. Posee tres cosas: el cuestionario, el requisito de
+  anonimato y el formato de agregación que la skill lee. La CAPTURA es del equipo, con la
+  herramienta de formularios que ya tenga.
+
+QUÉ HACE LA SKILL AL GENERARLA
+  - Sustituye <PERIODO> y <MINIMO> (el piso de muestra acordado con el equipo).
+  - Deja este archivo en el repositorio para que el procedimiento no viva en la cabeza de nadie.
+  - Borra este encabezado antes de escribir el archivo destino.
+-->
+
+# Encuesta cualitativa — <PERIODO>
+
+Cuatro preguntas, escala de 1 a 5. Van junto a las métricas duras porque **los cuatro números
+pueden mejorar mientras el equipo la pasa peor**, y eso solo se ve preguntando.
+
+1. **Confianza** — ¿le crees al código que produce?
+2. **Fricción** — ¿cuánto cuesta usarlo en un día normal?
+3. **Valor** — ¿te ahorró trabajo de verdad?
+4. **Alineación** — ¿resuelve como este equipo resuelve?
+
+**Todas cerradas, y ninguna de texto libre.** Un campo de comentarios reintroduce la
+identificación: con cinco personas, el estilo de escritura y lo que alguien menciona lo delatan más
+rápido que un nombre. Si el equipo quiere comentarios, se recogen aparte y **no entran al
+repositorio bajo ninguna circunstancia**.
+
+---
+
+## «¿A quién le paso mis respuestas?» A nadie
+
+Ese es el punto. **Cualquier persona intermedia mata el anonimato.** Si alguien recibe respuestas y
+las junta, esa persona sabe quién dijo qué, el equipo lo sabe, y responde en consecuencia.
+
+El formulario es el intermediario, y está configurado para no saber quién respondió.
+
+## Los tres papeles
+
+| Papel | Quién | Qué toca |
+|---|---|---|
+| Quien coordina | Una persona, la misma todo el período | Crea el formulario, publica el agregado, abre la PR |
+| Cada persona | Todo el equipo, coordinador incluido | Responde y cierra la pestaña |
+| La skill | — | Cuenta, escribe el CSV agregado y el reporte |
+
+Quien coordina **también responde**. Si se excluye, con un equipo chico su ausencia se nota en el `n`.
+
+---
+
+## Una vez por equipo — preparar el formulario
+
+Aquí se gana o se pierde el anonimato. Los pasos siguientes no lo pueden recuperar.
+
+1. **Crear el formulario** con las cuatro preguntas de arriba, y nada más.
+
+2. **Apagar lo que registra identidad.** Es lo único que no se puede hacer mal.
+   - **Google Forms** → pestaña *Configuración*, sección Respuestas: desactiva **«Recopilar
+     direcciones de correo electrónico»** y también **«Limitar a 1 respuesta»**. La segunda parece
+     inocente y no lo es: para limitarlo, Google exige iniciar sesión, y con eso registra quién
+     respondió.
+   - **Microsoft Forms** → en *«¿Quién puede rellenar este formulario?»*: con «Cualquier usuario
+     puede responder» las respuestas entran sin nombre; si restringes a la organización,
+     **desmarca «Registrar nombre»**. En cuentas de trabajo esa casilla viene **activada por
+     defecto** — es la trampa más común.
+
+3. **Comprobarlo tú mismo antes de compartirlo.** Responde una vez y mira la respuesta que llegó.
+   Si trae nombre o correo, el paso 2 quedó mal: bórrala y corrige. Es la misma disciplina de
+   «probar antes de reportar éxito» que el resto del paquete aplica a cada control — y un
+   formulario que crees anónimo y no lo es **es peor** que uno declaradamente con nombre, porque la
+   gente responde con una candidez que no tiene.
+
+4. **Agregar la carpeta del crudo al `.gitignore`**, antes de exportar nada:
+
+   ```
+   # datos crudos de la encuesta: nunca se versionan
+   .metricas-crudo/
+   ```
+
+   Va antes y no después por el mismo motivo que `instrument-agent-java` agrega `logs/` al
+   `.gitignore` **antes** de crear el registro de auditoría: un archivo sensible que llega al
+   repositorio ya no se saca sin reescribir la historia.
+
+---
+
+## Cada período — los seis pasos
+
+| # | Quién | Qué hace | Por qué |
+|---|---|---|---|
+| 1 | Coordina | Comparte el enlace en el canal del equipo, con fecha de cierre | Un enlace público no identifica; un correo individual crea la sensación de que se sabe quién contestó |
+| 2 | Cada persona | Responde y cierra | No envía nada a nadie: no hay acuse, ni reenvío, ni a quién preguntarle si ya respondiste |
+| 3 | Coordina | Cierra el formulario en la fecha | Un formulario abierto sin fin mezcla períodos y arruina la comparación |
+| 4 | Coordina | Mira el `n`. **Si es menor que <MINIMO>, se detiene acá** | Con pocas respuestas, una distribución señala a una persona igual que un nombre. Se reporta «muestra insuficiente», que es información honesta |
+| 5 | Coordina | Exporta el CSV a `.metricas-crudo/` y corre `/sdlc-ia:impact-metrics` | La skill cuenta y escribe el agregado. Contar veinte números a mano invita al error |
+| 6 | Coordina | **Borra el crudo** y abre la PR con el agregado | El crudo ya no hace falta, y cada día más en disco es riesgo |
+
+---
+
+## Lo único que se versiona: el agregado
+
+```
+docs/metricas/encuesta-<PERIODO>.csv
+pregunta,v1,v2,v3,v4,v5,n,media
+confianza,0,1,2,4,1,8,3.5
+friccion,1,3,2,2,0,8,2.6
+valor,0,0,3,3,2,8,3.9
+alineacion,0,1,4,2,1,8,3.4
+```
+
+Una fila por **pregunta**, no por persona. Sin marcas de tiempo y sin correlación entre preguntas:
+**no queda nada que reconstruir**, que es lo que hace que esto aguante estar en git para siempre.
+
+**Quitar el nombre de una fila por persona no basta.** Con un equipo chico, el patrón de cuatro
+respuestas identifica igual, y si la exportación arrastró una marca de tiempo, el orden termina el
+trabajo.
+
+**Variante más estricta:** si prefieres que el crudo nunca toque tu máquina, lee la vista de
+resumen del formulario —que ya muestra los conteos por opción— y transcribe los veinte números.
+Más lento y con riesgo de error de dedo, pero no hay archivo que borrar ni disciplina en la que
+confiar.
+
+---
+
+## Las cuatro formas de romperlo
+
+1. **Que alguien reenvíe respuestas.** En cuanto aparece un intermediario humano, se acabó.
+2. **Un campo de comentarios** que llegue al repositorio.
+3. **Publicar con `n` pequeño.** El paso 4 existe para esto.
+4. **Olvidar el paso 2.** Es el único irreversible: las respuestas ya llegaron con nombre.

@@ -1,6 +1,6 @@
 # Instrumentación Java con IA
 
-Un plugin de Claude Code, `sdlc-ia`, con ocho skills que instrumentan un repositorio Java/Spring
+Un plugin de Claude Code, `sdlc-ia`, con nueve skills que instrumentan un repositorio Java/Spring
 para que un agente de código con IA pueda trabajar en él con las mismas garantías que un equipo
 humano exigiría: contexto legible, controles deterministas que se prueban fallando antes de
 reportar éxito, límites explícitos sobre qué puede hacer el agente solo, y un ciclo completo de
@@ -19,7 +19,7 @@ específicas de .NET. Sus skills de entrega (`linear-plan-build`, `ado-plan-buil
 reciente, `requirement-to-spec`, ya son agnósticas de stack — funcionan sobre cualquier
 repositorio. Decir sin más que "hoy solo cubre .NET" ya no describe el plugin completo.
 
-## Las 8 skills
+## Las 9 skills
 
 | Skill | Qué hace |
 |---|---|
@@ -29,6 +29,7 @@ repositorio. Decir sin más que "hoy solo cubre .NET" ya no describe el plugin c
 | [`instrument-github-repo`](docs/skills/instrument-github-repo-es.md) | Escribe el Ruleset de GitHub que convierte los checks de CI en un juez de verdad: sin él, un repositorio instrumentado tiene todos los sensores y ningún bloqueo. Nunca sobrescribe uno existente y prueba el resultado bloqueando una PR desechable. |
 | [`requirement-to-spec-java`](docs/skills/requirement-to-spec-java-es.md) | Convierte un documento de requisitos de negocio en una especificación y un desglose de tareas, antes de que exista un issue — nunca escribe código, nunca abre PR. |
 | [`github-plan-build`](docs/skills/github-plan-build-es.md) | El ciclo completo: toma un issue de GitHub, arma un plan, lo implementa test-first, y abre una PR verificada. |
+| [`impact-metrics`](docs/skills/impact-metrics-es.md) | Mide qué cambió con la entrega asistida por IA y escribe el reporte a liderazgo. Dos métricas de las cuatro, porque solo dos tienen una definición que nadie discute; las otras se reportan como faltantes con su motivo. Genera y abre la PR — nunca envía nada. |
 | [`debt-triage`](docs/skills/debt-triage-es.md) | Triaja con criterio los hallazgos que un analizador estático ya reportó (Sonar, CodeQL, Checkstyle...) — nunca instala un sensor nuevo ni aplica un auto-fix a ciegas. |
 | [`legacy-test-harness`](docs/skills/legacy-test-harness-es.md) | Acondiciona un repo legacy y hace crecer pruebas reales en 5 capas sobre código que ya está en producción, mapeando costuras al estilo Feathers antes de tocar nada. |
 
@@ -93,10 +94,11 @@ la versión) y que el CHANGELOG cuente la verdad.
 Los cambios aplican a las **sesiones nuevas** de Claude Code; una sesión abierta sigue con las
 skills que cargó al arrancar. `claude plugin list` muestra la versión activa.
 
-Las 8 skills quedan disponibles como `/sdlc-ia:agent-context-java`,
+Las 9 skills quedan disponibles como `/sdlc-ia:agent-context-java`,
 `/sdlc-ia:instrument-project-java`, `/sdlc-ia:instrument-agent-java`,
 `/sdlc-ia:instrument-github-repo`, `/sdlc-ia:requirement-to-spec-java`,
-`/sdlc-ia:github-plan-build`, `/sdlc-ia:debt-triage` y `/sdlc-ia:legacy-test-harness`.
+`/sdlc-ia:github-plan-build`, `/sdlc-ia:impact-metrics`, `/sdlc-ia:debt-triage` y
+`/sdlc-ia:legacy-test-harness`.
 
 ## Shell: PowerShell primero, bash también
 
