@@ -37,7 +37,7 @@
   <section id="RS" class="skill">
     <span class="tag">RS</span><span class="badge skill">Skill</span>
     <h2>Las 9 skills de sdlc-ia</h2>
-    <p>El plugin se instala como marketplace local y deja nueve comandos disponibles. Cuatro instrumentan el repositorio, dos lo llevan de ticket a PR, una mide el impacto, y dos atienden lo que ya estaba mal antes de que llegara el agente.</p>
+    <p>El plugin se instala como marketplace local y deja nueve comandos disponibles. Cuatro instrumentan el repositorio, dos lo llevan de ticket a PR —y una de esas dos cierra además el bucle de la Fase 4—, una mide el impacto, y dos atienden lo que ya estaba mal antes de que llegara el agente.</p>
     <div class="ejecuadro">
       <table class="rev">
         <tr><th>Skill</th><th>Qué hace</th><th>Fase</th></tr>
@@ -46,7 +46,7 @@
         <tr><td><strong>instrument-agent-java</strong></td><td>Registra servidores MCP y ocho hooks de comando de Claude Code.</td><td>2</td></tr>
         <tr><td><strong>instrument-github-repo</strong></td><td>Escribe el Ruleset que convierte los checks de CI en un juez. Nunca sobrescribe uno existente, y lo prueba bloqueando.</td><td>2</td></tr>
         <tr><td><strong>requirement-to-spec-java</strong></td><td>Convierte un documento de requisitos en spec y tareas, antes de que exista el issue.</td><td>3</td></tr>
-        <tr><td><strong>github-plan-build</strong></td><td>Issue → plan → build test-first → PR verificada, con el CI vigilado hasta verde.</td><td>3</td></tr>
+        <tr><td><strong>github-plan-build</strong></td><td>Issue → plan → build test-first → PR verificada, con el CI vigilado hasta verde. Cierra proponiendo dónde va la lección de la vuelta.</td><td>3 y 4</td></tr>
         <tr><td><strong>impact-metrics</strong></td><td>Mide qué cambió con la IA y escribe el reporte a liderazgo. Genera y abre la PR; enviarlo es tuyo.</td><td>5</td></tr>
         <tr><td><strong>debt-triage</strong></td><td>Triaja con criterio los hallazgos que un analizador ya reportó. Nunca instala un sensor nuevo.</td><td>puente</td></tr>
         <tr><td><strong>legacy-test-harness</strong></td><td>Hace crecer pruebas reales en cinco capas sobre código que ya está en producción.</td><td>puente</td></tr>
@@ -63,7 +63,7 @@
     <p><span class="badge parcial">Parcial</span> Hay una skill que toca el paso, pero no lo cubre entero. La sección dice exactamente qué queda afuera — ese resto es un hueco con nombre.</p>
     <p><span class="badge mano">A mano</span> Lo haces tú, y el repositorio te enseña cómo: un nodo del visor <code>proceso-operacional-con-ia</code>, o un manual de <code>manuales/</code>. No es un hueco: es un paso que a propósito no se automatizó.</p>
     <p><span class="badge hueco">Hueco</span> Nadie lo cubre en este repositorio: ni skill, ni visor, ni manual. Cada uno de estos es trabajo que todavía no tiene issue.</p>
-    <p><span class="badge fuera">Fuera de alcance</span> Frontera declarada del plugin, no un olvido. El <code>README.md</code> las nombra: Azure DevOps, memoria semántica entre sesiones, y un panel de agentes especialistas por stack.</p>
+    <p><span class="badge fuera">Fuera de alcance</span> Frontera declarada del plugin, no un olvido. El <code>README.md</code> las nombra: Azure DevOps, memoria semántica entre sesiones, y un panel de agentes especialistas por stack. Y una <strong>derivada</strong>: los hooks <a href="03-preparacion-del-terreno.html#DMH"><code>type: mcp_tool</code></a>, cuyo único caso de uso aquí era esa memoria.</p>
     <div class="hint"><b>Un parcial es más peligroso que un hueco</b>, por la misma razón que un control de instrumentación a medias: el equipo cree que ya está cubierto y deja de mirarlo.</div>
   </section>
 

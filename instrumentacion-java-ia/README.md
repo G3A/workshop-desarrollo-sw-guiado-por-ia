@@ -28,7 +28,7 @@ repositorio. Decir sin más que "hoy solo cubre .NET" ya no describe el plugin c
 | [`instrument-agent-java`](docs/skills/instrument-agent-java-es.md) | Registra servidores MCP (no deterministas: el modelo decide cuándo llamarlos) y un catálogo de 9 hooks de comando de Claude Code (deterministas, bash puro, sin Node/jq) que limitan lo que el agente puede hacer solo, más las reglas de permiso `mcp__*` que acotan lo que MCP amplió. |
 | [`instrument-github-repo`](docs/skills/instrument-github-repo-es.md) | Escribe el Ruleset de GitHub que convierte los checks de CI en un juez de verdad: sin él, un repositorio instrumentado tiene todos los sensores y ningún bloqueo. Nunca sobrescribe uno existente y prueba el resultado bloqueando una PR desechable. |
 | [`requirement-to-spec-java`](docs/skills/requirement-to-spec-java-es.md) | Convierte un documento de requisitos de negocio en una especificación y un desglose de tareas, antes de que exista un issue — nunca escribe código, nunca abre PR. |
-| [`github-plan-build`](docs/skills/github-plan-build-es.md) | El ciclo completo: toma un issue de GitHub, arma un plan, lo implementa test-first, y abre una PR verificada. |
+| [`github-plan-build`](docs/skills/github-plan-build-es.md) | El ciclo completo: toma un issue de GitHub, arma un plan, lo implementa test-first, abre una PR verificada y propone dónde va la lección de la vuelta. |
 | [`impact-metrics`](docs/skills/impact-metrics-es.md) | Mide qué cambió con la entrega asistida por IA y escribe el reporte a liderazgo. Dos métricas de las cuatro, porque solo dos tienen una definición que nadie discute; las otras se reportan como faltantes con su motivo. Genera y abre la PR — nunca envía nada. |
 | [`debt-triage`](docs/skills/debt-triage-es.md) | Triaja con criterio los hallazgos que un analizador estático ya reportó (Sonar, CodeQL, Checkstyle...) — nunca instala un sensor nuevo ni aplica un auto-fix a ciegas. |
 | [`legacy-test-harness`](docs/skills/legacy-test-harness-es.md) | Acondiciona un repo legacy y hace crecer pruebas reales en 5 capas sobre código que ya está en producción, mapeando costuras al estilo Feathers antes de tocar nada. |
@@ -42,7 +42,12 @@ olvido, es la frontera de ese alcance:
 - **Sin gestión de trabajo jerárquica al estilo Azure Boards** (PBI/Task/Bug con iteraciones y
   cycle time) — `github-plan-build` trabaja contra GitHub Issues, un modelo plano.
 - **Sin memoria semántica entre sesiones** — lo único que un ciclo nuevo "recuerda" del anterior
-  es lo que quedó escrito en `AGENTS.md`.
+  es lo que quedó escrito en `AGENTS.md`, más lo que `github-plan-build` propuso al cerrar la
+  vuelta y alguien decidió pegar. De aquí se sigue una frontera derivada: **sin hooks
+  `type: mcp_tool`**. El mecanismo sirve —es la excepción determinista del catálogo, un MCP que
+  no elige el modelo— pero su único caso de uso aquí era inyectar memoria al arrancar la sesión,
+  y no hay servidor al que llamar. Inyectar `docs/lecciones.md` automáticamente tampoco
+  correspondería: la sala de espera tiene que incomodar, o nadie promueve nada.
 - **Sin un panel de agentes especialistas por stack** (uno por framework de frontend, uno por
   base de datos, etc.) — la instrumentación Java vive en skills genéricas por función, no en
   agentes-personaje.

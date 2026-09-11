@@ -17,6 +17,28 @@ versión nueva", and `AGENTS.md`).
 
 ### Added
 
+- **`github-plan-build` gained Step K — route the lesson**, the method's Principle 6 and the only
+  loop that makes round 20 different from round 1. Until now the viewer told you to save the
+  lesson (`c5`) and nothing carried it anywhere: it was written into the agent's summary and
+  stayed there. All five destinations already existed — `AGENTS.md`, the `REVIEW.md` checklist,
+  ADRs, and the sensors of `instrument-project-java` — so what was missing was the step that
+  decides which one each lesson goes to and writes the text.
+  - **It proposes and does not apply**, for two reasons and the second is mechanical. A step that
+    edits the file governing the agent closes a loop where the agent writes its own rules and the
+    next round reads them, with nobody looking in between. And by then **the PR is already open
+    and green from Step J**: a rule change is about the *process*, not about the feature, it
+    changes every round that follows, it gets reviewed differently, and so it belongs in its own
+    PR.
+  - **"No lesson this round" is a valid outcome, and is stated as such.** Inventing one to fill
+    the step poisons the files it would be written into — which is the same reason `impact-metrics`
+    reports a missing metric instead of estimating it.
+  - **The sixth destination is a waiting room, `docs/lecciones.md`, and every entry carries the
+    date it entered.** Each one is meant to leave: promoted to one of the other five, or deleted.
+    The date is the mechanism that makes an entry sitting there for months visible as what it is —
+    not a pending lesson, a lesson that was not one.
+  - **The fourth destination is called out as the one that pays and the least used**: a lesson a
+    machine can check should stop being text. A written criterion is forgotten; a sensor is not.
+
 - **`impact-metrics`, a new skill** — the ninth — filling Fase 5, which was empty end to end, and
   unblocking Fase 6: two of its four advancement criteria are evaluated with these numbers.
   - **Two metrics of the four, and the other two reported as missing with their reason.** Not
@@ -188,6 +210,15 @@ versión nueva", and `AGENTS.md`).
     green while `make verify` is red; both red means the split never took.
 
 ### Changed
+
+- **`type: mcp_tool` hooks moved from "not covered yet" to a declared boundary**, and the
+  `README.md` says so under "Alcance deliberado" as a *derived* one. The mechanism works — it is
+  the catalog's deterministic exception, an MCP the model did not choose to call — but its only
+  use case here was injecting memory at `SessionStart`, and there is no server to call: semantic
+  memory between sessions is already out of scope. Nor should `docs/lecciones.md` be injected in
+  its place: the waiting room is supposed to be uncomfortable, and convenient retrieval is what
+  kills the pressure to promote — the same argument that keeps the memory server out. If that
+  boundary is ever revisited, this one comes back with it.
 
 - **`instrument-agent-java` no longer calls itself "the non-deterministic instrumentation layer".**
   It installs one half of each: MCP servers are non-deterministic (the model decides when to call
