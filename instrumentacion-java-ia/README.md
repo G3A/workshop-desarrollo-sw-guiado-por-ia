@@ -1,6 +1,6 @@
 # Instrumentación Java con IA
 
-Un plugin de Claude Code, `sdlc-ia`, con siete skills que instrumentan un repositorio Java/Spring
+Un plugin de Claude Code, `sdlc-ia`, con ocho skills que instrumentan un repositorio Java/Spring
 para que un agente de código con IA pueda trabajar en él con las mismas garantías que un equipo
 humano exigiría: contexto legible, controles deterministas que se prueban fallando antes de
 reportar éxito, límites explícitos sobre qué puede hacer el agente solo, y un ciclo completo de
@@ -19,13 +19,14 @@ específicas de .NET. Sus skills de entrega (`linear-plan-build`, `ado-plan-buil
 reciente, `requirement-to-spec`, ya son agnósticas de stack — funcionan sobre cualquier
 repositorio. Decir sin más que "hoy solo cubre .NET" ya no describe el plugin completo.
 
-## Las 7 skills
+## Las 8 skills
 
 | Skill | Qué hace |
 |---|---|
 | [`agent-context-java`](docs/skills/agent-context-java-es.md) | Genera el paquete de contexto de un repo Java/Spring (`AGENTS.md`, `docs/architecture.md`, ADRs, `docs/java.md`) para que un agente de IA lo entienda sin adivinar, más `REVIEW.md` y una plantilla de PR para la capa de revisión humana. |
 | [`instrument-project-java`](docs/skills/instrument-project-java-es.md) | Instala 12 controles deterministas: build reproducible, build estricto (`-Werror` + Error Prone), estilo, un solo punto de entrada, hooks de pre-commit/pre-push, escaneo de secretos, pruebas de arquitectura (ArchUnit), CI, escaneo de dependencias vulnerables (OWASP Dependency-Check + Dependabot), cobertura del código nuevo (JaCoCo), patrones de bug (SpotBugs) y separación de suites (Failsafe). |
 | [`instrument-agent-java`](docs/skills/instrument-agent-java-es.md) | Registra servidores MCP (no deterministas: el modelo decide cuándo llamarlos) y un catálogo de 8 hooks de comando de Claude Code (deterministas, bash puro, sin Node/jq) que limitan lo que el agente puede hacer solo. |
+| [`instrument-github-repo`](docs/skills/instrument-github-repo-es.md) | Escribe el Ruleset de GitHub que convierte los checks de CI en un juez de verdad: sin él, un repositorio instrumentado tiene todos los sensores y ningún bloqueo. Nunca sobrescribe uno existente y prueba el resultado bloqueando una PR desechable. |
 | [`requirement-to-spec-java`](docs/skills/requirement-to-spec-java-es.md) | Convierte un documento de requisitos de negocio en una especificación y un desglose de tareas, antes de que exista un issue — nunca escribe código, nunca abre PR. |
 | [`github-plan-build`](docs/skills/github-plan-build-es.md) | El ciclo completo: toma un issue de GitHub, arma un plan, lo implementa test-first, y abre una PR verificada. |
 | [`debt-triage`](docs/skills/debt-triage-es.md) | Triaja con criterio los hallazgos que un analizador estático ya reportó (Sonar, CodeQL, Checkstyle...) — nunca instala un sensor nuevo ni aplica un auto-fix a ciegas. |
@@ -92,10 +93,10 @@ la versión) y que el CHANGELOG cuente la verdad.
 Los cambios aplican a las **sesiones nuevas** de Claude Code; una sesión abierta sigue con las
 skills que cargó al arrancar. `claude plugin list` muestra la versión activa.
 
-Las 7 skills quedan disponibles como `/sdlc-ia:agent-context-java`,
+Las 8 skills quedan disponibles como `/sdlc-ia:agent-context-java`,
 `/sdlc-ia:instrument-project-java`, `/sdlc-ia:instrument-agent-java`,
-`/sdlc-ia:requirement-to-spec-java`, `/sdlc-ia:github-plan-build`, `/sdlc-ia:debt-triage` y
-`/sdlc-ia:legacy-test-harness`.
+`/sdlc-ia:instrument-github-repo`, `/sdlc-ia:requirement-to-spec-java`,
+`/sdlc-ia:github-plan-build`, `/sdlc-ia:debt-triage` y `/sdlc-ia:legacy-test-harness`.
 
 ## Shell: PowerShell primero, bash también
 

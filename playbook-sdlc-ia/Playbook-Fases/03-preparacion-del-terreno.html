@@ -12,7 +12,7 @@
   <a class="back" href="../Playbook-sdlc-ia.html">← Volver al diagrama</a>
   <div class="brand">Plugin sdlc-ia · Fase 2</div>
   <h1>Preparación del terreno</h1>
-  <p class="lead">Donde el plugin hace casi todo su trabajo, y donde están casi todos sus huecos. Tres skills cubren esta fase: <code>agent-context-java</code> el contexto, <code>instrument-project-java</code> los sensores de código, <code>instrument-agent-java</code> lo que el agente puede alcanzar y lo que no puede saltarse.</p>
+  <p class="lead">Donde el plugin hace casi todo su trabajo, y donde están casi todos sus huecos. Cuatro skills cubren esta fase: <code>agent-context-java</code> el contexto, <code>instrument-project-java</code> los sensores de código, <code>instrument-agent-java</code> lo que el agente puede alcanzar y lo que no puede saltarse, e <code>instrument-github-repo</code> el juez que hace que todo lo anterior bloquee de verdad.</p>
   <div class="rule"></div>
 
   <nav class="phases">
@@ -28,9 +28,8 @@
   </nav>
 
   <div class="cobertura">
-    <span class="k-skill"><b>18</b> · skill</span>
+    <span class="k-skill"><b>19</b> · skill</span>
     <span class="k-parcial"><b>4</b> · parcial</span>
-    <span class="k-mano"><b>1</b> · a mano</span>
     <span class="k-hueco"><b>10</b> · hueco</span>
     <span class="k-fuera"><b>1</b> · fuera de alcance</span>
   </div>
@@ -169,14 +168,15 @@
     <div class="fuente"><b>Fuente:</b> <code>instrument-project-java/SKILL.md</code>, controles 4 y 8.</div>
   </section>
 
-  <section id="DCJ" class="mano">
-    <span class="tag">DCJ</span><span class="badge mano">A mano</span>
+  <section id="DCJ" class="skill">
+    <span class="tag">DCJ</span><span class="badge skill">Skill</span>
     <h2>El juez</h2>
-    <p>Esta es la caja más importante de la fase, y la que ninguna skill toca. <strong>Un workflow que corre no bloquea nada.</strong> Lo que bloquea el merge es el <strong>Ruleset</strong> de GitHub que exige el check en verde y la PR aprobada.</p>
-    <p>El visor lo cubre en el nodo <code>pz</code>, y explica por qué Ruleset y no las reglas clásicas de protección de rama: es a nivel de organización, con lista de excepciones auditable. Se configura una vez y protege cada PR que venga después.</p>
-    <div class="hint"><b>El orden importa.</b> <code>pz</code> corre <em>antes</em> de verificar que el arnés llegó, porque <code>instrument-project-java</code> es quien escribe <code>lefthook.yml</code>: verificarlo antes encontraría un archivo que todavía no existe.</div>
-    <div class="falta"><b>Por qué es un hueco con badge de «a mano».</b> El visor lo enseña, así que no está perdido. Pero significa que un repositorio instrumentado con el plugin y sin el paso manual tiene <strong>todos los sensores y ningún juez</strong>: los checks informan y el merge pasa igual.</div>
-    <div class="fuente"><b>Fuente:</b> visor, nodo <code>pz</code>.</div>
+    <p>Es la caja más importante de la fase. <strong>Un workflow que corre no bloquea nada.</strong> Lo que bloquea el merge es el <strong>Ruleset</strong> de GitHub que exige el check en verde y la PR aprobada.</p>
+    <p><code>/sdlc-ia:instrument-github-repo</code> lo escribe. Es una <strong>skill aparte</strong> y no un paso más de <code>instrument-project-java</code> porque cambia la configuración del remoto a través de la API: otros permisos, otra forma de fallar, y sin un <code>git checkout</code> que deshaga nada.</p>
+    <div class="hint"><b>Nunca sobrescribe uno existente.</b> Un Ruleset puede llevar protecciones que alguien puso a mano. La skill lo trae, lo compara campo por campo y reporta tres columnas —qué tiene, qué escribiría, qué cambiaría eso— y se detiene. Es el mismo «fusiona, nunca reemplaza» que el resto del paquete aplica al <code>Makefile</code> y a <code>.mcp.json</code>.</div>
+    <div class="hint"><b>Se prueba bloqueando, no confiando en un <code>201</code>.</b> Abre una PR desechable contra la rama protegida y confirma que GitHub la reporta como bloqueada, y por el motivo configurado. Hay <b>tres formas</b> de tener un Ruleset que devuelve 201 y no protege nada: el nombre pelado de la rama en vez del ref completo, <code>enforcement</code> en <code>evaluate</code>, y un check que ninguna corrida produce. Solo un intento de merge las distingue.</div>
+    <div class="hint"><b>El campo que parece un descuido y no lo es.</b> El Ruleset de la rama de liberación usa <code>strict_required_status_checks_policy: false</code>. Como la integración entra por squash, esa rama nunca contiene los merge commits de las liberaciones anteriores: con <code>true</code>, toda liberación quedaría bloqueada como «behind».</div>
+    <div class="fuente"><b>Fuente:</b> <code>instrument-github-repo/SKILL.md</code> y <code>references/ruleset-anatomy.md</code>, cuyas formas se leyeron de Rulesets vivos vía API, no de la documentación. El visor sigue explicando el porqué en su nodo <code>pz</code>.</div>
   </section>
 
   <section id="DCA" class="fuera">
@@ -214,7 +214,7 @@
     <span class="tag">N4</span><span class="badge hueco">Hueco</span>
     <h2>Skills, subagentes y plugins propios</h2>
     <p>El paso pide que el equipo construya sus propias capacidades: una skill para el flujo que repite, un subagente para la revisión que siempre hace igual.</p>
-    <div class="falta"><b>Qué falta.</b> Es la ironía del paquete: <em>sdlc-ia es un conjunto de skills, pero ninguna de sus skills crea skills</em>. Un repositorio instrumentado con el plugin sale con siete comandos prestados y cero propios.</div>
+    <div class="falta"><b>Qué falta.</b> Es la ironía del paquete: <em>sdlc-ia es un conjunto de skills, pero ninguna de sus skills crea skills</em>. Un repositorio instrumentado con el plugin sale con ocho comandos prestados y cero propios.</div>
   </section>
 
   <section id="N6" class="parcial">

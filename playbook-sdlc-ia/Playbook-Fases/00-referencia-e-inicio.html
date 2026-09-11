@@ -36,14 +36,15 @@
 
   <section id="RS" class="skill">
     <span class="tag">RS</span><span class="badge skill">Skill</span>
-    <h2>Las 7 skills de sdlc-ia</h2>
-    <p>El plugin se instala como marketplace local y deja siete comandos disponibles. Tres instrumentan el repositorio, dos lo llevan de ticket a PR, y dos atienden lo que ya estaba mal antes de que llegara el agente.</p>
+    <h2>Las 8 skills de sdlc-ia</h2>
+    <p>El plugin se instala como marketplace local y deja ocho comandos disponibles. Cuatro instrumentan el repositorio, dos lo llevan de ticket a PR, y dos atienden lo que ya estaba mal antes de que llegara el agente.</p>
     <div class="ejecuadro">
       <table class="rev">
         <tr><th>Skill</th><th>Qué hace</th><th>Fase</th></tr>
         <tr><td><strong>agent-context-java</strong></td><td>Genera el paquete de contexto del repo: <code>AGENTS.md</code>, <code>CLAUDE.md</code>, <code>docs/architecture.md</code>, ADRs, <code>docs/java.md</code>.</td><td>2</td></tr>
-        <tr><td><strong>instrument-project-java</strong></td><td>Instala nueve controles deterministas y prueba que cada uno falla antes de reportar éxito.</td><td>2</td></tr>
+        <tr><td><strong>instrument-project-java</strong></td><td>Instala doce controles deterministas y prueba que cada uno falla antes de reportar éxito.</td><td>2</td></tr>
         <tr><td><strong>instrument-agent-java</strong></td><td>Registra servidores MCP y ocho hooks de comando de Claude Code.</td><td>2</td></tr>
+        <tr><td><strong>instrument-github-repo</strong></td><td>Escribe el Ruleset que convierte los checks de CI en un juez. Nunca sobrescribe uno existente, y lo prueba bloqueando.</td><td>2</td></tr>
         <tr><td><strong>requirement-to-spec-java</strong></td><td>Convierte un documento de requisitos en spec y tareas, antes de que exista el issue.</td><td>3</td></tr>
         <tr><td><strong>github-plan-build</strong></td><td>Issue → plan → build test-first → PR verificada, con el CI vigilado hasta verde.</td><td>3</td></tr>
         <tr><td><strong>debt-triage</strong></td><td>Triaja con criterio los hallazgos que un analizador ya reportó. Nunca instala un sensor nuevo.</td><td>puente</td></tr>
@@ -81,7 +82,7 @@
     <div class="ejecuadro">
       <table class="rev">
         <tr><th>Pieza</th><th>Qué es</th><th>Para qué la usa este playbook</th></tr>
-        <tr><td><code>instrumentacion-java-ia/</code></td><td>El plugin <code>sdlc-ia</code>, con sus siete skills.</td><td>Toda caja con badge <strong>Skill</strong> o <strong>Parcial</strong>.</td></tr>
+        <tr><td><code>instrumentacion-java-ia/</code></td><td>El plugin <code>sdlc-ia</code>, con sus ocho skills.</td><td>Toda caja con badge <strong>Skill</strong> o <strong>Parcial</strong>.</td></tr>
         <tr><td><code>proceso-operacional-con-ia/</code></td><td>El visor BPMN del proceso: ~60 nodos, con comandos copiables.</td><td>Toda caja con badge <strong>A mano</strong>: la caja nombra el nodo.</td></tr>
         <tr><td><code>manuales/</code></td><td>Recorridos ya grabados, con capturas y transcripciones reales.</td><td>La instalación de punta a punta y dos casos reales resueltos.</td></tr>
         <tr><td><code>base-conocimiento/</code></td><td>La aplicación Java/Spring del taller.</td><td>El repositorio donde cada skill se probó de verdad.</td></tr>
