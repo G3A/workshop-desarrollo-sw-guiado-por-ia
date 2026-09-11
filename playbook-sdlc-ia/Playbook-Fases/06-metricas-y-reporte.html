@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fase 5 · Métricas y reporte · Playbook del plugin sdlc-ia</title>
+<link rel="stylesheet" href="../vendor/fonts.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="../Playbook-sdlc-ia.html">← Volver al diagrama</a>
+  <div class="brand">Plugin sdlc-ia · Fase 5</div>
+  <h1>Métricas y reporte a liderazgo</h1>
+  <p class="lead">Sin cobertura de punta a punta: ni skill, ni nodo del visor, ni manual. Con una particularidad que la hace la fase más frustrante del playbook — el insumo de la primera métrica ya está escrito en cada commit, y nadie lo lee.</p>
+  <div class="rule"></div>
+
+  <nav class="phases">
+    <a href="index.html">Índice</a>
+    <a href="00-referencia-e-inicio.html">Referencia</a>
+    <a href="01-fundamentos.html">Fase 0</a>
+    <a href="02-cultura.html">Fase 1</a>
+    <a href="03-preparacion-del-terreno.html">Fase 2</a>
+    <a href="04-ciclo-por-feature.html">Fase 3</a>
+    <a href="05-retroalimentacion.html">Fase 4</a>
+    <a class="active" href="06-metricas-y-reporte.html">Fase 5</a>
+    <a href="07-adopcion-por-etapas.html">Fase 6</a>
+  </nav>
+
+  <div class="cobertura">
+    <span class="k-hueco"><b>3</b> · hueco</span>
+  </div>
+
+  <section id="K1" class="hueco">
+    <span class="tag">K1</span><span class="badge hueco">Hueco</span>
+    <h2>Las 4 métricas, medidas del historial de PRs</h2>
+    <p>Cuatro números que salen del repositorio, no de una encuesta:</p>
+    <ul>
+      <li><strong>% de PRs con IA</strong> — cuánto del trabajo pasa por el agente.</li>
+      <li><strong>Lead time</strong> — de issue abierto a merge.</li>
+      <li><strong>Retrabajo</strong> — comparado entre PRs asistidas y no asistidas. Es la que importa: si el retrabajo sube, la velocidad que ganaste es prestada.</li>
+      <li><strong>Cobertura</strong> — la red que sostiene todo lo demás.</li>
+    </ul>
+    <div class="falta">
+      <b>Qué falta, y lo cerca que está.</b> La primera métrica <strong>ya tiene su insumo escrito</strong>: <code>github-plan-build</code> pone el trailer <code>Asistido-por-IA: &lt;modelo&gt;</code> en cada commit y en el cuerpo del PR, justamente para que sobreviva al squash. Separar lo asistido del resto es una línea:
+      <pre class="snippet">git log --format='%(trailers:key=Asistido-por-IA)'</pre>
+      Nadie la corre, nadie la agrega, nadie la reporta. La cuarta métrica, en cambio, ni siquiera tiene insumo: <a href="03-preparacion-del-terreno.html#DU">JaCoCo no lo instala ninguna skill</a>.
+    </div>
+    <div class="hint"><b>Por qué el trailer va en los dos lugares.</b> Un squash merge toma el cuerpo del PR como mensaje del commit final. Si el trailer estuviera solo en los commits de la rama, el squash lo borraría y la métrica se perdería justo al integrar.</div>
+  </section>
+
+  <section id="K2" class="hueco">
+    <span class="tag">K2</span><span class="badge hueco">Hueco</span>
+    <h2>La encuesta cualitativa</h2>
+    <p>Cuatro preguntas en escala de 1 a 5, que capturan lo que el historial de git no puede:</p>
+    <ul>
+      <li><strong>Confianza</strong> — ¿le crees al código que produce?</li>
+      <li><strong>Fricción</strong> — ¿cuánto cuesta usarlo en un día normal?</li>
+      <li><strong>Valor</strong> — ¿te ahorró trabajo de verdad?</li>
+      <li><strong>Alineación</strong> — ¿resuelve como este equipo resuelve?</li>
+    </ul>
+    <p>Van juntas con las métricas duras por una razón: los cuatro números pueden mejorar mientras el equipo la pasa peor, y eso solo se ve preguntando.</p>
+    <div class="falta"><b>Qué falta.</b> No está en ninguna pieza del repositorio.</div>
+  </section>
+
+  <section id="K3" class="hueco">
+    <span class="tag">K3</span><span class="badge hueco">Hueco</span>
+    <h2>El reporte a liderazgo</h2>
+    <p>Tres partes: <strong>diagnóstico</strong> de dónde está el equipo hoy, <strong>métricas comparadas</strong> contra la línea base, y el <strong>compromiso del próximo período</strong>. Sin línea base medida antes de empezar, el reporte es una anécdota con números.</p>
+    <div class="falta"><b>Qué falta.</b> No está en ninguna pieza del repositorio.</div>
+    <div class="hint"><b>Esta fase es la puerta de la siguiente.</b> El criterio de avance de la Etapa 3 pide «al menos un dato cuantitativo presentable a liderazgo». Sin la Fase 5, la Fase 6 se queda trabada ahí — y las dos están vacías, así que el playbook se corta acá en la práctica.</div>
+  </section>
+
+  <section id="GA" class="dec">
+    <span class="tag">GA</span>
+    <h2>¿Se cumple el criterio de avance de tu etapa actual?</h2>
+    <p>El rombo que conecta esta fase con la siguiente. No hay un criterio único: <strong>cada etapa tiene el suyo</strong>, y son distintos a propósito. Lo que basta para pasar de una persona a una escuadra no basta para pasar de una escuadra al equipo completo.</p>
+    <p>Los cuatro criterios están en la <a href="07-adopcion-por-etapas.html">Fase 6</a>, cada uno en su etapa. Si no se cumple el tuyo, la salida no es «escala igual»: es <a href="07-adopcion-por-etapas.html#AJ">consolidar y ajustar</a> con el mismo alcance.</p>
+    <div class="falta"><b>Qué falta.</b> Este rombo no se puede responder hoy, porque las tres cajas de arriba están vacías. Un equipo que siga este playbook llega acá sin ningún número y decide escalar por intuición — que es exactamente lo que la Fase 5 existe para evitar.</div>
+  </section>
+
+  <footer>Plugin <code>sdlc-ia</code> · monorepo <code>workshop-desarrollo-sw-guiado-por-ia</code></footer>
+</div>
+<script src="nav.js"></script>
+</body>
+</html>

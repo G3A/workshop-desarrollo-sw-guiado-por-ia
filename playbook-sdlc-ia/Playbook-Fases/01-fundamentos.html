@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fase 0 · Fundamentos · Playbook del plugin sdlc-ia</title>
+<link rel="stylesheet" href="../vendor/fonts.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="../Playbook-sdlc-ia.html">← Volver al diagrama</a>
+  <div class="brand">Plugin sdlc-ia · Fase 0</div>
+  <h1>Fundamentos</h1>
+  <p class="lead">El plugin no entra en esta fase, y no debería: instrumentar un repositorio no te enseña a usar el agente. Lo que sí hay es el visor para la instalación y la configuración, y tres huecos conceptuales.</p>
+  <div class="rule"></div>
+
+  <nav class="phases">
+    <a href="index.html">Índice</a>
+    <a href="00-referencia-e-inicio.html">Referencia</a>
+    <a class="active" href="01-fundamentos.html">Fase 0</a>
+    <a href="02-cultura.html">Fase 1</a>
+    <a href="03-preparacion-del-terreno.html">Fase 2</a>
+    <a href="04-ciclo-por-feature.html">Fase 3</a>
+    <a href="05-retroalimentacion.html">Fase 4</a>
+    <a href="06-metricas-y-reporte.html">Fase 5</a>
+    <a href="07-adopcion-por-etapas.html">Fase 6</a>
+  </nav>
+
+  <div class="cobertura">
+    <span class="k-mano"><b>3</b> · a mano</span>
+    <span class="k-hueco"><b>3</b> · hueco</span>
+  </div>
+
+  <section id="F1" class="hueco">
+    <span class="tag">F1</span><span class="badge hueco">Hueco</span>
+    <h2>Entiende los 3 modos</h2>
+    <p>Vibe Coding, Desarrollo Guiado por IA y Agentic Coding no son tres nombres de lo mismo: son tres grados distintos de cuánto contexto y cuánta verificación pones antes de dejar que el agente escriba. Sin esa distinción, «usar IA para programar» significa cosas incompatibles dentro del mismo equipo.</p>
+    <div class="falta"><b>Qué falta.</b> Ni el plugin, ni el visor, ni los manuales lo cubren. Es material de la sesión 1 del taller, y hoy vive solo en las diapositivas. El hueco es de <em>documentación</em>, no de herramienta: no hay una skill razonable que lo cierre.</div>
+  </section>
+
+  <section id="F2" class="mano">
+    <span class="tag">F2</span><span class="badge mano">A mano</span>
+    <h2>Instala y conecta el agente</h2>
+    <p>Instalar el agente es el paso de menor riesgo de todo el proceso. Terminal, extensión de IDE o la web: las tres rutas llegan al mismo lugar.</p>
+    <p>El nodo <code>fd1</code> del visor lo recorre con comandos copiables, y <code>manuales/manual-sandbox-instalacion-completa/</code> lo hace entero con capturas y transcripciones reales de las tres skills de instrumentación corriendo sobre un repositorio nuevo.</p>
+    <div class="fuente"><b>Fuente:</b> visor, nodo <code>fd1</code>; <code>manuales/manual-sandbox-instalacion-completa/</code>.</div>
+  </section>
+
+  <section id="F3" class="mano">
+    <span class="tag">F3</span><span class="badge mano">A mano</span>
+    <h2>Configura permisos y entorno</h2>
+    <p>«La mayoría de la fricción con un agente de código no es del agente — es de cómo quedó configurado.» Eso incluye los permisos de herramienta, las variables de entorno que los servidores MCP van a leer, y el paso de confianza del workspace, sin el cual los MCP quedan pendientes de aprobación y no arrancan.</p>
+    <p>En Windows hay una condición que vale la pena verificar temprano: los scripts de hook del plugin son <strong>bash puro</strong>, así que sin Git Bash instalado Claude Code cae a PowerShell y los hooks quedan inertes en silencio. <code>instrument-agent-java</code> lo comprueba en su fase de prerrequisitos, pero es más barato saberlo antes.</p>
+    <div class="fuente"><b>Fuente:</b> visor, nodo <code>fd2</code>; <code>instrument-agent-java</code>, fase 2 «Prerrequisitos».</div>
+  </section>
+
+  <section id="F4" class="mano">
+    <span class="tag">F4</span><span class="badge mano">A mano</span>
+    <h2>Domina lo esencial</h2>
+    <p>@menciones para traer archivos al contexto, Plan Mode para separar «qué hay que hacer» de «cómo se hace», el sistema de permisos, y los checkpoints para poder volver atrás sin perder la sesión.</p>
+    <p>Esto no lo automatiza nada, y tampoco conviene: son los controles con los que vas a supervisar todo lo demás.</p>
+    <div class="fuente"><b>Fuente:</b> visor, nodo <code>fd2</code>.</div>
+  </section>
+
+  <section id="F5" class="hueco">
+    <span class="tag">F5</span><span class="badge hueco">Hueco</span>
+    <h2>Conoce modelos y ventana de contexto</h2>
+    <p>Qué modelo corre tu sesión, cuánto entra en la ventana, qué pasa cuando se compacta, y hasta qué fecha llega el conocimiento del modelo. Importa de forma concreta en este mismo playbook: el trailer <code>Asistido-por-IA</code> que <code>github-plan-build</code> escribe en cada commit lleva el id del modelo, y esa es la única forma de saber después con qué se construyó cada cambio.</p>
+    <div class="falta"><b>Qué falta.</b> No está en ninguna pieza del repositorio.</div>
+  </section>
+
+  <section id="F6" class="hueco">
+    <span class="tag">F6</span><span class="badge hueco">Hueco</span>
+    <h2>Revisa costos y privacidad</h2>
+    <p>Qué cuesta cada corrida, qué límites tiene tu plan, cuánto se retiene y qué se usa o no para entrenar. Es la conversación que un equipo necesita tener <em>antes</em> de escalar el uso, no después — y es exactamente lo que la Fase 6 pide para pasar a la Etapa 4.</p>
+    <div class="falta"><b>Qué falta.</b> No está en ninguna pieza del repositorio. Es el hueco que más se nota cuando alguien pregunta «¿y esto cuánto nos cuesta?» en la primera demo.</div>
+  </section>
+
+  <footer>Plugin <code>sdlc-ia</code> · monorepo <code>workshop-desarrollo-sw-guiado-por-ia</code></footer>
+</div>
+<script src="nav.js"></script>
+</body>
+</html>

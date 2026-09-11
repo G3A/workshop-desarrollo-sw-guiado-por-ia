@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inicio y referencia · Playbook del plugin sdlc-ia</title>
+<link rel="stylesheet" href="../vendor/fonts.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="../Playbook-sdlc-ia.html">← Volver al diagrama</a>
+  <div class="brand">Plugin sdlc-ia · Instrumentación Java con IA</div>
+  <h1>Inicio y referencia</h1>
+  <p class="lead">Qué es el plugin, qué significa cada badge, y cómo se reparte el trabajo entre el plugin, el visor y los manuales.</p>
+  <div class="rule"></div>
+
+  <nav class="phases">
+    <a href="index.html">Índice</a>
+    <a class="active" href="00-referencia-e-inicio.html">Referencia</a>
+    <a href="01-fundamentos.html">Fase 0</a>
+    <a href="02-cultura.html">Fase 1</a>
+    <a href="03-preparacion-del-terreno.html">Fase 2</a>
+    <a href="04-ciclo-por-feature.html">Fase 3</a>
+    <a href="05-retroalimentacion.html">Fase 4</a>
+    <a href="06-metricas-y-reporte.html">Fase 5</a>
+    <a href="07-adopcion-por-etapas.html">Fase 6</a>
+  </nav>
+
+  <section id="START">
+    <span class="tag">START</span>
+    <h2>Empiezas aquí</h2>
+    <p>Este playbook recorre el método completo, pero no lo cuenta desde la teoría: cuenta <strong>quién ejecuta cada paso hoy</strong> en este repositorio. Algunos los corre una skill del plugin con un solo comando. Otros los haces tú, y el visor <code>proceso-operacional-con-ia</code> te enseña cómo. Y unos cuantos no los cubre nadie todavía — esos están pintados de rojo a propósito.</p>
+    <p>El orden del diagrama es el del método, no el de la comodidad. Si tu repositorio ya tiene el terreno preparado, salta directo a la Fase 3.</p>
+  </section>
+
+  <section id="RS" class="skill">
+    <span class="tag">RS</span><span class="badge skill">Skill</span>
+    <h2>Las 7 skills de sdlc-ia</h2>
+    <p>El plugin se instala como marketplace local y deja siete comandos disponibles. Tres instrumentan el repositorio, dos lo llevan de ticket a PR, y dos atienden lo que ya estaba mal antes de que llegara el agente.</p>
+    <div class="ejecuadro">
+      <table class="rev">
+        <tr><th>Skill</th><th>Qué hace</th><th>Fase</th></tr>
+        <tr><td><strong>agent-context-java</strong></td><td>Genera el paquete de contexto del repo: <code>AGENTS.md</code>, <code>CLAUDE.md</code>, <code>docs/architecture.md</code>, ADRs, <code>docs/java.md</code>.</td><td>2</td></tr>
+        <tr><td><strong>instrument-project-java</strong></td><td>Instala nueve controles deterministas y prueba que cada uno falla antes de reportar éxito.</td><td>2</td></tr>
+        <tr><td><strong>instrument-agent-java</strong></td><td>Registra servidores MCP y ocho hooks de comando de Claude Code.</td><td>2</td></tr>
+        <tr><td><strong>requirement-to-spec-java</strong></td><td>Convierte un documento de requisitos en spec y tareas, antes de que exista el issue.</td><td>3</td></tr>
+        <tr><td><strong>github-plan-build</strong></td><td>Issue → plan → build test-first → PR verificada, con el CI vigilado hasta verde.</td><td>3</td></tr>
+        <tr><td><strong>debt-triage</strong></td><td>Triaja con criterio los hallazgos que un analizador ya reportó. Nunca instala un sensor nuevo.</td><td>puente</td></tr>
+        <tr><td><strong>legacy-test-harness</strong></td><td>Hace crecer pruebas reales en cinco capas sobre código que ya está en producción.</td><td>puente</td></tr>
+      </table>
+    </div>
+    <div class="fuente"><b>Fuente:</b> <code>instrumentacion-java-ia/README.md</code> y el <code>SKILL.md</code> de cada skill.</div>
+  </section>
+
+  <section id="RB">
+    <span class="tag">RB</span>
+    <h2>Los 5 badges de cobertura</h2>
+    <p>Cada caja del diagrama lleva uno. El badge no juzga la importancia del paso: dice quién lo ejecuta hoy y nada más.</p>
+    <p><span class="badge skill">Skill</span> La corre el plugin, con su comando. La caja nombra cuál.</p>
+    <p><span class="badge parcial">Parcial</span> Hay una skill que toca el paso, pero no lo cubre entero. La sección dice exactamente qué queda afuera — ese resto es un hueco con nombre.</p>
+    <p><span class="badge mano">A mano</span> Lo haces tú, y el repositorio te enseña cómo: un nodo del visor <code>proceso-operacional-con-ia</code>, o un manual de <code>manuales/</code>. No es un hueco: es un paso que a propósito no se automatizó.</p>
+    <p><span class="badge hueco">Hueco</span> Nadie lo cubre en este repositorio: ni skill, ni visor, ni manual. Cada uno de estos es trabajo que todavía no tiene issue.</p>
+    <p><span class="badge fuera">Fuera de alcance</span> Frontera declarada del plugin, no un olvido. El <code>README.md</code> las nombra: Azure DevOps, memoria semántica entre sesiones, y un panel de agentes especialistas por stack.</p>
+    <div class="hint"><b>Un parcial es más peligroso que un hueco</b>, por la misma razón que un control de instrumentación a medias: el equipo cree que ya está cubierto y deja de mirarlo.</div>
+  </section>
+
+  <section id="RD" class="det">
+    <span class="tag">RD</span><span class="tipo det">El eje</span>
+    <h2>El eje de la instrumentación</h2>
+    <p>Un control es <strong>determinista solo si el disparo y la decisión quedan los dos fuera del razonamiento del modelo</strong>. Basta que una de las dos dependa del modelo para que sea no determinista.</p>
+    <p>El eje es <em>quién dispara y quién decide</em>, no cómo está implementado. Por eso los ocho hooks de comando que instala <code>instrument-agent-java</code> son deterministas —el ciclo de vida del agente los dispara en un punto fijo, y un script de shell decide— mientras que los servidores MCP que la misma skill registra son no deterministas: el modelo decide cuándo llamarlos y con qué argumentos.</p>
+    <div class="excep"><b>Dos excepciones que rompen la intuición.</b> Un hook <code>type: mcp_tool</code> es determinista, aunque llame a un servidor MCP, porque el modelo no eligió llamarlo. Y un hook <code>type: prompt</code> es no determinista, aunque sea un hook, porque la decisión sale de inferencia.</div>
+    <div class="fuente"><b>Fuente:</b> la leyenda de <code>proceso-operacional-con-ia/comandos.json</code> (<code>instrumentacionTipos</code>), que cita la documentación de Claude Code y la especificación de MCP.</div>
+  </section>
+
+  <section id="RV">
+    <span class="tag">RV</span>
+    <h2>Las piezas del repositorio, y qué cubre cada una</h2>
+    <p>Este playbook no duplica nada: enruta. Cuando una caja dice «a mano», dice también dónde está explicado.</p>
+    <div class="ejecuadro">
+      <table class="rev">
+        <tr><th>Pieza</th><th>Qué es</th><th>Para qué la usa este playbook</th></tr>
+        <tr><td><code>instrumentacion-java-ia/</code></td><td>El plugin <code>sdlc-ia</code>, con sus siete skills.</td><td>Toda caja con badge <strong>Skill</strong> o <strong>Parcial</strong>.</td></tr>
+        <tr><td><code>proceso-operacional-con-ia/</code></td><td>El visor BPMN del proceso: ~60 nodos, con comandos copiables.</td><td>Toda caja con badge <strong>A mano</strong>: la caja nombra el nodo.</td></tr>
+        <tr><td><code>manuales/</code></td><td>Recorridos ya grabados, con capturas y transcripciones reales.</td><td>La instalación de punta a punta y dos casos reales resueltos.</td></tr>
+        <tr><td><code>base-conocimiento/</code></td><td>La aplicación Java/Spring del taller.</td><td>El repositorio donde cada skill se probó de verdad.</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section id="B0" class="mano">
+    <span class="tag">B0</span><span class="badge mano">A mano</span>
+    <h2>Selecciona el repositorio</h2>
+    <p>Brownfield, Java con Maven. El plugin está afinado para eso: <code>instrument-project-java</code> lee el JDK y la versión de Maven del wrapper y del POM, y <code>agent-context-java</code> confirma que es un repo Java antes de hacer nada.</p>
+    <p>Antes de seguir, el visor te hace dos chequeos que conviene no saltar: el nodo <code>f0</code> confirma que el equipo ya tiene las cuatro prácticas base funcionando <em>sin</em> el agente, y el nodo <code>G1</code> comprueba que la instalación quedó sana.</p>
+    <div class="fuente"><b>Fuente:</b> visor, nodos <code>f0</code> y <code>G1</code>.</div>
+  </section>
+
+  <section id="IP" class="skill">
+    <span class="tag">IP</span><span class="badge skill">Skill</span>
+    <h2>Instala el plugin en tu máquina</h2>
+    <p>Un solo comando, desde la carpeta del plugin, en cualquier equipo que tenga el clon:</p>
+    <pre class="snippet">.\update.ps1        # Windows PowerShell 5.1 o PowerShell 7
+./update.sh         # macOS, Linux, Git Bash</pre>
+    <p>Hace <code>git pull --ff-only</code> sobre la rama en la que esté el clon, registra el marketplace si falta o apunta a otra ruta, refresca e instala, y verifica que la caché instalada sea idéntica a la fuente archivo por archivo.</p>
+    <div class="hint"><b>Por qué hace falta un script.</b> La CLI instala el plugin copiándolo a una caché, y <code>claude plugin install</code> <b>nunca refresca un plugin que ya figura instalado</b>, ni siquiera cuando <code>plugin.json</code> subió de versión. La única forma de traer la copia nueva es desinstalar e instalar, y eso es lo que hace el script.</div>
+    <p>Los cambios aplican a las <strong>sesiones nuevas</strong> de Claude Code; una sesión abierta sigue con las skills que cargó al arrancar.</p>
+    <div class="fuente"><b>Fuente:</b> <code>instrumentacion-java-ia/README.md</code>, sección «Actualizar cuando sale una versión nueva», y su <code>AGENTS.md</code>.</div>
+  </section>
+
+  <footer>Plugin <code>sdlc-ia</code> · monorepo <code>workshop-desarrollo-sw-guiado-por-ia</code></footer>
+</div>
+<script src="nav.js"></script>
+</body>
+</html>

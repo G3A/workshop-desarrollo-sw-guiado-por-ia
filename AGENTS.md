@@ -7,6 +7,9 @@ contexto:
 - `instrumentacion-java-ia/` — el plugin `sdlc-ia` de Claude Code (siete skills). Tiene su `AGENTS.md`.
 - `proceso-operacional-con-ia/` — el visor BPMN del proceso, que enseña con comandos lo que las
   skills ejecutan.
+- `playbook-sdlc-ia/` — el diagrama de las 7 fases del método con un badge de cobertura por caja
+  (skill / parcial / a mano / hueco / fuera de alcance). Es el único lugar donde está escrito qué
+  del método NO cubre el plugin todavía.
 - `docs/adrs/` — decisiones que atraviesan el monorepo (ramas, liberaciones). Las de cada pieza
   viven en su carpeta.
 
@@ -47,9 +50,11 @@ contexto:
 
 ## Reglas duras
 
-- **Visor y skills coinciden.** Al tocar una skill, revisa el nodo del visor que la cita; al tocar
-  el visor, verifica la afirmación contra el `SKILL.md`. Lo que el alumno hace a mano y lo que
-  corre la skill tiene que ser lo mismo.
+- **Visor, playbook y skills coinciden.** Al tocar una skill, revisa el nodo del visor que la cita
+  y la caja del playbook que la nombra; al tocar el visor o el playbook, verifica la afirmación
+  contra el `SKILL.md`. Lo que el alumno hace a mano y lo que corre la skill tiene que ser lo
+  mismo. Si una skill cierra un hueco, la caja del playbook cambia de `:::hueco` a `:::skill` y
+  los contadores de cobertura del índice y de la fase se actualizan en el mismo PR.
 - **Comandos.** Los bloques del visor están en PowerShell 5.1 y 7; los comandos de las skills son
   neutrales entre PowerShell y bash.
 - **Versión del plugin.** La PR de liberación `dev` → `main` sube la versión de `plugin.json` y
