@@ -15,6 +15,34 @@ versión nueva", and `AGENTS.md`).
 
 ## [unreleased]
 
+### Added
+
+- **`instrument-project-java` grows from nine controls to twelve**, closing four boxes the
+  `playbook-sdlc-ia` diagram had in red or amber. Every parameter below was decided in the coverage
+  questionnaire, not chosen here.
+  - **Error Prone, inside control 2** (not a control of its own — it is one more compiler
+    argument). Starts at the **ERROR set only**, leaving warnings visible: that set is tuned for no
+    false positives, so it is green on almost any repository, while promoting everything breaks a
+    brownfield on day one and gets the tool uninstalled instead of the bar raised.
+  - **Control 10 · test coverage** (JaCoCo). The rule is scoped to **new code, never the whole
+    repository** — a repo-wide ratio on a brownfield is born red and its only exit is lowering it
+    until it means nothing, the same failure control 7 avoids by encoding what the repo already
+    does. It fails **CI only**: coverage is slow, and a slow local gate is bypassed with
+    `--no-verify` within a week.
+  - **Control 11 · bug patterns** (SpotBugs). **Opt-in**, like secrets and SCA and for the same
+    reason: Checkstyle prevents new debt and starts green, SpotBugs over a brownfield starts red.
+    **SpotBugs alone — never PMD alongside it**, since two new analyzers shouting at once is the
+    fastest way to get both muted. When enabled it fails `make check`. This is also what makes
+    FindSecBugs possible later.
+  - **Control 12 · test suite separation** (Failsafe). Installs **the split and the profile only** —
+    never Testcontainers, RestAssured or any framework the repo has not chosen, because picking a
+    testing stack for the team is more invasive than anything else this skill does. `make check`
+    runs `test`, `make ci` runs `verify`; that one difference is the control.
+  - Each one carries its **break-and-restore procedure**. Control 10's has two halves on purpose:
+    red without a test proves the rule fires, green with one proves it is scoped to new code — a
+    rule red in both is a repo-wide threshold in disguise. Control 12's break must show `make test`
+    green while `make verify` is red; both red means the split never took.
+
 ### Changed
 
 - **`instrument-agent-java` no longer calls itself "the non-deterministic instrumentation layer".**

@@ -68,6 +68,22 @@ confirm `./mvnw -v` prints the real, pinned version again.
 warning line. If it only warns, `-Werror` is not reaching that module — check for an overriding
 `<configuration>` closer to the file.
 
+**Second break — Error Prone.** `-Werror` and Error Prone fail for different reasons, so proving
+one says nothing about the other. Add a self-comparison to a real source file:
+
+```java
+boolean probe = args.length == args.length;   // BREAK — SelfComparison
+```
+
+**Expect:** the build fails naming the Error Prone check (`[SelfComparison]`), not a generic lint
+category. If it compiles clean, the `-Xplugin:ErrorProne` argument is not reaching the compiler —
+the usual cause is a `<compilerArgs>` block that replaced rather than extended the one the control
+wrote, or a JDK that needs the `--add-exports` flags Error Prone requires. A green build here is a
+control that is present in the POM and absent at compile time, which is the worst of the two
+states.
+
+Restore the file after each half.
+
 ## Control 3 — Style
 
 **Break:** reorder the `import` statements in a real file (or add a trailing whitespace line, for
@@ -202,6 +218,103 @@ passes again (or reports only the pre-existing findings you already triaged).
 child POMs manage their own versions), one `github-actions` entry, a `schedule.interval`. On
 GitHub, the **Insights → Dependency graph → Dependabot** tab shows the file was picked up within
 minutes of the push; before that push it is a file, not a control.
+
+---
+
+## Control 10 — Test coverage
+
+**Two halves, and both are mandatory.** One proves the rule fires; the other proves it is scoped to
+new code and not to the whole repository.
+
+**Half 1 — red without a test.** Add a new class with at least one branch, no test:
+
+```java
+// BREAK — control 10
+public final class CoverageProbe {
+    public String describe(int n) {
+        if (n > 0) { return "positive"; }
+        return "non-positive";
+    }
+}
+```
+
+Run the coverage gate the way CI runs it (`make ci`, or the profile that carries the `check` goal —
+**not** `make check`, which by design does not run it). Expect a failure naming the class and the
+missed percentage.
+
+**Half 2 — green with a test.** Add a test covering both branches, run again, expect green.
+
+A rule that stays **red in half 2** is a repo-wide threshold in disguise: the new class is covered
+and the build still fails because the rest of the tree drags the ratio down. That is exactly what
+scope question 8 ruled out — fix the scoping, do not lower the number.
+
+A rule that stays **green in half 1** never fired: check that the `check` goal is actually bound in
+the profile CI uses, and that the probe class is inside the scanned source root.
+
+Delete both files afterwards.
+
+---
+
+## Control 11 — Bug patterns
+
+Only if the control was installed. Introduce a pattern SpotBugs detects with high confidence —
+a boxed comparison by reference is the least ambiguous:
+
+```java
+// BREAK — control 11
+public final class BugProbe {
+    public boolean same(Integer a, Integer b) {
+        return a == b;   // RC_REF_COMPARISON
+    }
+}
+```
+
+```bash
+make check
+```
+
+Expect a failure **naming the SpotBugs rule**, not a generic build error. If `make check` passes,
+the `check` goal is not bound to the phase `make check` runs — a report-only install, which scope
+question 9 offered as a separate answer. Do not report the control as installed in that case;
+report what it actually is.
+
+Delete the file afterwards.
+
+---
+
+## Control 12 — Suite separation
+
+The break has to show the two sets moving **independently** — that is the whole point of the
+control.
+
+Add one passing unit test and one failing integration test:
+
+```java
+// BREAK — control 12
+public class SeparationProbeTest {            // surefire picks this up
+    @Test void passes() { }
+}
+```
+
+```java
+// BREAK — control 12
+public class SeparationProbeIT {              // failsafe picks this up
+    @Test void fails() { org.junit.jupiter.api.Assertions.fail("probe"); }
+}
+```
+
+```bash
+make test        # expect GREEN — the *IT must not run here
+make verify      # expect RED  — naming SeparationProbeIT
+```
+
+**Both red means the split did not take**: Surefire is still matching `*IT`, or Failsafe is bound
+to the same phase. **Both green means Failsafe never ran** — check that the `verify` phase reaches
+`failsafe:integration-test` and `failsafe:verify`, and that a failure there is not being swallowed
+(Failsafe reports failures at `verify`, not at `integration-test`; without the second goal the
+build stays green with a failing test).
+
+Delete both files afterwards.
 
 ---
 

@@ -78,9 +78,10 @@
   <section id="FIN" class="goal">
     <span class="tag">FIN</span>
     <h2>La cobertura evoluciona con el método</h2>
-    <p>Este playbook no describe un estado final. Describe dónde está hoy la frontera entre <em>lo que el plugin hace</em> y <em>lo que el método pide</em>, con 29 cajas rojas que son trabajo real todavía sin issue.</p>
+    <p>Este playbook no describe un estado final. Describe dónde está hoy la frontera entre <em>lo que el plugin hace</em> y <em>lo que el método pide</em>, con 27 cajas rojas que son trabajo real todavía sin issue.</p>
     <p>Cuando una de ellas se cierre, la caja cambia de color y esta página cambia con ella — en el mismo PR que cambie la skill, como manda la regla dura del monorepo: <strong>visor y skills coinciden</strong>, y ahora también el playbook.</p>
-    <div class="hint"><b>Los tres huecos más baratos de cerrar</b>, si hubiera que elegir por dónde empezar: el <a href="04-ciclo-por-feature.html#VL4">checklist humano de 15 ítems</a> (solo hay que escribirlo), <a href="03-preparacion-del-terreno.html#DT">Error Prone</a> (un plugin más en el POM, dentro de un control que ya existe) y la <a href="06-metricas-y-reporte.html#K1">primera métrica</a> (el dato ya está en cada commit).</div>
+    <div class="hint"><b>Ya se cerraron cuatro.</b> <a href="03-preparacion-del-terreno.html#DT">Error Prone</a>, <a href="03-preparacion-del-terreno.html#DU">JaCoCo sobre código nuevo</a>, <a href="03-preparacion-del-terreno.html#D1">SpotBugs</a> y la <a href="03-preparacion-del-terreno.html#DI">separación de suites</a> entraron a <code>instrument-project-java</code> como los controles 10, 11 y 12 —Error Prone dentro del 2— y la Fase 2 pasó de 13 a 17 cajas verdes.</div>
+    <div class="hint"><b>Los siguientes más baratos</b>, si hubiera que elegir por dónde seguir: el <a href="04-ciclo-por-feature.html#VL4">checklist humano de 15 ítems</a> (solo hay que escribirlo, y es el contenido que le falta a <a href="03-preparacion-del-terreno.html#N2">REVIEW.md</a>) y la <a href="06-metricas-y-reporte.html#K1">primera métrica</a> (el dato ya está en cada commit). La de más riesgo por menos esfuerzo sigue siendo <a href="03-preparacion-del-terreno.html#DCJ">el Ruleset</a>.</div>
   </section>
 
   <footer>Plugin <code>sdlc-ia</code> · monorepo <code>workshop-desarrollo-sw-guiado-por-ia</code></footer>

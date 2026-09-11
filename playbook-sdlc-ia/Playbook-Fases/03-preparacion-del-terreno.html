@@ -28,10 +28,10 @@
   </nav>
 
   <div class="cobertura">
-    <span class="k-skill"><b>13</b> · skill</span>
-    <span class="k-parcial"><b>6</b> · parcial</span>
+    <span class="k-skill"><b>17</b> · skill</span>
+    <span class="k-parcial"><b>4</b> · parcial</span>
     <span class="k-mano"><b>1</b> · a mano</span>
-    <span class="k-hueco"><b>13</b> · hueco</span>
+    <span class="k-hueco"><b>11</b> · hueco</span>
     <span class="k-fuera"><b>1</b> · fuera de alcance</span>
   </div>
 
@@ -71,12 +71,13 @@
 
   <h2 class="muted" style="font-family:'Fraunces',serif;margin-top:30px">Instrumentación determinista · los sensores y el juez</h2>
 
-  <section id="D1" class="parcial">
-    <span class="tag">D1</span><span class="badge parcial">Parcial</span>
+  <section id="D1" class="skill">
+    <span class="tag">D1</span><span class="badge skill">Skill</span>
     <h2>Lint estático</h2>
-    <p><code>/sdlc-ia:instrument-project-java</code> instala <strong>Checkstyle</strong> en modo estricto, que previene deuda nueva. Toda supresión queda con un comentario explicando por qué existe: una excepción sin comentario es deuda invisible.</p>
-    <div class="falta"><b>Qué falta.</b> <strong>PMD</strong> y <strong>SpotBugs</strong> no están entre los nueve controles. Son los que atrapan clases de problema que Checkstyle no mira: complejidad y código muerto el primero, patrones de bug reales el segundo.</div>
-    <div class="fuente"><b>Fuente:</b> <code>instrument-project-java/SKILL.md</code>, control 3.</div>
+    <p><code>/sdlc-ia:instrument-project-java</code> instala <strong>Checkstyle</strong> en modo estricto (control 3), que previene deuda nueva, y <strong>SpotBugs</strong> como <strong>control 11</strong>, que atrapa los defectos que compilan y pasan el estilo. Toda supresión queda con un comentario explicando por qué existe: una excepción sin comentario es deuda invisible.</p>
+    <p>SpotBugs es <strong>opt-in</strong>, como los secretos y el escaneo de dependencias, y por la misma razón: Checkstyle en estricto arranca en verde, mientras que SpotBugs sobre un repositorio existente arranca en rojo — y un control que nace en rojo se desactiva la primera semana. Cuando se activa, <strong>falla <code>make check</code></strong>: un sensor que solo reporta es un sensor que nadie lee.</p>
+    <div class="hint"><b>PMD queda fuera a propósito.</b> Dos analizadores nuevos gritando a la vez sobre un brownfield es la forma más rápida de que el equipo apague los dos, y PMD se superpone con Checkstyle en buena parte de sus reglas. SpotBugs encuentra defectos, no preferencias, así que lo que reporta es más difícil de descartar — y es lo que habilita <a href="#DS">FindSecBugs</a> después.</div>
+    <div class="fuente"><b>Fuente:</b> <code>instrument-project-java/SKILL.md</code>, controles 3 y 11.</div>
   </section>
 
   <section id="DF" class="skill">
@@ -95,26 +96,35 @@
     <div class="fuente"><b>Fuente:</b> <code>instrument-project-java/SKILL.md</code>, controles 1 y 2.</div>
   </section>
 
-  <section id="DT" class="hueco">
-    <span class="tag">DT</span><span class="badge hueco">Hueco</span>
+  <section id="DT" class="skill">
+    <span class="tag">DT</span><span class="badge skill">Skill</span>
     <h2>Tipos y null-safety</h2>
-    <p>El <code>-Werror</code> del control 2 atrapa los warnings que <code>javac</code> ya emite. Eso es el piso, no el techo.</p>
-    <div class="falta"><b>Qué falta.</b> <strong>Error Prone</strong>, que es lo que atrapa los bugs de tipo de verdad — comparaciones que siempre dan falso, formatos mal aplicados, anotaciones de nulidad ignoradas. No lo instala ninguna skill. Es de los huecos más baratos de cerrar: un plugin más en el POM, dentro del mismo control 2.</div>
+    <p>El <code>-Werror</code> del control 2 atrapa los warnings que <code>javac</code> ya emite. Eso es el piso. El techo lo pone <strong>Error Prone</strong>, que va <strong>dentro del mismo control 2</strong> —es un argumento más del compilador, no un control aparte— y atrapa los bugs de tipo de verdad: comparaciones que siempre dan falso, formatos mal aplicados, anotaciones de nulidad ignoradas.</p>
+    <p>Arranca con <strong>el conjunto ERROR únicamente</strong>, dejando los warnings visibles pero sin romper el build. Ese conjunto está afinado para no dar falsos positivos, así que arranca en verde en casi cualquier repositorio.</p>
+    <div class="hint"><b>Por qué no todo a error.</b> Promover cada warning rompe un repositorio existente el primer día, y ahí el equipo no sube el umbral: desinstala la herramienta. Es la misma lógica de «codifica lo que el repo ya hace» que la skill aplica con ArchUnit.</div>
+    <div class="hint"><b>Se prueba aparte del <code>-Werror</code>.</b> Los dos fallan por razones distintas, así que probar uno no dice nada del otro. La verificación mete una auto-comparación y exige que el build falle <b>nombrando la regla de Error Prone</b>. Un build verde ahí es un control presente en el POM y ausente al compilar, que es el peor de los dos estados.</div>
+    <div class="fuente"><b>Fuente:</b> <code>instrument-project-java/SKILL.md</code>, control 2.</div>
   </section>
 
-  <section id="DU" class="hueco">
-    <span class="tag">DU</span><span class="badge hueco">Hueco</span>
+  <section id="DU" class="skill">
+    <span class="tag">DU</span><span class="badge skill">Skill</span>
     <h2>Tests unitarios y cobertura</h2>
-    <p>Los nueve controles no incluyen <strong>JaCoCo</strong> ni ningún umbral de cobertura. La skill corre los tests existentes al verificar cada control, pero no instrumenta la cobertura como sensor.</p>
-    <div class="falta"><b>Qué falta.</b> JaCoCo detrás de <code>make check</code>, con un umbral que falle el build. Y además: la <strong>cobertura es una de las cuatro métricas de la Fase 5</strong>, así que este hueco deja a esa fase sin una de sus cuatro entradas.</div>
+    <p><strong>JaCoCo</strong> es el <strong>control 10</strong>, con dos decisiones que lo hacen viable en un repositorio que ya existe.</p>
+    <p><strong>La regla se acota al código nuevo</strong>, nunca a todo el repositorio. Un umbral global sobre un brownfield nace en rojo, y su única salida es bajarlo hasta que deje de significar algo. Sobre código nuevo arranca en verde y aplica donde importa: lo que el agente acaba de escribir.</p>
+    <p><strong>Falla en CI, no en <code>make check</code>.</strong> La cobertura necesita una corrida completa más el reporte, y un gate local tan lento se esquiva con <code>--no-verify</code> en una semana. Es el mismo reparto que ya usan los controles 6 y 9.</p>
+    <div class="hint"><b>La verificación tiene dos mitades, y las dos son obligatorias.</b> En rojo sin prueba demuestra que la regla dispara; en verde con prueba demuestra que está acotada al código nuevo. Una regla que sigue en rojo con la prueba puesta es un umbral global disfrazado.</div>
+    <div class="hint"><b>Cierra también media Fase 5.</b> La cobertura es una de las cuatro métricas, así que este control es lo que le da su cuarta entrada — ver <a href="06-metricas-y-reporte.html#K1">K1</a>.</div>
+    <div class="fuente"><b>Fuente:</b> <code>instrument-project-java/SKILL.md</code>, control 10.</div>
   </section>
 
-  <section id="DI" class="parcial">
-    <span class="tag">DI</span><span class="badge parcial">Parcial</span>
+  <section id="DI" class="skill">
+    <span class="tag">DI</span><span class="badge skill">Skill</span>
     <h2>Tests de integración y HTTP</h2>
-    <p><code>/sdlc-ia:legacy-test-harness</code> hace crecer pruebas reales en cinco capas sobre un repositorio que todavía no las tiene, con un gate de realidad que exige que cada prueba nueva falle si se revierte el código de producción al que apunta.</p>
-    <div class="falta"><b>Qué falta.</b> Ninguna skill <em>instrumenta</em> MockMvc, RestAssured ni Testcontainers como control del build. Hacer crecer pruebas y garantizar que existan son dos cosas distintas: la primera la cubre <code>legacy-test-harness</code>, la segunda no la cubre nadie.</div>
-    <div class="fuente"><b>Fuente:</b> <code>legacy-test-harness/SKILL.md</code>, fases 4 y 5.</div>
+    <p>El <strong>control 12</strong> separa las suites: Surefire se queda con <code>*Test</code> y Failsafe toma <code>*IT</code>. <code>make check</code> corre las rápidas, <code>make ci</code> corre las lentas. <strong>Esa única diferencia es el control</strong> — si las dos corrieran lo mismo, la separación existiría en el POM y no en la práctica.</p>
+    <p>Resuelve el problema real: hoy las pruebas lentas y las rápidas corren mezcladas, así que no se puede exigir las de integración sin volver lento el ciclo de todos.</p>
+    <div class="hint"><b>Solo la separación, nunca el framework.</b> No instala Testcontainers, RestAssured ni WireMock: elegir un stack de pruebas por el equipo sería más invasivo que todo lo demás que hace la skill, y contradice su propia regla de codificar lo que el repositorio ya hace. Hacer <em>crecer</em> las pruebas es <code>/sdlc-ia:legacy-test-harness</code>, otra skill.</div>
+    <div class="hint"><b>Se instala aunque no haya pruebas de integración todavía.</b> Una corrida vacía de Failsafe es verde, y la separación es justo lo que permite que la primera <code>*IT</code> entre sin frenarle el ciclo a nadie.</div>
+    <div class="fuente"><b>Fuente:</b> <code>instrument-project-java/SKILL.md</code>, control 12; <code>legacy-test-harness/SKILL.md</code> para hacerlas crecer.</div>
   </section>
 
   <section id="DA" class="skill">

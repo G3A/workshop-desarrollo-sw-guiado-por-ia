@@ -203,12 +203,12 @@ subgraph P2["FASE 2 · Preparación del terreno — donde el plugin hace casi to
   end
   subgraph P2B["Instrumentación determinista · sensores de código y el juez de CI"]
     direction TB
-    D1["Lint estático<br/>PARCIAL · instala Checkstyle; faltan PMD y SpotBugs"]:::parcial
+    D1["Lint estático<br/>SKILL · Checkstyle + SpotBugs, control 11"]:::skill
     DF["Formato · Spotless<br/>SKILL · instrument-project-java"]:::skill
     DB["Build reproducible y estricto<br/>wrapper fijado · BOM · -Werror<br/>SKILL · instrument-project-java"]:::skill
-    DT["Tipos y null-safety<br/>HUECO · sin Error Prone"]:::hueco
-    DU["Tests unitarios y cobertura<br/>HUECO · sin JaCoCo ni umbral"]:::hueco
-    DI["Tests de integración y HTTP<br/>PARCIAL · legacy-test-harness los hace crecer, nadie los instrumenta"]:::parcial
+    DT["Tipos y null-safety<br/>SKILL · Error Prone dentro del control 2"]:::skill
+    DU["Tests unitarios y cobertura<br/>SKILL · JaCoCo, control 10, umbral sobre código nuevo"]:::skill
+    DI["Tests de integración y HTTP<br/>SKILL · separación de suites, control 12"]:::skill
     DA["Arquitectura e imports · ArchUnit<br/>SKILL · instrument-project-java"]:::skill
     DM["Migraciones de BD · Flyway<br/>PARCIAL · hay hook que protege la migración, no control que la exija"]:::parcial
     DS["Seguridad del código<br/>PARCIAL · OWASP Dep-Check y gitleaks sí; FindSecBugs no"]:::parcial
@@ -500,12 +500,12 @@ style P6 fill:#0b0f15,stroke:#6b2018,color:#FF9C8C
     X3:B("Datos, infraestructura y Java","skill","data-model.md, infrastructure.md y java.md: módulos Maven, JDK, persistencia, perfiles, Modulith.",P.f2,"X3"),
     X4:B("Intención visual","parcial","design.md existe como plantilla opcional, pero nadie genera design tokens ni COMPONENTS.md.",P.f2,"X4"),
     // Fase 2 · deterministas
-    D1:B("Lint estático","parcial","instrument-project-java instala Checkstyle en modo estricto. PMD y SpotBugs no están en los 9 controles.",P.f2,"D1"),
+    D1:B("Lint estático","skill","Checkstyle en modo estricto, y SpotBugs como control 11 — opt-in, porque sobre un brownfield arranca en rojo. PMD queda fuera a propósito: dos analizadores nuevos gritando a la vez terminan los dos apagados.",P.f2,"D1"),
     DF:B("Formato","skill","Spotless con google-java-format o palantir-java-format, más .editorconfig.",P.f2,"DF"),
     DB:B("Build reproducible y estricto","skill","Maven Wrapper fijado, versiones por BOM y -Xlint:all -Werror.",P.f2,"DB"),
-    DT:B("Tipos y null-safety","hueco","El -Werror atrapa warnings de javac. Error Prone, que es lo que atrapa los bugs de tipo de verdad, no lo instala nadie.",P.f2,"DT"),
-    DU:B("Tests y cobertura","hueco","Ningún control de los 9 instala JaCoCo ni fija un umbral de cobertura.",P.f2,"DU"),
-    DI:B("Tests de integración","parcial","legacy-test-harness los hace crecer sobre un repo legacy, pero ninguna skill instrumenta MockMvc, RestAssured ni Testcontainers como control del build.",P.f2,"DI"),
+    DT:B("Tipos y null-safety","skill","Error Prone dentro del control 2, con el conjunto ERROR únicamente: está afinado para no dar falsos positivos, así que arranca en verde. Los warnings quedan visibles sin romper el build.",P.f2,"DT"),
+    DU:B("Tests y cobertura","skill","JaCoCo como control 10, con la regla acotada al código nuevo y fallando solo en CI. Un umbral sobre todo el repo nace en rojo y se baja hasta que deja de significar algo.",P.f2,"DU"),
+    DI:B("Tests de integración","skill","Control 12: Failsafe separa las suites y make check corre las rápidas mientras make ci corre las lentas. Solo la separación — elegir framework de pruebas por el equipo sería más invasivo que todo lo demás que hace la skill.",P.f2,"DI"),
     DA:B("Arquitectura e imports","skill","ArchUnit y verificación de Spring Modulith. Si el repo ya las tiene, la skill las lee y confirma en vez de reinstalarlas.",P.f2,"DA"),
     DM:B("Migraciones de BD","parcial","El hook 7 impide editar una migración ya aplicada. Instalar Flyway como control del build no lo hace ninguna skill.",P.f2,"DM"),
     DS:B("Seguridad del código","parcial","gitleaks para secretos y OWASP Dependency-Check para CVEs, los dos opt-in. SpotBugs con FindSecBugs, que es el SAST del código, no está.",P.f2,"DS"),

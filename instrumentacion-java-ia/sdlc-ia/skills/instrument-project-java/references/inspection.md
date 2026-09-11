@@ -13,7 +13,7 @@ Glob for `pom.xml`, `build.gradle`, `build.gradle.kts`, `settings.gradle(.kts)`,
 If nothing matches, stop and tell the user this skill only applies to Java repositories. Write
 nothing.
 
-This skill's templates and worked examples target **Maven**. If the repo is Gradle, the nine
+This skill's templates and worked examples target **Maven**. If the repo is Gradle, the twelve
 controls still apply but every artifact path differs (`build.gradle` instead of `pom.xml`,
 `checkstyle` + `spotless` Gradle plugins instead of Maven plugins, `gradlew` instead of `mvnw`) —
 say so up front and adapt each template by hand; do not silently force a Maven layout onto a
@@ -86,7 +86,7 @@ outside that pattern. Control 1 is satisfied; nothing to install.
 
 ## 8. Existing controls
 
-For each of the nine, record `present` / `partial` / `missing` **and what it contains**:
+For each of the twelve, record `present` / `partial` / `missing` **and what it contains**:
 
 | Control | Look for | "Partial" looks like |
 |---|---|---|
@@ -99,6 +99,9 @@ For each of the nine, record `present` / `partial` / `missing` **and what it con
 | Architecture | `archunit-junit5` dependency, an `*ArchTest.java`/`*ArchitectureTest.java` class | Test class exists with `allowEmptyShould(true)` rules whose trigger condition is already true — see `references/arch-tests.md` |
 | CI | `.github/workflows/*.yml` | Workflow builds but runs no gates, or duplicates Makefile steps by hand |
 | Dependency vulnerabilities | `dependency-check-maven` in `pom.xml`, `dependency-check-suppressions.xml`, `.github/dependabot.yml`, Dependabot alerts enabled in the repo settings | Plugin declared with `failBuildOnCVSS` left at its default `11` (reports, never fails); Dependabot alerts on with nothing gating a merge; a suppression file with entries and no `<notes>` |
+| Test coverage | `jacoco-maven-plugin`, a `check` goal with a `<rule>`, `target/site/jacoco/` | Agent and report bound but **no `check` goal** — a number nobody has to respect; or a `check` with a repo-wide ratio, which is the shape that gets lowered until it means nothing |
+| Bug patterns | `spotbugs-maven-plugin`, `spotbugs-exclude.xml` | Plugin declared with no `check` goal bound (report-only); or PMD installed alongside, which is the combination that gets both muted |
+| Test suite separation | `maven-failsafe-plugin`, `*IT`/`*ITCase` classes, `make test` and `make verify` | Failsafe declared with only `integration-test` and no `verify` goal — failures are reported and the build stays green; or Surefire still matching `*IT`, so the slow set runs in the fast loop |
 
 **A partial control is more dangerous than a missing one** — the team believes it is covered. Call
 these out explicitly in the report.
