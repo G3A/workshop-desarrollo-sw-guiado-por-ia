@@ -29,10 +29,13 @@ ocho hooks como deterministas y los tres servidores MCP como no deterministas. L
 
 No recibe argumentos.
 
-## El catálogo de ocho hooks
+## El catálogo de nueve hooks
 
 Primero amplía las capacidades del agente (MCP), después le pone límites (hooks) — en ese
-orden, porque MCP solo agrega capacidad y los hooks la quitan.
+orden, porque MCP solo agrega capacidad y los hooks la quitan. **El hook 9 y las reglas de permiso
+son la segunda mitad de ese orden**, la que faltaba: hasta ahora la skill registraba los servidores
+que amplían el alcance del agente y se negaba a configurar el único mecanismo determinista que lo
+acota.
 
 | # | Hook | Qué bloquea | Por defecto |
 |---|------|-------------|-------------|
@@ -44,6 +47,43 @@ orden, porque MCP solo agrega capacidad y los hooks la quitan.
 | 6 | Guardia de versión centralizada | No — advierte si una dependencia nueva fija su propia versión | Ofrecido, solo si el POM ya usa `<dependencyManagement>` o un BOM |
 | 7 | Guardia de migraciones generadas | Sí — impide editar una migración de Flyway/Liquibase ya aplicada | Ofrecido, solo si el repositorio tiene migraciones Flyway o Liquibase |
 | 8 | Bloqueo de comandos peligrosos (PowerShell) | Sí — `Remove-Item -Recurse` fuera del repo, `runas`, force-push, `mvn deploy`, con su propio tokenizador | Ofrecido, solo si el equipo usa Windows |
+| 9 | Guardia de escrituras por MCP | Sí — una llamada que apunta a otro repositorio, o una sentencia que escribe en la base | Ofrecido, solo si hay algún servidor MCP registrado |
+
+## Las reglas de permiso sobre MCP
+
+**Dos mecanismos, cada uno donde rinde**, con el mismo reparto que la skill ya hace entre los hooks
+de Git y los del agente:
+
+| | Escribe en | Decide sobre | Bueno para |
+|---|---|---|---|
+| Reglas `permissions` | `.claude/settings.json` | El **nombre** de la herramienta | La postura general, legible de un vistazo y auditable en un diff |
+| Hook 9 | `scripts/agent-hooks/mcp-write-guard.sh` | Los **argumentos** | Lo que un nombre no puede expresar: qué repositorio, qué tabla, qué rama |
+
+**La postura por defecto es negar escrituras y permitir lecturas.** Ordena por consecuencia y no
+por servidor: leer un issue no cambia nada, cerrarlo sí. Se descartaron dos alternativas:
+
+- **`ask` para todo `mcp__*`** es seguro y agotador. El agente se detiene en cada lectura de issue
+  y a los dos días alguien permite todo para poder trabajar. Un gate que se apaga protege menos que
+  uno que nunca se instaló.
+- **Fiarse del `readOnlyHint` del servidor** no es opción: la especificación obliga a tratar las
+  anotaciones como no confiables, porque las declara el mismo servidor al que querrías vigilar.
+
+**No rompe `github-plan-build`.** La lista de negación parece que frenaría el ciclo de entrega
+—abre PRs, comenta issues, mueve etiquetas—, y no lo hace: esa skill va por la CLI `gh` sobre Bash,
+no por el servidor MCP de GitHub, así que ninguno de esos matchers le aplica. La skill lo dice en el
+reporte, porque sin esa frase la primera persona que lea la lista apaga el control entero para
+desbloquear algo que nunca estuvo bloqueado.
+
+### Por qué se levantó una regla dura
+
+Hasta esta versión, la skill declaraba que **nunca** tocaba `permissions`. Era incoherente consigo
+misma por dos lados: su propio `references/hook-catalog.md` ya le dice al usuario que cierre un
+hueco «con una regla de negación en permissions, no con un hook», y su orden declarado —MCP
+primero, hooks después— quedaba a medio ejecutar.
+
+La regla no desapareció, se acotó: se escribe **solo con confirmación explícita** en la pregunta 6
+del alcance, y **solo matchers `mcp__*`**. Todo lo demás de esa clave sigue siendo del usuario y no
+se toca nunca. Si ya hay reglas `mcp__*`, no las sobrescribe: reporta la diferencia y se detiene.
 
 ## Fases principales
 
@@ -83,10 +123,10 @@ orden, porque MCP solo agrega capacidad y los hooks la quitan.
 - `.mcp.json` (fusionado con lo que ya exista).
 - `scripts/agent-hooks/_lib.sh` y un script por cada hook instalado (`secret-read-guard.sh`,
   `format-on-edit.sh`, `block-dangerous-bash.sh`, `dependency-sweep.sh`, `audit-log.sh`,
-  `version-pin-guard.sh`, `generated-files-guard.sh`, `block-dangerous-powershell.sh`) — los ocho
-  de la tabla de arriba.
-- `.claude/settings.json` — únicamente la clave `hooks`; nunca toca `permissions` y nunca escribe
-  en `.claude/settings.local.json`.
+  `version-pin-guard.sh`, `generated-files-guard.sh`, `block-dangerous-powershell.sh`,
+  `mcp-write-guard.sh`) — los nueve de la tabla de arriba.
+- `.claude/settings.json` — la clave `hooks`, y la clave `permissions` **solo con confirmación
+  explícita y solo con matchers `mcp__*`**. Nunca escribe en `.claude/settings.local.json`.
 - `.gitignore` (agrega `logs/` antes de crear el registro de auditoría, para que no se publique
   por accidente).
 - Secciones de `AGENTS.md`, `README.md`, `docs/infrastructure.md` y `docs/java.md`, si ya

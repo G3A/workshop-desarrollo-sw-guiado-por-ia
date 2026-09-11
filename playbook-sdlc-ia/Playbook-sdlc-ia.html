@@ -245,7 +245,7 @@ subgraph P2["FASE 2 · Preparación del terreno — donde el plugin hace casi to
       N5R["Recurso MCP · resources<br/>HUECO"]:::hueco
       N5P["Prompt MCP · prompts<br/>HUECO"]:::hueco
       N5N["Anotaciones de herramienta<br/>readOnlyHint · destructiveHint<br/>HUECO"]:::hueco
-      DMP["Reglas de permiso sobre la herramienta<br/>allow · deny · ask<br/>HUECO · la skill declara que nunca toca permissions"]:::hueco
+      DMP["Reglas de permiso sobre la herramienta<br/>deny escrituras · allow lecturas<br/>SKILL · instrument-agent-java, más el hook 9"]:::skill
       N5T-->N5R-->N5P-->N5N-->DMP
     end
   end
@@ -530,7 +530,7 @@ style P6 fill:#0b0f15,stroke:#6b2018,color:#FF9C8C
     N5R:B("Recurso MCP · resources","hueco","No determinista. Entra por tu decisión, pero su efecto depende de cómo lo lea el modelo. Ninguna skill lo configura.",P.f2,"N5R"),
     N5P:B("Prompt MCP · prompts","hueco","No determinista. Tú lo lanzas con /mcp__servidor__prompt, pero es una plantilla que el modelo sigue. Ninguna skill lo configura.",P.f2,"N5P"),
     N5N:B("Anotaciones de herramienta","hueco","readOnlyHint y destructiveHint son pistas para la interfaz, no garantías. Ninguna skill las revisa.",P.f2,"N5N"),
-    DMP:B("Reglas de permiso sobre MCP","hueco","Es lo único determinista del grupo MCP, y el hueco duele: instrument-agent-java declara explícitamente que nunca toca la clave permissions.",P.f2,"DMP"),
+    DMP:B("Reglas de permiso sobre MCP","skill","Lo único determinista del grupo MCP, y ahora sí lo escribe instrument-agent-java: reglas que niegan escrituras y permiten lecturas, más el hook 9 que mira los argumentos que un nombre de herramienta no puede expresar. Para eso hubo que levantar una regla dura que la skill se puso a sí misma.",P.f2,"DMP"),
     G1:L("¿Terreno listo?",P.f2,"G1"),
     // Puente
     DT0:B("Triaje de deuda","skill","debt-triage lee el código de cada hallazgo abierto y le pone veredicto: real, falso positivo o riesgo aceptado. Nunca instala un sensor nuevo ni aplica un auto-fix a ciegas.",P.f2,"DT0"),

@@ -20,6 +20,7 @@ materialize() {
       -e 's/{{PROTECTED_BRANCHES}}/main|master/g' \
       -e 's|{{POM_PATH}}|pom.xml|g' \
       -e 's|{{SWEEP_COMMAND}}|true|g' \
+      -e 's|{{REPO_SLUG}}|acme/demo|g' \
       "$WORK/hooks/$n"
     rm -f "$WORK/hooks/$n.bak"
     chmod +x "$WORK/hooks/$n"

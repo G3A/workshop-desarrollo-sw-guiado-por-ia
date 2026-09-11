@@ -1,0 +1,71 @@
+// Placeholders: the tool names below are EXAMPLES from three servers this skill commonly
+// registers. Replace them with the real tool list of the servers actually registered, read from
+// each server — never from memory, and never from this file.
+//
+// Becomes the "permissions" key of .claude/settings.json. WRITE ONLY mcp__* MATCHERS.
+// Every other entry in that key belongs to the user and is left exactly as found.
+//
+// ONLY AFTER SCOPE QUESTION 6 SAID YES. This is the one place the skill writes outside "hooks".
+//
+// ── THE POSTURE: DENY WRITES, ALLOW READS ────────────────────────────────────────────────────
+// It sorts by CONSEQUENCE, not by server: reading an issue changes nothing, closing one does.
+// Two alternatives were considered and rejected, and the report says so:
+//
+//   "ask" for every mcp__*  — safe and exhausting. The agent stops on every issue read, and within
+//                             two days somebody allows everything to get work done. A gate that
+//                             gets switched off protects less than one that was never installed.
+//
+//   the server's readOnlyHint — not an option. The MCP specification says to treat annotations as
+//                             untrusted: the server that declares them is the one you would be
+//                             watching. "Keep your actual safety guarantees in deterministic
+//                             controls" is the specification's own wording.
+//
+// ── CLASSIFYING A TOOL ───────────────────────────────────────────────────────────────────────
+// Read the server's tool list and sort each one by what it does, not by what it is called. When a
+// name does not make the consequence obvious, IT GOES IN DENY and the report says so: the failure
+// that matters is allowing a write by accident, not denying a read.
+//
+// ── WHAT THIS CANNOT DO, AND WHO DOES IT ─────────────────────────────────────────────────────
+// A rule decides on the TOOL NAME. It cannot say WHICH repository, WHICH table, WHICH branch —
+// an allowed tool pointed at the wrong target still goes through. That is hook 9's job
+// (mcp-write-guard.sh), and it is why both are installed together. If a check CAN be written as a
+// tool name, it belongs here and not in the hook.
+//
+// ── THIS DOES NOT BREAK github-plan-build. SAY SO IN THE REPORT. ─────────────────────────────
+// The deny list looks like it would stop the delivery loop — it opens PRs, comments on issues,
+// changes labels. It does not: github-plan-build goes through the `gh` CLI over Bash, not through
+// the GitHub MCP server, so none of these matchers apply to it. Without that sentence in the
+// report, the first person who reads the deny list switches the whole control off to "unblock"
+// a skill that was never blocked.
+//
+// MERGE, NEVER CLOBBER. If "permissions" already holds mcp__* rules, do NOT overwrite them:
+// report the difference and stop, the way instrument-github-repo treats an existing ruleset.
+//
+// ---8<--- everything above this line is instructions for you; delete it ---8<---
+{
+  "permissions": {
+    "allow": [
+      "mcp__github__get_issue",
+      "mcp__github__list_issues",
+      "mcp__github__get_pull_request",
+      "mcp__github__list_pull_requests",
+      "mcp__github__get_file_contents",
+      "mcp__github__list_workflow_runs",
+      "mcp__context7__resolve_library_id",
+      "mcp__context7__get_library_docs",
+      "mcp__dbhub__list_tables",
+      "mcp__dbhub__describe_table"
+    ],
+    "deny": [
+      "mcp__github__create_issue",
+      "mcp__github__update_issue",
+      "mcp__github__add_issue_comment",
+      "mcp__github__create_pull_request",
+      "mcp__github__merge_pull_request",
+      "mcp__github__create_or_update_file",
+      "mcp__github__delete_file",
+      "mcp__github__create_branch",
+      "mcp__github__run_workflow"
+    ]
+  }
+}

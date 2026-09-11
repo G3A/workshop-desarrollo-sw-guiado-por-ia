@@ -33,7 +33,7 @@ MCP first, hooks second. MCP only adds capability; hooks take it away.
 
 ## The catalogue
 
-Eight hooks. **1 and 2 are the default**; 3 to 8 are offered, and 6, 7 and 8 only when the
+Nine hooks. **1 and 2 are the default**; 3 to 9 are offered, and 6, 7, 8 and 9 only when the
 repository (or the team's own environment) actually meets their precondition.
 `references/hook-catalog.md` carries the full reasoning for each — read it before Phase 3.
 
@@ -47,6 +47,7 @@ repository (or the team's own environment) actually meets their precondition.
 | 6 | Version-pin guard | `PostToolUse` | no — warns | offered **if** the pom already uses `<dependencyManagement>`/a BOM |
 | 7 | Generated-file guard | `PreToolUse` | **yes** | offered **if** Flyway or Liquibase migrations exist |
 | 8 | Dangerous-command blocker (PowerShell) | `PreToolUse: PowerShell` | **yes** | offered **if** the team is on Windows (discovery item 10) |
+| 9 | MCP write guard | `PreToolUse: mcp__*` | **yes** | offered **if** at least one MCP server is registered |
 
 ## Philosophy (hold these throughout)
 
@@ -64,8 +65,15 @@ repository (or the team's own environment) actually meets their precondition.
   not.
 - **Merge, never clobber.** `settings.json` and `.mcp.json` routinely already hold work that is
   not yours.
-- **Never touch `.claude/settings.local.json`, and never touch `permissions`.** You write exactly
-  one key: `hooks`.
+- **Never touch `.claude/settings.local.json`** — it is the user's, not yours.
+- **`permissions` is written only with explicit confirmation, and only for `mcp__*` matchers.**
+  This rule used to be an absolute "never". It was wrong, and the skill contradicted itself on it:
+  `references/hook-catalog.md` already tells the user to close a gap with "a `Read` deny rule in
+  permissions, not a hook" while refusing to write one. Worse, the skill's own order —
+  **"MCP first, hooks second, because MCP only adds capability and hooks take it away"** — was
+  half-executed: it registered the servers that widen what the agent can reach and then declined to
+  configure the one deterministic mechanism that narrows them. Phase 4 fixes that. Everything
+  outside `mcp__*` still belongs to the user and is never touched.
 - **A hook nobody saw fire is not a hook.** Phase 5 triggers every installed hook on purpose and
   reverts. A guard with a broken regex exits 0 and looks exactly like a guard that found nothing.
 - **A short blocklist beats a long one.** A list that generates false positives gets the hook
@@ -144,6 +152,20 @@ spelling it out. Use `AskUserQuestion` for the closed questions (max 4 options p
 4. **Protected branches**, only if hook 3 and/or hook 8 was chosen and there is more than one
    long-lived branch — both scripts take the same `PROTECTED_BRANCHES` list, resolved once.
 5. **An existing hook on the same event**, only when Phase 1 found one. Default is to append.
+6. **Permission rules over the MCP tools**, only if at least one server is being registered. This
+   is the **one question in the skill that asks to write outside the `hooks` key**, so it is asked
+   plainly and never assumed:
+
+   > Registering these servers widens what the agent can reach on its own. The only deterministic
+   > way to narrow it again is a `permissions` block in `.claude/settings.json`. That file is
+   > yours, and this skill does not touch it unless you say so here.
+   >
+   > `Yes — deny writes, allow reads` · `Yes — but show me the rules first` · `Skip`
+
+   Say what "writes" means for the servers actually being registered, with two or three real tool
+   names from their own lists, so the answer is about this repository and not about the idea. If
+   the answer is `Skip`, the report states that the servers were registered **without** a
+   deterministic limit, in those words — silence here reads as "it is handled".
 
 ---
 
@@ -185,6 +207,46 @@ Write in this order:
 Report every resolved version alongside the file. Never write a secret in either file. After
 writing, run each script once against a synthetic payload and confirm it exits 0 on a benign case.
 
+### Narrowing what MCP widened
+
+Only after the user confirmed it in scope question 8. Registering MCP servers widens what the agent
+can reach; this is the half that narrows it, and without it the skill's own ordering rule —
+"MCP first, hooks second, because MCP only adds capability and hooks take it away" — stops halfway.
+
+**Two mechanisms, each where it earns its place.** The same division the skill already makes
+between Git hooks and agent hooks:
+
+| | Writes | Decides on | Good at |
+|---|---|---|---|
+| `permissions` rules | `.claude/settings.json`, key `permissions` | The **tool name** | The general posture, readable at a glance, auditable in a diff |
+| Hook 9 | `scripts/agent-hooks/mcp-write-guard.sh` | The **arguments** | What a name cannot express — which repository, which table, which branch |
+
+**The default posture: deny writes, allow reads.** It sorts by consequence, not by server: reading
+an issue changes nothing, closing one does. Two postures were rejected and the report says why:
+
+- `ask` for every `mcp__*` is safe and exhausting — the agent stops on every issue read, and within
+  two days somebody allows everything to get work done. A gate that gets switched off protects less
+  than one that was never installed.
+- Trusting the server's own `readOnlyHint` is not an option: the specification says to treat
+  annotations as untrusted, because the server that declares them is the one you would be watching.
+
+Classify each registered server's tools by consequence, **reading the tool list from the server**,
+not from memory. When a tool's name does not make the consequence obvious, it goes in the deny list
+and the report says so — the failure that matters is allowing a write by accident, not denying a
+read.
+
+**Say in the report that this does not break `/sdlc-ia:github-plan-build`.** The deny list looks
+like it would stop the delivery loop — it opens PRs, comments on issues, moves labels. It does not:
+that skill goes through the `gh` CLI over Bash, not through the GitHub MCP server, so none of these
+matchers apply to it. Without that sentence, the first person to read the deny list switches the
+whole control off to unblock a skill that was never blocked.
+
+**Merge, never clobber — and this file matters more than the others.** A `permissions` object may
+already hold the user's own rules. Write only `mcp__*` matchers, leave every other entry untouched,
+and show the before/after of that key in the report. If `permissions` already contains `mcp__*`
+rules, do not overwrite them: report the difference and stop, the same way
+`/sdlc-ia:instrument-github-repo` treats an existing ruleset.
+
 ---
 
 ## Phase 5 — Verify by breaking
@@ -199,6 +261,20 @@ that the message names the problem, restore from the snapshot (not `git checkout
 you touch is untracked). After every trigger, `git status` must look exactly as it did before it.
 
 **Do not report success with a hook that did not fire.** Fix it, or remove it and say so.
+
+**The permission rules get the same treatment, and they need both halves.** A rule set that denies
+everything is as broken as one that denies nothing, and it is the one discovered later:
+
+1. **Deny fires** — ask for a write-shaped MCP call that the rules cover and confirm it is refused,
+   naming the rule. If it goes through, the matcher does not match: check the exact tool name
+   (`mcp__<server>__<tool>`), which is the usual cause.
+2. **Allow still works** — ask for a read-shaped call on the same server and confirm it runs
+   without a prompt. A posture that also blocks reads turns the servers you just registered into
+   dead weight, and the user finds out mid-task a week later.
+
+Then hook 9 on top: trigger it with a call the **rules allow** but whose **arguments** should not
+pass — that is the whole reason it exists next to them, and a hook that never fires because the
+rules already caught everything is a hook to remove, not to keep.
 
 MCP cannot be verified the same way — a freshly written `.mcp.json` leaves its servers at
 `⏸ Pending approval` until the user trusts the workspace. Confirm the file parses, start each
@@ -242,7 +318,14 @@ Do not commit. Leave the changes for the user to review.
 
 ## Rules
 
-- Do NOT write to `.claude/settings.local.json`, and do NOT touch the `permissions` key anywhere.
+- Do NOT write to `.claude/settings.local.json`.
+- Do NOT touch `permissions` without the explicit answer to scope question 6, and then only
+  `mcp__*` matchers — every other entry in that key belongs to the user.
+- Do NOT overwrite `mcp__*` rules that already exist. Report the difference and stop.
+- Do NOT default the posture to `ask` for everything, and do NOT derive it from a server's own
+  `readOnlyHint`: the specification says to treat annotations as untrusted.
+- Do NOT report the permission rules as working without having seen a write denied **and** a read
+  still allowed.
 - Do NOT replace an existing `hooks` or `mcpServers` block. Append.
 - Do NOT write a credential into `.mcp.json`. Use `${ENV_VAR}`.
 - Do NOT install a hook whose precondition the repository does not meet.
