@@ -17,6 +17,32 @@ versión nueva", and `AGENTS.md`).
 
 ### Added
 
+- **`instrument-project-java` closes the code-security blind spot and the pipeline half of review**
+  — controls 11b, 11c and 9b. Until now the plugin checked third-party dependencies and secrets, and
+  nothing looked at the code the agent had just written, which is the code no human had reviewed.
+  - **FindSecBugs and CodeQL install together, never one alone.** Checked 2026-09-11: both are free
+    and stay free (SpotBugs LGPL-2.1, Find Security Bugs LGPL-3.0, an OWASP project). What decides
+    is pace, not price — SpotBugs releases continuously while FindSecBugs is still on 1.14.0, which
+    pins SpotBugs 4.8.3 internally. FindSecBugs runs locally and is portable; CodeQL is maintained
+    continuously by GitHub. Each covers the other's blind spot.
+  - **The version pair is pinned as one decision**, not resolved separately — resolving SpotBugs
+    "to latest" on its own is asking for a plugin that cannot load.
+  - **The failure this guards against is silence.** A SpotBugs plugin that does not load **reports
+    zero findings** instead of erroring, and that is indistinguishable from clean code. So the
+    verification introduces a real SQL injection and requires the failure to **name the FindSecBugs
+    rule** — a green build there proves nothing.
+  - **CodeQL's cost is checked before it is promised**: free on public repositories, paid on private
+    ones through GitHub Advanced Security. On a private repo without it the skill installs the local
+    pair alone and says why, rather than letting the user find the cost on a billing page.
+  - **AI review in the pipeline (9b)** — `claude-code-action` as a job on pull requests, the half
+    that runs whether or not anyone remembered. Not CodeRabbit: the only part of it that blocks a
+    merge is paid.
+  - **And it is deliberately never a required status check.** A non-deterministic reviewer with veto
+    power blocks correct pull requests on a model's judgement, and the team learns to ignore it or
+    to ask for bypasses — which erodes the checks that should block. Deterministic sensors and human
+    approval block; this contributes signal, not a verdict. Its verification is by **absence** from
+    the Ruleset.
+
 - **`instrument-agent-java` now narrows what MCP widened** — permission rules over `mcp__*` plus a
   ninth hook. The skill's own ordering rule, *"MCP first, hooks second, because MCP only adds
   capability and hooks take it away"*, was being executed halfway: it registered the servers that

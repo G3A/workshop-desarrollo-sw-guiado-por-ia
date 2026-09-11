@@ -3,6 +3,8 @@
 # Placeholders — resolve once, when the file is written, never copied from this template:
 #
 #   {{CHECKOUT_MAJOR}}       {{SETUP_JAVA_MAJOR}}       {{CACHE_MAJOR}}      {{UPLOAD_ARTIFACT_MAJOR}}
+#   {{CODEQL_MAJOR}}         github/codeql-action  -- only if control 11c is installed
+#   {{CLAUDE_ACTION_MAJOR}}  anthropics/claude-code-action -- only if control 9b is installed
 #   {{JAVA_VERSION}}         the repo's own <java.version> / <maven.compiler.release>, never guessed
 #   {{GITLEAKS_VERSION}}     gh release view --repo gitleaks/gitleaks --json tagName --jq .tagName
 #                            prints e.g. v8.30.1 -- write it WITHOUT the leading v (8.30.1): the URL
@@ -130,8 +132,82 @@ jobs:
           path: "**/target/surefire-reports/**"
           if-no-files-found: ignore
 
-# Branch protection is what turns this from a report into a gate:
-# Settings > Branches > require the `check` status check before merging.
+  # ── CodeQL — control 11c. DELETE THIS JOB IF CONTROL 11 WAS DECLINED. ──────────────────────
+  # It is the half FindSecBugs cannot keep up with: FindSecBugs runs locally and is portable,
+  # CodeQL is maintained continuously by GitHub. Each covers the other's blind spot, which is why
+  # both are installed or neither is.
+  #
+  # COST, CHECKED BEFORE WRITING THIS JOB: free on PUBLIC repositories; on a PRIVATE one it needs
+  # GitHub Advanced Security, which is PAID. On a private repo without it, delete this job, install
+  # FindSecBugs alone, and say so — never let the user find the cost on a billing page.
+  #
+  # Its own job and not part of `make ci` on purpose: it is a GitHub-hosted analysis, and the make
+  # targets stay runnable on a laptop.
+  codeql:
+    if: >-
+      github.event_name == 'push' ||
+      github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      # security-events: write is what lets the results reach the Security tab. Without it the
+      # analysis runs and the findings go nowhere, which is the silent half-install this whole
+      # skill is written against.
+      security-events: write
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@{{CHECKOUT_MAJOR}}
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@{{CODEQL_MAJOR}}
+        with:
+          languages: java-kotlin
+          # security-extended adds the lower-confidence security queries. Start here; drop to the
+          # default suite if the noise is not being triaged.
+          queries: security-extended
+
+      # CodeQL needs the compiled bytecode. `make build` rather than a bare mvn call, so it uses
+      # the same definition of "build" as everything else here.
+      - name: Build
+        run: make build
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@{{CODEQL_MAJOR}}
+
+  # ── AI review — control 9b. DELETE THIS JOB IF IT WAS DECLINED. ───────────────────────────────
+  # The half you cannot skip. github-plan-build already runs /code-review locally before opening
+  # the PR; this one runs whether or not anyone remembered.
+  #
+  # DO NOT REQUIRE THIS CHECK IN THE RULESET, and say why in the report: a non-deterministic
+  # reviewer with veto power blocks correct pull requests on a model's judgement, and the team
+  # learns to ignore it or to ask for a bypass. Deterministic sensors and human approval block;
+  # this contributes signal, not a verdict.
+  #
+  # NEEDS the ANTHROPIC_API_KEY repository secret. Without it the job fails on every PR — that is
+  # deliberate and visible, rather than skipping silently and looking installed.
+  revision-ia:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: actions/checkout@{{CHECKOUT_MAJOR}}
+        with:
+          fetch-depth: 0
+
+      - name: Revisión por IA
+        uses: anthropics/claude-code-action@{{CLAUDE_ACTION_MAJOR}}
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+
+# Branch protection is what turns `check` from a report into a gate, and
+# `/sdlc-ia:instrument-github-repo` is what writes it — a Ruleset requiring the `check` status
+# check and an approving review. Until that runs, everything above reports and nothing blocks.
+#
+# REQUIRE `check`. Do NOT require `codeql` unless the team agreed to triage its findings on every
+# PR, and do NOT require `revision-ia` at all — see its comment above.
 #
 # Do NOT add paths-ignore to skip docs-only commits once `check` is a required status check: the
 # skipped run never reports, and the pull request waits for a check that will never arrive.
