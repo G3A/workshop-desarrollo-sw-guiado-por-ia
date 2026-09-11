@@ -28,8 +28,8 @@
   </nav>
 
   <div class="cobertura">
-    <span class="k-skill"><b>20</b> · skill</span>
-    <span class="k-parcial"><b>4</b> · parcial</span>
+    <span class="k-skill"><b>22</b> · skill</span>
+    <span class="k-parcial"><b>2</b> · parcial</span>
     <span class="k-hueco"><b>9</b> · hueco</span>
     <span class="k-fuera"><b>1</b> · fuera de alcance</span>
   </div>
@@ -142,13 +142,19 @@
     <div class="fuente"><b>Fuente:</b> <code>instrument-agent-java/SKILL.md</code>, hook 7.</div>
   </section>
 
-  <section id="DS" class="parcial">
-    <span class="tag">DS</span><span class="badge parcial">Parcial</span>
+  <section id="DS" class="skill">
+    <span class="tag">DS</span><span class="badge skill">Skill</span>
     <h2>Seguridad del código</h2>
-    <p>Dos de los nueve controles caen acá, y los dos están <strong>apagados por defecto</strong>: <strong>gitleaks</strong> para que una credencial no llegue al historial de git, y <strong>OWASP Dependency-Check</strong> detrás de <code>make sca</code>, que falla <code>make ci</code> con CVSS ≥ 7, más Dependabot en GitHub.</p>
-    <p>Están apagados por una razón honesta: el escaneo de dependencias cuesta una clave gratuita de la NVD o una primera corrida lenta, y un archivo de supresiones que hay que curar. Encenderlos es una decisión del equipo.</p>
-    <div class="falta"><b>Qué falta.</b> El <strong>SAST del código propio</strong>: SpotBugs con FindSecBugs. Hoy el plugin cubre las dependencias de terceros y los secretos, pero nada mira el código que el agente acaba de escribir en busca de patrones inseguros.</div>
-    <div class="fuente"><b>Fuente:</b> <code>instrument-project-java/SKILL.md</code>, controles 6 y 9.</div>
+    <p>Tres capas, y las tres <strong>apagadas por defecto</strong> porque todas cuestan curar hallazgos:</p>
+    <ul>
+      <li><strong>Secretos</strong> — gitleaks, para que una credencial no llegue al historial de git.</li>
+      <li><strong>Dependencias de terceros</strong> — OWASP Dependency-Check detrás de <code>make sca</code>, que falla <code>make ci</code> con CVSS ≥ 7, más Dependabot.</li>
+      <li><strong>El código propio</strong> — FindSecBugs sobre SpotBugs, más un job de CodeQL en CI. Era el punto ciego: se revisaba lo que trajeron terceros y no lo que el agente acaba de escribir, que es justo el código que nadie revisó todavía.</li>
+    </ul>
+    <div class="hint"><b>FindSecBugs y CodeQL van juntos, o no va ninguno.</b> Cada uno cubre la debilidad del otro: FindSecBugs corre en tu máquina y es portable, pero su última versión fija internamente una versión anterior de SpotBugs, así que el par local envejece. A CodeQL lo mantiene GitHub al día, pero solo corre en el pipeline.</div>
+    <div class="hint"><b>El fallo a atajar es el silencio.</b> Un plugin de SpotBugs que no carga <b>no rompe el build: reporta cero hallazgos</b>, y eso se ve igual que «código limpio». Por eso la verificación mete una inyección SQL a propósito y exige que el fallo <b>nombre la regla de FindSecBugs</b>. Un build en verde ahí no prueba nada, y por eso también el par de versiones se fija junto y no por separado.</div>
+    <div class="hint"><b>El costo se comprueba antes de prometerlo.</b> CodeQL es gratis en repositorios <b>públicos</b>; en uno <b>privado</b> exige GitHub Advanced Security, que es de pago. Ahí la skill instala solo el par local y lo dice, en vez de dejar que el costo aparezca en una página de facturación.</div>
+    <div class="fuente"><b>Fuente:</b> <code>instrument-project-java/SKILL.md</code>, controles 6, 9, 11, 11b y 11c.</div>
   </section>
 
   <section id="DQ" class="hueco">
@@ -217,13 +223,14 @@
     <div class="falta"><b>Qué falta.</b> Es la ironía del paquete: <em>sdlc-ia es un conjunto de skills, pero ninguna de sus skills crea skills</em>. Un repositorio instrumentado con el plugin sale con ocho comandos prestados y cero propios.</div>
   </section>
 
-  <section id="N6" class="parcial">
-    <span class="tag">N6</span><span class="badge parcial">Parcial</span>
+  <section id="N6" class="skill">
+    <span class="tag">N6</span><span class="badge skill">Skill</span>
     <h2>Code review por IA</h2>
-    <p>Cubierto en tu máquina: <code>github-plan-build</code> corre <code>/code-review</code> siempre, y <code>/security-review</code> si el cambio toca autenticación o entradas externas, antes de abrir la PR. Las dos son gratis y cuentan contra el uso normal de tu plan.</p>
-    <div class="falta"><b>Qué falta.</b> Instalar la revisión <em>en el pipeline</em>. Ninguna skill configura <code>claude-code-action</code> ni CodeRabbit. El visor lo explica en el nodo <code>cr</code> y menciona que con la Action instalada puedes pedir la revisión comentando en la PR, pero instalarla es a mano.</div>
-    <div class="hint"><b>Por qué importa la diferencia.</b> La revisión local la corres tú y la puedes saltar. La del pipeline, exigida como check por el Ruleset, no.</div>
-    <div class="fuente"><b>Fuente:</b> <code>github-plan-build</code>, paso G; visor, nodo <code>cr</code>.</div>
+    <p><strong>En tu máquina:</strong> <code>github-plan-build</code> corre la revisión de código siempre, y la de seguridad si el cambio toca autenticación o entradas externas, antes de abrir la PR.</p>
+    <p><strong>En el pipeline:</strong> <code>instrument-project-java</code> escribe un job de <strong>claude-code-action</strong> en el workflow. Es la mitad que no se puede saltar — corre en cada PR, se acuerde alguien o no.</p>
+    <div class="hint"><b>Por qué claude-code-action y no CodeRabbit.</b> La revisión de CodeRabbit es gratis, pero lo único suyo que bloquea el merge son sus pre-merge checks, que son de pago. El plugin no debería empujar a un plan pago para cerrar un hueco.</div>
+    <div class="hint"><b>Y nunca se exige como check obligatorio en el Ruleset.</b> Un revisor no determinista con poder de veto bloquea PRs correctas por criterio del modelo, y el equipo aprende a ignorarlo o a pedir bypass — lo que erosiona los checks que sí deben bloquear. Lo que bloquea son los sensores deterministas y la aprobación humana; esto aporta señal, no veredicto. Es el <a href="00-referencia-e-inicio.html#RD">eje del método</a> aplicado a su propia herramienta, y <b>la verificación es por ausencia</b>: se comprueba que NO esté entre los checks requeridos.</div>
+    <div class="fuente"><b>Fuente:</b> <code>instrument-project-java/SKILL.md</code>, control 9b; <code>github-plan-build</code>, paso G; visor, nodo <code>cr</code>.</div>
   </section>
 
   <h2 class="muted" style="font-family:'Fraunces',serif;margin-top:30px">Hooks · los seis tipos</h2>

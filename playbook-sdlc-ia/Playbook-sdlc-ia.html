@@ -211,7 +211,7 @@ subgraph P2["FASE 2 · Preparación del terreno — donde el plugin hace casi to
     DI["Tests de integración y HTTP<br/>SKILL · separación de suites, control 12"]:::skill
     DA["Arquitectura e imports · ArchUnit<br/>SKILL · instrument-project-java"]:::skill
     DM["Migraciones de BD · Flyway<br/>PARCIAL · hay hook que protege la migración, no control que la exija"]:::parcial
-    DS["Seguridad del código<br/>PARCIAL · OWASP Dep-Check y gitleaks sí; FindSecBugs no"]:::parcial
+    DS["Seguridad del código<br/>SKILL · gitleaks, OWASP Dep-Check, FindSecBugs y CodeQL"]:::skill
     DQ["SonarQube · quality gate<br/>HUECO · debt-triage consume hallazgos, nadie instala el gate"]:::hueco
     DCI["Workflow de CI en GitHub Actions<br/>SKILL · instrument-project-java"]:::skill
     DCJ["El juez · el Ruleset exige el check en verde y la PR aprobada<br/>SKILL · instrument-github-repo"]:::skill
@@ -224,7 +224,7 @@ subgraph P2["FASE 2 · Preparación del terreno — donde el plugin hace casi to
     N1["Archivo guía<br/>AGENTS.md, con CLAUDE.md que lo importa<br/>SKILL · agent-context-java"]:::skill
     N2["Criterios de revisión · REVIEW.md<br/>SKILL · agent-context-java, con plantilla de PR"]:::skill
     N4["Skills, subagentes y plugins propios<br/>HUECO · el plugin es skills, pero no crea skills"]:::hueco
-    N6["Code review por IA<br/>PARCIAL · github-plan-build corre /code-review y /security-review;<br/>claude-code-action en el pipeline es a mano, visor cr"]:::parcial
+    N6["Code review por IA<br/>SKILL · en tu máquina y en el pipeline<br/>claude-code-action, que nunca es check obligatorio"]:::skill
     N1-->N2-->N4-->N6
   end
   subgraph P2D["Hooks y MCP · cada caja dice quién dispara y quién decide"]
@@ -297,7 +297,7 @@ subgraph P3["FASE 3 · Ciclo por feature — por cada funcionalidad"]
     direction TB
     VL1["1 · Local — el agente rompe lo obvio antes de subir<br/>SKILL · github-plan-build"]:::skill
     VL2["2 · CI, el juez — Actions corre los checks y el Ruleset bloquea<br/>SKILL · github-plan-build vigila hasta verde"]:::skill
-    VL3["3 · Seguridad — /security-review y OWASP Dep-Check<br/>PARCIAL · sin SAST de código, sin DAST"]:::parcial
+    VL3["3 · Seguridad — revisión, dependencias y SAST<br/>PARCIAL · el SAST ya está; falta el DAST, fuera de alcance"]:::parcial
     VL4["<b>4 · Revisión humana — checklist</b><br/>• alucinaciones de API<br/>• fidelidad al proyecto<br/>• tests de la spec<br/>• deuda técnica<br/>• trade-offs<br/>• corre el cambio tú mismo<br/>SKILL · REVIEW.md + plantilla de PR"]:::skill
     VL1-->VL2-->VL3-->VL4
   end
@@ -508,7 +508,7 @@ style P6 fill:#0b0f15,stroke:#6b2018,color:#FF9C8C
     DI:B("Tests de integración","skill","Control 12: Failsafe separa las suites y make check corre las rápidas mientras make ci corre las lentas. Solo la separación — elegir framework de pruebas por el equipo sería más invasivo que todo lo demás que hace la skill.",P.f2,"DI"),
     DA:B("Arquitectura e imports","skill","ArchUnit y verificación de Spring Modulith. Si el repo ya las tiene, la skill las lee y confirma en vez de reinstalarlas.",P.f2,"DA"),
     DM:B("Migraciones de BD","parcial","El hook 7 impide editar una migración ya aplicada. Instalar Flyway como control del build no lo hace ninguna skill.",P.f2,"DM"),
-    DS:B("Seguridad del código","parcial","gitleaks para secretos y OWASP Dependency-Check para CVEs, los dos opt-in. SpotBugs con FindSecBugs, que es el SAST del código, no está.",P.f2,"DS"),
+    DS:B("Seguridad del código","skill","Las tres capas: gitleaks para secretos, OWASP Dependency-Check para CVEs de terceros, y FindSecBugs más CodeQL para el código propio. Los dos últimos van juntos porque se cubren mutuamente: FindSecBugs es local y portable pero envejece, y a CodeQL lo mantiene GitHub al día.",P.f2,"DS"),
     DQ:B("SonarQube","hueco","debt-triage triaja hallazgos que Sonar ya reportó, pero ninguna skill instala el quality gate. Sin gate, no hay hallazgos que triajar.",P.f2,"DQ"),
     DCI:B("Workflow de CI","skill","instrument-project-java escribe .github/workflows/ci.yml. Es la única plataforma de CI que el plugin escribe.",P.f2,"DCI"),
     DCJ:B("El juez","skill","Lo escribe instrument-github-repo, la octava skill. Nunca sobrescribe un Ruleset existente: lo compara campo por campo y reporta las diferencias. Y lo prueba bloqueando una PR desechable, porque un 201 de la API no significa que el juez funcione.",P.f2,"DCJ"),
@@ -517,7 +517,7 @@ style P6 fill:#0b0f15,stroke:#6b2018,color:#FF9C8C
     N1:B("Archivo guía","skill","AGENTS.md como índice de menos de 80 líneas, y CLAUDE.md como una sola línea que lo importa.",P.f2,"N1"),
     N2:B("REVIEW.md","skill","Lo genera agent-context-java junto al archivo guía, con una plantilla de PR que enlaza a él. Sigue siendo un archivo distinto de AGENTS.md a propósito: el revisor de PRs en la nube carga REVIEW.md y la revisión local carga el archivo guía.",P.f2,"N2"),
     N4:B("Skills y subagentes propios","hueco","El plugin es un conjunto de skills, pero ninguna de ellas crea skills ni subagentes en el repo del usuario.",P.f2,"N4"),
-    N6:B("Code review por IA","parcial","github-plan-build corre /code-review y /security-review antes de abrir la PR. Instalar claude-code-action en el pipeline es a mano, visor cr.",P.f2,"N6"),
+    N6:B("Code review por IA","skill","En tu máquina la corre github-plan-build antes de abrir la PR; en el pipeline la instala instrument-project-java como un job más. Nunca se exige como check obligatorio: un revisor no determinista con veto bloquea PRs correctas, y el equipo aprende a pedir bypass.",P.f2,"N6"),
     // Fase 2 · hooks
     DH:B("Hook de Git · lefthook","skill","Determinista. Dispara Git en el evento; decide el script. Corre aunque el agente no esté abierto. Lo escribe instrument-project-java.",P.f2,"DH"),
     DAH:B("Hook de comando del agente","skill","Determinista. Dispara el ciclo del agente en un punto fijo; decide un script de shell. Son los 8 del catálogo de instrument-agent-java.",P.f2,"DAH"),
@@ -549,7 +549,7 @@ style P6 fill:#0b0f15,stroke:#6b2018,color:#FF9C8C
     VW:B("Verifica en el navegador","hueco","Ninguna skill maneja Playwright MCP ni Chrome DevTools MCP. El chequeo humano de «se ve bien» es a mano, visor vw.",P.f3,"VW"),
     VL1:B("1 · Local","skill","El agente rompe lo obvio antes de subir.",P.f3,"VL1"),
     VL2:B("2 · CI, el juez","skill","github-plan-build vigila la corrida hasta que quede verde y atiende los comentarios uno por uno.",P.f3,"VL2"),
-    VL3:B("3 · Seguridad","parcial","/security-review busca vulnerabilidades pero no las clasifica por CWE, y OWASP Dependency-Check cubre dependencias. Falta SAST del código propio y falta DAST.",P.f3,"VL3"),
+    VL3:B("3 · Seguridad","parcial","Ya están las tres capas de análisis estático: la revisión por modelo, las dependencias con OWASP Dep-Check, y el código propio con FindSecBugs y CodeQL. Lo que sigue faltando es el DAST, y quedó fuera de alcance a propósito: depende de una vista previa efímera que el plugin no puede garantizar.",P.f3,"VL3"),
     VL4:B("4 · Revisión humana","skill","Las seis categorías son del método; los quince ítems concretos los redacta la plantilla de agent-context-java, y lo dice como tal en vez de atribuirlos a una fuente. Viven en REVIEW.md, y la plantilla de PR trae las seis como casillas — nunca como check de CI, porque exigirlas convierte el juicio en trámite.",P.f3,"VL4"),
     GV:L("¿Aprueba la verificación?",P.f3,"GV"),
     M1:B("Merge y marcado","skill","El trailer Asistido-por-IA va en cada commit y en el cuerpo de la PR, así sobrevive al squash. El merge lo corres tú.",P.f3,"M1"),

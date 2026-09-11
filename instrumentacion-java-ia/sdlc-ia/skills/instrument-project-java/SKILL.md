@@ -22,9 +22,9 @@ You install twelve controls, prove each one fails when it should, and record the
 | 6 | Secrets | `gitleaks` | A credential reaching the history |
 | 7 | Architecture tests | `archunit-junit5` / Spring Modulith | The dependency rule silently breaking |
 | 8 | CI | `.github/workflows/ci.yml` | Local gates being skipped |
-| 9 | Dependency vulnerabilities (SCA) | `dependency-check-maven`, `dependency-check-suppressions.xml`, `.github/dependabot.yml` | A dependency with a known CVE shipping unnoticed |
+| 9 | Dependency vulnerabilities (SCA) + AI review in CI | `dependency-check-maven`, `dependency-check-suppressions.xml`, `.github/dependabot.yml`, `claude-code-action` job | A dependency with a known CVE shipping unnoticed; a review that only happens when someone remembers |
 | 10 | Test coverage | `jacoco-maven-plugin`, new-code rule | New code arriving with no test, unnoticed |
-| 11 | Bug patterns | `spotbugs-maven-plugin` | Defects that compile and pass style |
+| 11 | Bug patterns + SAST | `spotbugs-maven-plugin`, `findsecbugs-plugin`, CodeQL job | Defects that compile and pass style; insecure patterns in the code the agent just wrote |
 | 12 | Test suite separation | `maven-failsafe-plugin`, `make test` / `make verify` | Fast and slow tests running as one, so neither can be required |
 
 ## Philosophy
@@ -124,13 +124,30 @@ Ask only what Phase 1 could not answer, in plain language (spell out acronyms, s
    already does" principle as control 7. It fails **CI only**, never `make check`: coverage is slow,
    and a slow local gate gets bypassed with `--no-verify`. Confirm the percentage with the user;
    do not invent one.
-9. **Bug patterns (control 11)** — off by default, like secrets and SCA, and for the same reason:
+8b. **AI review in the pipeline (control 9b)** — on by default when the repo is on GitHub. Local
+    review already happens inside `/sdlc-ia:github-plan-build`; this is the half nobody can skip.
+    Install **`claude-code-action`**, not CodeRabbit — the only part of CodeRabbit that blocks a
+    merge is paid, and this plugin should not push a team onto a paid plan to close a gap. It needs
+    an `ANTHROPIC_API_KEY` repository secret; if it does not exist yet, write the job and say it
+    stays red until they add it, rather than one that skips silently and looks installed.
+    **Never required in the Ruleset** — see the template's own comment.
+9. **Bug patterns and SAST (controls 11, 11b, 11c)** — off by default, like secrets and SCA, for the same reason:
    Checkstyle in strict mode prevents *new* debt and starts green, while SpotBugs over a brownfield
    starts red, and a control born red is switched off in its first week. Install **SpotBugs only —
    never PMD alongside it**: two new analyzers shouting at once is the fastest way to get both
    muted, and PMD overlaps Checkstyle across much of its ruleset. When enabled it **fails
    `make check`** — a sensor that only reports is a sensor nobody reads. Offer
    `Yes — fails make check`, `Report only`, `Skip`.
+
+   Saying yes installs **all three together**: SpotBugs (11), **FindSecBugs** (11b) and **CodeQL**
+   (11c). They are one answer because they cover each other: SpotBugs finds defects, FindSecBugs
+   adds the security rules on top of it, and CodeQL covers what FindSecBugs' release pace does not —
+   its latest release pins an older SpotBugs, so the local pair ages while CodeQL does not.
+
+   **Check visibility before promising CodeQL** (`gh repo view --json visibility`): free on a
+   **public** repository, **paid** on a private one (it needs GitHub Advanced Security). On a
+   private repo without it, install the local pair alone and say why — never let the user find the
+   cost on a billing page.
 10. **Test suite separation (control 12)** — on by default. Split unit from integration via
     `maven-failsafe-plugin` (`*IT` / `*ITCase`) so `make test` stays fast and `make verify` runs the
     slow set. Install **the split and the profile only** — never Testcontainers, RestAssured or any
@@ -165,6 +182,9 @@ Summary:
 | 9 | Dependency vulnerabilities | Add a compile-scope dependency with a known High CVE | `make sca` fails, naming the CVE and the artifact; `dependabot.yml` verified by inspection |
 | 10 | Test coverage | Add a new class with a branch and no test | The coverage check fails, naming the class and the missed percentage — and the same class **with** a test passes |
 | 11 | Bug patterns | Introduce a known pattern (e.g. a boxed comparison by `==`) | `make check` fails, naming the SpotBugs rule |
+| 11b | SAST (FindSecBugs) | Concatenate user input into a SQL string | `make check` fails **naming the FindSecBugs rule** — a green build here means the plugin is not loading, not that the code is clean |
+| 11c | SAST (CodeQL) | Cannot be broken locally | Job present with `security-events: write`; findings visible under Security → Code scanning after one real run |
+| 9b | AI review in CI | Cannot be broken locally | The job runs on a real PR — and is verified by its **absence** from the Ruleset's required checks |
 | 12 | Suite separation | Add a failing `*IT` alongside a passing unit test | `make test` stays **green** and `make verify` fails — if both go red, the split did not take |
 
 Control 10's break has **two halves**: red without a test proves the rule fires, green with one
@@ -216,6 +236,11 @@ restated with the evidence this run produced. Do not commit — leave the diff f
 - Do NOT write a repo-wide coverage threshold. Control 10 is scoped to new code, or it is not
   installed.
 - Do NOT install PMD next to SpotBugs, and do NOT turn control 11 on by default.
+- Do NOT resolve SpotBugs and FindSecBugs separately — pin the pair, and prove the security plugin
+  loads by seeing it name its own rule. A green build proves nothing there.
+- Do NOT write the CodeQL job on a private repository without GitHub Advanced Security. Say it is
+  paid and install the local pair alone.
+- Do NOT make the AI review a required status check.
 - Do NOT add a test framework (Testcontainers, RestAssured, WireMock) under control 12 — it
   separates the suites the repo already has and nothing more.
 - Do NOT commit or push.
