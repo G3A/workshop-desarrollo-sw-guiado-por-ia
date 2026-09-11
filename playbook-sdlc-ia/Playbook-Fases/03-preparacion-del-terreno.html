@@ -28,9 +28,9 @@
   </nav>
 
   <div class="cobertura">
-    <span class="k-skill"><b>19</b> · skill</span>
+    <span class="k-skill"><b>20</b> · skill</span>
     <span class="k-parcial"><b>4</b> · parcial</span>
-    <span class="k-hueco"><b>10</b> · hueco</span>
+    <span class="k-hueco"><b>9</b> · hueco</span>
     <span class="k-fuera"><b>1</b> · fuera de alcance</span>
   </div>
 
@@ -321,12 +321,22 @@
     <div class="fuente"><b>Fuente:</b> blog oficial de MCP, «Tool Annotations as Risk Vocabulary»: <em>keep your actual safety guarantees in deterministic controls</em>. Citado en la leyenda del visor.</div>
   </section>
 
-  <section id="DMP" class="hueco det">
-    <span class="tag">DMP</span><span class="badge hueco">Hueco</span><span class="tipo det">Determinista</span>
+  <section id="DMP" class="skill det">
+    <span class="tag">DMP</span><span class="badge skill">Skill</span><span class="tipo det">Determinista</span>
     <h2>Reglas de permiso sobre la herramienta</h2>
-    <p>Es <strong>lo único determinista del grupo MCP</strong>, y es exactamente cómo se gobierna un servidor MCP sin depender del modelo: reglas <code>allow</code> / <code>deny</code> / <code>ask</code> con matchers <code>mcp__servidor__.*</code>, o un hook <code>PreToolUse</code> sobre la llamada. Los hooks envuelven a los MCP, no al revés.</p>
-    <div class="falta"><b>Qué falta, y por qué este hueco duele más que los otros.</b> <code>instrument-agent-java</code> declara explícitamente que escribe <em>únicamente</em> la clave <code>hooks</code> de <code>.claude/settings.json</code> y <strong>nunca toca <code>permissions</code></strong>. O sea: la skill registra servidores MCP que amplían lo que el agente alcanza, y deja sin configurar el único mecanismo determinista que los acota.</div>
-    <div class="fuente"><b>Fuente:</b> <code>instrument-agent-java/SKILL.md</code>, «Qué archivos toca»; documentación de hooks de Claude Code.</div>
+    <p>Es <strong>lo único determinista del grupo MCP</strong>, y es exactamente cómo se gobierna un servidor MCP sin depender del modelo. <code>/sdlc-ia:instrument-agent-java</code> lo escribe con <strong>dos mecanismos</strong>, cada uno donde rinde:</p>
+    <div class="ejecuadro">
+      <table class="rev">
+        <tr><th></th><th>Decide sobre</th><th>Bueno para</th></tr>
+        <tr><td><strong>Reglas <code>permissions</code></strong></td><td>El <strong>nombre</strong> de la herramienta</td><td>La postura general, legible de un vistazo y auditable en un diff</td></tr>
+        <tr><td><strong>Hook 9</strong></td><td>Los <strong>argumentos</strong></td><td>Qué repositorio, qué tabla, qué rama — lo que un nombre no puede expresar</td></tr>
+      </table>
+    </div>
+    <p><strong>La postura por defecto niega escrituras y permite lecturas</strong>, ordenando por consecuencia y no por servidor: leer un issue no cambia nada, cerrarlo sí.</p>
+    <div class="hint"><b>Dos alternativas descartadas, y por qué.</b> <code>ask</code> para todo <code>mcp__*</code> es seguro y agotador: el agente se detiene en cada lectura y a los dos días alguien permite todo para poder trabajar — un gate que se apaga protege menos que uno que nunca se instaló. Y fiarse del <code>readOnlyHint</code> del servidor no es opción: la especificación obliga a tratar las anotaciones como no confiables, porque las declara el mismo servidor al que querrías vigilar.</div>
+    <div class="hint"><b>Hubo que levantar una regla dura de la propia skill.</b> Declaraba que <em>nunca</em> tocaba <code>permissions</code>, y era incoherente consigo misma: su catálogo de hooks ya le decía al usuario que cerrara un hueco «con una regla de negación en permissions, no con un hook». Ahora la escribe <b>solo con confirmación explícita</b> y <b>solo matchers <code>mcp__*</code></b>; el resto de esa clave sigue siendo del usuario.</div>
+    <div class="hint"><b>No rompe <code>github-plan-build</code>, y el reporte lo dice.</b> Esa skill va por la CLI <code>gh</code>, no por el servidor MCP de GitHub, así que la lista de negación no le aplica. Sin esa frase, la primera persona que la lea apaga el control entero para desbloquear algo que nunca estuvo bloqueado.</div>
+    <div class="fuente"><b>Fuente:</b> <code>instrument-agent-java/SKILL.md</code>, fase 4; <code>templates/permissions.json.template</code>; suite de regresión de los hooks, 225 casos.</div>
   </section>
 
   <section id="G1" class="dec">

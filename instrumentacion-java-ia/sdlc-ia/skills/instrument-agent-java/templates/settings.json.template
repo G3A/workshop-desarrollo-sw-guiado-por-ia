@@ -1,8 +1,14 @@
 // Placeholders: none in the JSON itself. Every path below is literal.
 //
 // Becomes the "hooks" key of .claude/settings.json — the file that IS committed. Never write to
-// .claude/settings.local.json, and never touch the "permissions" key of either: it is the user's,
-// not the instrumentation's.
+// .claude/settings.local.json: it is the user's, not the instrumentation's.
+//
+// THE "permissions" KEY: ONLY mcp__* MATCHERS, ONLY AFTER SCOPE QUESTION 6 SAID YES.
+// This used to be an absolute "never touch". It was wrong: registering MCP servers widens what the
+// agent reaches on its own, and `permissions` is the only deterministic way to narrow it again —
+// so refusing to write it left the skill's own rule ("MCP first, hooks second, because MCP only
+// adds capability and hooks take it away") executed halfway. See templates/permissions.json.template.
+// Everything in that key that is NOT an mcp__* matcher stays untouched, always.
 //
 // MERGE, DO NOT REPLACE. If settings.json already exists:
 //   - keep every key you did not add;
