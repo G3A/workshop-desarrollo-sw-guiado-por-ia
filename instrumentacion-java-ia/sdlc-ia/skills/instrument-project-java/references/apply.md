@@ -152,6 +152,27 @@ needs: an `actions/cache` step for the NVD mirror and `NVD_API_KEY: ${{ secrets.
 the `make ci` step. Tell the user to create that repository secret; without it CI still passes,
 just slower.
 
+### 9b — AI review in the pipeline
+
+Local review is already covered: `/sdlc-ia:github-plan-build` runs `/code-review` and, when the
+change touches authentication or external input, `/security-review` before opening the PR. What is
+missing is the half **you cannot skip** — one that runs on the pull request whether or not anyone
+remembered.
+
+Add the `claude-code-action` job from the CI template. Not CodeRabbit: its review is free, but the
+only part of it that blocks a merge — pre-merge checks — is paid, and this plugin should not push a
+team onto a paid plan to close a gap.
+
+**Do not add it to the Ruleset as a required check, and say why in the report.** A
+non-deterministic reviewer with veto power blocks correct pull requests on a model's judgement, and
+the team learns either to ignore it or to ask for a bypass. What blocks is the deterministic sensors
+and the human approval; AI review contributes signal, not a verdict. This is the method's own axis
+applied to its own tooling.
+
+It needs `ANTHROPIC_API_KEY` as a repository secret. Without it the job fails on every PR, so if the
+secret does not exist yet, **write the job and tell the user it stays red until they add it** —
+rather than writing a job that silently skips and looks installed.
+
 ## 10 — Test coverage
 
 On by default. Declare `org.jacoco:jacoco-maven-plugin`, version resolved at install time and
@@ -189,9 +210,35 @@ the existing findings for triage, exactly as control 9 does — a pre-existing t
 trips a dozen patterns blocks every build otherwise. An exclusion goes in a
 `spotbugs-exclude.xml` with its reason, never by lowering the threshold.
 
-This control is what makes **FindSecBugs** possible later: it is a SpotBugs plugin, and pinning the
-pair (SpotBugs and the plugin) is its own decision. Note in the report that the security half is
-not installed here.
+### 11b — FindSecBugs, the security half
+
+Only when control 11 is installed; it is a SpotBugs **plugin**, not a tool of its own. Declare it
+under the SpotBugs plugin's `<plugins>` (the nested one, not Maven's), version resolved and pinned.
+
+**Pin the pair, not each one separately.** Verified 2026-09-11: SpotBugs releases continuously
+(4.10.x line), FindSecBugs is still on **1.14.0**, and that release pins SpotBugs 4.8.3 internally.
+Resolving SpotBugs "to latest" on its own is asking for the mismatch. Record both versions together
+in the report, as one decision.
+
+**The failure mode here is silence, not an error.** A SpotBugs plugin that does not load **does not
+break the build: it reports zero findings**, which looks exactly like clean code. So the
+verification is not "did the build pass" — see `references/verification.md`, control 11b.
+
+### 11c — CodeQL, the half FindSecBugs cannot keep up with
+
+Same scope answer as 11b. FindSecBugs runs locally and is portable, which is its real advantage;
+what it does not cover is everything published after its last release. CodeQL is maintained by
+GitHub at a continuous pace, which is precisely that weakness — so the two are installed together,
+each covering the other's blind spot.
+
+**Check the repository's visibility before offering it**
+(`gh repo view --json visibility`). CodeQL is **free on public repositories**; on a **private** one
+it requires GitHub Advanced Security, which is **paid**. On a private repo without it, say so and
+install FindSecBugs alone — never leave the user to discover the cost from a billing page.
+
+It goes in the CI workflow as its own job, not in `make ci`: it is a GitHub-hosted analysis, and
+`make` targets stay runnable on a laptop. `templates/ci/github-actions.yml.template` carries the
+job.
 
 ## 12 — Test suite separation
 

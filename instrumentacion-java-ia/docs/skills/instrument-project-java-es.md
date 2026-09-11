@@ -36,8 +36,39 @@ No recibe argumentos.
 | 8 | CI | Workflow de GitHub Actions (la única plataforma de CI que escribe la skill) | Que los controles locales se salteen |
 | 9 | Dependencias vulnerables (SCA) | OWASP Dependency-Check detrás de `make sca` (falla `make ci` con CVSS ≥ 7), archivo de supresiones con motivo, y Dependabot en GitHub | Que una dependencia con un CVE conocido llegue a producción sin que nadie lo vea |
 | 10 | Cobertura de pruebas | JaCoCo con una regla **solo sobre el código nuevo**, que falla en CI y no en `make check` | Que el código recién escrito llegue sin una sola prueba, sin que nadie lo note |
-| 11 | Patrones de bug | SpotBugs (opt-in), que falla `make check` | Defectos que compilan y pasan el estilo |
+| 11 | Patrones de bug y SAST | SpotBugs (opt-in), **FindSecBugs** encima de él, y un job de **CodeQL** en CI | Defectos que compilan y pasan el estilo, y patrones inseguros en el código que el agente acaba de escribir |
 | 12 | Separación de suites | Failsafe para `*IT`, más `make test` y `make verify` | Que las pruebas rápidas y las lentas corran juntas, y por eso no se pueda exigir ninguna de las dos |
+
+## Las dos mitades de la seguridad del código, y el fallo silencioso
+
+El control 11 se instala **entero o nada**: SpotBugs encuentra defectos, **FindSecBugs** agrega las
+reglas de seguridad encima de él, y **CodeQL** cubre lo que el ritmo de FindSecBugs no alcanza — su
+última versión fija internamente una versión anterior de SpotBugs, así que el par local envejece
+mientras CodeQL no.
+
+**El fallo que hay que atajar es el silencio.** Un plugin de SpotBugs que no carga **no rompe el
+build: reporta cero hallazgos**, y eso se ve exactamente igual que «código limpio». Por eso la
+verificación mete una inyección SQL a propósito y **exige que el fallo nombre la regla de
+FindSecBugs**. Un build en verde ahí no prueba nada.
+
+**El costo, comprobado antes de prometerlo.** CodeQL es gratis en repositorios **públicos**; en uno
+**privado** exige GitHub Advanced Security, que es **de pago**. En un repo privado sin él, la skill
+instala solo el par local y lo dice — nunca deja que el costo aparezca en una página de facturación.
+
+## La revisión por IA en el pipeline
+
+En tu máquina ya está cubierta: `github-plan-build` corre `/code-review` antes de abrir la PR. Esta
+es la mitad que **no se puede saltar**, y se instala como un job más del workflow.
+
+Se elige **`claude-code-action`** y no CodeRabbit: la revisión de CodeRabbit es gratis, pero lo
+único suyo que bloquea el merge es de pago, y el plugin no debería empujar a un plan pago para
+cerrar un hueco.
+
+**Nunca se exige como check obligatorio en el Ruleset**, y la skill lo dice en el reporte. Un
+revisor no determinista con poder de veto bloquea PRs correctas por criterio del modelo, y el
+equipo aprende a ignorarlo o a pedir bypass. Lo que bloquea son los sensores deterministas y la
+aprobación humana; la revisión por IA aporta señal, no veredicto — es el propio eje del método
+aplicado a su propia herramienta.
 
 ## Fases principales
 

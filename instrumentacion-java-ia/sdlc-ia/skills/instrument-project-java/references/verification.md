@@ -282,6 +282,68 @@ Delete the file afterwards.
 
 ---
 
+## Control 11b — FindSecBugs
+
+**The failure this exists to catch is silence.** A SpotBugs plugin that fails to load does not break
+the build and does not warn: it reports **zero findings**, which is indistinguishable from clean
+code. A green build is therefore not evidence of anything here.
+
+**Break:** introduce a vulnerability FindSecBugs detects with high confidence. Concatenating user
+input into SQL is the least ambiguous:
+
+```java
+// BREAK — control 11b
+public java.sql.ResultSet buscar(java.sql.Connection c, String nombre) throws Exception {
+    return c.createStatement().executeQuery("SELECT * FROM usuario WHERE nombre = '" + nombre + "'");
+}
+```
+
+```bash
+make check
+```
+
+**Expect:** a failure naming the FindSecBugs rule (`SQL_INJECTION_JDBC` or the equivalent for the
+API used) — **not** a generic SpotBugs error and **not** a generic build failure.
+
+If the build passes, the plugin is declared and not loading. The usual cause is the version pair:
+FindSecBugs 1.14.0 pins SpotBugs 4.8.3 internally, and a SpotBugs resolved "to latest" on its own
+can leave the plugin unloadable. Check the pair before anything else.
+
+If it fails but names only a SpotBugs rule, SpotBugs is working and the security plugin is not on
+its `<plugins>` list — the nested one, inside the SpotBugs plugin, not Maven's.
+
+Delete the file afterwards.
+
+---
+
+## Control 11c — CodeQL
+
+Cannot be broken locally: it runs on GitHub. Verify by inspection **and by one real run**:
+
+1. The job exists in the workflow with `security-events: write`. Without that permission the
+   analysis runs and the findings go nowhere — the silent half-install again, this time with a
+   green check.
+2. After the first run on a branch, **Security → Code scanning** lists it. Before that push it is a
+   file, not a control, exactly like `dependabot.yml`.
+3. On a **private** repository, confirm GitHub Advanced Security is enabled before writing the job.
+   Without it the job fails on every run with an entitlement error, which reads as a broken
+   pipeline rather than a billing decision.
+
+---
+
+## Control 9b — AI review in the pipeline
+
+Also not breakable locally. Verify on a real pull request:
+
+1. The job runs and leaves its review. If it fails with an authentication error, the
+   `ANTHROPIC_API_KEY` secret is missing — report that as the remaining manual step rather than
+   deleting the job.
+2. **Confirm it is NOT a required check** in the Ruleset. This one is verified by its *absence*: if
+   it is required, a model's judgement can block a correct pull request, and the team learns to ask
+   for bypasses — which erodes the checks that should block.
+
+---
+
 ## Control 12 — Suite separation
 
 The break has to show the two sets moving **independently** — that is the whole point of the
