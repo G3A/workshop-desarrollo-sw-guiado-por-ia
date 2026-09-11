@@ -2,12 +2,24 @@
 
 ## Qué es
 
-Instala la capa de **instrumentación no determinística** en un repositorio Java/Maven: los
-controles cuyo motor es el criterio de un agente de IA, no un cálculo exacto. Configura qué
-sistemas puede alcanzar el agente (servidores MCP en `.mcp.json`) y qué no puede pasar por alto
-(un catálogo de hooks de Claude Code en `.claude/settings.json`, respaldados por scripts de
-shell). Es el complemento de `instrument-project-java`, que instala los controles que una máquina
-puede decidir sola en milisegundos.
+Instala la capa de instrumentación **que mira hacia el agente** en un repositorio Java/Maven: qué
+sistemas puede alcanzar (servidores MCP en `.mcp.json`) y qué no puede pasar por alto (un catálogo
+de hooks de Claude Code en `.claude/settings.json`, respaldados por scripts de shell). Es el
+complemento de `instrument-project-java`, que mira hacia el código: los sensores que corren sobre
+el repositorio (build, estilo, arquitectura, CI) esté o no abierto un agente.
+
+Las dos mitades que instala caen a lados opuestos del eje de la instrumentación. Un control es
+determinista solo si el disparo **y** la decisión quedan fuera del razonamiento del modelo:
+
+- **Los servidores MCP son no deterministas.** El modelo decide cuándo llamar una herramienta, y
+  con qué argumentos. Agregan capacidad; no la limitan.
+- **Los ocho hooks `type: command` son deterministas.** El ciclo de vida del agente los dispara en
+  un punto fijo (`PreToolUse`, `PostToolUse`, `SessionStart`…) y un script de shell —no el
+  modelo— decide si permite, bloquea o solo reporta. Por eso los hooks son un límite y MCP no.
+
+Es el mismo eje que la leyenda del visor `proceso-operacional-con-ia`, que marca uno por uno los
+ocho hooks como deterministas y los tres servidores MCP como no deterministas. Llamar a esta skill
+«la capa no determinística», como decía antes, describe mal la mitad de lo que instala.
 
 ## Cómo se invoca
 
@@ -71,7 +83,8 @@ orden, porque MCP solo agrega capacidad y los hooks la quitan.
 - `.mcp.json` (fusionado con lo que ya exista).
 - `scripts/agent-hooks/_lib.sh` y un script por cada hook instalado (`secret-read-guard.sh`,
   `format-on-edit.sh`, `block-dangerous-bash.sh`, `dependency-sweep.sh`, `audit-log.sh`,
-  `version-pin-guard.sh`, `generated-files-guard.sh`).
+  `version-pin-guard.sh`, `generated-files-guard.sh`, `block-dangerous-powershell.sh`) — los ocho
+  de la tabla de arriba.
 - `.claude/settings.json` — únicamente la clave `hooks`; nunca toca `permissions` y nunca escribe
   en `.claude/settings.local.json`.
 - `.gitignore` (agrega `logs/` antes de crear el registro de auditoría, para que no se publique
