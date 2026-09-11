@@ -26,7 +26,7 @@ navegador basado en Chromium.
 | **Hueco** | Nadie la cubre acá: ni skill, ni visor, ni manual. |
 | **Fuera de alcance** | Frontera declarada del plugin, no un olvido: Azure DevOps, memoria semántica entre sesiones, agentes especialistas por stack. |
 
-Cobertura al momento de escribir esto: **37 skill · 3 parcial · 8 a mano · 21 hueco · 2 fuera de
+Cobertura al momento de escribir esto: **37 skill · 3 parcial · 13 a mano · 16 hueco · 2 fuera de
 alcance**, sobre 71 cajas con badge.
 
 ## Cómo se usa el diagrama

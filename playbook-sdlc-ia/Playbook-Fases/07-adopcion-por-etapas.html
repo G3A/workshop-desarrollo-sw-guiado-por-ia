@@ -12,7 +12,7 @@
   <a class="back" href="../Playbook-sdlc-ia.html">← Volver al diagrama</a>
   <div class="brand">Plugin sdlc-ia · Fase 6</div>
   <h1>Adopción por etapas</h1>
-  <p class="lead">La escalera de alcance: de una persona a la organización, con un criterio de avance distinto en cada peldaño. Sin cobertura de punta a punta — y es la fase que decide si todo lo anterior se queda en un piloto.</p>
+  <p class="lead">La escalera de alcance: de una persona a la organización, con un criterio de avance distinto en cada peldaño. Es la fase que decide si todo lo anterior se queda en un piloto.</p>
   <div class="rule"></div>
 
   <nav class="phases">
@@ -28,60 +28,82 @@
   </nav>
 
   <div class="cobertura">
-    <span class="k-hueco"><b>5</b> · hueco</span>
+    <span class="k-mano"><b>5</b> · a mano</span>
   </div>
 
-  <section id="ES" class="goal">
-    <span class="tag">ES</span>
+  <section id="ES" class="mano goal">
+    <span class="tag">ES</span><span class="badge mano">A mano</span>
     <h2>Avanza una etapa</h2>
     <p>Se avanza cuando se cumple el criterio de <em>tu</em> etapa actual, no cuando alguien tiene ganas de escalar. Cada etapa tiene el suyo, y son distintos a propósito: lo que basta para pasar de una persona a una escuadra no basta para pasar de una escuadra al equipo completo.</p>
+
+    <p style="font-family:'Fraunces',serif;font-size:17px;color:#FFFCF6;margin:18px 0 6px"><strong>Antes de nada: ¿en qué etapa estás?</strong></p>
+    <p>Cinco preguntas. Responde con la letra que más se parezca a tu realidad de hoy, no a la que te gustaría.</p>
+    <div class="ejecuadro">
+      <table class="rev">
+        <tr><th></th><th>A</th><th>B</th><th>C</th></tr>
+        <tr><td><strong>Archivos guía</strong><br>¿Hay un <code>AGENTS.md</code> que el equipo respeta?</td><td>No existe, o lo escribió una persona y nadie más lo mira</td><td>Existe y se actualiza cuando alguien se acuerda</td><td>Tiene dueño, cadencia de revisión y se discute en PRs</td></tr>
+        <tr><td><strong>Revisión asistida</strong><br>¿Corre sola en cada PR?</td><td>Solo cuando alguien la pide</td><td>En local sí, en el pipeline no</td><td>Corre en el pipeline en toda PR</td></tr>
+        <tr><td><strong>Reglas del agente</strong><br>¿Hay hooks o sensores que lo frenen?</td><td>Ninguno</td><td>Algunos, y no todos se han visto disparar</td><td>Instalados y probados rompiendo</td></tr>
+        <tr><td><strong>Lead time y retrabajo</strong><br>¿Los mides?</td><td>No</td><td>Tengo una idea, sin número</td><td>Medidos y comparados contra un período anterior</td></tr>
+        <tr><td><strong>Capacidades propias</strong><br>¿Skills o MCP del equipo?</td><td>Ninguna</td><td>Alguna prestada, ninguna propia</td><td>El equipo construyó al menos una</td></tr>
+      </table>
+    </div>
+    <p><strong>Mayoría de A → Etapa 1. Mayoría de B → Etapa 2. Mayoría de C → Etapa 3 o 4.</strong></p>
+    <div class="hint"><b>De dónde sale cada mitad.</b> Los <b>cinco temas</b> son del método. Las <b>preguntas concretas y sus tres respuestas las redacta esta página</b> — son la forma accionable que se les da aquí, no una cita de ninguna fuente. Cámbialas cuando tu equipo aprenda algo, igual que el <a href="04-ciclo-por-feature.html#VL4">checklist de revisión</a>.</div>
+    <div class="hint"><b>El diagnóstico no cambia el camino del playbook</b>, solo te dice qué criterio de avance te aplica hoy. Se responde una vez por período, junto con las métricas.</div>
   </section>
 
-  <section id="AJ" class="hueco">
-    <span class="tag">AJ</span><span class="badge hueco">Hueco</span>
-    <h2>Consolida y ajusta la etapa actual</h2>
-    <p>La salida que más se ignora del rombo. Si el criterio no se cumple, <strong>no escales todavía</strong>: vuelve al ciclo por feature con el mismo alcance y arregla lo que la medición mostró. Escalar sobre una etapa que no cerró multiplica el problema por el número de personas nuevas.</p>
-    <div class="falta"><b>Qué falta.</b> No está en ninguna pieza del repositorio.</div>
-  </section>
-
-  <section id="E1" class="hueco">
-    <span class="tag">E1</span><span class="badge hueco">Hueco</span>
+  <section id="E1" class="mano">
+    <span class="tag">E1</span><span class="badge mano">A mano</span>
     <h2>Etapa 1 · Piloto individual</h2>
-    <p>Una persona, un proyecto. El objetivo no es entregar más rápido: es descubrir dónde se rompe el flujo con este repositorio concreto.</p>
-    <p><strong>Criterio para avanzar:</strong> un archivo guía mínimo viable en al menos un proyecto, y la <strong>línea base medida</strong>. Sin línea base no hay contra qué comparar después, y ese error no se puede corregir hacia atrás.</p>
-    <div class="falta"><b>Qué falta.</b> No está en ninguna pieza del repositorio. El archivo guía sí lo cubre <code>agent-context-java</code>; la línea base depende de la <a href="06-metricas-y-reporte.html#K1">Fase 5, que está vacía</a>.</div>
+    <p>Una persona, un proyecto. <strong>El objetivo no es entregar más rápido</strong>: es descubrir dónde se rompe el flujo con este repositorio concreto, mientras el costo de equivocarse todavía lo paga una sola persona.</p>
+    <p><strong>Criterio para avanzar:</strong> un archivo guía mínimo viable en al menos un proyecto, y la <strong>línea base medida</strong>.</p>
+    <div class="hint"><b>La línea base es el criterio que no se puede corregir hacia atrás.</b> Si escalas sin medir primero, nunca vas a poder decir qué cambió — y en la Etapa 3 te van a pedir exactamente eso. Mídela antes de sumar a la segunda persona.</div>
+    <div class="hint"><b>Qué lo cubre.</b> El archivo guía, <a href="03-preparacion-del-terreno.html#N1"><code>agent-context-java</code></a>. La línea base, <a href="06-metricas-y-reporte.html#K1"><code>impact-metrics</code></a>: sin período anterior, el reporte se marca como línea base y lo dice.</div>
   </section>
 
-  <section id="E2" class="hueco">
-    <span class="tag">E2</span><span class="badge hueco">Hueco</span>
+  <section id="E2" class="mano">
+    <span class="tag">E2</span><span class="badge mano">A mano</span>
     <h2>Etapa 2 · Escuadra de 3 a 5</h2>
-    <p>El primer momento en que las convenciones tienen que estar escritas, porque ya no alcanza con que una sola persona las recuerde.</p>
-    <p><strong>Criterio para avanzar:</strong> code review asistido activo, un acuerdo escrito de marcado de PRs, y que <strong>el retrabajo no haya subido</strong>.</p>
-    <div class="falta"><b>Qué falta.</b> No está escrito. El marcado de PRs sí está resuelto técnicamente —el trailer <code>Asistido-por-IA</code>— pero el <em>acuerdo</em> de equipo sobre cuándo aplicarlo, y la medición del retrabajo, no.</div>
+    <p>El primer momento en que las convenciones tienen que estar <strong>escritas</strong>, porque ya no alcanza con que una sola persona las recuerde.</p>
+    <p><strong>Criterio para avanzar:</strong> revisión asistida activa, un acuerdo escrito de marcado de PRs, y que <strong>el retrabajo no haya subido</strong>.</p>
+    <div class="hint"><b>El marcado ya está resuelto técnicamente</b> —el trailer <code>Asistido-por-IA</code> que <code>github-plan-build</code> escribe en cada commit— pero el criterio pide el <b>acuerdo</b>: cuándo se marca, quién lo revisa, qué pasa si falta. Eso es una conversación, no una herramienta.</div>
+    <div class="hint"><b>El retrabajo todavía no se mide, y es honesto decirlo.</b> <a href="06-metricas-y-reporte.html#K1">Su definición está acordada</a> y falta muestra. En esta etapa el criterio se evalúa con el juicio del equipo, no con un número — conviene anotar en qué se basó, para poder compararlo cuando el número exista.</div>
   </section>
 
-  <section id="E3" class="hueco">
-    <span class="tag">E3</span><span class="badge hueco">Hueco</span>
+  <section id="E3" class="mano">
+    <span class="tag">E3</span><span class="badge mano">A mano</span>
     <h2>Etapa 3 · Equipo completo</h2>
-    <p>Acá se nota si la instrumentación de la Fase 2 era real o decorativa: con el equipo entero usando el agente, un gate que no bloquea deja de ser un detalle.</p>
+    <p>Acá se nota si la instrumentación de la <a href="03-preparacion-del-terreno.html">Fase 2</a> era real o decorativa. Con el equipo entero usando el agente, <strong>un gate que no bloquea deja de ser un detalle</strong>: es la diferencia entre un repositorio protegido y uno que lo parece.</p>
     <p><strong>Criterio para avanzar:</strong> que el retrabajo no haya subido tras la expansión, y que exista <strong>al menos un dato cuantitativo presentable a liderazgo</strong>.</p>
-    <div class="falta"><b>Qué falta.</b> No está en ninguna pieza del repositorio, y su criterio depende directo de la Fase 5.</div>
+    <div class="hint"><b>Este criterio es el que estaba bloqueado.</b> Hasta que existió <a href="06-metricas-y-reporte.html#K3"><code>impact-metrics</code></a>, «un dato presentable» no tenía de dónde salir. Ahora sí: el reporte trimestral, con cada cifra citando el comando que la produjo.</div>
+    <div class="hint"><b>Antes de escalar aquí, comprueba el juez.</b> Que el <a href="03-preparacion-del-terreno.html#DCJ">Ruleset</a> esté puesto y se haya visto bloquear algo. Escalar a todo el equipo sobre checks que solo informan multiplica por el tamaño del equipo un problema que nadie vio.</div>
   </section>
 
-  <section id="E4" class="hueco">
-    <span class="tag">E4</span><span class="badge hueco">Hueco</span>
+  <section id="E4" class="mano">
+    <span class="tag">E4</span><span class="badge mano">A mano</span>
     <h2>Etapa 4 · Organización</h2>
-    <p>Política interna, presupuesto, costo de tokens y licencias, métricas DORA. <strong>No hay etapa siguiente</strong>: a partir de acá la práctica se mantiene, no se escala.</p>
-    <div class="falta"><b>Qué falta.</b> No está en ninguna pieza del repositorio. El costo, además, arrastra <a href="01-fundamentos.html#F6">el hueco de la Fase 0</a>: nadie documentó qué cuesta una corrida.</div>
+    <p>Política interna, presupuesto, costo de tokens y licencias, métricas DORA. <strong>No hay etapa siguiente</strong>: a partir de aquí la práctica se mantiene, no se escala.</p>
+    <div class="hint"><b>Lo que esta etapa pide y el repositorio no da.</b> El costo por corrida y la política de datos son la <a href="01-fundamentos.html#F6">caja F6 de la Fase 0</a>, que sigue en rojo. Es la dependencia menos obvia del mapa: la última fase depende de algo de la primera.</div>
+    <div class="hint"><b>Una frontera que conviene recordar acá.</b> Las métricas DORA son otra cosa que las cuatro de la Fase 5: miden la entrega del equipo, no el impacto de la IA. Mezclarlas en el mismo reporte confunde dos conversaciones distintas.</div>
+  </section>
+
+  <section id="AJ" class="mano">
+    <span class="tag">AJ</span><span class="badge mano">A mano</span>
+    <h2>Consolida y ajusta la etapa actual</h2>
+    <p>La salida que más se ignora del rombo. Si el criterio no se cumple, <strong>no escales todavía</strong>: vuelve al ciclo por feature con el mismo alcance y arregla lo que la medición mostró.</p>
+    <p>Escalar sobre una etapa que no cerró <strong>multiplica el problema por el número de personas nuevas</strong>, y lo hace justo cuando es más caro diagnosticarlo: con más gente, más ruido y menos memoria de qué se cambió.</p>
+    <div class="hint"><b>Consolidar no es no hacer nada.</b> Es trabajo con alcance conocido: cerrar los huecos que la medición señaló, y volver a medir el período siguiente con el mismo alcance para saber si se movieron.</div>
+    <div class="hint"><b>Y no tiene número propio.</b> Se evalúa con el criterio de la etapa en la que estás. Por eso vive al lado de las cuatro etapas y no aparte.</div>
   </section>
 
   <section id="FIN" class="goal">
     <span class="tag">FIN</span>
     <h2>La cobertura evoluciona con el método</h2>
-    <p>Este playbook no describe un estado final. Describe dónde está hoy la frontera entre <em>lo que el plugin hace</em> y <em>lo que el método pide</em>, con 21 cajas rojas que son trabajo real todavía sin issue.</p>
-    <p>Cuando una de ellas se cierre, la caja cambia de color y esta página cambia con ella — en el mismo PR que cambie la skill, como manda la regla dura del monorepo: <strong>visor y skills coinciden</strong>, y ahora también el playbook.</p>
-    <div class="hint"><b>Ya se cerraron seis.</b> <a href="03-preparacion-del-terreno.html#DT">Error Prone</a>, <a href="03-preparacion-del-terreno.html#DU">JaCoCo sobre código nuevo</a>, <a href="03-preparacion-del-terreno.html#D1">SpotBugs</a> y la <a href="03-preparacion-del-terreno.html#DI">separación de suites</a> entraron a <code>instrument-project-java</code> como los controles 10, 11 y 12 —Error Prone dentro del 2—; y <a href="03-preparacion-del-terreno.html#N2">REVIEW.md</a> con el <a href="04-ciclo-por-feature.html#VL4">checklist humano</a> entraron a <code>agent-context-java</code>. La Fase 2 pasó de 13 a 18 cajas verdes y la Fase 3 de 10 a 11.</div>
-    <div class="hint"><b>Por dónde seguir.</b> La <a href="06-metricas-y-reporte.html#K1">primera métrica</a> sigue siendo la más barata —el dato ya está en cada commit— y desbloquea esta fase entera. La de peor cociente entre riesgo y esfuerzo sigue siendo <a href="03-preparacion-del-terreno.html#DCJ">el Ruleset</a>: sin él, los doce controles informan y el merge pasa igual.</div>
+    <p>Este playbook no describe un estado final. Describe dónde está hoy la frontera entre <em>lo que el plugin hace</em> y <em>lo que el método pide</em>, con 16 cajas rojas que son trabajo real todavía sin issue.</p>
+    <p>Cuando una de ellas se cierre, la caja cambia de color y esta página cambia con ella — en el mismo PR que cambie la skill, como manda la regla dura del monorepo: <strong>visor, playbook y skills coinciden</strong>.</p>
+    <div class="hint"><b>De 29 cajas rojas a 16.</b> Se cerraron los cuatro controles del build, <a href="03-preparacion-del-terreno.html#N2">REVIEW.md</a> con el <a href="04-ciclo-por-feature.html#VL4">checklist humano</a>, <a href="03-preparacion-del-terreno.html#DCJ">el Ruleset</a>, <a href="03-preparacion-del-terreno.html#DMP">los permisos sobre MCP</a>, <a href="03-preparacion-del-terreno.html#DS">el SAST del código propio</a>, la <a href="03-preparacion-del-terreno.html#N6">revisión en el pipeline</a>, <a href="06-metricas-y-reporte.html">la Fase 5 entera</a> y esta Fase 6. El plugin pasó de siete skills a nueve, y de nueve controles a doce.</div>
+    <div class="hint"><b>Por dónde seguir.</b> <a href="05-retroalimentacion.html#R2">Enrutar la lección</a> es el Principio 6 del método y el único bucle que hace que la vuelta 20 sea distinta de la 1 — va junto con el <a href="03-preparacion-del-terreno.html#DMH">hook que la inyecta</a>. Después, <a href="03-preparacion-del-terreno.html#DQ">SonarQube</a>, que hoy tiene consumidor y no productor.</div>
   </section>
 
   <footer>Plugin <code>sdlc-ia</code> · monorepo <code>workshop-desarrollo-sw-guiado-por-ia</code></footer>

@@ -330,12 +330,12 @@ end
 K3 --> GA{"¿Se cumple el criterio de avance<br/>de tu etapa actual?"}:::dec
 
 %% ============ FASE 6 · ADOPCIÓN POR ETAPAS ============
-GA -->|No| AJ["Consolida y ajusta la etapa actual<br/>HUECO"]:::hueco
+GA -->|No| AJ["Consolida y ajusta la etapa actual<br/>A MANO · mismo alcance, y volver a medir"]:::mano
 AJ --> S1
 GA -->|Sí, amplía el alcance| ES
 subgraph P6["FASE 6 · Adopción por etapas — sin cobertura, de punta a punta"]
   direction LR
-  E1["<b>Etapa 1 · Piloto individual</b><br/>HUECO"]:::hueco --> E2["<b>Etapa 2 · Escuadra de 3 a 5</b><br/>HUECO"]:::hueco --> E3["<b>Etapa 3 · Equipo completo</b><br/>HUECO"]:::hueco --> E4["<b>Etapa 4 · Organización</b><br/>HUECO"]:::hueco
+  E1["<b>Etapa 1 · Piloto individual</b><br/>A MANO · archivo guía y línea base medida"]:::mano --> E2["<b>Etapa 2 · Escuadra de 3 a 5</b><br/>A MANO · acuerdo escrito de marcado"]:::mano --> E3["<b>Etapa 3 · Equipo completo</b><br/>A MANO · un dato presentable a liderazgo"]:::mano --> E4["<b>Etapa 4 · Organización</b><br/>A MANO · política, presupuesto y DORA"]:::mano
 end
 ES([Avanza una etapa]):::goal --> E1
 E4 --> FIN(["La cobertura del plugin evoluciona con el método<br/>cada HUECO de este diagrama es un issue que todavía no existe"]):::goal
@@ -564,12 +564,12 @@ style P6 fill:#0b0f15,stroke:#6b2018,color:#FF9C8C
     K3:B("Reporte a liderazgo","skill","Se deriva del agregado, con cada cifra citando de dónde salió. La skill lo escribe y abre la PR, y ahí se detiene: enviarlo es de una persona, como todo lo que este paquete deja fuera.",P.f5,"K3"),
     GA:L("¿Criterio de avance?",P.f5,"GA"),
     // Fase 6
-    AJ:B("Consolida y ajusta","hueco","No está en ninguna pieza del repositorio.",P.f6,"AJ"),
+    AJ:B("Consolida y ajusta","mano","La salida que más se ignora del rombo. Escalar sobre una etapa que no cerró multiplica el problema por el número de personas nuevas, y justo cuando es más caro diagnosticarlo.",P.f6,"AJ"),
     ES:L("Avanza una etapa",P.f6,"ES"),
-    E1:B("Etapa 1 · Piloto individual","hueco","Las cuatro etapas y su criterio de avance no están en ninguna pieza del repositorio.",P.f6,"E1"),
-    E2:B("Etapa 2 · Escuadra","hueco","Las cuatro etapas y su criterio de avance no están en ninguna pieza del repositorio.",P.f6,"E2"),
-    E3:B("Etapa 3 · Equipo completo","hueco","Las cuatro etapas y su criterio de avance no están en ninguna pieza del repositorio.",P.f6,"E3"),
-    E4:B("Etapa 4 · Organización","hueco","Las cuatro etapas y su criterio de avance no están en ninguna pieza del repositorio.",P.f6,"E4"),
+    E1:B("Etapa 1 · Piloto individual","mano","Criterio: archivo guía mínimo viable y la línea base medida. La línea base es el criterio que no se puede corregir hacia atrás — mídela antes de sumar a la segunda persona.",P.f6,"E1"),
+    E2:B("Etapa 2 · Escuadra","mano","Criterio: revisión asistida activa, acuerdo escrito de marcado de PRs, y que el retrabajo no haya subido. El marcado ya está resuelto técnicamente; lo que pide el criterio es el acuerdo.",P.f6,"E2"),
+    E3:B("Etapa 3 · Equipo completo","mano","Criterio: el retrabajo no subió tras la expansión y hay un dato cuantitativo presentable a liderazgo. Era el criterio bloqueado hasta que existió impact-metrics.",P.f6,"E3"),
+    E4:B("Etapa 4 · Organización","mano","Política interna, presupuesto, costo de tokens y métricas DORA. No hay etapa siguiente. Depende de la caja F6 de la Fase 0, que sigue en rojo: la última fase depende de algo de la primera.",P.f6,"E4"),
     FIN:L("La cobertura evoluciona",P.f6,"FIN")
   };
 
