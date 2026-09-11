@@ -28,10 +28,10 @@
   </nav>
 
   <div class="cobertura">
-    <span class="k-skill"><b>17</b> · skill</span>
+    <span class="k-skill"><b>18</b> · skill</span>
     <span class="k-parcial"><b>4</b> · parcial</span>
     <span class="k-mano"><b>1</b> · a mano</span>
-    <span class="k-hueco"><b>11</b> · hueco</span>
+    <span class="k-hueco"><b>10</b> · hueco</span>
     <span class="k-fuera"><b>1</b> · fuera de alcance</span>
   </div>
 
@@ -199,11 +199,15 @@
     <div class="fuente"><b>Fuente:</b> <code>agent-context-java/SKILL.md</code>, fase 4.</div>
   </section>
 
-  <section id="N2" class="hueco">
-    <span class="tag">N2</span><span class="badge hueco">Hueco</span>
+  <section id="N2" class="skill">
+    <span class="tag">N2</span><span class="badge skill">Skill</span>
     <h2>Criterios de revisión · REVIEW.md</h2>
-    <p><code>REVIEW.md</code> es un archivo distinto de <code>AGENTS.md</code> <strong>a propósito</strong>: se carga en el servicio de revisión de PRs en la nube, no en el <code>/code-review</code> local. Los criterios que deban valer en local van en el archivo guía; los que solo aplican al revisar un diff van acá.</p>
-    <div class="falta"><b>Qué falta.</b> Ninguna skill lo genera. Y el hueco se propaga: la Fase 4 pide enrutar cada lección aprendida a su lugar —regla a <code>AGENTS.md</code>, <strong>criterio a <code>REVIEW.md</code></strong>— y una de las cinco filas de esa tabla apunta a un archivo que no existe.</div>
+    <p><code>/sdlc-ia:agent-context-java</code> lo genera junto al archivo guía, más una <strong>plantilla de PR</strong> corta que enlaza a él.</p>
+    <p>Sigue siendo un archivo distinto de <code>AGENTS.md</code> <strong>a propósito</strong>, y la distinción es la razón de que sean dos: <code>AGENTS.md</code> son las reglas que el agente respeta <em>al generar</em>; <code>REVIEW.md</code> es qué mirar en un diff <em>ya escrito</em>. Cada uno se carga en un sitio distinto — el revisor de PRs en la nube lee <code>REVIEW.md</code>, la revisión local lee el archivo guía. Un criterio que deba valer en los dos va en el archivo guía.</p>
+    <div class="hint"><b>La plantilla de PR enlaza, no repite.</b> Trae las seis categorías como casillas y apunta a <code>REVIEW.md</code> para el detalle. Copiar los quince ítems ahí crearía una segunda lista que se desincroniza con la primera en tres sprints.</div>
+    <div class="hint"><b>Y nunca es un check de CI.</b> Un workflow que exija las casillas marcadas convierte el juicio humano en trámite: se marcan las seis sin mirar, y el registro empieza a mentir. Dejan rastro de qué se revisó; no lo garantizan.</div>
+    <div class="hint"><b>Cierra también media Fase 4.</b> La tabla de enrutamiento de lecciones tenía una de sus cinco filas —«criterio → <code>REVIEW.md</code>»— apuntando a un archivo inexistente. Ver <a href="05-retroalimentacion.html#R2">R2</a>.</div>
+    <div class="fuente"><b>Fuente:</b> <code>agent-context-java/SKILL.md</code>, fase 4, y <code>templates/es/REVIEW.md.template</code>.</div>
   </section>
 
   <section id="N4" class="hueco">

@@ -43,10 +43,14 @@ argumento. Fuera de eso, trabaja sobre el repositorio en el que se ejecuta.
    datos reales del repositorio. Si falta información, deja un marcador `<!-- TODO: fill in -->`
    en vez de inventar; si una sección entera no aplica (por ejemplo, no hay UI o no usa Modulith),
    la elimina en lugar de dejarla vacía.
-4. **Wiring de `AGENTS.md` y `CLAUDE.md`** — arma `AGENTS.md` como una tabla de contenidos breve
+4. **Wiring de `AGENTS.md`, `CLAUDE.md` y `REVIEW.md`** — arma `AGENTS.md` como una tabla de contenidos breve
    (menos de 80 líneas: dónde encontrar cada cosa, los comandos que de verdad se usan, las reglas
    no obvias, testing, estilo de código y seguridad) y deja `CLAUDE.md` como una sola línea que
-   delega a `AGENTS.md`.
+   delega a `AGENTS.md`. Además escribe **`REVIEW.md`** —los criterios de qué mirar en un diff— y
+   una **plantilla de PR** corta que enlaza a él. Son archivos distintos a propósito: `AGENTS.md`
+   son las reglas que el agente respeta *al generar*, `REVIEW.md` es qué mirar en un diff *ya
+   escrito*, y cada uno se carga en un sitio distinto (el revisor de PRs en la nube lee
+   `REVIEW.md`; el `/code-review` local lee el archivo guía).
 5. **Validación de afirmaciones** — antes de terminar, revisa las afirmaciones importantes que
    escribió (versión del build tool, JDK objetivo, framework de persistencia, comandos, entidades
    clave) y confirma con el usuario las que tienen baja confianza, en vez de dejarlas sin verificar.
@@ -57,7 +61,10 @@ argumento. Fuera de eso, trabaja sobre el repositorio en el que se ejecuta.
 
 ## Qué archivos toca o crea
 
-- `AGENTS.md` y `CLAUDE.md` en la raíz del repositorio.
+- `AGENTS.md`, `CLAUDE.md` y `REVIEW.md` en la raíz del repositorio.
+- `.github/pull_request_template.md`, con las seis categorías como casillas y el enlace a
+  `REVIEW.md`. **Nunca se exige como check de CI**: un workflow que obligue a marcarlas convierte
+  el juicio humano en un trámite — se marcan las seis sin mirar y el registro empieza a mentir.
 - `docs/business.md`, `docs/architecture.md`, `docs/data-model.md`, `docs/infrastructure.md`,
   `docs/java.md`.
 - `docs/adrs/README.md`, `docs/adrs/adr-template.md` y de una a tres ADR semilla.

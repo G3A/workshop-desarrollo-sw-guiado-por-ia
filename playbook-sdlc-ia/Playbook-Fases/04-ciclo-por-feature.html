@@ -12,7 +12,7 @@
   <a class="back" href="../Playbook-sdlc-ia.html">← Volver al diagrama</a>
   <div class="brand">Plugin sdlc-ia · Fase 3</div>
   <h1>Ciclo por feature</h1>
-  <p class="lead">La fase mejor cubierta del playbook: dos skills la recorren casi entera, de un documento de requisitos a una PR con el CI en verde. Los dos huecos que quedan son la interfaz y el checklist humano.</p>
+  <p class="lead">La fase mejor cubierta del playbook: dos skills la recorren casi entera, de un documento de requisitos a una PR con el CI en verde. El único hueco que queda es la verificación en el navegador.</p>
   <div class="rule"></div>
 
   <nav class="phases">
@@ -28,10 +28,10 @@
   </nav>
 
   <div class="cobertura">
-    <span class="k-skill"><b>10</b> · skill</span>
+    <span class="k-skill"><b>11</b> · skill</span>
     <span class="k-parcial"><b>1</b> · parcial</span>
     <span class="k-mano"><b>2</b> · a mano</span>
-    <span class="k-hueco"><b>2</b> · hueco</span>
+    <span class="k-hueco"><b>1</b> · hueco</span>
   </div>
 
   <h2 class="muted" style="font-family:'Fraunces',serif;margin-top:30px">Especificación</h2>
@@ -154,8 +154,8 @@
     <div class="falta"><b>Qué falta.</b> El <strong>SAST del código propio</strong> (SpotBugs con FindSecBugs) y el <strong>DAST</strong>. Hoy la capa cubre dependencias de terceros y una revisión por modelo; no cubre un análisis estático de seguridad sobre el código que el agente acaba de escribir.</div>
   </section>
 
-  <section id="VL4" class="hueco">
-    <span class="tag">VL4</span><span class="badge hueco">Hueco</span>
+  <section id="VL4" class="skill">
+    <span class="tag">VL4</span><span class="badge skill">Skill</span>
     <h2>4 · Revisión humana</h2>
     <p>La capa que ninguna de las otras tres puede reemplazar. El método la define como un checklist concreto de qué mirar en un diff que escribió un modelo:</p>
     <ul>
@@ -166,8 +166,11 @@
       <li><strong>Trade-offs</strong> — qué se decidió sin decirlo.</li>
       <li><strong>Corre el cambio tú mismo</strong> — el paso que más se salta.</li>
     </ul>
-    <div class="falta"><b>Qué falta.</b> El checklist <strong>no existe escrito en ninguna pieza del repositorio</strong>. El visor explica en su nodo <code>cr</code> por qué la revisión humana no se reemplaza —«el agente es bueno detectando bugs mecánicos; una persona evalúa si el enfoque tiene sentido para el negocio»— pero no trae la lista de qué mirar.</div>
-    <div class="hint"><b>Es el hueco más fácil de cerrar de todo el playbook</b>, y el que más se conecta con otros dos: estos criterios son exactamente lo que va en el <code>REVIEW.md</code> que tampoco existe (caja <code>N2</code>), y lo que la Fase 4 pide enrutar cuando un criterio se repite.</div>
+    <p><code>/sdlc-ia:agent-context-java</code> los escribe en <code>REVIEW.md</code> —quince ítems concretos bajo esas seis categorías— y deja una plantilla de PR con las seis como casillas, que aparece sola en el momento de revisar.</p>
+    <div class="hint"><b>De dónde sale cada mitad, dicho sin adornos.</b> Las <b>seis categorías son del método</b>. Los <b>quince ítems concretos los redacta la plantilla de la skill</b>: son la forma accionable que se les da, no una cita de ninguna fuente — y la skill lo dice así al reportar, invitando al equipo a cambiarlos.</div>
+    <div class="hint"><b>Las casillas no son un check de CI, a propósito.</b> Exigirlas convierte el juicio humano en trámite: se marcan las seis sin mirar y el registro empieza a mentir. Dejan rastro de qué se revisó; no lo garantizan.</div>
+    <div class="hint"><b>La lista evoluciona en los dos sentidos.</b> Lo que dices a mano por tercera vez en una revisión es un criterio que falta en <code>REVIEW.md</code>. Y al revés: un criterio que una máquina pueda comprobar deja de ser texto y se vuelve sensor — si sigue siendo prosa, es trabajo manual que alguien repite en cada PR.</div>
+    <div class="fuente"><b>Fuente:</b> <code>agent-context-java/SKILL.md</code>, fase 4; <code>templates/es/REVIEW.md.template</code>; visor, nodo <code>cr</code> para el porqué de la capa.</div>
   </section>
 
   <section id="GV" class="dec">
