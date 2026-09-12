@@ -1,6 +1,6 @@
 ---
 name: agent-context-java
-description: Generate a documentation pack for a Java/Spring repository so AI coding agents can reason about it — AGENTS.md, REVIEW.md and a PR template for the human review layer, architecture, ADRs, data model, infrastructure, plus a `docs/java.md` deep-dive covering the Maven/Gradle module graph, JDK target, Spring DI, JPA/Hibernate or Spring Data persistence, Spring profiles & config, Spring Modulith module boundaries, quality gates, and CI. Output docs default to Spanish; pass `en` for English. Invoke with `/sdlc-ia:agent-context-java` (or `/sdlc-ia:agent-context-java en`).
+description: Generate a documentation pack for a Java/Spring repository so AI coding agents can reason about it — AGENTS.md, REVIEW.md and a PR template for the human review layer, an optional EXPERIMENTS.md holding the team's written agreement on what may fail, architecture, ADRs, data model, infrastructure, plus a `docs/java.md` deep-dive covering the Maven/Gradle module graph, JDK target, Spring DI, JPA/Hibernate or Spring Data persistence, Spring profiles & config, Spring Modulith module boundaries, quality gates, and CI. Output docs default to Spanish; pass `en` for English. Invoke with `/sdlc-ia:agent-context-java` (or `/sdlc-ia:agent-context-java en`).
 disable-model-invocation: true
 ---
 
@@ -104,7 +104,10 @@ batched calls. Long-form answers don't fit it — ask those in plain chat.
 
 ### 2a. Batch A — scope and disambiguation (one `AskUserQuestion`)
 
-1. **Optional docs** — "Generate also `target-user.md` and/or `design.md`?" (`multiSelect`).
+1. **Optional docs** — "Generate also `target-user.md`, `design.md` and/or `EXPERIMENTS.md`?"
+   (`multiSelect`). For the third one, say what it is and what it is not in the option itself:
+   *the written agreement about what the team may try with the agent and what happens when it goes
+   wrong — the form only; **you fill in the content**, and the skill will not answer it for you.*
 2. **Augment-mode confirmation** — only if Phase 1b found existing docs: list them, then
    `Yes (augment only)` / `Overwrite matching docs` / `Cancel`.
 3. **Phase-1 ambiguity** — the one thing discovery couldn't settle: usually the persistence
@@ -152,10 +155,20 @@ For each doc, read `templates/<lang>/<doc>.md.template` (`<lang>` resolved above
   `docs/java.md`
 - `docs/adrs/README.md` + `docs/adrs/adr-template.md` + `docs/adrs/0001-<slug>.md` (1–3 seed ADRs)
 - `docs/target-user.md`, `docs/design.md` (only if opted in)
+- `EXPERIMENTS.md` (repo root, only if opted in) — see the exception below
 
 Rules: short sentences, sacrifice grammar for clarity. No info for a section →
 `<!-- TODO: fill in -->`, don't hallucinate; a whole section that doesn't apply (no UI, no
-Modulith, no message broker) → **delete it**, don't pad with TODOs. **Augment mode never clobbers
+Modulith, no message broker) → **delete it**, don't pad with TODOs.
+
+**`EXPERIMENTS.md` is the one file where TODOs are the correct output, not a shortfall.** It holds
+the team's written agreement about what may fail and what happens when it does — a leadership
+decision the repository cannot contain. Everywhere else a TODO means discovery fell short; here it
+means **the answer is not in the repository and must not be invented**. Fill in only `<PROJECT>`,
+`<INTEGRATION-BRANCH>`, and the "never an experiment" list — which you copy from
+`github-plan-build`'s escalation list so the two say the same thing, marked as a starting point.
+Leave every other slot open, and say in the report that you did so on purpose: a team's risk
+posture invented by a model is the exact hallucination this skill exists to prevent. **Augment mode never clobbers
 user content** — fill TODO slots or append a clearly marked subsection, leave the rest alone;
 pre-existing docs are read-only, cross-link instead of editing.
 
@@ -249,6 +262,7 @@ the ledger to `docs/claims-ledger.md`.
   appending clearly marked sections.
 - Do NOT fabricate framework or dependency versions, providers, endpoint names, or schema you
   haven't read.
+- Do NOT answer `EXPERIMENTS.md` for the team. Its TODOs are the deliverable, not a shortfall.
 - DO leave `<!-- TODO -->` markers where human input is needed, and delete sections that don't
   apply rather than padding them.
 - DO keep every doc focused: each has one job, delegated from AGENTS.md.

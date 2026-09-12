@@ -68,11 +68,50 @@ argumento. Fuera de eso, trabaja sobre el repositorio en el que se ejecuta.
 - `docs/business.md`, `docs/architecture.md`, `docs/data-model.md`, `docs/infrastructure.md`,
   `docs/java.md`.
 - `docs/adrs/README.md`, `docs/adrs/adr-template.md` y de una a tres ADR semilla.
-- Opcionalmente `docs/target-user.md` y `docs/design.md`, solo si el usuario lo pide.
+- Opcionalmente `docs/target-user.md`, `docs/design.md` y `EXPERIMENTS.md`, solo si el usuario lo
+  pide.
 - `docs/claims-ledger.md`, con el registro de afirmaciones verificadas.
 
 No escribe código de aplicación, no instala dependencias y no ejecuta comandos destructivos: solo
 produce archivos Markdown.
+
+## `EXPERIMENTS.md` — el acuerdo, no el permiso
+
+**La skill no cubre el permiso para experimentar y fallar**: eso es una decisión de liderazgo y va
+a seguir siéndolo. Lo que cubre es **el acuerdo escrito que resulta de darlo**, y sin ese archivo
+el permiso dura hasta la primera PR que salió mal.
+
+Un equipo que solo puede usar el agente cuando está seguro de que va a salir bien no aprende a
+usarlo: **aprende a esconder cuándo lo usó**.
+
+Cinco secciones: qué puede fallar y dónde, **qué nunca es un experimento** (la frontera que hace
+que el permiso se pueda dar sin miedo), qué pasa cuando sale mal, quién lo dio y cuándo se revisa,
+y qué se comparte.
+
+### La regla dura: la skill no lo contesta
+
+**Casi todo el archivo sale con marcadores de pendiente, y esa es la salida correcta.** En los
+demás documentos un `TODO` significa que el descubrimiento no alcanzó; aquí significa que **la
+respuesta no está en el repositorio y no debe inventarse**. Inventarle a un equipo su postura de
+riesgo es exactamente la alucinación contra la que esta skill está escrita.
+
+La skill solo rellena el nombre del proyecto, la rama de integración, y la lista de «qué nunca es
+un experimento» —copiada de la lista de escalamiento de `github-plan-build`, para que las dos digan
+lo mismo y marcada como punto de partida—. Todo lo demás queda abierto, y el reporte dice que fue
+a propósito.
+
+### La cláusula que decide si el acuerdo es real
+
+**El marcador se queda.** El trailer `Asistido-por-IA` de una PR que salió mal no se borra ni se
+omite. Si desaparece de los intentos fallidos, «% de PRs con IA» mide **solo los éxitos**, y el
+equipo aprendió justo lo que el archivo existe para evitar.
+
+Y se puede comprobar: **comparar la tasa de marcado en las PRs revertidas o parchadas de urgencia
+contra la tasa general**. Si son distintas, el acuerdo está escrito y no se está cumpliendo — lo
+cual es información bastante más útil que el número solo.
+
+**Tampoco es un check de CI**, por la misma razón que las casillas de la plantilla de PR: un
+acuerdo convertido en trámite se firma sin leer.
 
 ## Decisiones de diseño a tener en cuenta
 
