@@ -13,6 +13,7 @@ for it.
 | **GitHub** | a remote on `github.com`, or `.github/workflows/` | Issues, pull requests, Actions runs |
 | **Context7** | always | Up-to-date, version-aware library documentation |
 | **DBHub** | a JDBC/R2DBC connection string, or a `DataSource`/`spring.datasource.url` property, pointing at a real database | Read access to the actual schema and data |
+| **A browser server** | a user interface — templates, static assets, a front-end subproject, view-returning controllers, or an existing browser test suite (checklist item 8b) | The fourth verification layer: the agent can look at what it built |
 
 **GitHub is the primary server for this skill** — a Java/GitHub pairing is the common case this
 skill targets. **Context7 is offered unconditionally**: it is the answer to a model writing
@@ -104,6 +105,87 @@ halfway. The posture, the two rejected alternatives and the merge rules are in
 }
 ```
 
+## The browser server: ask which one, never pick for them
+
+This is the **fourth verification layer**, and the only one where the agent cannot check its own
+work today: it runs the local gates, it reads CI, it reads the security scan — and then declares
+"the page works" without ever having looked at it.
+
+Offer it **only when checklist item 8b found a user interface.** In a pure REST service a browser
+server is dead weight the team pays for in context on every session.
+
+**Two servers, and they answer different questions.** Ask which one; do not default. The question
+only appears for repositories that already have a UI, so it is not one more question for everyone.
+
+| | **Playwright MCP** | **Chrome DevTools MCP** |
+|---|---|---|
+| Package | `@playwright/mcp` | `chrome-devtools-mcp` |
+| Maintained by | Microsoft — same repository and licence as Playwright | The Chrome DevTools team, at Google |
+| The question it answers | "does it work, and does it look right?" | "why is it slow, and why did that request fail?" |
+| How it reads the page | **Accessibility-tree snapshots by default**, not images | Performance traces, network requests, console messages with source-mapped stack traces |
+| Pick it when | The repo already uses Playwright, or the work is building and checking UI | The work is diagnosing load time, failing requests or console errors |
+
+Two facts worth putting in the question, because they change the answer:
+
+- **Playwright MCP reads the accessibility tree, not screenshots.** The agent gets structure,
+  which is cheaper and far more reliable for clicking the right thing — but "does it *look* right"
+  needs an explicit screenshot request. A team expecting the agent to notice a visual regression on
+  its own will be disappointed, and should hear that before choosing.
+- **Neither needs a browser installed first.** Playwright MCP downloads its browser on first use.
+  Do not add Playwright to the repository's dependencies to "prepare" for this — choosing a team's
+  testing stack is not this skill's call, the same rule that stops `instrument-project-java` from
+  installing Testcontainers.
+
+```json
+"ark_playwright": {
+  "type": "stdio",
+  "command": "npx",
+  "args": ["-y", "@playwright/mcp@{{PLAYWRIGHT_MCP_VERSION}}", "--isolated", "--allowed-origins", "{{ALLOWED_ORIGINS}}"]
+}
+```
+
+```json
+"ark_chrome_devtools": {
+  "type": "stdio",
+  "command": "npx",
+  "args": ["-y", "chrome-devtools-mcp@{{CHROME_DEVTOOLS_MCP_VERSION}}"]
+}
+```
+
+**The vendor's `@latest` does not apply here.** Playwright's own installation page shows
+`@playwright/mcp@latest`; this skill pins, like every other stdio entry — resolve with
+`npm view <package> version` in the same run that writes the file. The reason is in **The rules
+that do not vary** above and does not weaken because the publisher is Microsoft.
+
+### The flag that is not a boundary, and why it matters here
+
+Playwright MCP takes `--allowed-origins` and `--blocked-origins` (semicolon-separated, blocked
+evaluated first), `--isolated` (profile kept in memory, never written to disk), `--browser` and
+`--caps`. Set the origins to the app's own hosts and `--isolated` by default: a browser profile on
+disk accumulates logged-in sessions the agent then inherits.
+
+**But say plainly what that buys, because Playwright's own documentation does.** It states that the
+origin lists and the file-access guardrail are *convenience defenses to catch unintended access,
+not a security boundary* — they do not stop redirects and can be deliberately circumvented — and
+that **real isolation requires client-level permissions**.
+
+That is this skill's own axis, stated by the vendor about its own product: **MCP only adds
+capability; hooks and `permissions` are the only things that take it back.** So a browser server is
+exactly the case that makes the `mcp__*` rules of Phase 4 non-optional rather than a nicety. Write
+both halves or neither, and say so in the report — a team that reads `--allowed-origins` in a diff
+and concludes the agent is fenced in has drawn the wrong conclusion from a real flag.
+
+### The second risk, and it is not the network
+
+A browser server **pulls web page content into the model's context**. That is the classic
+prompt-injection surface: text on a page the agent visited is untrusted input that now sits
+alongside the user's instructions. It is the same reason MCP tool annotations are treated as hints
+and not as facts.
+
+Nothing in this skill solves that. What it can do is keep the blast radius small — origins scoped
+to the app's own hosts, `--isolated`, and the write-denying `mcp__*` permission rules — and say in
+the report that the remaining exposure is real. A caveat stated is a caveat the team can decide
+about.
 ## Writing the file does not connect the servers
 
 A newly written `.mcp.json` leaves its servers at **`⏸ Pending approval`** until the user trusts
@@ -124,6 +206,10 @@ servers do not. Say which half of the run was proven and which half was only wri
   that never arrives, and confirm it does not immediately fail on an unsupported flag.
 - Grep your own output for anything that looks like a credential rather than a `${VAR}`.
 - List every environment variable introduced, so Phase 6 can put them in `README.md`.
+- **Warn about the browser server's first run.** It downloads a browser the first time it is
+  used — hundreds of megabytes, on a connection that may be someone's phone tether. Nothing is
+  broken; it just looks like a hang. Put it in the report, not in a footnote nobody reads at the
+  moment it happens.
 - **Check that each `${ENV_VAR}` actually resolves, not just that it is named.** A variable
   documented in `.env.example` is not the same as one exported in the team's real `.env` — the
   server fails at connect time either way, but "written pending approval" reads as done and hides

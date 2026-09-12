@@ -290,7 +290,7 @@ subgraph P3["FASE 3 · Ciclo por feature — por cada funcionalidad"]
   end
   I3 --> UI{"¿La tarea tiene interfaz?"}:::dec
   UI -->|Sí| V0["Vista previa efímera por PR<br/>A MANO · visor v0"]:::mano
-  V0 --> VW["Verifica en el navegador<br/>HUECO · sin Playwright MCP ni Chrome DevTools MCP;<br/>el chequeo humano es a mano, visor vw"]:::hueco
+  V0 --> VW["Verifica en el navegador<br/>SKILL · instrument-agent-java registra un MCP de navegador<br/>solo si el repo tiene interfaz, y pregunta cuál de los dos"]:::skill
   UI -->|No| VL1
   VW --> VL1
   subgraph P3V["Verificación en 4 capas"]
@@ -546,7 +546,7 @@ style P6 fill:#0b0f15,stroke:#6b2018,color:#FF9C8C
     I3:B("Revisión del agente","skill","/code-review siempre, /security-review si el cambio toca autenticación o entradas externas.",P.f3,"I3"),
     UI:L("¿Tiene interfaz?",P.f3,"UI"),
     V0:B("Vista previa por PR","mano","Visor v0. El mecanismo depende del stack: la idea es que cada PR con cambios visuales tenga su URL descartable.",P.f3,"V0"),
-    VW:B("Verifica en el navegador","hueco","Ninguna skill maneja Playwright MCP ni Chrome DevTools MCP. El chequeo humano de «se ve bien» es a mano, visor vw.",P.f3,"VW"),
+    VW:B("Verifica en el navegador","skill","instrument-agent-java ofrece un MCP de navegador, solo si el repositorio tiene interfaz, y pregunta cuál: Playwright MCP para «¿funciona y se ve bien?», Chrome DevTools MCP para «¿por qué va lento?». El fabricante dice que sus propias listas de orígenes no son una frontera de seguridad: eso lo hacen los permisos.",P.f3,"VW"),
     VL1:B("1 · Local","skill","El agente rompe lo obvio antes de subir.",P.f3,"VL1"),
     VL2:B("2 · CI, el juez","skill","github-plan-build vigila la corrida hasta que quede verde y atiende los comentarios uno por uno.",P.f3,"VL2"),
     VL3:B("3 · Seguridad","parcial","Ya están las tres capas de análisis estático: la revisión por modelo, las dependencias con OWASP Dep-Check, y el código propio con FindSecBugs y CodeQL. Lo que sigue faltando es el DAST, y quedó fuera de alcance a propósito: depende de una vista previa efímera que el plugin no puede garantizar.",P.f3,"VL3"),
