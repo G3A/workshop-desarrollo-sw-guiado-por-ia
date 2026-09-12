@@ -68,6 +68,62 @@ por servidor: leer un issue no cambia nada, cerrarlo sí. Se descartaron dos alt
 - **Fiarse del `readOnlyHint` del servidor** no es opción: la especificación obliga a tratar las
   anotaciones como no confiables, porque las declara el mismo servidor al que querrías vigilar.
 
+## Las anotaciones: no se creen, se contrastan
+
+La skill **ya se conecta a cada servidor que registra** para comprobar que arranca. Mientras esa
+conexión está abierta, lee la lista de herramientas y busca contradicciones — y lo hace **antes de
+que el servidor quede escrito en el repositorio**, no meses después.
+
+**No lista las anotaciones en el reporte.** Repetir lo que un servidor dice de sí mismo, sin
+contraste, es exactamente lo que la especificación advierte que no hay que hacer. Lo que va al
+reporte son **contradicciones**.
+
+### Lo que dice el esquema, con sus valores por defecto
+
+| Campo | Qué significa | **Por defecto** |
+|---|---|---|
+| `readOnlyHint` | Si es `true`, la herramienta no modifica su entorno | **`false`** |
+| `destructiveHint` | Si es `true`, puede hacer actualizaciones destructivas | **`true`** |
+| `idempotentHint` | Si es `true`, repetirla con los mismos argumentos no agrega efecto | **`false`** |
+| `openWorldHint` | Si es `true`, interactúa con un mundo abierto de entidades externas | **`true`** |
+
+Y tres frases del propio esquema que mandan sobre todo lo demás: **«todas las propiedades de
+`ToolAnnotations` son pistas; no está garantizado que describan fielmente el comportamiento»**,
+**«los clientes nunca deberían tomar decisiones de uso de herramientas basándose en anotaciones
+recibidas de servidores no confiables»**, y —como requisito formal— **«los clientes DEBEN
+considerar las anotaciones como no confiables salvo que vengan de servidores confiables»**.
+
+Además, `destructiveHint` e `idempotentHint` solo tienen sentido **cuando `readOnlyHint` es
+`false`**. Eso convierte una combinación concreta en una contradicción comprobable sin interpretar
+nada.
+
+### Los tres hallazgos
+
+1. **La declaración se contradice a sí misma** — `readOnlyHint: true` junto a un `destructiveHint`
+   o `idempotentHint` declarados. Según el esquema, esos dos solo tienen sentido cuando
+   `readOnlyHint` es `false`. No hay nada que interpretar: se reporta como hecho.
+2. **Se declara solo-lectura y se nombra como escritura** — `readOnlyHint: true` en una herramienta
+   que se llama o se describe como crear, actualizar, borrar, escribir, insertar o ejecutar. Acá sí
+   hay juicio, y por eso el resultado va a una persona y no a una decisión automática: se cita el
+   nombre y la frase que lo disparó, para que quien lee pueda discrepar de un vistazo.
+3. **No declara nada**, y este es el que se lee al revés. **Ausencia de anotaciones no es
+   «seguro»**: con los valores por defecto del esquema, una herramienta sin anotar se lee como
+   **potencialmente destructiva y de mundo abierto**. «Ninguna anotación» no es «ningún hallazgo».
+
+Es el mismo principio que el paquete aplica a sus propios controles: **un parcial es más peligroso
+que un faltante**, porque el equipo cree que está cubierto.
+
+### Por qué es un reporte y no un gate
+
+Porque la especificación dice que estas pistas no son confiables, y **un gate construido sobre un
+dato no confiable es peor que no tenerlo: fabrica confianza**. Lo que bloquea de verdad son las
+reglas `mcp__*`. Este chequeo alimenta esa decisión con evidencia; no la reemplaza.
+
+Y la relación va en **un solo sentido**: una contradicción es motivo para **apretar**, nunca para
+aflojar. No se relaja una regla de negación porque una herramienta se haya declarado solo-lectura —
+eso pondría la afirmación del servidor a cargo del único mecanismo que lo acota, que es justo lo
+que la advertencia de la especificación existe para evitar.
+
 **No rompe `github-plan-build`.** La lista de negación parece que frenaría el ciclo de entrega
 —abre PRs, comenta issues, mueve etiquetas—, y no lo hace: esa skill va por la CLI `gh` sobre Bash,
 no por el servidor MCP de GitHub, así que ninguno de esos matchers le aplica. La skill lo dice en el
