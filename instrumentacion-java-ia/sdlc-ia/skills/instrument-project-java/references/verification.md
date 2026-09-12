@@ -29,8 +29,12 @@ the install, silently undoing your own work. `git checkout` is safe for exactly 
 5. Confirm it **fails**, and that the message names the problem.
 6. **Restore from the snapshot**, confirm the gate passes again.
 
-**Two breaks reach past the working tree:**
+**Three breaks reach past the working tree:**
 
+- **Control 13 writes to a server.** The break is an analysis, and the analysis is stored: the
+  project's last state on SonarQube is whatever the break left there. Restoring the file is not
+  enough — re-run the analysis so the dashboard matches the real tree, or the next person sees a
+  red project that no commit explains.
 - **Controls 5 and 6 stage their file** (`git add`). Putting the original content back leaves the
   broken version — a fake credential, for control 6 — sitting in the index. Always finish with
   `git restore --staged <file>`.
@@ -67,6 +71,22 @@ confirm `./mvnw -v` prints the real, pinned version again.
 `-Xlint:all` flags it under (`[unchecked]`, `[rawtypes]`, `[deprecation]`, …), not a silent
 warning line. If it only warns, `-Werror` is not reaching that module — check for an overriding
 `<configuration>` closer to the file.
+
+**Second break — Error Prone.** `-Werror` and Error Prone fail for different reasons, so proving
+one says nothing about the other. Add a self-comparison to a real source file:
+
+```java
+boolean probe = args.length == args.length;   // BREAK — SelfComparison
+```
+
+**Expect:** the build fails naming the Error Prone check (`[SelfComparison]`), not a generic lint
+category. If it compiles clean, the `-Xplugin:ErrorProne` argument is not reaching the compiler —
+the usual cause is a `<compilerArgs>` block that replaced rather than extended the one the control
+wrote, or a JDK that needs the `--add-exports` flags Error Prone requires. A green build here is a
+control that is present in the POM and absent at compile time, which is the worst of the two
+states.
+
+Restore the file after each half.
 
 ## Control 3 — Style
 
@@ -202,6 +222,223 @@ passes again (or reports only the pre-existing findings you already triaged).
 child POMs manage their own versions), one `github-actions` entry, a `schedule.interval`. On
 GitHub, the **Insights → Dependency graph → Dependabot** tab shows the file was picked up within
 minutes of the push; before that push it is a file, not a control.
+
+---
+
+## Control 10 — Test coverage
+
+**Two halves, and both are mandatory.** One proves the rule fires; the other proves it is scoped to
+new code and not to the whole repository.
+
+**Half 1 — red without a test.** Add a new class with at least one branch, no test:
+
+```java
+// BREAK — control 10
+public final class CoverageProbe {
+    public String describe(int n) {
+        if (n > 0) { return "positive"; }
+        return "non-positive";
+    }
+}
+```
+
+Run the coverage gate the way CI runs it (`make ci`, or the profile that carries the `check` goal —
+**not** `make check`, which by design does not run it). Expect a failure naming the class and the
+missed percentage.
+
+**Half 2 — green with a test.** Add a test covering both branches, run again, expect green.
+
+A rule that stays **red in half 2** is a repo-wide threshold in disguise: the new class is covered
+and the build still fails because the rest of the tree drags the ratio down. That is exactly what
+scope question 8 ruled out — fix the scoping, do not lower the number.
+
+A rule that stays **green in half 1** never fired: check that the `check` goal is actually bound in
+the profile CI uses, and that the probe class is inside the scanned source root.
+
+Delete both files afterwards.
+
+---
+
+## Control 11 — Bug patterns
+
+Only if the control was installed. Introduce a pattern SpotBugs detects with high confidence —
+a boxed comparison by reference is the least ambiguous:
+
+```java
+// BREAK — control 11
+public final class BugProbe {
+    public boolean same(Integer a, Integer b) {
+        return a == b;   // RC_REF_COMPARISON
+    }
+}
+```
+
+```bash
+make check
+```
+
+Expect a failure **naming the SpotBugs rule**, not a generic build error. If `make check` passes,
+the `check` goal is not bound to the phase `make check` runs — a report-only install, which scope
+question 9 offered as a separate answer. Do not report the control as installed in that case;
+report what it actually is.
+
+Delete the file afterwards.
+
+---
+
+## Control 11b — FindSecBugs
+
+**The failure this exists to catch is silence.** A SpotBugs plugin that fails to load does not break
+the build and does not warn: it reports **zero findings**, which is indistinguishable from clean
+code. A green build is therefore not evidence of anything here.
+
+**Break:** introduce a vulnerability FindSecBugs detects with high confidence. Concatenating user
+input into SQL is the least ambiguous:
+
+```java
+// BREAK — control 11b
+public java.sql.ResultSet buscar(java.sql.Connection c, String nombre) throws Exception {
+    return c.createStatement().executeQuery("SELECT * FROM usuario WHERE nombre = '" + nombre + "'");
+}
+```
+
+```bash
+make check
+```
+
+**Expect:** a failure naming the FindSecBugs rule (`SQL_INJECTION_JDBC` or the equivalent for the
+API used) — **not** a generic SpotBugs error and **not** a generic build failure.
+
+If the build passes, the plugin is declared and not loading. The usual cause is the version pair:
+FindSecBugs 1.14.0 pins SpotBugs 4.8.3 internally, and a SpotBugs resolved "to latest" on its own
+can leave the plugin unloadable. Check the pair before anything else.
+
+If it fails but names only a SpotBugs rule, SpotBugs is working and the security plugin is not on
+its `<plugins>` list — the nested one, inside the SpotBugs plugin, not Maven's.
+
+Delete the file afterwards.
+
+---
+
+## Control 11c — CodeQL
+
+Cannot be broken locally: it runs on GitHub. Verify by inspection **and by one real run**:
+
+1. The job exists in the workflow with `security-events: write`. Without that permission the
+   analysis runs and the findings go nowhere — the silent half-install again, this time with a
+   green check.
+2. After the first run on a branch, **Security → Code scanning** lists it. Before that push it is a
+   file, not a control, exactly like `dependabot.yml`.
+3. On a **private** repository, confirm GitHub Advanced Security is enabled before writing the job.
+   Without it the job fails on every run with an entitlement error, which reads as a broken
+   pipeline rather than a billing decision.
+
+---
+
+## Control 9b — AI review in the pipeline
+
+Also not breakable locally. Verify on a real pull request:
+
+1. The job runs and leaves its review. If it fails with an authentication error, the
+   `ANTHROPIC_API_KEY` secret is missing — report that as the remaining manual step rather than
+   deleting the job.
+2. **Confirm it is NOT a required check** in the Ruleset. This one is verified by its *absence*: if
+   it is required, a model's judgement can block a correct pull request, and the team learns to ask
+   for bypasses — which erodes the checks that should block.
+
+---
+
+## Control 12 — Suite separation
+
+The break has to show the two sets moving **independently** — that is the whole point of the
+control.
+
+Add one passing unit test and one failing integration test:
+
+```java
+// BREAK — control 12
+public class SeparationProbeTest {            // surefire picks this up
+    @Test void passes() { }
+}
+```
+
+```java
+// BREAK — control 12
+public class SeparationProbeIT {              // failsafe picks this up
+    @Test void fails() { org.junit.jupiter.api.Assertions.fail("probe"); }
+}
+```
+
+```bash
+make test        # expect GREEN — the *IT must not run here
+make verify      # expect RED  — naming SeparationProbeIT
+```
+
+**Both red means the split did not take**: Surefire is still matching `*IT`, or Failsafe is bound
+to the same phase. **Both green means Failsafe never ran** — check that the `verify` phase reaches
+`failsafe:integration-test` and `failsafe:verify`, and that a failure there is not being swallowed
+(Failsafe reports failures at `verify`, not at `integration-test`; without the second goal the
+build stays green with a failing test).
+
+Delete both files afterwards.
+
+---
+
+## Control 13 — Quality gate (SonarQube)
+
+**The break is the second analysis, never the first.** The quality gate is evaluated on **new
+code**, and the first analysis is what establishes the baseline: it can pass with nothing in it.
+Reporting that first green run as "verified" is how a control gets believed without ever having
+fired — the same mistake the whole file exists to prevent.
+
+**1. Baseline.** Run the target once on a clean tree and let it finish:
+
+```bash
+make sonar       # expect GREEN, and expect it to mean nothing yet
+```
+
+Confirm on the server that the project now exists and shows an analysis date. If this run is red,
+stop: that is a configuration problem (wrong key, unreachable host, missing token), not the gate
+firing.
+
+**2. Break.** Add a new class with a branch and no test — the same probe control 10 uses, which is
+deliberate: both controls are about new code, and one probe showing two different failures proves
+they are two sensors and not one wired twice.
+
+```java
+// BREAK — control 13
+public class GateProbe {
+    public String classify(int n) {
+        if (n > 10) { return "high"; }
+        return "low";
+    }
+}
+```
+
+```bash
+make sonar       # expect RED
+```
+
+Expect `QUALITY GATE STATUS: FAILED` in the output, followed by the condition that failed —
+typically `Coverage on New Code`. The Maven build must exit non-zero.
+
+**3. The green that is not a pass.** If `make sonar` comes back **green** here, do not record the
+control as installed. In order of likelihood:
+
+| What you see | What it actually is |
+|---|---|
+| Green build, analysis visible on the server, gate shown as failed in the UI | `-Dsonar.qualitygate.wait=true` is missing from the target. The scanner uploaded and walked away |
+| Green build, gate green, coverage 0 % everywhere | The JaCoCo XML never reached the analysis — `sonar.coverage.jacoco.xmlReportPaths` is wrong, or the analysis ran in a separate invocation from `verify` |
+| Green build, gate green, the probe class absent from the server | The probe is outside `sonar.sources`, or the build did not recompile |
+| Green build, gate green, probe present and covered | The server's quality gate has no new-code condition. That is a server-side decision — report it as such, because the control is installed and the bar is empty |
+
+The last row is the one worth stating plainly in the report: **this skill installs the gate, it does
+not choose the bar.** A repository can have control 13 correctly installed against a quality gate
+that fails nothing.
+
+**4. Restore.** Delete `GateProbe.java` and run `make sonar` once more so the server's last analysis
+matches the real tree. Leaving a failed gate as the project's most recent state means the next
+person to look at the dashboard sees a red project that no commit explains.
 
 ---
 

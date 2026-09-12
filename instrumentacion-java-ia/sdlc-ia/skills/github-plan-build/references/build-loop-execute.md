@@ -1,4 +1,4 @@
-# The build loop — implement to merged-ready (Steps F–J)
+# The build loop — implement to merged-ready (Steps F–K)
 
 > Continues `references/build-loop.md` (Steps A–E: grill, explore, plan, adversarial review,
 > approval checkpoint) for the `github-plan-build` skill. Same bindings, same tracker-agnostic
@@ -115,10 +115,24 @@ versus real, unclear error, possibly pre-existing — escalate rather than guess
    that is running this session, as the harness reports it (e.g. `claude-opus-5`), never
    guessed. Git trailer format: last paragraph of the message, `Key: value`, separated
    from the `LINK-TOKEN` line by a blank line, since `Closes #<n>` is not a trailer and
-   would break the block. This is what lets the repo tell AI-assisted commits from the
-   rest (`git log --format='%h %(trailers:key=Asistido-por-IA,valueonly)'`) and feed the
-   AI-vs-non-AI split in its metrics. Any `Co-Authored-By` or session trailers the
-   harness adds go in the same paragraph.
+   would break the block. Any `Co-Authored-By` or session trailers the harness adds go in
+   the same paragraph.
+
+   **Read it back with `--grep`, anchored — never with git's trailer reader.** The obvious
+   command is `--format` with `%(trailers:key=Asistido-por-IA,valueonly)`, and on a
+   squash-merged history it **returns empty for every commit**. This is not a formatting
+   mistake you can avoid: **GitHub rewrites the message when it squashes**, separating each
+   trailer with a blank line and moving `Co-authored-by` last, so the final contiguous block
+   — the only one git parses — is that one line. Verified over 109 first-parent commits of
+   this monorepo: `0` with the trailer reader, `23` with `--grep`.
+
+   ```
+   git log --first-parent --grep="^Asistido-por-IA: " --format="%h %s"
+   ```
+
+   **Anchor the pattern.** A bare `--grep=Asistido-por-IA` also matches a commit that merely
+   *mentions* the marker in prose — a commit documenting this very behaviour counts as
+   AI-assisted. `^Asistido-por-IA: ` matches the trailer line and nothing else.
 
    **`confirm-push` checkpoint — only when the argument was given.** With every commit
    in place and Step G green, stop *before* the push and ask once with
@@ -186,6 +200,66 @@ correct," and a sub-issue closed before that point can still be wrong.
    changed after the first push, which comments you addressed, which gates were
    skipped because the repo does not define them, and anything deliberately left for a
    follow-up.
+
+## Step K — Route the lesson
+
+The round is closed. This is the only step that makes round 20 different from round 1: without it
+every round learns what the last one already learned.
+
+**You propose. You do not apply.** Nothing here edits `AGENTS.md`, the review checklist, an ADR or
+a sensor. Two reasons, and the second one is mechanical:
+
+- A step that edits the file governing the agent closes a loop where the agent writes its own
+  rules and the next round reads them, with nobody looking in between.
+- **The PR is already open and green from Step J.** A rule change is about the *process*, not
+  about this feature: it changes every round that follows, so it gets reviewed differently and
+  belongs in its own PR — not appended to one that has already been reviewed.
+
+1. **Find the candidates.** Three questions about the round that just closed — not about history:
+   - What cost more than the plan expected, and why?
+   - What did you have to say by hand that the agent should have known? **If it is the third time
+     you say it, that is not a discipline problem — it is a missing rule.**
+   - What did a gate catch late, or what did no gate catch at all?
+
+   **No candidates is a valid outcome.** Say so and stop. A round that taught nothing is common,
+   and inventing a lesson to fill the step poisons the files it would be written into.
+
+2. **Route each one** by *what it became*, not by how important it feels. Exactly one destination
+   each:
+
+   | If the lesson is… | It goes to… | Shaped as |
+   |---|---|---|
+   | A rule the agent must respect while generating | `AGENTS.md` | One short line |
+   | A criterion that applies only while reviewing | the review checklist (`REVIEW.md`, where the repo has one) | One bullet: what to look for in the diff |
+   | The reasoning behind a decision already discarded | an ADR under `docs/adrs/` | Context, decision, consequences |
+   | Something a machine can check | it stops being text | a test, a lint rule, or a hook |
+   | A preference of yours, not the team's | `~/.claude/CLAUDE.md` | outside the repo, deliberately |
+   | Not yet any of these | `docs/lecciones.md` — the waiting room | One line, **with the date it entered** |
+
+   **The fourth row is the one that pays and the one least used.** A written criterion is
+   forgotten; a sensor is not. Before proposing a line of prose, ask whether the same lesson could
+   be a failing test instead.
+
+3. **Write the exact text, not a description of it.** "Add something about null handling to
+   `AGENTS.md`" is not a proposal — it leaves the user to do the thinking again. Give the line as
+   it would be pasted, and name the file and the section it goes under.
+
+4. **Report and stop.** One table — lesson, destination, the text, and whether you recommend
+   applying it now or waiting for a second sighting. The user applies what they agree with.
+
+### The waiting room, and why the date is the mechanism
+
+`docs/lecciones.md` holds what is not yet a rule: a single observation, seen once, that would be
+premature as a rule and lost as nothing.
+
+**Every entry is meant to leave** — promoted to one of the five destinations above, or deleted.
+The entry date is what makes that visible: an entry sitting there for months is not a pending
+lesson, it is a lesson that was not one. Without the date the file becomes exactly the dumping
+ground the method says it must not be.
+
+**Do not propose injecting this file into the agent's context automatically.** The waiting room is
+supposed to be uncomfortable. Convenient retrieval is what kills the pressure to promote — the
+same argument by which this package carries no memory server.
 
 ---
 

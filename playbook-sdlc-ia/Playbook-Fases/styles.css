@@ -1,0 +1,153 @@
+:root{
+  --bg:#06090E; --panel:#0e141c; --panel2:#11161d; --ink:#F6F2EA; --muted:#AEB8C6;
+  --amber:#FFB12B; --amber-soft:#FFD587; --amber-deep:#E8881C; --teal:#34E0CC; --good:#5FD37A; --danger:#FF6B57;
+  --line:rgba(255,255,255,.14);
+}
+*{ box-sizing:border-box; }
+html,body{ margin:0; background:var(--bg); color:var(--ink); font-family:'Inter',system-ui,sans-serif; line-height:1.55; }
+body{
+  background:
+    radial-gradient(1200px 700px at 90% -10%, rgba(255,177,43,.12), transparent 58%),
+    radial-gradient(900px 600px at -8% 112%, rgba(52,224,204,.08), transparent 55%),
+    var(--bg);
+}
+.wrap{ max-width:920px; margin:0 auto; padding:38px 28px 96px; }
+.brand{ font-size:11px; font-weight:800; letter-spacing:.22em; text-transform:uppercase; color:var(--amber); }
+h1{ font-family:'Fraunces',Georgia,serif; font-weight:600; font-size:34px; margin:6px 0 4px; color:#FFFCF6; letter-spacing:-.01em; line-height:1.08; }
+.lead{ color:var(--muted); font-size:16px; margin:0; max-width:60ch; }
+.rule{ width:72px; height:5px; background:linear-gradient(90deg,var(--amber),var(--amber-deep)); border-radius:4px; margin:16px 0 24px; box-shadow:0 0 20px rgba(255,177,43,.4); }
+
+.back{ display:inline-block; margin:0 0 14px; font-size:13px; color:var(--teal); text-decoration:none; }
+.back:hover{ text-decoration:underline; }
+.sec-back{ display:block; margin-top:16px; padding-top:11px; border-top:1px dashed var(--line); font-size:13px; color:var(--teal); text-decoration:none; }
+.sec-back:hover{ text-decoration:underline; }
+
+nav.phases{ display:flex; flex-wrap:wrap; gap:8px; margin:8px 0 26px; }
+nav.phases a{ font-size:12px; color:var(--amber-soft); text-decoration:none; border:1px solid var(--line); border-radius:999px; padding:5px 11px; background:rgba(255,255,255,.03); white-space:nowrap; }
+nav.phases a:hover{ border-color:var(--amber); }
+nav.phases a.active{ background:rgba(255,177,43,.18); border-color:var(--amber); color:#fff; }
+
+section{ background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:18px 20px; margin:14px 0; scroll-margin-top:18px; box-shadow:0 4px 22px rgba(0,0,0,.28); }
+section h2{ font-family:'Fraunces',serif; font-weight:600; font-size:21px; margin:0 0 4px; color:#FFFCF6; }
+section.dec{ border-left:4px solid var(--amber); }
+section.human{ border-left:4px solid var(--teal); }
+section.goal{ border-left:4px solid var(--amber); background:rgba(255,177,43,.06); }
+.tag{ display:inline-block; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--amber-soft); background:rgba(255,177,43,.1); border:1px solid rgba(255,177,43,.3); border-radius:6px; padding:2px 7px; margin-bottom:8px; }
+section p{ margin:.45em 0; color:#E7E2D8; font-size:15px; }
+section ul{ margin:.45em 0; padding-left:1.2em; color:var(--muted); font-size:14.5px; }
+section li{ margin:.28em 0; }
+.muted{ color:var(--muted); }
+
+/* Tipo de instrumentación · mismos colores que el diagrama: azul determinístico, violeta no
+   determinístico. El tipo lo lleva la sección, no el grupo que la contiene, porque hooks y MCP
+   mezclan los dos y hay dos excepciones que rompen la intuición. */
+section.det{ border-left:4px solid #5B8CFF; }
+section.nodet{ border-left:4px solid #B388FF; }
+.tipo{ display:inline-block; font-size:10.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; border-radius:999px; padding:2px 9px; margin-bottom:8px; margin-left:6px; }
+.tipo.det{ color:#BDD2FF; border:1px solid #5B8CFF; background:rgba(91,140,255,.14); }
+.tipo.nodet{ color:#E2D0FF; border:1px solid #B388FF; background:rgba(179,136,255,.14); }
+.eje{ font-size:13px; color:var(--muted); border-top:1px dashed var(--line); margin-top:12px; padding-top:9px; }
+.eje b{ color:#FFFCF6; font-weight:600; }
+.excep{ border-left:3px solid var(--amber); background:rgba(255,177,43,.07); border-radius:0 8px 8px 0; padding:9px 13px; margin-top:12px; font-size:13.5px; color:#FFE9C2; }
+.excep b{ color:#FFFCF6; }
+/* Tabla comparativa de opciones (p. ej. los revisores de código y su costo) */
+.ejecuadro{ overflow-x:auto; margin-top:12px; }
+table.rev{ width:100%; border-collapse:collapse; font-size:13px; }
+table.rev th, table.rev td{ text-align:left; vertical-align:top; padding:7px 9px; border-top:1px solid var(--line); }
+table.rev th{ font-size:10px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); border-top:none; white-space:nowrap; }
+table.rev td{ color:#E7E2D8; }
+table.rev strong{ color:#FFFCF6; }
+/* Bloque de código / plantilla dentro de una sección */
+pre.snippet{ background:#0a0e14; border:1px solid var(--line); border-left:3px solid var(--amber);
+  border-radius:0 10px 10px 0; padding:13px 15px; overflow-x:auto; font-family:'JetBrains Mono',monospace;
+  font-size:12.5px; line-height:1.6; color:#E7E2D8; margin:12px 0; }
+/* Opciones alternativas enfrentadas (p. ej. archivo vs servidor) */
+.opcion{ border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin-top:14px; background:var(--panel2); }
+.opcion > h4{ font-family:'Fraunces',serif; font-weight:600; font-size:16px; color:#FFFCF6; margin:0 0 2px; }
+.opcion > .cuando{ font-size:12.5px; color:var(--amber-soft); margin:0 0 8px; }
+.opcion p{ font-size:14px; }
+.hint{ font-size:13px; color:var(--muted); border-top:1px dashed var(--line); margin-top:12px; padding-top:9px; }
+.hint b{ color:var(--amber-soft); font-weight:600; }
+
+/* bloque de ejemplo desplegable */
+details.example{ margin-top:14px; border:1px solid var(--line); border-radius:11px; background:var(--panel2); overflow:hidden; }
+details.example > summary{ cursor:pointer; list-style:none; padding:11px 15px; font-size:13px; font-weight:600; color:var(--amber-soft); display:flex; align-items:center; gap:8px; }
+details.example > summary::-webkit-details-marker{ display:none; }
+details.example > summary::before{ content:'▸'; color:var(--amber); font-size:11px; transition:transform .15s ease; }
+details.example[open] > summary::before{ transform:rotate(90deg); }
+details.example > summary:hover{ color:var(--amber); }
+.example-body{ padding:4px 16px 16px; border-top:1px dashed var(--line); }
+.example-body h4{ font-family:'Fraunces',serif; font-weight:600; font-size:15px; color:#FFFCF6; margin:14px 0 4px; }
+.example-body h4:first-child{ margin-top:10px; }
+.example-body ul{ margin:.3em 0; }
+.example-body li{ color:#E7E2D8; }
+.example-body .ok{ color:var(--good); font-weight:600; }
+.example-body .warn{ color:var(--amber); font-weight:600; }
+.example-body .no{ color:var(--danger); font-weight:600; }
+.example-cap{ font-size:12.5px; color:var(--muted); margin:10px 0 0; border-top:1px dashed var(--line); padding-top:10px; }
+code{ font-family:'JetBrains Mono',monospace; font-size:.85em; color:var(--amber-soft); background:rgba(255,177,43,.1); padding:.05em .35em; border-radius:5px; }
+a{ color:var(--amber); }
+
+.cards{ display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:14px; margin-top:18px; }
+.cards a{ display:block; text-decoration:none; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px 18px; color:var(--ink); box-shadow:0 4px 22px rgba(0,0,0,.28); }
+.cards a:hover{ border-color:var(--amber); }
+.cards .ph{ font-size:11px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; color:var(--amber); }
+.cards h3{ font-family:'Fraunces',serif; font-weight:600; margin:6px 0 4px; color:#FFFCF6; font-size:18px; }
+.cards p{ margin:0; color:var(--muted); font-size:13px; }
+
+footer{ margin-top:42px; color:var(--muted); font-size:12px; border-top:1px solid var(--line); padding-top:16px; }
+
+/* modo foco: al llegar por una caja, se ve SOLO esa sección */
+body.focus section{ display:none; }
+body.focus section.active{ display:block; }
+body.focus .wrap > h2{ display:none; }      /* oculta encabezados de grupo (Contexto, etc.) */
+.focusbar{ display:none; align-items:center; gap:10px; margin:6px 0 2px; font-size:13px; color:var(--muted); flex-wrap:wrap; }
+body.focus .focusbar{ display:flex; }
+.focusbar button{ background:rgba(255,255,255,.04); border:1px solid var(--line); color:var(--amber-soft); border-radius:8px; padding:6px 11px; font-family:inherit; font-size:12px; cursor:pointer; }
+.focusbar button:hover:not(:disabled){ border-color:var(--amber); }
+.focusbar button:disabled{ opacity:.35; cursor:default; }
+.focusbar .pos{ font-weight:600; color:var(--ink); }
+.focusbar .all{ margin-left:auto; color:var(--teal); text-decoration:none; font-size:12px; border:1px solid var(--line); border-radius:8px; padding:6px 11px; }
+.focusbar .all:hover{ border-color:var(--teal); }
+.focusbar .phase{ font-family:'Fraunces',serif; font-weight:600; color:#FFFCF6; font-size:14px; margin-right:6px; }
+.focusbar .phase::before{ content:'Fase · '; font-family:'Inter',sans-serif; font-weight:700; font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--amber); margin-right:5px; }
+
+/* ============================================================
+   BADGES DE COBERTURA — propios de este playbook
+   El borde izquierdo de la sección y el pill dicen lo mismo que el color
+   de la caja en el diagrama: quién ejecuta este paso hoy.
+   ============================================================ */
+:root{
+  --c-skill:#34E0CC; --c-parcial:#FFB12B; --c-mano:#5B8CFF; --c-hueco:#FF6B57; --c-fuera:#6B7686;
+}
+section.skill{ border-left:4px solid var(--c-skill); }
+section.parcial{ border-left:4px solid var(--c-parcial); }
+section.mano{ border-left:4px solid var(--c-mano); }
+section.hueco{ border-left:4px solid var(--c-hueco); }
+section.fuera{ border-left:4px solid var(--c-fuera); }
+
+.badge{ display:inline-block; font-size:10.5px; font-weight:800; letter-spacing:.09em; text-transform:uppercase;
+  border-radius:999px; padding:2px 10px; margin-bottom:8px; margin-right:6px; }
+.badge.skill{ color:#BFFBF2; border:1px solid var(--c-skill); background:rgba(52,224,204,.14); }
+.badge.parcial{ color:#FFE9C2; border:1px solid var(--c-parcial); background:rgba(255,177,43,.14); }
+.badge.mano{ color:#DCE7FF; border:1px solid var(--c-mano); background:rgba(91,140,255,.14); }
+.badge.hueco{ color:#FFD9D2; border:1px solid var(--c-hueco); background:rgba(255,107,87,.14); }
+.badge.fuera{ color:#CBD2DC; border:1px solid var(--c-fuera); background:rgba(107,118,134,.18); }
+
+/* de dónde sale la afirmación: un archivo del repo o un nodo del visor */
+.fuente{ font-size:12.5px; color:var(--muted); border-top:1px dashed var(--line); margin-top:12px; padding-top:9px; }
+.fuente b{ color:var(--amber-soft); font-weight:600; }
+
+/* qué falta para cerrar el hueco: se lee como un issue que todavía no existe */
+.falta{ border-left:3px solid var(--c-hueco); background:rgba(255,107,87,.07); border-radius:0 8px 8px 0;
+  padding:9px 13px; margin-top:12px; font-size:13.5px; color:#FFD9D2; }
+.falta b{ color:#FFFCF6; }
+.falta code{ color:#FFD9D2; background:rgba(255,107,87,.12); }
+
+/* resumen de cobertura, arriba de cada página de fase */
+.cobertura{ display:flex; flex-wrap:wrap; gap:7px; margin:0 0 22px; }
+.cobertura span{ font-size:11.5px; border:1px solid var(--line); border-radius:999px; padding:3px 11px; color:var(--muted); }
+.cobertura span b{ font-weight:700; }
+.cobertura .k-skill b{ color:var(--c-skill); } .cobertura .k-parcial b{ color:var(--c-parcial); }
+.cobertura .k-mano b{ color:var(--c-mano); } .cobertura .k-hueco b{ color:var(--c-hueco); }
+.cobertura .k-fuera b{ color:var(--c-fuera); }

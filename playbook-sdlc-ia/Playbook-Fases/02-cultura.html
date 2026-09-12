@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fase 1 · Cultura de IA · Playbook del plugin sdlc-ia</title>
+<link rel="stylesheet" href="../vendor/fonts.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="../Playbook-sdlc-ia.html">← Volver al diagrama</a>
+  <div class="brand">Plugin sdlc-ia · Fase 1</div>
+  <h1>Cultura de IA</h1>
+  <p class="lead">La única fase donde «hueco» no es un reproche al plugin: ninguna herramienta instala una conversación de equipo. Lo que sí se puede dar es <em>el formato en que esa conversación queda escrita</em> — y eso es exactamente lo que cambió en la caja del permiso.</p>
+  <div class="rule"></div>
+
+  <nav class="phases">
+    <a href="index.html">Índice</a>
+    <a href="00-referencia-e-inicio.html">Referencia</a>
+    <a href="01-fundamentos.html">Fase 0</a>
+    <a class="active" href="02-cultura.html">Fase 1</a>
+    <a href="03-preparacion-del-terreno.html">Fase 2</a>
+    <a href="04-ciclo-por-feature.html">Fase 3</a>
+    <a href="05-retroalimentacion.html">Fase 4</a>
+    <a href="06-metricas-y-reporte.html">Fase 5</a>
+    <a href="07-adopcion-por-etapas.html">Fase 6</a>
+  </nav>
+
+  <div class="cobertura">
+    <span class="k-skill"><b>1</b> · skill</span>
+    <span class="k-mano"><b>1</b> · a mano</span>
+    <span class="k-hueco"><b>1</b> · hueco</span>
+  </div>
+
+  <section id="C1" class="mano">
+    <span class="tag">C1</span><span class="badge mano">A mano</span>
+    <h2>Confirma las 4 prácticas de equipo</h2>
+    <p>«Un agente de IA no arregla un equipo sin estas prácticas: las amplifica. Si nadie revisa código, el agente va a mergear más código sin revisar, más rápido.»</p>
+    <p>El visor lo pone como primer nodo del proceso, antes de instalar nada, y con una advertencia explícita: si falta alguna de las cuatro, <strong>la conversación es con tu equipo</strong>, no un paso que puedas resolver solo desde la terminal.</p>
+    <p>Vale la pena mirar esto junto con la Fase 2 de este mismo playbook: casi todo lo que el plugin instala ahí es la versión automatizada de una de estas prácticas. Instrumentar sin la práctica detrás produce un repositorio con gates que nadie respeta.</p>
+    <div class="fuente"><b>Fuente:</b> visor, nodo <code>f0</code>.</div>
+  </section>
+
+  <section id="C2" class="skill">
+    <span class="tag">C2</span><span class="badge skill">Skill</span>
+    <h2>Da permiso para experimentar (y fallar)</h2>
+    <p>Un equipo que solo puede usar el agente cuando está seguro de que va a salir bien no aprende a usarlo: <strong>aprende a esconder cuándo lo usó</strong>. El permiso tiene que ser explícito y venir de quien puede darlo.</p>
+    <p><strong>La skill no cubre el permiso; cubre el acuerdo escrito que resulta de darlo.</strong> Esa distinción es la que hace que esta caja se pueda cerrar: el permiso es una decisión de liderazgo y va a seguir siéndolo, pero su registro es un artefacto — y <strong>sin nada escrito, el permiso dura hasta la primera PR que salió mal</strong>.</p>
+    <p><code>/sdlc-ia:agent-context-java</code> ofrece generar <code>EXPERIMENTS.md</code> con cinco secciones: qué puede fallar y dónde, <strong>qué nunca es un experimento</strong>, qué pasa cuando sale mal, quién lo dio y cuándo se revisa, y qué se comparte.</p>
+    <div class="hint"><b>La segunda sección es la que hace que el permiso se pueda dar sin miedo.</b> «Qué nunca es un experimento» sale de <a href="04-ciclo-por-feature.html#S3">la lista de escalamiento del ciclo de entrega</a>, para que las dos digan lo mismo: si se separan, el agente se detiene donde el acuerdo no lo pide y sigue donde el acuerdo lo prohíbe.</div>
+    <div class="hint"><b>La regla dura: la skill no lo contesta.</b> Casi todo el archivo sale con marcadores de pendiente, y <b>esa es la salida correcta</b>. En los demás documentos un <code>TODO</code> significa que el descubrimiento no alcanzó; acá significa que <b>la respuesta no está en el repositorio y no debe inventarse</b>. Inventarle a un equipo su postura de riesgo es justo la alucinación contra la que esa skill está escrita.</div>
+    <div class="hint"><b>La cláusula que decide si el acuerdo es real: el marcador se queda.</b> El trailer <code>Asistido-por-IA</code> de una PR que salió mal no se borra ni se omite. Si desaparece de los intentos fallidos, <a href="06-metricas-y-reporte.html#K1">«% de PRs con IA»</a> mide <b>solo los éxitos</b> — y el equipo aprendió exactamente lo que este acuerdo existe para evitar.</div>
+    <div class="hint"><b>Y eso se puede comprobar</b>, que es lo que conecta esta caja con la Fase 5: compara la tasa de marcado en las PRs revertidas o parchadas de urgencia contra la tasa general. Si son distintas, el acuerdo está escrito y no se está cumpliendo — información bastante más útil que el número solo.</div>
+    <div class="hint"><b>No es un check de CI</b>, por la misma razón que <a href="04-ciclo-por-feature.html#VL4">las casillas de la plantilla de PR</a>: un acuerdo convertido en trámite se firma sin leer, y el registro empieza a mentir.</div>
+    <div class="fuente"><b>Fuente:</b> <code>agent-context-java/templates/es/EXPERIMENTS.md.template</code>; visor, nodo <code>f0</code>, que hace la pregunta y ahora dice dónde queda la respuesta.</div>
+  </section>
+
+  <section id="C3" class="hueco">
+    <span class="tag">C3</span><span class="badge hueco">Hueco</span>
+    <h2>Acuerda una visión compartida y recompensa el nuevo comportamiento</h2>
+    <p>Si el reconocimiento sigue puesto en «cuántas líneas escribiste», nadie va a invertir tiempo en escribir contexto, afinar el archivo guía o instrumentar un sensor — que es exactamente el trabajo que hace que el agente sirva.</p>
+    <div class="falta"><b>Qué falta.</b> No está en ninguna pieza del repositorio. Se conecta directo con la Fase 5: sin métricas, no hay con qué reconocer el comportamiento nuevo, y el incentivo se queda donde estaba.</div>
+  </section>
+
+  <footer>Plugin <code>sdlc-ia</code> · monorepo <code>workshop-desarrollo-sw-guiado-por-ia</code></footer>
+</div>
+<script src="nav.js"></script>
+</body>
+</html>

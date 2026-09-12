@@ -1,6 +1,6 @@
 # Instrumentación Java con IA
 
-Un plugin de Claude Code, `sdlc-ia`, con cuatro skills que instrumentan un repositorio Java/Spring
+Un plugin de Claude Code, `sdlc-ia`, con nueve skills que instrumentan un repositorio Java/Spring
 para que un agente de código con IA pueda trabajar en él con las mismas garantías que un equipo
 humano exigiría: contexto legible, controles deterministas que se prueban fallando antes de
 reportar éxito, límites explícitos sobre qué puede hacer el agente solo, y un ciclo completo de
@@ -19,15 +19,17 @@ específicas de .NET. Sus skills de entrega (`linear-plan-build`, `ado-plan-buil
 reciente, `requirement-to-spec`, ya son agnósticas de stack — funcionan sobre cualquier
 repositorio. Decir sin más que "hoy solo cubre .NET" ya no describe el plugin completo.
 
-## Las 7 skills
+## Las 9 skills
 
 | Skill | Qué hace |
 |---|---|
-| [`agent-context-java`](docs/skills/agent-context-java-es.md) | Genera el paquete de contexto de un repo Java/Spring (`AGENTS.md`, `docs/architecture.md`, ADRs, `docs/java.md`) para que un agente de IA lo entienda sin adivinar. |
-| [`instrument-project-java`](docs/skills/instrument-project-java-es.md) | Instala 9 controles deterministas: build reproducible, build estricto, estilo, un solo punto de entrada, hooks de pre-commit/pre-push, escaneo de secretos, pruebas de arquitectura (ArchUnit), CI y escaneo de dependencias vulnerables (OWASP Dependency-Check + Dependabot). |
-| [`instrument-agent-java`](docs/skills/instrument-agent-java-es.md) | Registra servidores MCP y una catálogo de 8 hooks de Claude Code (bash puro, sin Node/jq) que limitan lo que el agente puede hacer solo. |
+| [`agent-context-java`](docs/skills/agent-context-java-es.md) | Genera el paquete de contexto de un repo Java/Spring (`AGENTS.md`, `docs/architecture.md`, ADRs, `docs/java.md`) para que un agente de IA lo entienda sin adivinar, más `REVIEW.md` y una plantilla de PR para la capa de revisión humana, y opcionalmente `EXPERIMENTS.md`: la forma del acuerdo de permiso para experimentar, que el equipo llena — la skill no lo contesta. |
+| [`instrument-project-java`](docs/skills/instrument-project-java-es.md) | Instala 13 controles deterministas: build reproducible, build estricto (`-Werror` + Error Prone), estilo, un solo punto de entrada, hooks de pre-commit/pre-push, escaneo de secretos, pruebas de arquitectura (ArchUnit), CI, escaneo de dependencias vulnerables (OWASP Dependency-Check + Dependabot), cobertura del código nuevo (JaCoCo), patrones de bug (SpotBugs), separación de suites (Failsafe) y el quality gate de SonarQube sobre código nuevo (contra un servidor que el equipo ya tenga). |
+| [`instrument-agent-java`](docs/skills/instrument-agent-java-es.md) | Registra servidores MCP (no deterministas: el modelo decide cuándo llamarlos), incluido uno de navegador cuando el repositorio tiene interfaz, y un catálogo de 9 hooks de comando de Claude Code (deterministas, bash puro, sin Node/jq) que limitan lo que el agente puede hacer solo, más las reglas de permiso `mcp__*` que acotan lo que MCP amplió. |
+| [`instrument-github-repo`](docs/skills/instrument-github-repo-es.md) | Escribe el Ruleset de GitHub que convierte los checks de CI en un juez de verdad: sin él, un repositorio instrumentado tiene todos los sensores y ningún bloqueo. Nunca sobrescribe uno existente y prueba el resultado bloqueando una PR desechable. |
 | [`requirement-to-spec-java`](docs/skills/requirement-to-spec-java-es.md) | Convierte un documento de requisitos de negocio en una especificación y un desglose de tareas, antes de que exista un issue — nunca escribe código, nunca abre PR. |
-| [`github-plan-build`](docs/skills/github-plan-build-es.md) | El ciclo completo: toma un issue de GitHub, arma un plan, lo implementa test-first, y abre una PR verificada. |
+| [`github-plan-build`](docs/skills/github-plan-build-es.md) | El ciclo completo: toma un issue de GitHub, arma un plan, lo implementa test-first, abre una PR verificada y propone dónde va la lección de la vuelta. |
+| [`impact-metrics`](docs/skills/impact-metrics-es.md) | Mide qué cambió con la entrega asistida por IA y escribe el reporte a liderazgo. Dos métricas de las cuatro, porque solo dos tienen una definición que nadie discute; las otras se reportan como faltantes con su motivo. Genera y abre la PR — nunca envía nada. |
 | [`debt-triage`](docs/skills/debt-triage-es.md) | Triaja con criterio los hallazgos que un analizador estático ya reportó (Sonar, CodeQL, Checkstyle...) — nunca instala un sensor nuevo ni aplica un auto-fix a ciegas. |
 | [`legacy-test-harness`](docs/skills/legacy-test-harness-es.md) | Acondiciona un repo legacy y hace crecer pruebas reales en 5 capas sobre código que ya está en producción, mapeando costuras al estilo Feathers antes de tocar nada. |
 
@@ -40,7 +42,12 @@ olvido, es la frontera de ese alcance:
 - **Sin gestión de trabajo jerárquica al estilo Azure Boards** (PBI/Task/Bug con iteraciones y
   cycle time) — `github-plan-build` trabaja contra GitHub Issues, un modelo plano.
 - **Sin memoria semántica entre sesiones** — lo único que un ciclo nuevo "recuerda" del anterior
-  es lo que quedó escrito en `AGENTS.md`.
+  es lo que quedó escrito en `AGENTS.md`, más lo que `github-plan-build` propuso al cerrar la
+  vuelta y alguien decidió pegar. De aquí se sigue una frontera derivada: **sin hooks
+  `type: mcp_tool`**. El mecanismo sirve —es la excepción determinista del catálogo, un MCP que
+  no elige el modelo— pero su único caso de uso aquí era inyectar memoria al arrancar la sesión,
+  y no hay servidor al que llamar. Inyectar `docs/lecciones.md` automáticamente tampoco
+  correspondería: la sala de espera tiene que incomodar, o nadie promueve nada.
 - **Sin un panel de agentes especialistas por stack** (uno por framework de frontend, uno por
   base de datos, etc.) — la instrumentación Java vive en skills genéricas por función, no en
   agentes-personaje.
@@ -92,9 +99,10 @@ la versión) y que el CHANGELOG cuente la verdad.
 Los cambios aplican a las **sesiones nuevas** de Claude Code; una sesión abierta sigue con las
 skills que cargó al arrancar. `claude plugin list` muestra la versión activa.
 
-Las 7 skills quedan disponibles como `/sdlc-ia:agent-context-java`,
+Las 9 skills quedan disponibles como `/sdlc-ia:agent-context-java`,
 `/sdlc-ia:instrument-project-java`, `/sdlc-ia:instrument-agent-java`,
-`/sdlc-ia:requirement-to-spec-java`, `/sdlc-ia:github-plan-build`, `/sdlc-ia:debt-triage` y
+`/sdlc-ia:instrument-github-repo`, `/sdlc-ia:requirement-to-spec-java`,
+`/sdlc-ia:github-plan-build`, `/sdlc-ia:impact-metrics`, `/sdlc-ia:debt-triage` y
 `/sdlc-ia:legacy-test-harness`.
 
 ## Shell: PowerShell primero, bash también

@@ -79,7 +79,7 @@ class TraductorDeDocumentosTest {
             new Progreso(3L, 1, 1),
             new Texto(3L, "T:adios mundo"));
     verify(redactor, never()).traducir(contains("hello"), any(), any());
-    assertThat(cupo.intentarTomar()).as("el cupo volvio al terminar").isTrue();
+    EsperaDeCupo.vuelveYSeToma(cupo, "el cupo volvio al terminar");
   }
 
   @Test

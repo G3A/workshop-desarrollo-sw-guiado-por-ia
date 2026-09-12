@@ -121,6 +121,28 @@
     .badge.mad-2 { color: var(--l1); border-color: var(--l1); background: color-mix(in srgb, var(--l1) 10%, transparent); }
     .badge.mad-3 { color: var(--l5); border-color: var(--l5); background: color-mix(in srgb, var(--l5) 10%, transparent); }
     .badge.mad-transversal { color: var(--muted); border-color: var(--line); }
+    /* Tipo de instrumentación: azul = determinista, naranja = no determinista (mismos colores que
+       las etiquetas del manual de feedback). Un nodo puede llevar los dos a la vez (a2). */
+    .badge.tipo-determinista { color: var(--accent); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+    .badge.tipo-noDeterminista { color: var(--warn); border-color: var(--warn); background: color-mix(in srgb, var(--warn) 10%, transparent); }
+    .badge.mad-none { color: var(--muted); border-color: var(--line); border-style: dashed; }
+    /* Tablas de instrumentación (panel del nodo y leyenda): scroll propio, nunca el body. */
+    .inst-wrap { overflow-x: auto; margin: 10px 0; }
+    .inst-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .inst-table th, .inst-table td { text-align: left; vertical-align: top; padding: 6px 8px; border-top: 1px solid var(--line); }
+    .inst-table th { font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); border-top: none; white-space: nowrap; }
+    .inst-table td code { background: var(--code-bg); color: var(--code-ink); padding: 1px 5px; border-radius: 4px; font-size: 11px; }
+    .inst-table .badge { font-size: 10px; padding: 2px 7px; }
+    .inst-table .inst-group td { font-weight: 700; color: var(--ink-soft); background: color-mix(in srgb, var(--line) 40%, transparent); }
+    .legend-cita { margin: 6px 0; padding: 6px 10px; border-left: 3px solid var(--accent); color: var(--ink-soft); font-style: italic; font-size: 12px; }
+    /* Fichas del catálogo de mecanismos en la leyenda */
+    .inst-grupo { font-size: 11px; font-weight: 700; color: var(--ink-soft); background: color-mix(in srgb, var(--line) 40%, transparent); padding: 5px 8px; border-radius: 4px; margin-top: 10px; }
+    .legend-row.inst-ficha { display: block; } /* .legend-row es flex y se declara más abajo: hace falta la doble clase para ganar */
+    .inst-titulo { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+    .inst-titulo .badge { flex: 0 0 auto; font-size: 10px; padding: 2px 7px; }
+    .inst-eje { display: flex; gap: 8px; margin-top: 5px; font-size: 12px; }
+    .inst-k { flex: 0 0 92px; font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 700; padding-top: 1px; }
+    .inst-ficha code, .legend-row code { background: var(--code-bg); color: var(--code-ink); padding: 1px 5px; border-radius: 4px; font-size: 11px; }
 
     .doc { color: var(--ink-soft); background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; margin: 10px 0; font-size: 12.5px; }
     details.why { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); margin: 10px 0; }
@@ -195,6 +217,19 @@
     .progress-pills { display: flex; gap: 6px; }
     .pill { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
     .pill.full { color: var(--ok); border-color: var(--ok); background: color-mix(in srgb, var(--ok) 10%, transparent); }
+
+    /* Tooltip al pasar el mouse por un paso del diagrama: resumen rápido de madurez,
+       clase y semántica sin tener que hacer clic y abrir el panel completo.
+       pointer-events:none para que nunca robe el clic al elemento de abajo. */
+    #hover-tip { position: fixed; z-index: 500; pointer-events: none; max-width: 260px;
+      background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-sm);
+      box-shadow: var(--shadow); padding: 8px 10px; }
+    #hover-tip.hidden { display: none; }
+    #hover-tip .ht-name { font-weight: 700; color: var(--ink); font-size: 12.5px; margin-bottom: 5px; }
+    #hover-tip .ht-row { display: flex; align-items: center; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
+    #hover-tip .ht-row:first-of-type { margin-top: 0; }
+    #hover-tip .badge { padding: 2px 7px; font-size: 10.5px; }
+    .badge.clase { color: var(--ink-soft); border-color: var(--line); background: var(--card); }
 
     .bjs-powered-by { opacity: .35; }
     /* overlays HTML sobre el diagrama */
@@ -318,6 +353,7 @@ python -m http.server</pre>
     <div id="canvas"></div>
     <aside id="panel"><div class="empty">Elige un paso del diagrama para ver el detalle.</div></aside>
   </main>
+  <div id="hover-tip" class="hidden" role="tooltip"></div>
 
   <button class="btn primary focus-exit" id="btn-focus-exit">Salir de pantalla completa (Esc)</button>
 
@@ -340,17 +376,34 @@ python -m http.server</pre>
       "GitHub Actions (CI/CD)": "l6"
     };
 
+    var CLASE_LABEL = { T: "Comando de terminal", S: "Skill del agente", manual: "Manual" };
+    var TIPO_LABEL = { determinista: "Instrumentación determinista", noDeterminista: "Instrumentación no determinista" };
+    var TIPO_CORTO = { determinista: "determinista", noDeterminista: "no determinista" };
+    // Un nodo declara su tipo con `tipoInstrumentacion` (uno solo) o lo deriva de su tabla
+    // `instrumentacion` (una fila por pieza, puede mezclar los dos tipos, como a2).
+    function tiposDeNodo(node) {
+      var out = [];
+      if (node.tipoInstrumentacion) out.push(node.tipoInstrumentacion);
+      (node.instrumentacion || []).forEach(function (r) { if (r.tipo && out.indexOf(r.tipo) < 0) out.push(r.tipo); });
+      return out;
+    }
+    function tipoBadges(node, corto) {
+      return tiposDeNodo(node).map(function (t) {
+        return '<span class="badge tipo-' + esc(t) + '">' + esc((corto ? TIPO_CORTO : TIPO_LABEL)[t] || t) + "</span>";
+      }).join("");
+    }
+
     var PART = {
       f0:"F", fd1:"F", fd2:"F", fd3:"F",
       a1:"A", a2:"A", G1:"A",
-      G2:"B", b1:"B", bi:"B", b2:"B", b3:"B", b4:"B", pz:"B", pz2:"B", pj:"B", ds:"B", GT:"B", bt:"B", GT2:"B", bi2:"B",
+      G2:"B", b1:"B", bi:"B", b2:"B", b3:"B", b4:"B", b5:"B", pz:"B", pz2:"B", pj:"B", ds:"B", GT:"B", bt:"B", GT2:"B", bi2:"B",
       GR:"C", r1:"C", bo1:"C", c1:"C", bo2:"C", G3:"C", c4a:"C", c2:"C", GUI:"C", v0:"C", vw:"C", c3:"C", G4:"C", c4p:"C",
       c4b:"C", c4c:"C", p1:"C", G5:"C", pf:"C", cr:"C", G6:"C", ac:"C", mg:"C", cd1:"C", G8:"C", df:"C", c5:"C", G7:"C", rl:"C", cs:"C"
     };
     var CANON = {
       F: ["f0","fd1","fd2","fd3"],
       A: ["a1","a2"],
-      B: ["b1","b2","b3","b4","pz","pz2","pj","ds"],
+      B: ["b1","b2","b3","b4","b5","pz","pz2","pj","ds"],
       C: ["r1","bo1","c1","bo2","c4a","c2","c3","c4b","c4c","p1","cr","mg","cd1","c5","rl","cs"]
     };
     var PART_LABEL = { F: "Fundamentos", A: "Máquina", B: "Proyecto", C: "Ciclo" };
@@ -419,7 +472,11 @@ python -m http.server</pre>
         // panel ni entra al historial (antes sí entraba, y «Atrás» aterrizaba en un carril).
         var bo = e.element && e.element.businessObject;
         if (bo && (PART[bo.id] || (catalog.eventos && catalog.eventos[bo.id]))) showNode(e.element);
+        hideHoverTip();
       });
+      viewer.on("element.hover", function (e) { showHoverTip(e.element, e.originalEvent); });
+      viewer.on("element.out", hideHoverTip);
+      $("#canvas").addEventListener("mousemove", function (evt) { positionHoverTip(evt); });
       buildLaneFilter(); buildPerfilPopover(); buildIssuePopover(); refreshOverlays(); refreshProgress(); applyMarkers();
     }).catch(function (err) { console.error(err); fatal(String(err && err.message || err)); });
 
@@ -444,6 +501,49 @@ python -m http.server</pre>
       });
       return out;
     }
+
+    // ---- tooltip al pasar el mouse -----------------------------------
+    // Resumen corto (madurez, clase, semántica) sin abrir el panel completo. Reutiliza
+    // el mismo filtro que element.click: solo pasos reales, no carriles/pool/anotaciones.
+    function hoverTipContent(element) {
+      var id = element.businessObject.id, node = contenido(id), name = element.businessObject.name || id;
+      var out = '<div class="ht-name">' + esc(name) + "</div>";
+      if (node.madurez) {
+        var mtxt = node.madurez === "transversal"
+          ? "Transversal" + (node.madurezSub ? " · " + node.madurezSub : "")
+          : "Fase " + node.madurez + " · " + (catalog.meta.madurez[node.madurez] || "");
+        out += '<div class="ht-row"><span class="badge mad-' + esc(node.madurez) + '">' + esc(mtxt) + "</span></div>";
+      }
+      if (tiposDeNodo(node).length) out += '<div class="ht-row">' + tipoBadges(node, true) + "</div>";
+      if (node.clase) {
+        out += '<div class="ht-row"><span class="badge clase">' + esc(CLASE_LABEL[node.clase] || node.clase) + "</span></div>";
+      }
+      if (node.semantica) {
+        out += '<div class="ht-row"><span class="badge ' + esc(node.semantica) + '">' + esc(node.semantica) + '</span><span class="ht-label">' +
+          esc(catalog.meta.semantica[node.semantica] || "") + "</span></div>";
+      }
+      return out;
+    }
+    function positionHoverTip(evt) {
+      var tip = $("#hover-tip");
+      if (!evt || tip.classList.contains("hidden")) return;
+      var pad = 14, x = evt.clientX + pad, y = evt.clientY + pad;
+      var rect = tip.getBoundingClientRect();
+      if (x + rect.width > window.innerWidth - 8) x = evt.clientX - rect.width - pad;
+      if (y + rect.height > window.innerHeight - 8) y = evt.clientY - rect.height - pad;
+      tip.style.left = x + "px"; tip.style.top = y + "px";
+    }
+    function showHoverTip(element, evt) {
+      var bo = element && element.businessObject;
+      if (!bo || !(PART[bo.id] || (catalog.eventos && catalog.eventos[bo.id]))) return;
+      var node = contenido(bo.id);
+      if (!node.madurez && !node.clase && !node.semantica && !tiposDeNodo(node).length) return;
+      var tip = $("#hover-tip");
+      tip.innerHTML = hoverTipContent(element);
+      tip.classList.remove("hidden");
+      positionHoverTip(evt);
+    }
+    function hideHoverTip() { $("#hover-tip").classList.add("hidden"); }
 
     // ---- render del panel --------------------------------------------
     function showNode(element, opts) {
@@ -474,7 +574,12 @@ python -m http.server</pre>
       if (node.madurez) {
         var mtxt = node.madurez === "transversal" ? "Transversal" + (node.madurezSub ? " · " + node.madurezSub : "") : "Fase " + node.madurez;
         badges.appendChild(el('<span class="badge mad-' + esc(node.madurez) + '">' + esc(mtxt) + "</span>"));
+      } else if (node.madurezNota) {
+        badges.appendChild(el('<span class="badge mad-none" title="' + esc(node.madurezNota) + '">Sin fase de madurez</span>'));
       }
+      tiposDeNodo(node).forEach(function (t) {
+        badges.appendChild(el('<span class="badge tipo-' + esc(t) + '">' + esc(TIPO_LABEL[t] || t) + "</span>"));
+      });
       panel.appendChild(badges);
 
       var doc = docOf(element);
@@ -489,6 +594,8 @@ python -m http.server</pre>
       if (node.requires) panel.appendChild(el('<p class="req"><b>Requiere:</b> ' + esc(node.requires) + "</p>"));
 
       if (node.guiaPasos) panel.appendChild(el('<div class="howto">' + node.guiaPasos + "</div>"));
+      if (node.instrumentacion) renderInstrumentacion(panel, node);
+      if (node.madurezNota) panel.appendChild(el('<p class="req"><b>Fase de madurez:</b> ' + esc(node.madurezNota) + "</p>"));
 
       if (node.checklist) { renderChecklist(panel, id, node); }
       else if (node.esGateway && node.clase !== "T") { renderRamas(panel, element, node); renderManual(panel, id, node); }
@@ -501,6 +608,21 @@ python -m http.server</pre>
       syncToggle(toggle, id);
       toggle.onclick = function () { setNodeDone(id, !nodeDone(id)); syncToggle(toggle, id); };
       panel.appendChild(toggle);
+    }
+
+    // Tabla «qué instala este paso y de qué tipo es cada pieza»: una fila por hook o servidor
+    // MCP de la librería, con su badge. El porqué de cada clasificación vive en la leyenda.
+    function renderInstrumentacion(panel, node) {
+      var html = '<div class="inst-wrap"><div class="eyebrow" style="margin-top:0;">Qué instala este paso, y de qué tipo es cada pieza</div>' +
+        '<table class="inst-table"><thead><tr><th>Pieza</th><th>Mecanismo</th><th>Efecto</th><th>Tipo</th></tr></thead><tbody>';
+      node.instrumentacion.forEach(function (r) {
+        html += "<tr><td><b>" + esc(r.item) + "</b></td><td>" + esc(r.mecanismo) + "</td><td>" + esc(r.efecto || "") +
+          '</td><td><span class="badge tipo-' + esc(r.tipo) + '">' + esc(TIPO_CORTO[r.tipo] || r.tipo) + "</span></td></tr>";
+      });
+      html += '</tbody></table><p style="color:var(--muted);font-size:12px;margin:8px 0 0;">Por qué cada mecanismo cae de un lado o del otro: capítulo «Tipos de instrumentación» de la <a href="#" class="go-legend">leyenda</a>.</p></div>';
+      var box = el(html);
+      box.querySelector(".go-legend").onclick = function (e) { e.preventDefault(); renderLegend(); };
+      panel.appendChild(box);
     }
 
     function syncToggle(btn, id) {
@@ -919,10 +1041,67 @@ python -m http.server</pre>
         panel.appendChild(el('<div class="legend-row"><b style="width:90px;flex:0 0 auto;">' + esc(k) + "</b><span>" + esc(catalog.meta.semantica[k]) + "</span></div>"));
       });
       panel.appendChild(el('<div class="eyebrow">Pirámide de madurez</div>'));
+      // Ojo: el() solo devuelve el PRIMER elemento del HTML que se le pasa (firstElementChild) —
+      // todo lo que va después del cierre del primer tag se pierde en silencio. Por eso el badge
+      // y sus párrafos de descripción van dentro de un único div envolvente, no como hermanos.
       ["0", "1", "2", "3"].forEach(function (k) {
-        panel.appendChild(el('<div class="legend-row"><span class="badge mad-' + k + '">Fase ' + k + " · " + esc(catalog.meta.madurez[k]) + '</span></div><p style="margin:4px 0 0;color:var(--muted);font-size:12px;">' + esc(catalog.meta.madurezDetalle[k]) + "</p>"));
+        var resumen = (catalog.meta.madurezResumen || {})[k];
+        panel.appendChild(el('<div class="legend-row" style="display:block;"><span class="badge mad-' + k + '">Fase ' + k + " · " + esc(catalog.meta.madurez[k]) + '</span>' +
+          (resumen ? '<p class="mono" style="margin:6px 0 0;color:var(--muted);font-size:11px;letter-spacing:.02em;">' + esc(resumen) + "</p>" : "") +
+          '<p style="margin:6px 0 0;color:var(--muted);font-size:12px;">' + catalog.meta.madurezDetalle[k] + "</p></div>"));
       });
-      panel.appendChild(el('<div class="legend-row"><span class="badge mad-transversal">Transversal</span></div><p style="margin:4px 0 0;color:var(--muted);font-size:12px;">' + esc(catalog.meta.madurezTransversal) + "</p>"));
+      panel.appendChild(el('<div class="legend-row" style="display:block;"><span class="badge mad-transversal">Transversal</span><p style="margin:6px 0 0;color:var(--muted);font-size:12px;">' + esc(catalog.meta.madurezTransversal) + "</p></div>"));
+      renderLegendInstrumentacion(panel);
+    }
+
+    // Tres capítulos aparte de la pirámide: el catálogo de mecanismos con su tipo, la evidencia
+    // oficial que sostiene la clasificación, y las dos excepciones que la matizan. Los textos
+    // de comandos.json traen <code> a propósito, así que van sin escapar (igual que porque y
+    // guiaPasos); solo las citas literales y las URLs se escapan.
+    function renderLegendInstrumentacion(panel) {
+      var meta = catalog.meta, tipos = meta.instrumentacionTipos || {};
+      var cat = meta.instrumentacionCatalogo || [], evid = meta.instrumentacionEvidencia || [], exc = meta.instrumentacionExcepciones || [];
+      if (!cat.length && !evid.length && !exc.length) return;
+
+      panel.appendChild(el('<div class="eyebrow">Tipos de instrumentación</div>'));
+      if (meta.instrumentacionRegla) panel.appendChild(el('<p style="margin:0 0 4px;font-size:12.5px;">' + meta.instrumentacionRegla + "</p>"));
+      ["determinista", "noDeterminista"].forEach(function (k) {
+        if (!tipos[k]) return;
+        panel.appendChild(el('<div class="legend-row" style="display:block;"><span class="badge tipo-' + k + '">' + esc(TIPO_LABEL[k]) + '</span>' +
+          '<p style="margin:6px 0 0;color:var(--muted);font-size:12px;">' + tipos[k] + "</p></div>"));
+      });
+      // Una ficha apilada por mecanismo (no una tabla): el panel mide ~420px y cuatro columnas
+      // con el porqué adentro no se leen. Quién dispara y quién decide son las dos preguntas
+      // del eje, así que van como líneas propias, antes del porqué.
+      var grupo = null;
+      cat.forEach(function (r) {
+        if (r.grupo && r.grupo !== grupo) {
+          grupo = r.grupo;
+          panel.appendChild(el('<div class="inst-grupo">' + esc(grupo) + "</div>"));
+        }
+        panel.appendChild(el('<div class="legend-row inst-ficha"><div class="inst-titulo"><b>' + r.mecanismo + '</b><span class="badge tipo-' + esc(r.tipo) + '">' + esc(TIPO_CORTO[r.tipo] || r.tipo) + "</span></div>" +
+          '<div class="inst-eje"><span class="inst-k">Quién dispara</span><span>' + r.dispara + "</span></div>" +
+          '<div class="inst-eje"><span class="inst-k">Quién decide</span><span>' + r.decide + "</span></div>" +
+          (r.porque ? '<p style="margin:6px 0 0;color:var(--muted);font-size:12px;">' + r.porque + "</p>" : "") + "</div>"));
+      });
+
+      if (evid.length) {
+        panel.appendChild(el('<div class="eyebrow">Evidencia que lo sostiene</div>'));
+        evid.forEach(function (e) {
+          panel.appendChild(el('<div class="legend-row" style="display:block;"><b>' + esc(e.fuente) + "</b>" +
+            (e.url ? ' <a href="' + esc(e.url) + '" target="_blank" rel="noopener" style="font-size:11px;">abrir ↗</a>' : "") +
+            '<blockquote class="legend-cita">' + esc(e.cita) + "</blockquote>" +
+            '<p style="margin:4px 0 0;color:var(--muted);font-size:12px;">' + (e.porque || "") + "</p></div>"));
+        });
+      }
+
+      if (exc.length) {
+        panel.appendChild(el('<div class="eyebrow">' + (exc.length === 2 ? "Dos excepciones" : "Excepciones") + "</div>"));
+        exc.forEach(function (x, i) {
+          panel.appendChild(el('<div class="legend-row" style="display:block;"><b>' + (i + 1) + ". " + esc(x.titulo) + "</b>" +
+            '<p style="margin:6px 0 0;color:var(--muted);font-size:12px;">' + x.texto + "</p></div>"));
+        });
+      }
     }
     $("#btn-legend").onclick = renderLegend;
 
@@ -939,6 +1118,9 @@ python -m http.server</pre>
       panel.appendChild(el('<figure class="about"><img src="img/deming-portrait.jpg" alt="Retrato de W. Edwards Deming" /><figcaption><b>W. Edwards Deming</b> (1900–1993), estadístico e ingeniero. Fuente: Wikimedia Commons, dominio público.</figcaption></figure>'));
       panel.appendChild(el('<blockquote class="deming">"No basta con hacer lo mejor que uno pueda; primero hay que saber qué hacer, y entonces hacer lo mejor que uno pueda."<cite>— W. Edwards Deming</cite></blockquote>'));
       panel.appendChild(el('<figure class="about"><img src="img/deming-tokyo.jpg" alt="Deming enseñando en Tokio" /><figcaption><b>Deming enseñando control estadístico de calidad en Japón, década de 1950.</b> Fuente: Wikimedia Commons, dominio público.</figcaption></figure>'));
+      panel.appendChild(el('<div class="eyebrow">Pirámide de madurez</div>'));
+      panel.appendChild(el('<p class="about-credit">Las 4 fases de madurez que colorean este diagrama (Fundamentos de colaboración, Instrumentación determinista, Instrumentación no determinista, Auto-planeación y sistemas de conocimiento) vienen de <a href="https://es.linkedin.com/posts/soymanuelzapata_diagnosticamos-una-f%C3%A1brica-de-software-para-activity-7474891594635132928-8ypT" target="_blank" rel="noopener">una publicación de Manuel Zapata (Arkandia) en LinkedIn</a>: "la mayoría de equipos no falla en la cima, falla en la base".</p>'));
+      panel.appendChild(el('<p class="about-credit"><b>Una corrección deliberada sobre esa fuente:</b> ' + esc(catalog.meta.madurezCorreccion || "") + "</p>"));
       panel.appendChild(el('<p class="about-credit">Este visor es software genérico: el motor (diagrama + panel + progreso local) no depende de ninguna organización en particular — solo el contenido de <code>comandos.json</code> describe este proceso puntual. Siéntete libre de adaptarlo al tuyo.</p>'));
     }
     $("#btn-about").onclick = renderAbout;

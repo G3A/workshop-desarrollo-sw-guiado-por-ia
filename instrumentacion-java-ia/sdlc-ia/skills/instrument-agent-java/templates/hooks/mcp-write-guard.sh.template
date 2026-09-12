@@ -1,0 +1,81 @@
+# Placeholders: {{REPO_SLUG}} — "owner/repo" for the repository this checkout belongs to, resolved
+#                               in Phase 1 from `git remote get-url origin`. GitHub branch only.
+#
+# Hook 9 — MCP write guard. PreToolUse, matcher "mcp__*".
+# INSTALL ONLY WHEN AT LEAST ONE MCP SERVER IS REGISTERED, and only alongside the `permissions`
+# rules of Phase 4. On its own it is not the control; it is the half that reads ARGUMENTS.
+#
+# WHY THIS EXISTS NEXT TO THE PERMISSION RULES, AND IS NOT A REPLACEMENT FOR THEM
+#   A permission rule decides on the TOOL NAME: mcp__github__create_issue is allowed, or it is
+#   not. That is the right shape for the general posture, it reads at a glance, and it shows up in
+#   a diff. What a name cannot express is WHICH repository, WHICH table, WHICH branch — and those
+#   are the cases where an allowed tool does the wrong thing. That is this hook's whole job.
+#
+#   So: if a check can be written as a tool name, it belongs in `permissions`, not here. Every
+#   pattern added below has to justify why the name was not enough. A hook that never fires because
+#   the rules already caught everything is a hook to delete, not to keep.
+#
+# THIS IS NOT A SECURITY BOUNDARY. Same caveat as hooks 3 and 8: it runs with the user's own
+# permissions and matches text, not intent. An MCP server can also be reached outside this agent.
+#
+# KEEP THE LIST SHORT. A guard that trips on ordinary work gets switched off, and takes the
+# patterns that mattered with it. Delete every branch whose server is not registered.
+#
+# ---8<--- everything above this line is instructions for you; delete it ---8<---
+#!/usr/bin/env bash
+# `set -u` only. See the note in _lib.sh about pipefail and short-circuiting filters.
+set -u
+
+DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+. "$DIR/_lib.sh"
+
+hook_read_stdin
+
+TOOL="$(json_raw tool_name)"
+
+# Not an MCP call: nothing here applies. The matcher should already have filtered these out, but a
+# guard that trusts its matcher breaks silently the day someone widens it.
+case "$TOOL" in
+  mcp__*) ;;
+  *) exit 0 ;;
+esac
+
+# ---------------------------------------------------------------- GitHub
+# The tool name says "comment on an issue". It does not say WHOSE issue. An agent that resolved the
+# wrong repository from a stale context writes into someone else's tracker, and the permission rule
+# that allowed the tool cannot tell the difference.
+case "$TOOL" in
+  mcp__github__*)
+    OWNER="$(json_raw owner)"
+    REPO="$(json_raw repo)"
+    # Absent means the call did not carry a target: let it through rather than guess.
+    if [ -n "$OWNER" ] && [ -n "$REPO" ]; then
+      if [ "$OWNER/$REPO" != "{{REPO_SLUG}}" ]; then
+        hook_deny "Blocked: this MCP call targets $OWNER/$REPO, not the repository of this checkout ({{REPO_SLUG}}). If that is deliberate, run it yourself."
+      fi
+    fi
+    ;;
+esac
+
+# ---------------------------------------------------------------- Database
+# A query tool is read-shaped by name and arbitrary by argument. Statement-level, not tool-level,
+# so it cannot live in `permissions`.
+#
+# Anchored at the start of the statement after optional whitespace: a SELECT whose text merely
+# contains the word "update" in a column name or a string literal must not trip this.
+case "$TOOL" in
+  mcp__*dbhub*|mcp__*postgres*|mcp__*database*)
+    SQL="$(json_raw sql)"
+    [ -z "$SQL" ] && SQL="$(json_raw query)"
+    if [ -n "$SQL" ]; then
+      HEAD="$(printf '%s' "$SQL" | sed -E 's/^[[:space:]]+//' | tr '[:lower:]' '[:upper:]' | cut -c1-10)"
+      case "$HEAD" in
+        DELETE*|UPDATE*|INSERT*|DROP*|TRUNCATE*|ALTER*|CREATE*|GRANT*|REVOKE*)
+          hook_deny "Blocked: this MCP call runs a statement that writes to the database. Reads go through the agent; schema and data changes go through a migration, reviewed in a pull request."
+          ;;
+      esac
+    fi
+    ;;
+esac
+
+exit 0

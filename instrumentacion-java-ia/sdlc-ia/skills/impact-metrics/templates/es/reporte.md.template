@@ -1,0 +1,63 @@
+<!--
+PLANTILLA — reporte de impacto a liderazgo
+
+QUÉ HACE LA SKILL AL GENERARLO
+  - Sustituye <PERIODO>, <ANTERIOR> y cada número desde docs/metricas/metricas-<PERIODO>.csv.
+    El reporte se DERIVA del agregado, nunca al revés.
+  - Cada cifra lleva de dónde salió. Un reporte cuyas cifras no se pueden recalcular es una
+    anécdota con números.
+  - Si no hay período anterior, borra la columna de comparación y marca este como LÍNEA BASE.
+    Es el criterio de avance de la Etapa 1, y decirlo vale más que inventar una tendencia.
+  - Las métricas que faltan se dejan con su motivo, nunca se omiten.
+  - GENERA Y NO ENVÍA: se abre la PR y se para. Enviarlo es de una persona.
+  - Borra este encabezado antes de escribir el archivo destino.
+-->
+
+# Impacto del desarrollo asistido por IA — <PERIODO>
+
+## Diagnóstico
+
+<!-- Tres o cuatro frases. Dónde está el equipo hoy, en lenguaje de negocio y sin jerga de
+     herramientas. Lo que cambió respecto del período anterior, y lo que no. -->
+
+## Las métricas
+
+| Métrica | <PERIODO> | <ANTERIOR> | Cómo se midió |
+|---|---|---|---|
+| PRs asistidas por IA | <PCT> % (<N_IA> de <N_TOTAL>) | <PCT_ANT> % | `git rev-list --first-parent --grep` sobre la rama de integración |
+| Lead time, **mediana** | <MEDIANA> h (n=<N_PR>) | <MEDIANA_ANT> h | `gh pr list`, de `createdAt` a `mergedAt` |
+| Retrabajo | — | — | **Pendiente.** Definición acordada; falta muestra suficiente para comparar asistidas contra no asistidas |
+| Cobertura | <COBERTURA> | <COBERTURA_ANT> | <FUENTE_COBERTURA> |
+
+**Sobre el lead time se reporta la mediana y no el promedio**: una sola PR muy larga arrastra la
+media y termina describiendo el peor caso como si fuera el típico. Promedio del período:
+<PROMEDIO> h.
+
+<!-- Si una métrica falta, su fila se queda con el motivo. Omitirla sugiere que no importaba. -->
+
+## Lo que los números no dicen
+
+Encuesta anónima, escala de 1 a 5, n=<N_ENCUESTA>:
+
+| | <PERIODO> | <ANTERIOR> |
+|---|---|---|
+| Confianza en el código que produce | <CONFIANZA> | <CONFIANZA_ANT> |
+| Fricción en un día normal | <FRICCION> | <FRICCION_ANT> |
+| Valor: trabajo realmente ahorrado | <VALOR> | <VALOR_ANT> |
+| Alineación con cómo resuelve el equipo | <ALINEACION> | <ALINEACION_ANT> |
+
+Va junto a las cifras duras porque **las cuatro pueden mejorar mientras el equipo la pasa peor**.
+
+<!-- Si no hubo encuesta, o el n quedó bajo el piso acordado, esta sección lo dice en una línea y
+     no muestra distribución. «Muestra insuficiente» es información; un número inventado, no. -->
+
+## Compromiso para el próximo período
+
+<!-- Una o dos cosas concretas y verificables. No «mejorar la adopción»: el número que se espera
+     mover y qué se va a hacer distinto. -->
+
+---
+
+<!-- Cómo reproducir cada cifra, para que nadie tenga que confiar en este documento -->
+Datos: `docs/metricas/metricas-<PERIODO>.csv` y `docs/metricas/encuesta-<PERIODO>.csv`.
+Comandos: `instrumentacion-java-ia/sdlc-ia/skills/impact-metrics/references/metric-definitions.md`.

@@ -1,0 +1,91 @@
+<!--
+TEMPLATE — REVIEW.md · what to look for in a diff a model wrote
+
+WHY THIS IS NOT AGENTS.md
+  AGENTS.md holds the rules the agent must respect WHILE GENERATING code.
+  REVIEW.md holds the criteria for WHAT TO LOOK AT in a diff that already exists.
+  They are separate on purpose: the cloud PR-review service loads REVIEW.md, while the
+  local /code-review loads the guide file. A criterion that must hold in both places
+  belongs in AGENTS.md; one that only applies while reviewing belongs here.
+
+WHERE THE ITEMS COME FROM
+  The SIX CATEGORIES are the method's (verification layer 4): API hallucinations, project
+  fidelity, tests of the spec, technical debt, trade-offs, and running the change yourself.
+  The FIFTEEN CONCRETE ITEMS below are the actionable form we give them here — not a literal
+  quotation of any source. Change them as your team learns.
+
+WHAT THE SKILL DOES WHEN GENERATING IT
+  - Substitute <PROJECT>, <RUN-COMMAND> and <INTEGRATION-BRANCH> with real values.
+  - Add items the discovery justifies (a migrations item only if the repo has Flyway or
+    Liquibase, say), marked as added.
+  - In augment mode, never rewrite an existing REVIEW.md: fill gaps and append.
+  - Delete this header before writing the target file.
+-->
+
+# REVIEW.md — what to look at in a <PROJECT> diff
+
+These criteria apply to **every diff**, whether a person or a model wrote it. They matter more when
+a model wrote it, because the code reads plausible even when it is wrong.
+
+Anything a machine can check **is not here** — that is a sensor (linter, test, hook, CI). If an
+item on this list can be automated, promote it to a sensor and delete it from here. This list is
+only for what needs judgement.
+
+## 1 · API hallucinations
+
+- [ ] **Every method, signature and constant used actually exists** in the dependency version the
+      `pom.xml` pins — not in a later one, and not in a similarly-named library.
+- [ ] **Configuration keys exist and do what the diff assumes.** An invented property does not
+      fail: it is silently ignored, and the default behaviour takes the blame months later.
+- [ ] **No new dependency slipped in unjustified.** If the diff adds one, the PR says why what was
+      already there did not suffice.
+
+## 2 · Project fidelity
+
+- [ ] **It solves the way this repository solves**, not the way the internet solves. Same layering,
+      same naming, same error handling as the code next to it.
+- [ ] **It does not introduce a second way to do something that already had one.** Two ways to read
+      configuration, two to build HTTP responses, two to map entities — each doubles the cost of
+      every future change.
+- [ ] **It respects the module boundaries** the architecture tests protect — and if it changes
+      them, it says so in the PR rather than loosening the rule.
+
+## 3 · Tests of the spec
+
+- [ ] **Tests verify the requirement, not what the code does.** A test written while looking at the
+      implementation always passes and protects nothing.
+- [ ] **Every acceptance criterion in the issue has a test covering it.** If one does not, the PR
+      names which and why.
+- [ ] **There is at least one edge case and one error case**, not only the happy path.
+- [ ] **The tests fail when the change is reverted.** That is what separates a test from
+      scaffolding; if nobody checked, check it locally before approving.
+
+## 4 · Technical debt
+
+- [ ] **What got worse so this could ship.** Something always does; if the PR does not name it,
+      ask.
+- [ ] **No new `TODO`, suppression or exception without a written reason beside it.** An exception
+      without a comment is invisible debt.
+
+## 5 · Trade-offs
+
+- [ ] **What was decided without saying so.** A design decision that appears neither in the PR nor
+      in an ADR is one nobody can revisit when it starts to hurt.
+- [ ] **The rejected alternative is named.** No essay needed — one sentence on why not the other
+      way.
+
+## 6 · Run the change yourself
+
+- [ ] **Start it and use it** (`<RUN-COMMAND>`). The most skipped item and the one that catches
+      most: green CI only says the tests that exist pass.
+
+---
+
+## How this list evolves
+
+If you say something by hand in a review for the **third time**, that is not an author discipline
+problem: it is a criterion missing from this file. Add it.
+
+And the reverse: if an item here can be machine-checked, it stops being text and becomes a sensor —
+a test, a lint rule, a hook. An automatable criterion left as prose is manual work someone repeats
+on every PR.

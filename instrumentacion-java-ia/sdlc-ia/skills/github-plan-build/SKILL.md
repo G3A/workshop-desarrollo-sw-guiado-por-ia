@@ -7,8 +7,10 @@ description: >
   open; explores the repo; drafts a plan and puts it through a three-lens
   adversarial review; asks for your approval through plan mode when the change
   warrants it and skips it when it doesn't; then implements test-first, runs your
-  repo's own gates, opens the pull request, and babysits it to green. Stack-agnostic
-  — assumes no particular architecture. `confirm-push` adds a second checkpoint
+  repo's own gates, opens the pull request, babysits it to green, and closes by proposing where
+  the lesson of the round belongs — a rule, a review criterion, an ADR, a sensor, or the waiting
+  room — without applying it. Stack-agnostic: assumes no particular architecture.
+  `confirm-push` adds a second checkpoint
   between the commit and the push, for teams that want the developer to own the push.
   Invoke with `/sdlc-ia:github-plan-build [issue number or URL] [skip-checkpoint] [confirm-push]`.
 argument-hint: "[issue number or URL] [skip-checkpoint] [confirm-push]"
@@ -19,14 +21,19 @@ allowed-tools: Read, Glob, Grep, Edit, Write, AskUserQuestion, Agent, Skill, Tas
 # GitHub issue → shipped feature
 
 Take a GitHub issue all the way to **PR open, CI green, review comments addressed,
-and the issue updated**. By default there is exactly **one** explicit checkpoint — plan
-approval — and even that is conditional: routine changes run straight through. The
-`confirm-push` argument adds a second one, between the commit and the push (Step H).
+the issue updated, and the lesson of the round routed**. By default there is exactly **one**
+explicit checkpoint — plan approval — and even that is conditional: routine changes run straight
+through. The `confirm-push` argument adds a second one, between the commit and the push (Step H).
+
+The last step (K) is the only one that makes round 20 different from round 1. It **proposes**
+where each lesson belongs and the exact text; it never edits `AGENTS.md`, the review checklist or
+a sensor itself — a rule change is about the process, not about this feature, and the PR is
+already open and reviewed by then.
 
 It is **stack-agnostic** — a Java/Spring repository is one case it handles, not what
 it assumes.
 
-**Read `references/build-loop.md` now** (Steps A–E; F–J continue in `build-loop-execute.md`,
+**Read `references/build-loop.md` now** (Steps A–E; F–K continue in `build-loop-execute.md`,
 read at Step F) — the body of this skill, not optional background. This file supplies the GitHub
 bindings both ask for.
 
@@ -225,7 +232,7 @@ that isn't closed, and before treating a dependency as met, confirm it against
 
 ## Phase 4 — Run the build loop
 
-Follow Steps A → J across `references/build-loop.md` and `references/build-loop-execute.md`, with
+Follow Steps A → K across `references/build-loop.md` and `references/build-loop-execute.md`, with
 the bindings resolved above.
 
 ## Escalation

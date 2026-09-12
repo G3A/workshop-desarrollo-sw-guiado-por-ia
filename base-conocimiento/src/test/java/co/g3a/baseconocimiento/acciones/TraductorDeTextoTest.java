@@ -37,7 +37,7 @@ class TraductorDeTextoTest {
     assertThat(String.join("", resultado.texto().collectList().block())).isEqualTo("hello");
     assertThat(resultado.idiomaDestino()).isEqualTo("en");
     verify(redactor).detectarIdioma("hola");
-    assertThat(cupo.intentarTomar()).isTrue();
+    EsperaDeCupo.vuelveYSeToma(cupo, "el cupo volvio al terminar");
   }
 
   @Test
@@ -89,7 +89,7 @@ class TraductorDeTextoTest {
 
     assertThatThrownBy(() -> resultado.texto().blockLast())
         .isInstanceOf(IllegalStateException.class);
-    assertThat(cupo.intentarTomar()).as("el cupo volvio tras el error").isTrue();
+    EsperaDeCupo.vuelveYSeToma(cupo, "el cupo volvio tras el error");
 
     var sinCupo =
         new TraductorDeTexto(

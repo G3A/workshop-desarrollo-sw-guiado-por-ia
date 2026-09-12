@@ -1,0 +1,104 @@
+<!--
+TEMPLATE — EXPERIMENTS.md · the written agreement behind permission to experiment
+
+WHAT THIS TEMPLATE COVERS AND WHAT IT DOES NOT
+  It does NOT cover the permission. Granting permission to experiment and fail is a leadership
+  decision and stays one. What it covers is THE WRITTEN AGREEMENT THAT RESULTS FROM GRANTING IT.
+  With nothing written down, the permission lasts until the first pull request that goes badly.
+
+THE HARD RULE OF THIS TEMPLATE: THE SKILL DOES NOT ANSWER IT
+  Almost all of this file ships as TODOs, and THAT IS THE CORRECT OUTPUT. In every other document
+  a TODO means discovery fell short; here it means THE ANSWER IS NOT IN THE REPOSITORY AND MUST
+  NOT BE INVENTED. Making up a team's risk posture is exactly the hallucination this skill is
+  written against. Do not "improve" this by filling them in.
+
+WHAT THE SKILL DOES DO WHEN GENERATING IT
+  - Substitutes <PROJECT> and <INTEGRATION-BRANCH> with real repository values.
+  - Copies the "never an experiment" list from github-plan-build's escalation list, so the two
+    say the same thing, and marks it as a starting point.
+  - In augment mode it never rewrites an existing EXPERIMENTS.md: fill gaps and append.
+  - Delete this header before writing the target file.
+
+IT IS NOT A CI CHECK
+  Same reasoning as the pull-request template's checkboxes: turning an agreement into paperwork
+  gets it signed unread, and the record starts lying.
+-->
+
+# EXPERIMENTS.md — what may fail in <PROJECT>, and what happens when it does
+
+This file exists because **a team that may only use the agent when it is sure things will go well
+does not learn to use it: it learns to hide when it did.**
+
+It is not a tool policy. It is what this team agreed, with a name and a date, so that the
+permission still exists the week after the first pull request that went badly.
+
+---
+
+## 1. What may fail, and where
+
+<!-- TODO: the scope of the permission. Be concrete: what kind of work, on which branches, at what
+     change size. "Everything" and "nothing" are the two answers that do not help. -->
+
+**Agreed scope:** <!-- TODO -->
+
+**Where:** working branches that integrate into `<INTEGRATION-BRANCH>`. <!-- TODO: confirm or
+correct -->
+
+## 2. What is never an experiment
+
+This list is what makes the permission safe to grant. **It is a starting point, taken from the
+delivery loop's escalation list** — the two should say the same thing, because once they diverge
+the agent stops where the agreement does not ask it to and continues where the agreement forbids it:
+
+- Production writes, deploys, and any destructive or irreversible action.
+- Real communications to customers.
+- Changes touching authentication, secrets, or people's data.
+- <!-- TODO: whatever this team adds. Delete what does not apply, but say why. -->
+
+## 3. What happens when it goes wrong
+
+<!-- TODO: what is expected of whoever tried, what is expected of the team, and what will NOT
+     happen. -->
+
+**The clause that decides whether this is real: the marker stays.**
+
+The `Asistido-por-IA` trailer on a pull request that went badly is **not removed, not omitted, and
+not up for discussion**. It is the only way the permission means anything: if the marker disappears
+from the failed attempts, the record measures **successes only**, and this team will have learned
+exactly what this file exists to prevent.
+
+> **And it is checkable.** Compare the marker rate on reverted or hotfixed pull requests against
+> the overall rate. If they differ, the agreement is written and not being kept — which is rather
+> more useful than the number alone.
+
+## 4. Who granted it, and when
+
+A permission with no name and no date is a rumour: three months on nobody knows whether it still
+holds, and in doubt people assume it does not.
+
+| | |
+|---|---|
+| **Granted by** | <!-- TODO: name and role --> |
+| **Date** | <!-- TODO: YYYY-MM-DD --> |
+| **Reviewed** | <!-- TODO: a date or an event. A standing permission nobody revisits ends up either forgotten or unlimited, and neither is what was agreed. --> |
+
+## 5. What gets shared
+
+The lesson from a failed experiment **is the return on the permission**. Without this step the team
+paid for the attempt and collected nothing.
+
+- Where it is written: <!-- TODO: by default, the `docs/lecciones.md` waiting room the delivery
+  loop's closing step proposes. -->
+- When: <!-- TODO -->
+- What happens to what repeats: promote it to `AGENTS.md`, to `REVIEW.md`, to an ADR, or — the one
+  that pays most — turn it into a sensor, so it stops depending on someone remembering.
+
+---
+
+## What this file is not
+
+- **Not an unlimited permission.** Section 2 is as much part of the agreement as section 1.
+- **Not a shield.** That something was permitted does not make the outcome good; it makes it safe
+  to talk about.
+- **Not paperwork.** Nobody signs anything here, and no CI check requires it. An agreement that
+  becomes a checkbox gets ticked unread.

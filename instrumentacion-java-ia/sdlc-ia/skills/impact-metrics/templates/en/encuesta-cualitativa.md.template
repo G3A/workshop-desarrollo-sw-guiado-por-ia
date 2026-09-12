@@ -1,0 +1,124 @@
+<!--
+TEMPLATE — the Fase 5 qualitative survey
+
+WHAT THE PLUGIN OWNS AND WHAT IT DOES NOT
+  The plugin is NOT a survey platform. It owns three things: the questionnaire, the anonymity
+  requirement, and the aggregation format the skill reads. CAPTURE belongs to the team, using
+  whatever form tool it already has.
+
+WHAT THE SKILL DOES WHEN GENERATING IT
+  - Substitute <PERIOD> and <MINIMUM> (the sample floor agreed with the team).
+  - Leave this file in the repository so the procedure does not live in anyone's head.
+  - Delete this header before writing the target file.
+-->
+
+# Qualitative survey — <PERIOD>
+
+Four questions, 1-to-5 scale. They sit beside the hard metrics because **all four numbers can
+improve while the team is having a worse time**, and only asking reveals that.
+
+1. **Trust** — do you believe the code it produces?
+2. **Friction** — what does it cost to use on an ordinary day?
+3. **Value** — did it actually save you work?
+4. **Alignment** — does it solve the way this team solves?
+
+**All closed, none free-text.** A comment field reintroduces identification: with five people,
+writing style and what someone mentions give them away faster than a name would. If the team wants
+comments, collect them separately — they **never enter the repository**.
+
+---
+
+## "Who do I send my answers to?" Nobody
+
+That is the point. **Any human intermediary kills the anonymity.** If someone receives answers and
+collates them, that person knows who said what, the team knows it, and answers accordingly.
+
+The form is the intermediary, and it is configured not to know who answered.
+
+## The three roles
+
+| Role | Who | What they touch |
+|---|---|---|
+| Coordinator | One person, the same all period | Creates the form, publishes the aggregate, opens the PR |
+| Everyone | The whole team, coordinator included | Answers and closes the tab |
+| The skill | — | Counts, writes the aggregate CSV and the report |
+
+The coordinator **answers too**. On a small team, their absence shows in the `n`.
+
+---
+
+## Once per team — preparing the form
+
+This is where anonymity is won or lost. No later step can recover it.
+
+1. **Create the form** with the four questions above, and nothing else.
+
+2. **Turn off whatever records identity.** The one step that cannot be got wrong.
+   - **Google Forms** → *Settings*, Responses: turn off **"Collect email addresses"** and also
+     **"Limit to 1 response"**. The second looks harmless and is not: limiting responses requires
+     sign-in, which records who answered.
+   - **Microsoft Forms** → under *"Who can fill out this form"*: with "Anyone can respond",
+     answers arrive nameless; if you restrict to the organization, **uncheck "Record name"**. On
+     work accounts that box is **on by default** — the most common trap.
+
+3. **Check it yourself before sharing it.** Answer once and look at the response that arrived. If it
+   carries a name or an email, step 2 is wrong: delete it and fix. Same "prove it before reporting
+   success" discipline the rest of the package applies to every control — and a form you believe is
+   anonymous and is not is **worse** than an openly named one, because people answer with a candour
+   they do not actually have.
+
+4. **Add the raw folder to `.gitignore`**, before exporting anything:
+
+   ```
+   # raw survey data: never versioned
+   .metricas-crudo/
+   ```
+
+   Before and not after, for the same reason `instrument-agent-java` adds `logs/` to `.gitignore`
+   **before** creating the audit log: a sensitive file that reaches the repository does not come
+   out without rewriting history.
+
+---
+
+## Each period — six steps
+
+| # | Who | Does | Why |
+|---|---|---|---|
+| 1 | Coordinator | Shares the link in the team channel, with a closing date | A public link identifies nobody; an individual email creates the sense that someone knows who answered |
+| 2 | Everyone | Answers and closes | Sends nothing to anybody: no receipt, no forwarding, nobody to ask whether you answered |
+| 3 | Coordinator | Closes the form on the date | A form left open mixes periods and ruins the comparison |
+| 4 | Coordinator | Checks `n`. **Below <MINIMUM>, stops here** | With few responses a distribution points at a person as surely as a name. "Insufficient sample" is honest information |
+| 5 | Coordinator | Exports the CSV to `.metricas-crudo/` and runs `/sdlc-ia:impact-metrics` | The skill counts and writes the aggregate. Counting twenty numbers by hand invites error |
+| 6 | Coordinator | **Deletes the raw export** and opens the PR with the aggregate | The raw data is no longer needed, and every extra day on disk is risk |
+
+---
+
+## The only thing versioned: the aggregate
+
+```
+docs/metricas/encuesta-<PERIOD>.csv
+pregunta,v1,v2,v3,v4,v5,n,media
+confianza,0,1,2,4,1,8,3.5
+friccion,1,3,2,2,0,8,2.6
+valor,0,0,3,3,2,8,3.9
+alineacion,0,1,4,2,1,8,3.4
+```
+
+One row per **question**, not per person. No timestamps and no cross-question correlation:
+**nothing left to reconstruct**, which is what lets this live in git forever.
+
+**Stripping the name from a per-person row is not enough.** On a small team the pattern of four
+answers identifies someone, and if the export carried a timestamp, ordering finishes the job.
+
+**Stricter variant:** if you would rather the raw data never touched your machine, read the form's
+summary view — it already shows per-option counts — and transcribe the twenty numbers. Slower and
+prone to typos, but there is no file to delete and no discipline to rely on.
+
+---
+
+## The four ways to break it
+
+1. **Someone forwarding answers.** The moment a human intermediary appears, it is over.
+2. **A comment field** that reaches the repository.
+3. **Publishing with a small `n`.** Step 4 exists for this.
+4. **Skipping step 2.** The only irreversible one: the answers already arrived with names.

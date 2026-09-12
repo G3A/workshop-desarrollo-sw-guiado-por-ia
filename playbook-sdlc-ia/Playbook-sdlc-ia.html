@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Playbook del plugin sdlc-ia · cobertura del método, caja por caja</title>
+<link rel="stylesheet" href="vendor/fonts.css">
+<style>
+  :root{
+    --bg:#06090E; --ink:#F6F2EA; --muted:#AEB8C6;
+    --amber:#FFB12B; --amber-soft:#FFD587; --teal:#34E0CC; --good:#5FD37A; --danger:#FF6B57;
+    --line:rgba(255,255,255,.16);
+    /* los cinco badges de cobertura */
+    --c-skill:#34E0CC; --c-parcial:#FFB12B; --c-mano:#5B8CFF; --c-hueco:#FF6B57; --c-fuera:#6B7686;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; height:100%; background:var(--bg); color:var(--ink); font-family:'Inter',system-ui,sans-serif; overflow:hidden; }
+  body{
+    background:
+      radial-gradient(1300px 800px at 88% -12%, rgba(52,224,204,.14), transparent 58%),
+      radial-gradient(1000px 700px at -8% 112%, rgba(255,177,43,.10), transparent 55%),
+      linear-gradient(160deg, #080C12 0%, #06090E 60%, #080A10 100%);
+  }
+
+  header{
+    position:fixed; top:0; left:0; right:0; height:74px; z-index:20;
+    display:flex; align-items:center; gap:18px; padding:0 22px;
+    background:rgba(8,12,18,.82); backdrop-filter:blur(8px); border-bottom:1px solid var(--line);
+  }
+  header .brand{ font-size:11px; font-weight:800; letter-spacing:.22em; text-transform:uppercase; color:var(--teal); }
+  header h1{ font-family:'Fraunces',serif; font-weight:600; font-size:21px; margin:2px 0 0; color:#FFFCF6; line-height:1.05; }
+  header p{ margin:1px 0 0; font-size:12px; color:var(--muted); }
+  header .htxt{ flex:1; min-width:0; }
+  .help{ font-size:11px; color:var(--muted); margin-right:6px; text-align:right; line-height:1.4; }
+  .help b{ color:var(--amber-soft); font-weight:600; }
+  .zoom-controls{ display:flex; gap:7px; }
+  .zoom-controls button{ width:34px; height:34px; border-radius:9px; border:1px solid var(--line); background:rgba(14,20,28,.9); color:var(--amber-soft); font-size:17px; font-weight:800; font-family:'Inter',sans-serif; cursor:pointer; line-height:1; display:flex; align-items:center; justify-content:center; }
+  .zoom-controls button:hover{ background:rgba(255,177,43,.2); border-color:rgba(255,177,43,.5); }
+
+  .topbtns{ display:flex; gap:7px; }
+  .lk{ height:34px; padding:0 12px; border-radius:9px; border:1px solid var(--line); background:rgba(14,20,28,.9); color:var(--amber-soft); font-size:12.5px; font-weight:600; font-family:'Inter',sans-serif; cursor:pointer; white-space:nowrap; }
+  .lk:hover{ background:rgba(255,177,43,.2); border-color:rgba(255,177,43,.5); }
+  .lk.active{ background:rgba(255,177,43,.28); color:#fff; border-color:#FFB12B; }
+
+  .canvas{
+    position:fixed; top:74px; left:0; right:0; bottom:0; overflow:auto;
+    cursor:grab; touch-action:none;
+  }
+  .canvas.dragging{ cursor:grabbing; }
+  .canvas.dragging .zoomer{ user-select:none; }
+  .zoomer{ transform-origin:top left; transition:transform .1s ease; padding:34px 40px 80px; width:max-content; min-width:100%; }
+  .mermaid{ line-height:1.25; }
+  .canvas .mermaid g.node.has-link{ cursor:pointer; }
+  .canvas .mermaid g.node.has-link:hover rect,
+  .canvas .mermaid g.node.has-link:hover polygon,
+  .canvas .mermaid g.node.has-link:hover path{ filter:brightness(1.3); }
+  .canvas .mermaid g.node.has-meta{ cursor:help; }
+  .canvas .mermaid g.node.has-meta:hover rect,
+  .canvas .mermaid g.node.has-meta:hover polygon,
+  .canvas .mermaid g.node.has-meta:hover path{ filter:brightness(1.2); }
+  .canvas.edit .mermaid g.node{ cursor:cell; }
+
+  /* tooltip al pasar el mouse */
+  #nodeTip{
+    position:fixed; z-index:50; max-width:340px; pointer-events:none; display:none;
+    background:rgba(12,16,22,.97); border:1px solid var(--line); border-radius:10px;
+    padding:9px 12px; font-size:12.5px; color:var(--ink); line-height:1.4;
+    box-shadow:0 10px 34px rgba(0,0,0,.5);
+  }
+  #nodeTip b{ color:#FFFCF6; }
+  #nodeTip .tip-note{ color:var(--muted); margin-top:3px; }
+  #nodeTip .tip-hint{ color:var(--amber-soft); margin-top:5px; font-size:11px; }
+  #nodeTip .tip-badge{ display:inline-block; font-size:9.5px; font-weight:800; letter-spacing:.09em; text-transform:uppercase; border-radius:999px; padding:1px 8px; margin-bottom:5px; }
+  #nodeTip .tip-badge.skill{ color:#BFFBF2; border:1px solid var(--c-skill); background:rgba(52,224,204,.15); }
+  #nodeTip .tip-badge.parcial{ color:#FFE9C2; border:1px solid var(--c-parcial); background:rgba(255,177,43,.15); }
+  #nodeTip .tip-badge.mano{ color:#DCE7FF; border:1px solid var(--c-mano); background:rgba(91,140,255,.15); }
+  #nodeTip .tip-badge.hueco{ color:#FFD9D2; border:1px solid var(--c-hueco); background:rgba(255,107,87,.15); }
+  #nodeTip .tip-badge.fuera{ color:#CBD2DC; border:1px solid var(--c-fuera); background:rgba(107,118,134,.18); }
+
+  /* modal de edición */
+  .modal{ position:fixed; inset:0; z-index:60; display:flex; align-items:center; justify-content:center; background:rgba(2,4,8,.6); backdrop-filter:blur(3px); }
+  .modal[hidden]{ display:none; }
+  .modal-card{ width:440px; max-width:92vw; background:#0e141c; border:1px solid var(--line); border-radius:16px; padding:20px 22px; box-shadow:0 24px 70px rgba(0,0,0,.6); }
+  .modal-card h3{ margin:0 0 12px; font-family:'Fraunces',serif; font-weight:600; color:#FFFCF6; font-size:19px; }
+  .modal-card label{ display:block; font-size:12px; color:var(--muted); margin:11px 0 0; }
+  .modal-card input, .modal-card textarea{ width:100%; margin-top:4px; background:#0a0e14; border:1px solid var(--line); border-radius:9px; color:var(--ink); padding:9px 11px; font-size:14px; font-family:'Inter',sans-serif; outline:none; resize:vertical; }
+  .modal-card input:focus, .modal-card textarea:focus{ border-color:var(--amber); }
+  .modal-actions{ display:flex; align-items:center; gap:8px; margin-top:18px; }
+  .lk.primary{ background:#FFB12B; color:#0a0e14; border-color:#FFB12B; }
+  .lk.primary:hover{ background:#FFD587; }
+  .lk.danger{ color:#FF9C8C; border-color:rgba(255,107,87,.5); }
+  .lk.danger:hover{ background:rgba(255,107,87,.18); }
+
+  .legendnote{
+    position:fixed; bottom:14px; left:18px; z-index:15; max-width:40%;
+    font-size:11px; color:rgba(246,242,234,.5); pointer-events:none; line-height:1.5;
+  }
+
+  /* evita que el texto de las cajas quede cortado */
+  .mermaid .nodeLabel, .mermaid .edgeLabel, .mermaid span.nodeLabel{ white-space:normal !important; line-height:1.3; }
+  .mermaid foreignObject{ overflow:visible; }
+  .mermaid .label{ overflow:visible; }
+  .mermaid g.node.ref .nodeLabel, .mermaid g.node.human .nodeLabel,
+  .mermaid g.node.ref .nodeLabel *, .mermaid g.node.human .nodeLabel *{
+    text-align:left; text-align-last:left;
+  }
+  .mermaid g.node.ref .nodeLabel b, .mermaid g.node.human .nodeLabel b{ display:block; text-align:center; margin-bottom:3px; }
+
+  /* leyenda */
+  .legend{
+    position:fixed; right:16px; bottom:16px; z-index:16;
+    background:rgba(10,14,20,.92); border:1px solid var(--line); border-radius:12px;
+    padding:11px 13px; font-size:11.5px; color:var(--muted);
+    backdrop-filter:blur(6px); box-shadow:0 8px 30px rgba(0,0,0,.42); max-width:330px;
+  }
+  .legend .lgtitle{ font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:var(--teal); font-size:10px; margin-bottom:7px; }
+  .lgrow{ display:flex; align-items:flex-start; gap:9px; margin:5px 0; line-height:1.35; }
+  .sw{ width:15px; height:15px; border-radius:4px; flex:none; border:1.5px solid; margin-top:1px; }
+  .sw.skill{ background:#0e2a27; border-color:var(--c-skill); }
+  .sw.parcial{ background:#2b2008; border-color:var(--c-parcial); }
+  .sw.mano{ background:#0c1626; border-color:var(--c-mano); }
+  .sw.hueco{ background:#2b100c; border-color:var(--c-hueco); }
+  .sw.fuera{ background:#12161c; border-color:var(--c-fuera); }
+  .sw.dec{ background:#3a2a08; border-color:#FFB12B; border-radius:2px; width:12px; height:12px; transform:rotate(45deg); margin:2px 1px 0; }
+  .legend .lgsep{ margin-top:11px; padding-top:9px; border-top:1px solid var(--line); }
+  .legend b{ color:#FFFCF6; font-weight:600; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="htxt">
+    <span class="brand">Plugin sdlc-ia · Instrumentación Java con IA</span>
+    <h1>Playbook del plugin, sobre el mapa del método</h1>
+    <p>Las mismas 7 fases del método, caja por caja — y en cada una, <strong style="color:#FFFCF6">quién la ejecuta hoy</strong>: una <strong style="color:#34E0CC">skill</strong> del plugin, <strong style="color:#5B8CFF">tú a mano</strong>, o <strong style="color:#FF6B57">nadie todavía</strong>. Mapa del método y backlog de cobertura en el mismo archivo.</p>
+  </div>
+  <div class="help">Pasa el mouse para ver el detalle · clic abre la página<br><b>✎ Editar</b> personaliza · arrastra para mover · <b>Ctrl + rueda</b> zoom</div>
+  <div class="topbtns">
+    <button id="editLinks" class="lk" title="Asignar/editar título, nota y enlace de cada caja">✎ Editar</button>
+    <button id="importLinks" class="lk" title="Cargar configuración desde un .json">⤒ Importar</button>
+    <button id="exportLinks" class="lk" title="Descargar la configuración como .json">⤓ Exportar</button>
+    <input id="importFile" type="file" accept="application/json,.json" hidden />
+  </div>
+  <div class="zoom-controls">
+    <button data-z="out" title="Alejar">−</button>
+    <button data-z="fit" title="Ajustar al ancho">⤢</button>
+    <button data-z="in" title="Acercar">+</button>
+  </div>
+</header>
+
+<div class="canvas" id="canvas">
+  <div class="zoomer" id="zoomer">
+    <pre class="mermaid">
+flowchart TD
+
+%% ============ REFERENCIA TRANSVERSAL ============
+subgraph REF["REFERENCIA · aplica en todo el flujo"]
+  direction LR
+  RS["<b>Las 9 skills de sdlc-ia</b><br/>agent-context-java<br/>instrument-project-java<br/>instrument-agent-java<br/>instrument-github-repo<br/>requirement-to-spec-java<br/>github-plan-build<br/>impact-metrics<br/>debt-triage<br/>legacy-test-harness"]:::ref
+  RB["<b>Los 5 badges de cobertura</b><br/>SKILL · la corre el plugin<br/>PARCIAL · hay skill, no alcanza<br/>A MANO · la haces tú, el repo la enseña<br/>HUECO · nadie la cubre todavía<br/>FUERA · frontera declarada del plugin"]:::ref
+  RD["<b>El eje de la instrumentación</b><br/>Determinista si el disparo Y la decisión<br/>quedan fuera del modelo.<br/>Basta que una dependa del modelo<br/>para que sea no determinista."]:::refeje
+  RV["<b>Las piezas del repositorio</b><br/>instrumentacion-java-ia · el plugin<br/>proceso-operacional-con-ia · el visor paso a paso<br/>manuales · los recorridos ya grabados<br/>base-conocimiento · el repo Java donde se prueba"]:::ref
+  RS ~~~ RB ~~~ RD ~~~ RV
+end
+
+START(["TÚ · empiezas aquí"]):::start --> B0
+B0["Selecciona el repositorio Java/Maven — brownfield<br/>A MANO · visor f0, G1"]:::mano --> IP
+IP["Instala el plugin sdlc-ia en tu máquina<br/>SKILL · update.ps1 o update.sh"]:::skill --> F1
+
+%% ============ FASE 0 · FUNDAMENTOS ============
+subgraph P0["FASE 0 · Fundamentos — el plugin no entra acá"]
+  direction TB
+  F1["Entiende los 3 modos<br/>Vibe Coding · Guiado por IA · Agentic Coding<br/>HUECO"]:::hueco
+  F2["Instala y conecta el agente<br/>A MANO · visor fd1 + manual de instalación"]:::mano
+  F3["Configura permisos y entorno<br/>A MANO · visor fd2"]:::mano
+  F4["Domina lo esencial<br/>@menciones · Plan Mode · checkpoints<br/>A MANO · visor fd2"]:::mano
+  F5["Conoce modelos y ventana de contexto<br/>HUECO"]:::hueco
+  F6["Revisa costos y privacidad<br/>A MANO · playbook Fase 0: las dos mitades, y dónde chocan<br/>lo que la Etapa 4 necesita y nace acá"]:::mano
+  F1-->F2-->F3-->F4-->F5-->F6
+end
+F6 --> C1
+
+%% ============ FASE 1 · CULTURA DE IA ============
+subgraph P1["FASE 1 · Cultura de IA — decisión de equipo, no de herramienta"]
+  direction TB
+  C1["Confirma las 4 prácticas de equipo<br/>que el agente amplifica, no arregla<br/>A MANO · visor f0"]:::mano
+  C2["Da permiso para experimentar y fallar<br/>SKILL · agent-context-java ofrece EXPERIMENTS.md<br/>el permiso es de liderazgo; el acuerdo escrito es el artefacto"]:::skill
+  C3["Acuerda visión compartida y recompensa el nuevo comportamiento<br/>HUECO"]:::hueco
+  C1-->C2-->C3
+end
+C3 --> X1
+
+%% ============ FASE 2 · PREPARACIÓN DEL TERRENO ============
+subgraph P2["FASE 2 · Preparación del terreno — donde el plugin hace casi todo su trabajo"]
+  direction TB
+  subgraph P2A["Contexto"]
+    direction TB
+    X1["Contexto de negocio<br/>business.md · target-user.md<br/>SKILL · agent-context-java"]:::skill
+    X2["Arquitectura y el porqué<br/>architecture.md + ADRs<br/>SKILL · agent-context-java"]:::skill
+    X3["Modelo de datos, infraestructura y Java a fondo<br/>data-model.md · infrastructure.md · java.md<br/>SKILL · agent-context-java"]:::skill
+    X4["Intención visual, si hay UI<br/>design.md, solo si lo pides<br/>PARCIAL · sin design tokens ni COMPONENTS.md"]:::parcial
+    X1-->X2-->X3-->X4
+  end
+  subgraph P2B["Instrumentación determinista · sensores de código y el juez de CI"]
+    direction TB
+    D1["Lint estático<br/>SKILL · Checkstyle + SpotBugs, control 11"]:::skill
+    DF["Formato · Spotless<br/>SKILL · instrument-project-java"]:::skill
+    DB["Build reproducible y estricto<br/>wrapper fijado · BOM · -Werror<br/>SKILL · instrument-project-java"]:::skill
+    DT["Tipos y null-safety<br/>SKILL · Error Prone dentro del control 2"]:::skill
+    DU["Tests unitarios y cobertura<br/>SKILL · JaCoCo, control 10, umbral sobre código nuevo"]:::skill
+    DI["Tests de integración y HTTP<br/>SKILL · separación de suites, control 12"]:::skill
+    DA["Arquitectura e imports · ArchUnit<br/>SKILL · instrument-project-java"]:::skill
+    DM["Migraciones de BD · Flyway<br/>PARCIAL · hay hook que protege la migración, no control que la exija"]:::parcial
+    DS["Seguridad del código<br/>SKILL · gitleaks, OWASP Dep-Check, FindSecBugs y CodeQL"]:::skill
+    DQ["SonarQube · quality gate<br/>SKILL · instrument-project-java, control 13: el gate sobre código nuevo<br/>opt-in, contra un servidor que el equipo ya tenga — nunca lo levanta"]:::skill
+    DCI["Workflow de CI en GitHub Actions<br/>SKILL · instrument-project-java"]:::skill
+    DCJ["El juez · el Ruleset exige el check en verde y la PR aprobada<br/>SKILL · instrument-github-repo"]:::skill
+    DCA["Azure DevOps · Pipelines y Branch Policies<br/>FUERA · el plugin solo escribe GitHub"]:::fuera
+    D1-->DF-->DB-->DT-->DU-->DI-->DA-->DM-->DS-->DQ-->DCI-->DCJ
+    DCI-.->DCA
+  end
+  subgraph P2C["Instrumentación no determinista · guía escrita y capacidades"]
+    direction TB
+    N1["Archivo guía<br/>AGENTS.md, con CLAUDE.md que lo importa<br/>SKILL · agent-context-java"]:::skill
+    N2["Criterios de revisión · REVIEW.md<br/>SKILL · agent-context-java, con plantilla de PR"]:::skill
+    N4["Skills, subagentes y plugins propios<br/>HUECO · el plugin es skills, pero no crea skills"]:::hueco
+    N6["Code review por IA<br/>SKILL · en tu máquina y en el pipeline<br/>claude-code-action, que nunca es check obligatorio"]:::skill
+    N1-->N2-->N4-->N6
+  end
+  subgraph P2D["Hooks y MCP · cada caja dice quién dispara y quién decide"]
+    direction LR
+    subgraph P2D1["Hooks · los seis tipos"]
+      direction TB
+      DH["Hook de Git · lefthook<br/>pre-commit y pre-push<br/>SKILL · instrument-project-java"]:::skill
+      DAH["Hook de comando del agente · type command<br/>los 8 del catálogo<br/>SKILL · instrument-agent-java"]:::skill
+      DHH["Hook HTTP del agente · type http<br/>HUECO"]:::hueco
+      DMH["Hook de herramienta MCP · type mcp_tool<br/>FUERA · derivada: su único caso era la memoria, que ya está fuera"]:::fuera
+      NHP["Hook de prompt · type prompt<br/>HUECO"]:::hueco
+      NHA["Hook de agente · type agent<br/>HUECO"]:::hueco
+      DH-->DAH-->DHH-->DMH-->NHP-->NHA
+    end
+    subgraph P2D2["MCP · una caja por primitiva del protocolo"]
+      direction TB
+      N5T["Herramienta MCP · tools<br/>GitHub · Context7 · DBHub, con versión fijada<br/>SKILL · instrument-agent-java"]:::skill
+      N5R["Recurso MCP · resources<br/>HUECO"]:::hueco
+      N5P["Prompt MCP · prompts<br/>HUECO"]:::hueco
+      N5N["Anotaciones de herramienta<br/>readOnlyHint · destructiveHint<br/>SKILL · instrument-agent-java contrasta lo declarado contra lo expuesto<br/>y reporta contradicciones, nunca las anotaciones"]:::skill
+      DMP["Reglas de permiso sobre la herramienta<br/>deny escrituras · allow lecturas<br/>SKILL · instrument-agent-java, más el hook 9"]:::skill
+      N5T-->N5R-->N5P-->N5N-->DMP
+    end
+  end
+  X4-->D1
+  DCJ-->N1
+  N6-->DH
+  N6-->N5T
+end
+NHA --> G1{"¿Terreno listo?<br/>contexto · sensores · juez · hooks · MCP"}:::dec
+DMP --> G1
+G1 -->|No, falta algo| D1
+G1 -->|Sí| DT0
+
+%% ============ PUENTE · DEUDA Y PRUEBAS PREEXISTENTES ============
+subgraph PB["Antes del primer issue — solo si el repo lo necesita"]
+  direction TB
+  DT0["Triaja la deuda que un analizador ya reportó<br/>SKILL · debt-triage"]:::skill
+  LT0["Haz crecer pruebas reales sobre código en producción<br/>5 capas, costuras al estilo Feathers<br/>SKILL · legacy-test-harness"]:::skill
+  DT0-->LT0
+end
+LT0 --> RQ
+
+%% ============ FASE 3 · CICLO POR FEATURE ============
+subgraph P3["FASE 3 · Ciclo por feature — por cada funcionalidad"]
+  direction TB
+  subgraph P3S["Especificación · Spec-Driven Development"]
+    direction TB
+    RQ["Convierte el requisito de negocio en spec y tareas<br/>antes de que exista el issue<br/>SKILL · requirement-to-spec-java"]:::skill
+    S1["Toma el issue de GitHub del sprint<br/>SKILL · github-plan-build lo lee; el sprint lo armas tú, visor pj"]:::skill
+    S2["Arma el plan y revísalo desde 3 ángulos<br/>SKILL · github-plan-build, paso B a D"]:::skill
+    S3["Aprueba el plan y queda publicado en el issue<br/>A MANO · el checkpoint es tuyo, visor bo2 y G3"]:::mano
+    S4["Tareas verificables, del tamaño de un commit<br/>SKILL · requirement-to-spec-java o github-plan-build"]:::skill
+    RQ-->S1-->S2-->S3-->S4
+  end
+  S4 --> I1
+  subgraph P3I["Implementación"]
+    direction TB
+    I1["Implementa tarea por tarea, con test primero<br/>un commit por paso en verde<br/>SKILL · github-plan-build, paso F"]:::skill
+    I2["Deja correr hooks, linters y tests en local<br/>SKILL · el gate acotado después de cada paso"]:::skill
+    I3["Corre /code-review y /security-review antes de abrir la PR<br/>SKILL · github-plan-build, paso G"]:::skill
+    I1-->I2-->I3
+  end
+  I3 --> UI{"¿La tarea tiene interfaz?"}:::dec
+  UI -->|Sí| V0["Vista previa efímera por PR<br/>A MANO · visor v0"]:::mano
+  V0 --> VW["Verifica en el navegador<br/>SKILL · instrument-agent-java registra un MCP de navegador<br/>solo si el repo tiene interfaz, y pregunta cuál de los dos"]:::skill
+  UI -->|No| VL1
+  VW --> VL1
+  subgraph P3V["Verificación en 4 capas"]
+    direction TB
+    VL1["1 · Local — el agente rompe lo obvio antes de subir<br/>SKILL · github-plan-build"]:::skill
+    VL2["2 · CI, el juez — Actions corre los checks y el Ruleset bloquea<br/>SKILL · github-plan-build vigila hasta verde"]:::skill
+    VL3["3 · Seguridad — revisión, dependencias y SAST<br/>PARCIAL · el SAST ya está; falta el DAST, fuera de alcance"]:::parcial
+    VL4["<b>4 · Revisión humana — checklist</b><br/>• alucinaciones de API<br/>• fidelidad al proyecto<br/>• tests de la spec<br/>• deuda técnica<br/>• trade-offs<br/>• corre el cambio tú mismo<br/>SKILL · REVIEW.md + plantilla de PR"]:::skill
+    VL1-->VL2-->VL3-->VL4
+  end
+  VL4 --> GV{"¿Aprueba la verificación?"}:::dec
+  GV -->|No · hay cambios| I1
+  GV -->|Sí| M1["Merge, con el PR marcado como asistido por IA<br/>trailer Asistido-por-IA en cada commit y en el cuerpo<br/>SKILL · github-plan-build lo escribe; el merge lo corres tú"]:::skill
+  M1 --> MF{"¿Quedan más issues del sprint?"}:::dec
+  MF -->|Sí| S1
+end
+MF -->|No, por ahora| R1
+
+%% ============ FASE 4 · RETROALIMENTACIÓN ============
+subgraph P4["FASE 4 · Retroalimentación · evolución constante"]
+  direction TB
+  R1["Guarda la lección de la vuelta<br/>A MANO · visor c5"]:::mano
+  R2["Enruta cada lección a donde pertenece<br/>regla a AGENTS.md · criterio a REVIEW.md · porqué a un ADR · comprobable a un sensor<br/>lo que aún no es regla, a docs/lecciones.md con fecha<br/>SKILL · github-plan-build, paso K: propone destino y texto; aplicar es tuyo"]:::skill
+  R3["Memoria entre sesiones<br/>FUERA · el plugin declara que no la tiene"]:::fuera
+  R1-->R2-->R3
+end
+R3 --> K1
+
+%% ============ FASE 5 · MÉTRICAS Y REPORTE ============
+subgraph P5["FASE 5 · Métricas y reporte a liderazgo"]
+  direction TB
+  K1["Mide del historial de PRs<br/>SKILL · impact-metrics: 2 métricas de 4<br/>las otras dos, reportadas como faltantes con su motivo"]:::skill
+  K2["Aplica la encuesta cualitativa 1 a 5<br/>SKILL · el cuestionario y el agregado;<br/>la captura, el formulario que el equipo ya tenga"]:::skill
+  K3["Reporta: diagnóstico, métricas comparadas y compromiso<br/>SKILL · genera y abre la PR; enviarlo es tuyo"]:::skill
+  K1-->K2-->K3
+end
+K3 --> GA{"¿Se cumple el criterio de avance<br/>de tu etapa actual?"}:::dec
+
+%% ============ FASE 6 · ADOPCIÓN POR ETAPAS ============
+GA -->|No| AJ["Consolida y ajusta la etapa actual<br/>A MANO · mismo alcance, y volver a medir"]:::mano
+AJ --> S1
+GA -->|Sí, amplía el alcance| ES
+subgraph P6["FASE 6 · Adopción por etapas — el playbook la enseña, ninguna skill la corre"]
+  direction LR
+  E1["<b>Etapa 1 · Piloto individual</b><br/>A MANO · archivo guía y línea base medida"]:::mano --> E2["<b>Etapa 2 · Escuadra de 3 a 5</b><br/>A MANO · acuerdo escrito de marcado"]:::mano --> E3["<b>Etapa 3 · Equipo completo</b><br/>A MANO · un dato presentable a liderazgo"]:::mano --> E4["<b>Etapa 4 · Organización</b><br/>A MANO · política, presupuesto y DORA"]:::mano
+end
+ES([Avanza una etapa]):::goal --> E1
+E4 --> FIN(["La cobertura del plugin evoluciona con el método<br/>cada HUECO de este diagrama es un issue que todavía no existe"]):::goal
+
+%% ============ ESTILOS ============
+classDef start fill:#0e2a27,stroke:#34E0CC,stroke-width:2px,color:#EAFDF9;
+classDef dec fill:#3a2a08,stroke:#FFB12B,stroke-width:2px,color:#FFE9C2;
+classDef goal fill:#3a2a08,stroke:#FFB12B,stroke-width:2.5px,color:#FFF6E6;
+classDef ref fill:#0c1118,stroke:#1f5a54,stroke-width:1px,color:#BFE9E3;
+classDef refeje fill:#0c1118,stroke:#5B8CFF,stroke-width:1.5px,color:#DCE7FF;
+classDef skill fill:#0e2a27,stroke:#34E0CC,stroke-width:1.5px,color:#E7FBF6;
+classDef parcial fill:#2b2008,stroke:#FFB12B,stroke-width:1.5px,color:#FFE9C2;
+classDef mano fill:#0c1626,stroke:#5B8CFF,stroke-width:1.5px,color:#DCE7FF;
+classDef hueco fill:#2b100c,stroke:#FF6B57,stroke-width:1.5px,color:#FFD9D2;
+classDef fuera fill:#12161c,stroke:#6B7686,stroke-width:1.5px,color:#CBD2DC;
+
+style REF fill:#090d13,stroke:#1f5a54,color:#34E0CC
+style P0 fill:#0b0f15,stroke:#3a4250,color:#FFD587
+style P1 fill:#0b0f15,stroke:#3a4250,color:#FFD587
+style P2 fill:#0b0f15,stroke:#1f5a54,color:#34E0CC
+style P2A fill:#0a0e14,stroke:#3a4250,color:#AEB8C6
+style P2B fill:#0a0e14,stroke:#3a4250,color:#AEB8C6
+style P2C fill:#0a0e14,stroke:#3a4250,color:#AEB8C6
+style P2D fill:#0a0e14,stroke:#6b5320,color:#FFD587
+style P2D1 fill:#080c11,stroke:#2c3340,color:#8f9aa8
+style P2D2 fill:#080c11,stroke:#2c3340,color:#8f9aa8
+style PB fill:#0b0f15,stroke:#1f5a54,color:#34E0CC
+style P3 fill:#0b0f15,stroke:#1f5a54,color:#34E0CC
+style P3S fill:#0a0e14,stroke:#3a4250,color:#AEB8C6
+style P3I fill:#0a0e14,stroke:#3a4250,color:#AEB8C6
+style P3V fill:#0a0e14,stroke:#3a4250,color:#AEB8C6
+style P4 fill:#0b0f15,stroke:#3a4250,color:#FFD587
+style P5 fill:#0b0f15,stroke:#6b2018,color:#FF9C8C
+style P6 fill:#0b0f15,stroke:#6b2018,color:#FF9C8C
+    </pre>
+  </div>
+</div>
+
+<div class="legendnote">
+  Cada caja lleva el badge de quién la ejecuta hoy. El diagrama es el mapa del método y, a la vez, el backlog de cobertura del plugin: cada caja roja es trabajo que todavía no tiene issue.
+</div>
+
+<div class="legend">
+  <div class="lgtitle">Quién ejecuta la caja</div>
+  <div class="lgrow"><span class="sw skill"></span><span><b>SKILL</b> · la corre el plugin, con su comando</span></div>
+  <div class="lgrow"><span class="sw parcial"></span><span><b>PARCIAL</b> · hay skill, pero no cubre todo el paso</span></div>
+  <div class="lgrow"><span class="sw mano"></span><span><b>A MANO</b> · la haces tú; el visor o un manual la enseña</span></div>
+  <div class="lgrow"><span class="sw hueco"></span><span><b>HUECO</b> · nadie la cubre en este repositorio</span></div>
+  <div class="lgrow"><span class="sw fuera"></span><span><b>FUERA</b> · frontera declarada del plugin, no un olvido</span></div>
+  <div class="lgtitle lgsep">Forma de la caja</div>
+  <div class="lgrow"><span class="sw dec"></span><span>Decisión · rombo</span></div>
+</div>
+
+<div id="nodeTip"></div>
+
+<div id="linkModal" class="modal" hidden>
+  <div class="modal-card">
+    <h3 id="lmTitle">Configurar caja</h3>
+    <label>Título
+      <input id="lmTitulo" type="text" placeholder="Título corto de la caja" />
+    </label>
+    <label>Nota
+      <textarea id="lmNota" rows="3" placeholder="Qué se hace en este paso / descripción"></textarea>
+    </label>
+    <label>Enlace (URL)
+      <input id="lmUrl" type="text" placeholder="https://…  (proceso o documentación)" />
+    </label>
+    <div class="modal-actions">
+      <button id="lmDelete" class="lk danger">Quitar</button>
+      <span style="flex:1"></span>
+      <button id="lmCancel" class="lk">Cancelar</button>
+      <button id="lmSave" class="lk primary">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script src="vendor/mermaid.min.js"></script>
+<script>
+  mermaid.initialize({
+    startOnLoad:false,
+    theme:'base',
+    securityLevel:'loose',
+    flowchart:{ useMaxWidth:false, htmlLabels:true, curve:'basis', nodeSpacing:34, rankSpacing:46, padding:10, wrappingWidth:380 },
+    themeVariables:{
+      fontFamily:'Inter, sans-serif', fontSize:'14px', background:'transparent',
+      lineColor:'#34E0CC', primaryColor:'#11161d', primaryBorderColor:'#3a4250', primaryTextColor:'#EDEAE3'
+    }
+  });
+
+  var z = 1,
+      zoomer = document.getElementById('zoomer'),
+      canvas = document.getElementById('canvas');
+
+  function apply(){ zoomer.style.transform = 'scale(' + z + ')'; }
+  function clamp(v){ return Math.min(2.5, Math.max(0.2, v)); }
+  function fit(){
+    z = 1; apply();
+    var w = zoomer.scrollWidth, fw = canvas.clientWidth - 8;
+    z = clamp(Math.min(1, fw / w));
+    apply();
+  }
+
+  function render(){ return mermaid.run({ querySelector:'.mermaid' }).then(function(){ fit(); markLinks(); }); }
+  // Renderiza solo cuando la fuente ya cargó, para que las cajas midan bien y el texto no se corte.
+  if(document.fonts && document.fonts.ready){ document.fonts.ready.then(render); } else { render(); }
+
+  document.querySelectorAll('.zoom-controls button').forEach(function(b){
+    b.addEventListener('click', function(){
+      var a = b.getAttribute('data-z');
+      if(a === 'in') { z = clamp(z + 0.15); apply(); }
+      else if(a === 'out') { z = clamp(z - 0.15); apply(); }
+      else fit();
+    });
+  });
+
+  // Ctrl + rueda → zoom centrado en el cursor
+  canvas.addEventListener('wheel', function(e){
+    if(!e.ctrlKey) return;
+    e.preventDefault();
+    var rect = canvas.getBoundingClientRect();
+    var px = e.clientX - rect.left, py = e.clientY - rect.top;
+    var ux = (canvas.scrollLeft + px) / z, uy = (canvas.scrollTop + py) / z;
+    z = clamp(z * (e.deltaY < 0 ? 1.12 : 1/1.12));
+    apply();
+    canvas.scrollLeft = ux * z - px;
+    canvas.scrollTop  = uy * z - py;
+  }, { passive:false });
+
+  // ---- Metadatos por caja: título, badge, nota y enlace ----
+  // Edita este mapa o usa "✎ Editar". Cada caja: { title, badge, note, url } (todos opcionales).
+  var BASE = "Playbook-Fases/";
+  var P = {
+    ref:"00-referencia-e-inicio.html", f0:"01-fundamentos.html", f1:"02-cultura.html",
+    f2:"03-preparacion-del-terreno.html", f3:"04-ciclo-por-feature.html", f4:"05-retroalimentacion.html",
+    f5:"06-metricas-y-reporte.html", f6:"07-adopcion-por-etapas.html"
+  };
+  // L: título + enlace. B: título + badge + nota + enlace (el badge pinta el tooltip).
+  function L(t, page, id){ return { title:t, url:BASE + page + "#" + id }; }
+  function B(t, badge, n, page, id){ return { title:t, badge:badge, note:n, url:BASE + page + "#" + id }; }
+  var LINKS = {
+    // Inicio y referencia
+    START:L("Empiezas aquí",P.ref,"START"),
+    B0:B("Selecciona el repositorio","mano","Brownfield, Java con Maven. El visor lo chequea en sus nodos f0 y G1 antes de dejarte seguir.",P.ref,"B0"),
+    IP:B("Instala el plugin","skill","update.ps1 en PowerShell 5.1 o 7, update.sh en bash. Desinstala e instala, porque claude plugin install nunca refresca un plugin ya instalado.",P.ref,"IP"),
+    RS:L("Las 8 skills",P.ref,"RS"), RB:L("Los 5 badges",P.ref,"RB"),
+    RD:B("El eje de la instrumentación","","Determinista solo si el disparo Y la decisión quedan fuera del modelo. Basta que una dependa del modelo para que sea no determinista.",P.ref,"RD"),
+    RV:L("Las piezas del repositorio",P.ref,"RV"),
+    // Fase 0
+    F1:B("Los 3 modos","hueco","Ni el plugin ni el visor lo cubren: es material de la sesión 1 del taller.",P.f0,"F1"),
+    F2:B("Instala y conecta el agente","mano","Visor fd1 y manuales/manual-sandbox-instalacion-completa, que lo recorre entero con capturas.",P.f0,"F2"),
+    F3:B("Configura permisos y entorno","mano","Visor fd2: la mayoría de la fricción con un agente no es del agente, es de cómo quedó configurado.",P.f0,"F3"),
+    F4:B("Lo esencial de Claude Code","mano","Visor fd2. @menciones, Plan Mode, permisos y checkpoints.",P.f0,"F4"),
+    F5:B("Modelos y ventana de contexto","hueco","No está en ninguna pieza del repositorio.",P.f0,"F5"),
+    F6:B("Costos y privacidad","mano","Las dos mitades: qué cuesta una corrida y qué pasa con tu código. La respuesta de privacidad depende de con qué cuenta iniciaste sesión, no de qué herramienta usas. Y prender la telemetría de costo cambia la respuesta de privacidad.",P.f0,"F6"),
+    // Fase 1
+    C1:B("Las 4 prácticas de equipo","mano","Visor f0. Un agente no arregla un equipo sin estas prácticas: las amplifica. Si falta alguna, la conversación es con tu equipo.",P.f1,"C1"),
+    C2:B("Permiso para experimentar","skill","El permiso es de liderazgo; lo que la skill cubre es el acuerdo escrito que resulta de darlo, porque sin nada escrito dura hasta la primera PR que salió mal. La skill da la forma y no la contesta: los pendientes son la salida correcta. La cláusula que lo vuelve real es que el marcador Asistido-por-IA se queda.",P.f1,"C2"),
+    C3:B("Visión compartida","hueco","Decisión de equipo. Ninguna herramienta la puede instalar.",P.f1,"C3"),
+    // Fase 2 · contexto
+    X1:B("Contexto de negocio","skill","agent-context-java genera business.md, y target-user.md si lo pides.",P.f2,"X1"),
+    X2:B("Arquitectura y ADRs","skill","architecture.md más una a tres ADR semilla, que solo documentan decisiones ya tomadas.",P.f2,"X2"),
+    X3:B("Datos, infraestructura y Java","skill","data-model.md, infrastructure.md y java.md: módulos Maven, JDK, persistencia, perfiles, Modulith.",P.f2,"X3"),
+    X4:B("Intención visual","parcial","design.md existe como plantilla opcional, pero nadie genera design tokens ni COMPONENTS.md.",P.f2,"X4"),
+    // Fase 2 · deterministas
+    D1:B("Lint estático","skill","Checkstyle en modo estricto, y SpotBugs como control 11 — opt-in, porque sobre un brownfield arranca en rojo. PMD queda fuera a propósito: dos analizadores nuevos gritando a la vez terminan los dos apagados.",P.f2,"D1"),
+    DF:B("Formato","skill","Spotless con google-java-format o palantir-java-format, más .editorconfig.",P.f2,"DF"),
+    DB:B("Build reproducible y estricto","skill","Maven Wrapper fijado, versiones por BOM y -Xlint:all -Werror.",P.f2,"DB"),
+    DT:B("Tipos y null-safety","skill","Error Prone dentro del control 2, con el conjunto ERROR únicamente: está afinado para no dar falsos positivos, así que arranca en verde. Los warnings quedan visibles sin romper el build.",P.f2,"DT"),
+    DU:B("Tests y cobertura","skill","JaCoCo como control 10, con la regla acotada al código nuevo y fallando solo en CI. Un umbral sobre todo el repo nace en rojo y se baja hasta que deja de significar algo.",P.f2,"DU"),
+    DI:B("Tests de integración","skill","Control 12: Failsafe separa las suites y make check corre las rápidas mientras make ci corre las lentas. Solo la separación — elegir framework de pruebas por el equipo sería más invasivo que todo lo demás que hace la skill.",P.f2,"DI"),
+    DA:B("Arquitectura e imports","skill","ArchUnit y verificación de Spring Modulith. Si el repo ya las tiene, la skill las lee y confirma en vez de reinstalarlas.",P.f2,"DA"),
+    DM:B("Migraciones de BD","parcial","El hook 7 impide editar una migración ya aplicada. Instalar Flyway como control del build no lo hace ninguna skill.",P.f2,"DM"),
+    DS:B("Seguridad del código","skill","Las tres capas: gitleaks para secretos, OWASP Dependency-Check para CVEs de terceros, y FindSecBugs más CodeQL para el código propio. Los dos últimos van juntos porque se cubren mutuamente: FindSecBugs es local y portable pero envejece, y a CodeQL lo mantiene GitHub al día.",P.f2,"DS"),
+    DQ:B("SonarQube","skill","Control 13, opt-in: el scanner de Maven con sonar.qualitygate.wait, que es la bandera que lo vuelve gate y no tablero. Necesita un servidor que el equipo ya tenga; la skill nunca levanta uno. Es el productor que le faltaba a debt-triage.",P.f2,"DQ"),
+    DCI:B("Workflow de CI","skill","instrument-project-java escribe .github/workflows/ci.yml. Es la única plataforma de CI que el plugin escribe.",P.f2,"DCI"),
+    DCJ:B("El juez","skill","Lo escribe instrument-github-repo, la octava skill. Nunca sobrescribe un Ruleset existente: lo compara campo por campo y reporta las diferencias. Y lo prueba bloqueando una PR desechable, porque un 201 de la API no significa que el juez funcione.",P.f2,"DCJ"),
+    DCA:B("Azure DevOps","fuera","Frontera declarada en el README del plugin: escribe GitHub Actions y GitHub Issues; otra plataforma se reporta fuera de alcance, no se adapta a mano.",P.f2,"DCA"),
+    // Fase 2 · no deterministas
+    N1:B("Archivo guía","skill","AGENTS.md como índice de menos de 80 líneas, y CLAUDE.md como una sola línea que lo importa.",P.f2,"N1"),
+    N2:B("REVIEW.md","skill","Lo genera agent-context-java junto al archivo guía, con una plantilla de PR que enlaza a él. Sigue siendo un archivo distinto de AGENTS.md a propósito: el revisor de PRs en la nube carga REVIEW.md y la revisión local carga el archivo guía.",P.f2,"N2"),
+    N4:B("Skills y subagentes propios","hueco","El plugin es un conjunto de skills, pero ninguna de ellas crea skills ni subagentes en el repo del usuario.",P.f2,"N4"),
+    N6:B("Code review por IA","skill","En tu máquina la corre github-plan-build antes de abrir la PR; en el pipeline la instala instrument-project-java como un job más. Nunca se exige como check obligatorio: un revisor no determinista con veto bloquea PRs correctas, y el equipo aprende a pedir bypass.",P.f2,"N6"),
+    // Fase 2 · hooks
+    DH:B("Hook de Git · lefthook","skill","Determinista. Dispara Git en el evento; decide el script. Corre aunque el agente no esté abierto. Lo escribe instrument-project-java.",P.f2,"DH"),
+    DAH:B("Hook de comando del agente","skill","Determinista. Dispara el ciclo del agente en un punto fijo; decide un script de shell. Son los 8 del catálogo de instrument-agent-java.",P.f2,"DAH"),
+    DHH:B("Hook HTTP","hueco","Determinista, misma garantía que el de comando con el trabajo hecho fuera de la máquina. El catálogo no lo incluye.",P.f2,"DHH"),
+    DMH:B("Hook de herramienta MCP","fuera","Determinista, y es la excepción que rompe la intuición: un MCP que NO elige el modelo, porque lo llama el hook en un punto fijo. Frontera derivada: su único caso de uso aquí era inyectar memoria al arrancar, y esa memoria ya está fuera de alcance.",P.f2,"DMH"),
+    NHP:B("Hook de prompt","hueco","No determinista: el disparo es fijo, pero la decisión sale de un modelo en una vuelta. El catálogo no lo incluye.",P.f2,"NHP"),
+    NHA:B("Hook de agente","hueco","No determinista, con más alcance que el de prompt: un subagente lee archivos y corre comandos antes de decidir. El catálogo no lo incluye.",P.f2,"NHA"),
+    // Fase 2 · MCP
+    N5T:B("Herramienta MCP · tools","skill","No determinista: el modelo decide cuándo llamarla. instrument-agent-java registra GitHub, Context7 y DBHub, siempre con la versión fijada y la credencial por variable de entorno.",P.f2,"N5T"),
+    N5R:B("Recurso MCP · resources","hueco","No determinista. Entra por tu decisión, pero su efecto depende de cómo lo lea el modelo. Ninguna skill lo configura.",P.f2,"N5R"),
+    N5P:B("Prompt MCP · prompts","hueco","No determinista. Tú lo lanzas con /mcp__servidor__prompt, pero es una plantilla que el modelo sigue. Ninguna skill lo configura.",P.f2,"N5P"),
+    N5N:B("Anotaciones de herramienta","skill","Pistas para la interfaz, no garantías: las declara el mismo servidor que querrías vigilar. La skill no las cree, las contrasta contra la lista de herramientas y reporta contradicciones. Sin anotaciones no es «seguro»: por defecto se lee como potencialmente destructiva y de mundo abierto.",P.f2,"N5N"),
+    DMP:B("Reglas de permiso sobre MCP","skill","Lo único determinista del grupo MCP, y ahora sí lo escribe instrument-agent-java: reglas que niegan escrituras y permiten lecturas, más el hook 9 que mira los argumentos que un nombre de herramienta no puede expresar. Para eso hubo que levantar una regla dura que la skill se puso a sí misma.",P.f2,"DMP"),
+    G1:L("¿Terreno listo?",P.f2,"G1"),
+    // Puente
+    DT0:B("Triaje de deuda","skill","debt-triage lee el código de cada hallazgo abierto y le pone veredicto: real, falso positivo o riesgo aceptado. Nunca instala un sensor nuevo ni aplica un auto-fix a ciegas.",P.f2,"DT0"),
+    LT0:B("Arnés de pruebas legacy","skill","legacy-test-harness mapea costuras al estilo Feathers y hace crecer pruebas reales en 5 capas. Nunca edita código de producción.",P.f2,"LT0"),
+    // Fase 3
+    RQ:B("Requisito a spec","skill","requirement-to-spec-java corre antes de que exista el issue. Nunca escribe código, nunca abre PR, nunca toca git.",P.f3,"RQ"),
+    S1:B("Toma el issue","skill","github-plan-build lee el issue y su discusión con gh. Armar el sprint con milestones es tuyo, visor pj.",P.f3,"S1"),
+    S2:B("Plan y revisión adversarial","skill","Pasos B a D: explorar, redactar el plan con una prueba que falla como primer paso, y revisarlo desde convenciones, corrección y alcance.",P.f3,"S2"),
+    S3:B("Aprueba el plan","mano","El checkpoint es condicional: solo pausa si el cambio es grande o toca un contrato. Aprobarlo sigue siendo decisión tuya, visor bo2 y G3.",P.f3,"S3"),
+    S4:B("Tareas verificables","skill","Cada tarea del tamaño de un commit. Si es más grande, se desglosa ahí, no después.",P.f3,"S4"),
+    I1:B("Implementa con test primero","skill","Paso F: un commit por paso en verde, con Refs al issue; el último lleva el token de cierre.",P.f3,"I1"),
+    I2:B("Gates locales","skill","El gate acotado después de cada paso, y los gates completos del repositorio antes de abrir la PR.",P.f3,"I2"),
+    I3:B("Revisión del agente","skill","/code-review siempre, /security-review si el cambio toca autenticación o entradas externas.",P.f3,"I3"),
+    UI:L("¿Tiene interfaz?",P.f3,"UI"),
+    V0:B("Vista previa por PR","mano","Visor v0. El mecanismo depende del stack: la idea es que cada PR con cambios visuales tenga su URL descartable.",P.f3,"V0"),
+    VW:B("Verifica en el navegador","skill","instrument-agent-java ofrece un MCP de navegador, solo si el repositorio tiene interfaz, y pregunta cuál: Playwright MCP para «¿funciona y se ve bien?», Chrome DevTools MCP para «¿por qué va lento?». El fabricante dice que sus propias listas de orígenes no son una frontera de seguridad: eso lo hacen los permisos.",P.f3,"VW"),
+    VL1:B("1 · Local","skill","El agente rompe lo obvio antes de subir.",P.f3,"VL1"),
+    VL2:B("2 · CI, el juez","skill","github-plan-build vigila la corrida hasta que quede verde y atiende los comentarios uno por uno.",P.f3,"VL2"),
+    VL3:B("3 · Seguridad","parcial","Ya están las tres capas de análisis estático: la revisión por modelo, las dependencias con OWASP Dep-Check, y el código propio con FindSecBugs y CodeQL. Lo que sigue faltando es el DAST, y quedó fuera de alcance a propósito: depende de una vista previa efímera que el plugin no puede garantizar.",P.f3,"VL3"),
+    VL4:B("4 · Revisión humana","skill","Las seis categorías son del método; los quince ítems concretos los redacta la plantilla de agent-context-java, y lo dice como tal en vez de atribuirlos a una fuente. Viven en REVIEW.md, y la plantilla de PR trae las seis como casillas — nunca como check de CI, porque exigirlas convierte el juicio en trámite.",P.f3,"VL4"),
+    GV:L("¿Aprueba la verificación?",P.f3,"GV"),
+    M1:B("Merge y marcado","skill","El trailer Asistido-por-IA va en cada commit y en el cuerpo de la PR, así el texto sobrevive al squash. Su condición de trailer no: GitHub reescribe el mensaje al mergear, así que se lee con --grep anclado y no con el lector de trailers de git. El merge lo corres tú.",P.f3,"M1"),
+    MF:L("¿Más issues?",P.f3,"MF"),
+    // Fase 4
+    R1:B("Guarda la lección","mano","Visor c5: sin este paso, cada vuelta del ciclo aprende lo mismo que la anterior.",P.f4,"R1"),
+    R2:B("Enruta la lección","skill","Paso K de github-plan-build, al cerrar la vuelta. Regla a AGENTS.md, criterio a REVIEW.md, porqué a un ADR, comprobable a un sensor, y lo que aún no es regla a docs/lecciones.md con fecha. Propone destino y texto; aplicarlo es tuyo.",P.f4,"R2"),
+    R3:B("Memoria entre sesiones","fuera","El README del plugin lo declara: lo único que un ciclo nuevo recuerda del anterior es lo que quedó escrito en AGENTS.md.",P.f4,"R3"),
+    // Fase 5
+    K1:B("Las 4 métricas","skill","impact-metrics entrega dos de las cuatro, no por dificultad sino por certeza de la definición: un primer reporte con un número discutible desacredita los otros tres. Las otras dos se reportan como faltantes con su motivo, nunca se omiten.",P.f5,"K1"),
+    K2:B("Encuesta cualitativa","skill","El plugin posee el cuestionario, el requisito de anonimato y el formato de agregación; la captura es del formulario que el equipo ya tenga. Solo se versiona el agregado: quitar el nombre de una fila por persona no da anonimato con un equipo chico.",P.f5,"K2"),
+    K3:B("Reporte a liderazgo","skill","Se deriva del agregado, con cada cifra citando de dónde salió. La skill lo escribe y abre la PR, y ahí se detiene: enviarlo es de una persona, como todo lo que este paquete deja fuera.",P.f5,"K3"),
+    GA:L("¿Criterio de avance?",P.f5,"GA"),
+    // Fase 6
+    AJ:B("Consolida y ajusta","mano","La salida que más se ignora del rombo. Escalar sobre una etapa que no cerró multiplica el problema por el número de personas nuevas, y justo cuando es más caro diagnosticarlo.",P.f6,"AJ"),
+    ES:L("Avanza una etapa",P.f6,"ES"),
+    E1:B("Etapa 1 · Piloto individual","mano","Criterio: archivo guía mínimo viable y la línea base medida. La línea base es el criterio que no se puede corregir hacia atrás — mídela antes de sumar a la segunda persona.",P.f6,"E1"),
+    E2:B("Etapa 2 · Escuadra","mano","Criterio: revisión asistida activa, acuerdo escrito de marcado de PRs, y que el retrabajo no haya subido. El marcado ya está resuelto técnicamente; lo que pide el criterio es el acuerdo.",P.f6,"E2"),
+    E3:B("Etapa 3 · Equipo completo","mano","Criterio: el retrabajo no subió tras la expansión y hay un dato cuantitativo presentable a liderazgo. Era el criterio bloqueado hasta que existió impact-metrics.",P.f6,"E3"),
+    E4:B("Etapa 4 · Organización","mano","Política interna, presupuesto, costo de tokens y métricas DORA. No hay etapa siguiente. Lo que pide nace en la caja F6 de la Fase 0: la última fase depende de algo de la primera.",P.f6,"E4"),
+    FIN:L("La cobertura evoluciona",P.f6,"FIN")
+  };
+
+  var LS_KEY = "playbook-sdlc-ia-links-v1";
+  function normalize(v){ return (typeof v === 'string') ? { url:v } : (v || {}); }
+  function loadSaved(){ try { return JSON.parse(localStorage.getItem(LS_KEY) || "{}"); } catch(_){ return {}; } }
+  var entries = {};
+  (function(){
+    var base = Object.assign({}, LINKS, loadSaved());   // localStorage sobrescribe lo del archivo
+    Object.keys(base).forEach(function(k){ entries[k] = normalize(base[k]); });
+  })();
+  function saveLinks(){ try { localStorage.setItem(LS_KEY, JSON.stringify(entries)); } catch(_){} }
+  function hasMeta(e){ return !!(e && (e.title || e.note || e.url)); }
+  function escapeHtml(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  var BADGE_LABEL = { skill:'Skill', parcial:'Parcial', mano:'A mano', hueco:'Hueco', fuera:'Fuera de alcance' };
+  var editMode = false;
+
+  function nodeIdOf(g){
+    var raw = (g.getAttribute && g.getAttribute('id')) || g.id || '';
+    // ids reales: "mermaid-<ts>-flowchart-<ID>-<n>"  ó  "flowchart-<ID>-<n>"
+    var m = raw.match(/flowchart-(.+?)-\d+$/);
+    return m ? m[1] : null;
+  }
+  function markLinks(){
+    document.querySelectorAll('.mermaid g.node').forEach(function(g){
+      var id = nodeIdOf(g); if(!id) return;
+      var e = entries[id];
+      g.classList.toggle('has-link', !!(e && e.url));
+      g.classList.toggle('has-meta', hasMeta(e) && !(e && e.url));
+    });
+    canvas.classList.toggle('edit', editMode);
+  }
+
+  // ----- Tooltip -----
+  var tip = document.getElementById('nodeTip');
+  function showTip(e, id){
+    var en = entries[id];
+    if(!hasMeta(en)){ hideTip(); return; }
+    var html = '';
+    if(en.badge && BADGE_LABEL[en.badge]) html += '<div class="tip-badge ' + en.badge + '">' + BADGE_LABEL[en.badge] + '</div>';
+    if(en.title) html += '<b>' + escapeHtml(en.title) + '</b>';
+    if(en.note)  html += '<div class="tip-note">' + escapeHtml(en.note) + '</div>';
+    if(editMode) html += '<div class="tip-hint">✎ clic para editar</div>';
+    else if(en.url) html += '<div class="tip-hint">↗ clic para abrir</div>';
+    tip.innerHTML = html;
+    tip.style.display = 'block';
+    var x = e.clientX + 14, y = e.clientY + 16, r = tip.getBoundingClientRect();
+    if(x + r.width  > window.innerWidth  - 8) x = e.clientX - r.width  - 14;
+    if(y + r.height > window.innerHeight - 8) y = e.clientY - r.height - 16;
+    tip.style.left = x + 'px'; tip.style.top = y + 'px';
+  }
+  function hideTip(){ tip.style.display = 'none'; }
+
+  // ----- Modal de edición -----
+  var modal = document.getElementById('linkModal'),
+      fTitulo = document.getElementById('lmTitulo'),
+      fNota = document.getElementById('lmNota'),
+      fUrl = document.getElementById('lmUrl'),
+      lmTitle = document.getElementById('lmTitle'),
+      editingId = null;
+  function openModal(id){
+    editingId = id; var e = entries[id] || {};
+    lmTitle.textContent = 'Caja "' + id + '"';
+    fTitulo.value = e.title || ''; fNota.value = e.note || ''; fUrl.value = e.url || '';
+    modal.hidden = false; fTitulo.focus();
+  }
+  function closeModal(){ modal.hidden = true; editingId = null; }
+  document.getElementById('lmSave').addEventListener('click', function(){
+    if(!editingId) return;
+    var prev = entries[editingId] || {};
+    var e = { title:fTitulo.value.trim(), note:fNota.value.trim(), url:fUrl.value.trim() };
+    if(!e.title) delete e.title; if(!e.note) delete e.note; if(!e.url) delete e.url;
+    if(prev.badge) e.badge = prev.badge;   // el badge lo fija el archivo, no el modal
+    if(Object.keys(e).length) entries[editingId] = e; else delete entries[editingId];
+    saveLinks(); markLinks(); closeModal();
+  });
+  document.getElementById('lmDelete').addEventListener('click', function(){
+    if(editingId){ delete entries[editingId]; saveLinks(); markLinks(); }
+    closeModal();
+  });
+  document.getElementById('lmCancel').addEventListener('click', closeModal);
+  modal.addEventListener('click', function(e){ if(e.target === modal) closeModal(); });
+
+  function openUrl(url){
+    var w = null;
+    try { w = window.open(url, '_blank'); } catch(_){}
+    if(!w){ window.location.href = url; }   // si el navegador bloquea la pestaña nueva, redirige en la misma
+  }
+  function openNode(id){
+    if(editMode){ openModal(id); return; }
+    var e = entries[id];
+    if(e && e.url) openUrl(e.url);
+  }
+
+  var bEdit = document.getElementById('editLinks');
+  var bExport = document.getElementById('exportLinks');
+  if(bEdit) bEdit.addEventListener('click', function(){ editMode = !editMode; bEdit.classList.toggle('active', editMode); hideTip(); markLinks(); });
+  if(bExport) bExport.addEventListener('click', function(){
+    var json = JSON.stringify(entries, null, 2);
+    if(navigator.clipboard) navigator.clipboard.writeText(json).catch(function(){});
+    var blob = new Blob([json], { type:'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = 'playbook-sdlc-ia-enlaces.json';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+  });
+
+  var bImport = document.getElementById('importLinks');
+  var fImport = document.getElementById('importFile');
+  if(bImport && fImport){
+    bImport.addEventListener('click', function(){ fImport.click(); });
+    fImport.addEventListener('change', function(){
+      var f = fImport.files && fImport.files[0]; if(!f) return;
+      var rd = new FileReader();
+      rd.onload = function(){
+        try{
+          var obj = JSON.parse(rd.result);
+          Object.keys(obj).forEach(function(k){ entries[k] = normalize(obj[k]); });
+          saveLinks(); markLinks();
+          alert('Configuración importada: ' + Object.keys(obj).length + ' cajas.');
+        }catch(err){ alert('No se pudo leer el JSON: ' + err.message); }
+        fImport.value = '';
+      };
+      rd.readAsText(f);
+    });
+  }
+
+  // ---- Pan (arrastre) + clic para abrir + tooltip ----
+  var down=false, moved=false, sx=0, sy=0, sl=0, st=0;
+  canvas.addEventListener('pointerdown', function(e){
+    if(e.target.closest('.zoom-controls') || e.target.closest('.topbtns')) return;
+    down=true; moved=false; hideTip(); canvas.classList.add('dragging');
+    sx=e.clientX; sy=e.clientY; sl=canvas.scrollLeft; st=canvas.scrollTop;
+    try{ canvas.setPointerCapture(e.pointerId); }catch(_){}
+  });
+  canvas.addEventListener('pointermove', function(e){
+    if(down){
+      if(Math.abs(e.clientX - sx) + Math.abs(e.clientY - sy) > 5) moved = true;
+      canvas.scrollLeft = sl - (e.clientX - sx);
+      canvas.scrollTop  = st - (e.clientY - sy);
+      return;
+    }
+    var el = document.elementFromPoint(e.clientX, e.clientY);
+    var g = el && el.closest('g.node');
+    var id = g && nodeIdOf(g);
+    if(id && hasMeta(entries[id])) showTip(e, id); else hideTip();
+  });
+  canvas.addEventListener('pointerup', function(e){
+    var wasDrag = moved; down=false; canvas.classList.remove('dragging');
+    if(wasDrag) return;                       // fue arrastre, no clic
+    var el = document.elementFromPoint(e.clientX, e.clientY);
+    var g = el && el.closest('g.node');
+    var id = g && nodeIdOf(g);
+    if(id) openNode(id);
+  });
+  canvas.addEventListener('pointercancel', function(){ down=false; canvas.classList.remove('dragging'); });
+  canvas.addEventListener('pointerleave', hideTip);
+  window.addEventListener('resize', fit);
+</script>
+</body>
+</html>

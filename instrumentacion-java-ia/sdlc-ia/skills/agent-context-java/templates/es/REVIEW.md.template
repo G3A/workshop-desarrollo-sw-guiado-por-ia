@@ -1,0 +1,93 @@
+<!--
+PLANTILLA — REVIEW.md · criterios de revisión de un diff escrito por un modelo
+
+QUÉ ES ESTE ARCHIVO Y POR QUÉ NO ES AGENTS.md
+  AGENTS.md son las reglas que el agente debe respetar AL GENERAR código.
+  REVIEW.md son los criterios de QUÉ MIRAR en un diff ya escrito.
+  Se separan a propósito: el servicio de revisión de PRs en la nube carga REVIEW.md,
+  y el /code-review local carga el archivo guía. Un criterio que deba valer en los dos
+  sitios va en AGENTS.md; uno que solo aplica al revisar, aquí.
+
+DE DÓNDE SALEN LOS ÍTEMS
+  Las SEIS CATEGORÍAS son del método (capa 4 de la verificación): alucinaciones de API,
+  fidelidad al proyecto, tests de la spec, deuda técnica, trade-offs y correr el cambio.
+  Los QUINCE ÍTEMS concretos de abajo son la forma accionable que les damos aquí, no una
+  cita literal de ninguna fuente. Cámbialos cuando tu equipo aprenda algo nuevo.
+
+QUÉ HACE LA SKILL AL GENERARLO
+  - Sustituye <PROYECTO>, <COMANDO-DE-ARRANQUE> y <RAMA-DE-INTEGRACIÓN> con datos reales.
+  - Añade los ítems específicos que el descubrimiento justifique (por ejemplo, un ítem de
+    migraciones solo si el repo tiene Flyway o Liquibase), marcándolos como añadidos.
+  - En modo aumentar NO reescribe un REVIEW.md existente: rellena huecos y anexa.
+  - Borra este encabezado antes de escribir el archivo destino.
+-->
+
+# REVIEW.md — qué mirar en un diff de <PROYECTO>
+
+Estos criterios se aplican a **todo diff**, lo haya escrito una persona o un modelo. Pesan más
+cuando lo escribió un modelo, porque el código sale plausible incluso cuando está mal.
+
+Lo que una máquina puede comprobar **no está aquí**: eso son sensores (linters, pruebas, hooks,
+CI). Si un ítem de esta lista se puede automatizar, súbelo a un sensor y bórralo de aquí. Esta
+lista es solo para lo que exige criterio.
+
+## 1 · Alucinaciones de API
+
+- [ ] **Cada método, firma y constante que aparece existe de verdad** en la versión de la
+      dependencia que el `pom.xml` fija — no en una versión posterior, ni en otra librería que se
+      llama parecido.
+- [ ] **Las opciones de configuración existen y hacen lo que el diff supone.** Una propiedad
+      inventada no falla: se ignora en silencio, y el comportamiento por defecto se lleva la culpa
+      meses después.
+- [ ] **Ninguna dependencia nueva entró sin justificación.** Si el diff agrega una, la PR dice por
+      qué no bastaba lo que ya había.
+
+## 2 · Fidelidad al proyecto
+
+- [ ] **Resuelve como este repositorio resuelve**, no como resuelve internet. Mismo patrón de
+      capas, mismos nombres, misma forma de manejar errores que el código de al lado.
+- [ ] **No introduce una segunda manera de hacer algo que ya se hacía de una.** Dos formas de leer
+      configuración, dos de construir respuestas HTTP, dos de mapear entidades: cada una duplica
+      el coste de todo cambio futuro.
+- [ ] **Respeta los límites de módulo** que las pruebas de arquitectura protegen — y si los
+      cambia, lo hace explícito en la PR en vez de aflojar la regla.
+
+## 3 · Tests de la spec
+
+- [ ] **Las pruebas verifican el requisito, no lo que el código hace.** Una prueba escrita mirando
+      la implementación pasa siempre y no protege de nada.
+- [ ] **Cada criterio de aceptación del issue tiene una prueba que lo cubre.** Si alguno no la
+      tiene, la PR dice cuál y por qué.
+- [ ] **Hay al menos un caso borde y un caso de error**, no solo el camino feliz.
+- [ ] **Las pruebas fallan si se revierte el cambio.** Es la comprobación que separa una prueba de
+      un andamio; si nadie la hizo, hazla tú en local antes de aprobar.
+
+## 4 · Deuda técnica
+
+- [ ] **Qué quedó peor para que esto quedara listo.** Siempre hay algo; si la PR no lo nombra,
+      pregúntalo.
+- [ ] **Ningún `TODO`, supresión ni excepción nueva sin un motivo escrito al lado.** Una excepción
+      sin comentario es deuda invisible.
+
+## 5 · Trade-offs
+
+- [ ] **Qué se decidió sin decirlo.** Una decisión de diseño que no aparece en la PR ni en un ADR
+      es una decisión que nadie podrá revisar cuando duela.
+- [ ] **La alternativa descartada está nombrada.** No hace falta un ensayo: una frase de por qué
+      no se hizo de la otra forma.
+
+## 6 · Corre el cambio tú mismo
+
+- [ ] **Levántalo y úsalo** (`<COMANDO-DE-ARRANQUE>`). Es el ítem que más se salta y el que más
+      atrapa: CI en verde solo dice que las pruebas que existen pasan.
+
+---
+
+## Cómo evoluciona esta lista
+
+Si en una revisión dices algo a mano por **tercera vez**, no es un problema de disciplina de quien
+escribe: es un criterio que falta aquí. Añádelo.
+
+Y al revés: si un ítem de esta lista se puede comprobar con una máquina, deja de ser texto y se
+vuelve sensor — una prueba, una regla de linter o un hook. Un criterio automatizable que sigue
+siendo texto es trabajo manual que alguien repite en cada PR.

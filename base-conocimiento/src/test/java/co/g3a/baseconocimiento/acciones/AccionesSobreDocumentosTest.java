@@ -76,7 +76,7 @@ class AccionesSobreDocumentosTest {
     verify(redactor, never()).condensar(any(), any(), anyInt());
     // Los duplicados se quitan antes de ir a la base.
     verify(repo).seccionesDe(List.of(10L, 20L), "default");
-    assertThat(cupo.intentarTomar()).as("el cupo volvio al terminar").isTrue();
+    EsperaDeCupo.vuelveYSeToma(cupo, "el cupo volvio al terminar");
   }
 
   @Test
@@ -136,7 +136,7 @@ class AccionesSobreDocumentosTest {
         .contains("notas de lectura")
         .contains("n\n\nn")
         .doesNotContain("bbbbb");
-    assertThat(cupo.intentarTomar()).as("el cupo volvio al terminar").isTrue();
+    EsperaDeCupo.vuelveYSeToma(cupo, "el cupo volvio al terminar");
   }
 
   @Test
@@ -181,7 +181,7 @@ class AccionesSobreDocumentosTest {
 
     acciones.ejecutar(Tipo.RESUMIR, List.of(10L), PROYECTO, "es").eventos().take(2).blockLast();
 
-    assertThat(cupo.intentarTomar()).as("el cupo volvio al cancelar").isTrue();
+    EsperaDeCupo.vuelveYSeToma(cupo, "el cupo volvio al cancelar");
     // El bucle corre en su propio hilo: la cancelacion se nota al ir a emitir la pasada
     // siguiente, asi que puede haber hecho una llamada mas, nunca las cinco.
     Thread.sleep(200);
@@ -244,13 +244,16 @@ class AccionesSobreDocumentosTest {
     acciones.ejecutar(Tipo.RESUMIR, List.of(10L), PROYECTO, "es");
     acciones.ejecutar(Tipo.PREGUNTAS, List.of(10L), PROYECTO, "es");
     verifyNoInteractions(redactor);
+    // Estas dos aserciones son INMEDIATAS a proposito, y no van con EsperaDeCupo: no miran el
+    // post-estado de una suscripcion que termino, miran que no hubo suscripcion. Una espera aqui
+    // pasaria igual si el cupo se tomara y se devolviera, que es justo la regresion a atrapar.
     assertThat(cupo.intentarTomar()).as("nadie se suscribio: el cupo sigue libre").isTrue();
     cupo.liberar();
 
     // Y el cupo se mira al suscribirse, no al armar: el mismo resultado da el mensaje
     // fijo con el cupo ocupado y el texto real cuando vuelve a estar libre.
     ResultadoDeAccion resultado = acciones.ejecutar(Tipo.RESUMIR, List.of(10L), PROYECTO, "es");
-    assertThat(cupo.intentarTomar()).isTrue();
+    assertThat(cupo.intentarTomar()).isTrue(); // toma el cupo para dejarlo ocupado: es preparacion
     assertThat(texto(resultado.eventos().collectList().block()))
         .isEqualTo(AccionesSobreDocumentos.MENSAJE_SERVIDOR_OCUPADO);
     cupo.liberar();
@@ -272,7 +275,7 @@ class AccionesSobreDocumentosTest {
 
     assertThatThrownBy(() -> resultado.eventos().blockLast())
         .isInstanceOf(IllegalStateException.class);
-    assertThat(cupo.intentarTomar()).isTrue();
+    EsperaDeCupo.vuelveYSeToma(cupo, "el cupo volvio tras el error");
   }
 
   @Test
@@ -292,7 +295,7 @@ class AccionesSobreDocumentosTest {
     // y el permiso vuelve.
     assertThatThrownBy(() -> resultado.eventos().blockLast())
         .isInstanceOf(IllegalStateException.class);
-    assertThat(cupo.intentarTomar()).isTrue();
+    EsperaDeCupo.vuelveYSeToma(cupo, "el cupo volvio tras el error");
   }
 
   @Test
@@ -345,13 +348,13 @@ class AccionesSobreDocumentosTest {
             eq("pt"),
             eq(Redactor.NivelBloom.CREAR),
             eq(List.of(recordar.texto(), aplicar.texto())));
-    assertThat(cupo.intentarTomar()).isTrue();
+    EsperaDeCupo.vuelveYSeToma(cupo, "el cupo volvio al terminar");
     cupo.liberar();
 
     ResultadoDeAccion conIdeas = acciones.ejecutar(Tipo.IDEAS, List.of(10L), PROYECTO, "es");
     assertThat(conIdeas.etiqueta()).isEqualTo("Ideas a partir de 1 documento: A");
     assertThat(conIdeas.eventos().collectList().block()).containsExactly(new Resultado(ideas));
-    assertThat(cupo.intentarTomar()).isTrue();
+    EsperaDeCupo.vuelveYSeToma(cupo, "el cupo volvio al terminar");
   }
 
   @Test
