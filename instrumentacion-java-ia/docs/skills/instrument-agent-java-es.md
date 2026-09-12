@@ -13,12 +13,12 @@ determinista solo si el disparo **y** la decisión quedan fuera del razonamiento
 
 - **Los servidores MCP son no deterministas.** El modelo decide cuándo llamar una herramienta, y
   con qué argumentos. Agregan capacidad; no la limitan.
-- **Los ocho hooks `type: command` son deterministas.** El ciclo de vida del agente los dispara en
+- **Los nueve hooks `type: command` son deterministas.** El ciclo de vida del agente los dispara en
   un punto fijo (`PreToolUse`, `PostToolUse`, `SessionStart`…) y un script de shell —no el
   modelo— decide si permite, bloquea o solo reporta. Por eso los hooks son un límite y MCP no.
 
 Es el mismo eje que la leyenda del visor `proceso-operacional-con-ia`, que marca uno por uno los
-ocho hooks como deterministas y los tres servidores MCP como no deterministas. Llamar a esta skill
+nueve hooks como deterministas y los tres servidores MCP como no deterministas. Llamar a esta skill
 «la capa no determinística», como decía antes, describe mal la mitad de lo que instala.
 
 ## Cómo se invoca

@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # instrument-github-repo — Make the Checks Actually Block
 
-**A workflow that runs blocks nothing.** `instrument-project-java` installs twelve controls and
+**A workflow that runs blocks nothing.** `instrument-project-java` installs thirteen controls and
 writes `.github/workflows/ci.yml`; what stops a merge is the **Ruleset** that requires that
 workflow. Without it a repository has every sensor and no judge — the checks report, and the merge
 goes through anyway.

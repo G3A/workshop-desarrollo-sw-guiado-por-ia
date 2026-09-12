@@ -17,6 +17,44 @@ versión nueva", and `AGENTS.md`).
 
 ### Added
 
+- **`instrument-project-java` gained control 13 — the SonarQube quality gate**, the thirteenth, and
+  the one place in this package where **the consumer existed and the producer did not**.
+  `debt-triage` already knew how to triage SonarQube findings and, in a freshly instrumented
+  repository, found none — because nothing published any.
+  - **Off by default, and for a harder reason than controls 6, 9 and 11.** Those cost curation;
+    this one needs **a server the team already runs**. `SONAR_HOST_URL` is asked for first, and no
+    server means the control is reported out of scope with its reason — the same exit control 8
+    takes for a CI that is not GitHub Actions. **The skill never stands a server up**: not
+    `docker-compose` with a local SonarQube, which would put the plugin in the business of
+    operating infrastructure, and not SonarQube Cloud, which ties the repository to a service with
+    its own billing.
+  - **One flag is what makes it a gate instead of a dashboard**: `-Dsonar.qualitygate.wait=true`.
+    Without it the scanner uploads the analysis and exits green even when the gate failed. Same
+    distinction as a workflow that runs versus a Ruleset that blocks, and the same silent failure
+    mode as control 11b — **a green build does not prove the code is clean, it may mean the flag is
+    missing**.
+  - **The break is the SECOND analysis, never the first.** The quality gate is evaluated on new
+    code and the first analysis is what establishes the baseline: it can pass with nothing in it.
+    Recording that first green as "verified" is how a control gets believed without ever having
+    fired. `references/verification.md` carries a four-row table of greens that are not passes.
+  - **It is the only job besides `check` that belongs in the Ruleset's required checks**, and
+    `instrument-github-repo` now says why in one line: the split is not how good the tool is, it is
+    **verdict versus queue**. A job answering "does this pass the bar" can block; one answering
+    "here are things to look at" cannot, because there is no state in which it is finished. CodeQL
+    and the AI review stay out for that reason.
+  - **Verified against SonarSource's own documentation (2026-09-11):** for Maven projects the
+    Maven scanner is the recommendation, not `sonarqube-scan-action` — the CLI action does not see
+    the module graph, the test sources or the compiled bytecode. The current scanner line is
+    **5.7.0.6970**, it needs **Java 21+ to run** (since 2026-07-20 nothing lower is supported) and
+    provisions a JDK 21 itself, which downloads a JRE and therefore fails on an air-gapped runner.
+    `fetch-depth: 0` is not optional: Sonar decides what counts as new code from the history.
+  - **Control 13 depends on control 10.** The JaCoCo XML has to exist in the same reactor run, so
+    `make sonar` runs `verify` itself rather than depending on `make coverage` — a separate
+    invocation would read whatever was on disk from last time.
+  - `make sonar` is in **neither** `check` nor `ci`, the one deliberate exception to "CI calls the
+    Makefile": every other target runs on a bare laptop with no credentials, and this one needs a
+    per-environment host and token.
+
 - **`github-plan-build` gained Step K — route the lesson**, the method's Principle 6 and the only
   loop that makes round 20 different from round 1. Until now the viewer told you to save the
   lesson (`c5`) and nothing carried it anywhere: it was written into the agent's summary and
@@ -211,6 +249,12 @@ versión nueva", and `AGENTS.md`).
 
 ### Changed
 
+- **`debt-triage` now names the control instead of suggesting "set up an analyzer".** When it finds
+  nothing to triage on a Java/Maven repository it points at **control 13** (SonarQube, needs a
+  server the team runs) or **control 11c** (CodeQL, free on a public repo, paid on a private one) —
+  the difference being whether the user knows what it will cost before they start. Its detection
+  table also stops assuming `sonar-project.properties`: **on a Maven repo that file usually does
+  not exist**, because the scanner reads the POM.
 - **`type: mcp_tool` hooks moved from "not covered yet" to a declared boundary**, and the
   `README.md` says so under "Alcance deliberado" as a *derived* one. The mechanism works — it is
   the catalog's deterministic exception, an MCP the model did not choose to call — but its only
@@ -222,11 +266,11 @@ versión nueva", and `AGENTS.md`).
 
 - **`instrument-agent-java` no longer calls itself "the non-deterministic instrumentation layer".**
   It installs one half of each: MCP servers are non-deterministic (the model decides when to call
-  a tool and with which arguments), while the eight `type: command` hooks are deterministic (the
+  a tool and with which arguments), while the (then) eight `type: command` hooks are deterministic (the
   agent's lifecycle fires them at a fixed point and a shell script, not the model, decides allow /
   block / report). The old label contradicted the axis the `proceso-operacional-con-ia` viewer
   states — deterministic only when both the trigger and the decision stay outside the model — and
-  the viewer already tags all eight hooks `determinista` and the three MCP servers
+  the viewer already tagged all of them `determinista` and the three MCP servers
   `noDeterminista`. Wording only; no change to what the skill installs.
 
 ### Fixed

@@ -29,8 +29,12 @@ the install, silently undoing your own work. `git checkout` is safe for exactly 
 5. Confirm it **fails**, and that the message names the problem.
 6. **Restore from the snapshot**, confirm the gate passes again.
 
-**Two breaks reach past the working tree:**
+**Three breaks reach past the working tree:**
 
+- **Control 13 writes to a server.** The break is an analysis, and the analysis is stored: the
+  project's last state on SonarQube is whatever the break left there. Restoring the file is not
+  enough — re-run the analysis so the dashboard matches the real tree, or the next person sees a
+  red project that no commit explains.
 - **Controls 5 and 6 stage their file** (`git add`). Putting the original content back leaves the
   broken version — a fake credential, for control 6 — sitting in the index. Always finish with
   `git restore --staged <file>`.
@@ -377,6 +381,64 @@ to the same phase. **Both green means Failsafe never ran** — check that the `v
 build stays green with a failing test).
 
 Delete both files afterwards.
+
+---
+
+## Control 13 — Quality gate (SonarQube)
+
+**The break is the second analysis, never the first.** The quality gate is evaluated on **new
+code**, and the first analysis is what establishes the baseline: it can pass with nothing in it.
+Reporting that first green run as "verified" is how a control gets believed without ever having
+fired — the same mistake the whole file exists to prevent.
+
+**1. Baseline.** Run the target once on a clean tree and let it finish:
+
+```bash
+make sonar       # expect GREEN, and expect it to mean nothing yet
+```
+
+Confirm on the server that the project now exists and shows an analysis date. If this run is red,
+stop: that is a configuration problem (wrong key, unreachable host, missing token), not the gate
+firing.
+
+**2. Break.** Add a new class with a branch and no test — the same probe control 10 uses, which is
+deliberate: both controls are about new code, and one probe showing two different failures proves
+they are two sensors and not one wired twice.
+
+```java
+// BREAK — control 13
+public class GateProbe {
+    public String classify(int n) {
+        if (n > 10) { return "high"; }
+        return "low";
+    }
+}
+```
+
+```bash
+make sonar       # expect RED
+```
+
+Expect `QUALITY GATE STATUS: FAILED` in the output, followed by the condition that failed —
+typically `Coverage on New Code`. The Maven build must exit non-zero.
+
+**3. The green that is not a pass.** If `make sonar` comes back **green** here, do not record the
+control as installed. In order of likelihood:
+
+| What you see | What it actually is |
+|---|---|
+| Green build, analysis visible on the server, gate shown as failed in the UI | `-Dsonar.qualitygate.wait=true` is missing from the target. The scanner uploaded and walked away |
+| Green build, gate green, coverage 0 % everywhere | The JaCoCo XML never reached the analysis — `sonar.coverage.jacoco.xmlReportPaths` is wrong, or the analysis ran in a separate invocation from `verify` |
+| Green build, gate green, the probe class absent from the server | The probe is outside `sonar.sources`, or the build did not recompile |
+| Green build, gate green, probe present and covered | The server's quality gate has no new-code condition. That is a server-side decision — report it as such, because the control is installed and the bar is empty |
+
+The last row is the one worth stating plainly in the report: **this skill installs the gate, it does
+not choose the bar.** A repository can have control 13 correctly installed against a quality gate
+that fails nothing.
+
+**4. Restore.** Delete `GateProbe.java` and run `make sonar` once more so the server's last analysis
+matches the real tree. Leaving a failed gate as the project's most recent state means the next
+person to look at the dashboard sees a red project that no commit explains.
 
 ---
 

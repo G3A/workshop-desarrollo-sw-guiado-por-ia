@@ -5,7 +5,7 @@ target if the repo has one but no fresh report on disk.
 
 | Analyzer | Detect | Pull findings |
 |---|---|---|
-| SonarQube / SonarCloud | `sonar-project.properties`, a `sonar:sonar`/`sonar-scanner` CI step | `curl` the API: `GET /api/issues/search?componentKeys=<key>&resolved=false`, or read the CI step's own report artifact if it uploads one |
+| SonarQube / SonarCloud | `sonar-project.properties`, a `sonar:sonar`/`sonar-scanner` CI step, or a `make sonar` target. **On a Maven repo there is usually no `sonar-project.properties` at all** — the scanner reads the POM, so look for `sonar-maven-plugin` and the `sonar.projectKey` property there; `instrument-project-java` control 13 also records the key in `AGENTS.md` | `curl` the API: `GET /api/issues/search?componentKeys=<key>&resolved=false`, or read the CI step's own report artifact if it uploads one |
 | CodeQL | `.github/workflows/*codeql*`, `.github/codeql/*` | `gh api repos/{owner}/{repo}/code-scanning/alerts?state=open` |
 | ESLint | `.eslintrc*`, an `eslint` script in `package.json` | Run `eslint . -f json` if no fresh report exists; a stale report is worse than a fresh run |
 | Checkstyle | `checkstyle.xml`, a Maven `checkstyle` plugin entry | `target/checkstyle-result.xml` after `mvn checkstyle:check`, or the CI artifact |

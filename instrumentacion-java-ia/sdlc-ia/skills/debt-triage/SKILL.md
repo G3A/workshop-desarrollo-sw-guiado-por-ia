@@ -53,6 +53,10 @@ outcome — not a silent no-op.** Stop here and tell the user, explicitly:
 - What connecting a real analyzer (SonarQube, CodeQL, or whichever fits the stack) would take, so
   the next run has something to work with — but do not install one; that decision and that
   installation both belong to `instrument-project-java`, invoked separately, not to this skill.
+  On a Java/Maven repository, name them: **control 13** is SonarQube (and needs a server the team
+  already runs), **control 11c** is CodeQL (free on a public repository, paid on a private one).
+  Point at the control, not at a vague "set up an analyzer" — the difference between the two is
+  whether the user knows what it will cost them before they start.
 
 Do not exit silently and do not fabricate findings to have something to report.
 
