@@ -17,6 +17,41 @@ versión nueva", and `AGENTS.md`).
 
 ### Added
 
+- **`instrument-agent-java` reads each registered server's tool list and reports the
+  contradictions**, closing the last MCP primitive without coverage. The skill already connects to
+  every server it registers to confirm it starts; reading what the server declares while that
+  connection is open is nearly free, and catches the contradiction **before the server is committed
+  to the repository**.
+  - **It reports contradictions, never the annotations themselves.** Repeating what a server says
+    about itself, with no contrast, is precisely what the specification warns against — and it is
+    the form this check almost took.
+  - **Three findings, and the third is the one everyone reads backwards.** (1) The declaration
+    contradicts itself: `readOnlyHint: true` alongside a declared `destructiveHint` or
+    `idempotentHint`, which the schema says are *"meaningful only when `readOnlyHint == false`"* —
+    no interpretation needed. (2) Declared read-only, named like a write, quoted with the phrase
+    that triggered it so a human can disagree at a glance. (3) **Declares nothing at all** — and
+    absent annotations are **not** "safe": with the schema's own defaults (`readOnlyHint: false`,
+    `destructiveHint: true`, `openWorldHint: true`) an unannotated tool reads as potentially
+    destructive and open-world. "No annotations" is not "no findings", and the report says so in
+    those words. Same principle this package applies to its own controls: a partial is more
+    dangerous than a missing one.
+  - **Read with the official MCP Inspector in CLI mode** —
+    `npx @modelcontextprotocol/inspector --cli <server command> --method tools/list --format json`,
+    which returns a single JSON object with no banners. There is no Claude Code command for this:
+    `claude mcp list` reports connection health and `/mcp` is interactive. **The skill confirms the
+    invocation returns JSON before relying on it**, and reports "could not read them" as a finding —
+    never letting it look indistinguishable from a clean result.
+  - **It is a report, not a gate, and that is the point.** The specification says these hints are
+    untrustworthy, and a gate built on an untrustworthy input is worse than none: it manufactures
+    confidence. What blocks is the `mcp__*` permission rules; this feeds that decision with
+    evidence. **The relationship runs one way only** — a contradiction is a reason to tighten the
+    deny list, and a credible `readOnlyHint: true` is never a reason to loosen it. Loosening would
+    put a server's own claim in charge of the one mechanism that constrains it.
+  - Verified against the canonical `schema.ts` of the specification (2026-09-12), including the
+    three governing sentences: annotations are *hints* not guarantees, clients *"should never make
+    tool use decisions based on ToolAnnotations received from untrusted servers"*, and clients
+    **MUST** consider them untrusted unless the server is trusted.
+
 - **`instrument-agent-java` offers a browser MCP server**, closing the fourth verification layer —
   the only one where the agent could not check its own work. It runs the local gates, reads CI and
   reads the security scan, then declared "the page works" without ever having looked at it.

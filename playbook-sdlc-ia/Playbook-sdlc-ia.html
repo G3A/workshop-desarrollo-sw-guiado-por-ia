@@ -244,7 +244,7 @@ subgraph P2["FASE 2 · Preparación del terreno — donde el plugin hace casi to
       N5T["Herramienta MCP · tools<br/>GitHub · Context7 · DBHub, con versión fijada<br/>SKILL · instrument-agent-java"]:::skill
       N5R["Recurso MCP · resources<br/>HUECO"]:::hueco
       N5P["Prompt MCP · prompts<br/>HUECO"]:::hueco
-      N5N["Anotaciones de herramienta<br/>readOnlyHint · destructiveHint<br/>HUECO"]:::hueco
+      N5N["Anotaciones de herramienta<br/>readOnlyHint · destructiveHint<br/>SKILL · instrument-agent-java contrasta lo declarado contra lo expuesto<br/>y reporta contradicciones, nunca las anotaciones"]:::skill
       DMP["Reglas de permiso sobre la herramienta<br/>deny escrituras · allow lecturas<br/>SKILL · instrument-agent-java, más el hook 9"]:::skill
       N5T-->N5R-->N5P-->N5N-->DMP
     end
@@ -529,7 +529,7 @@ style P6 fill:#0b0f15,stroke:#6b2018,color:#FF9C8C
     N5T:B("Herramienta MCP · tools","skill","No determinista: el modelo decide cuándo llamarla. instrument-agent-java registra GitHub, Context7 y DBHub, siempre con la versión fijada y la credencial por variable de entorno.",P.f2,"N5T"),
     N5R:B("Recurso MCP · resources","hueco","No determinista. Entra por tu decisión, pero su efecto depende de cómo lo lea el modelo. Ninguna skill lo configura.",P.f2,"N5R"),
     N5P:B("Prompt MCP · prompts","hueco","No determinista. Tú lo lanzas con /mcp__servidor__prompt, pero es una plantilla que el modelo sigue. Ninguna skill lo configura.",P.f2,"N5P"),
-    N5N:B("Anotaciones de herramienta","hueco","readOnlyHint y destructiveHint son pistas para la interfaz, no garantías. Ninguna skill las revisa.",P.f2,"N5N"),
+    N5N:B("Anotaciones de herramienta","skill","Pistas para la interfaz, no garantías: las declara el mismo servidor que querrías vigilar. La skill no las cree, las contrasta contra la lista de herramientas y reporta contradicciones. Sin anotaciones no es «seguro»: por defecto se lee como potencialmente destructiva y de mundo abierto.",P.f2,"N5N"),
     DMP:B("Reglas de permiso sobre MCP","skill","Lo único determinista del grupo MCP, y ahora sí lo escribe instrument-agent-java: reglas que niegan escrituras y permiten lecturas, más el hook 9 que mira los argumentos que un nombre de herramienta no puede expresar. Para eso hubo que levantar una regla dura que la skill se puso a sí misma.",P.f2,"DMP"),
     G1:L("¿Terreno listo?",P.f2,"G1"),
     // Puente
