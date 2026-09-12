@@ -28,8 +28,8 @@
   </nav>
 
   <div class="cobertura">
-    <span class="k-mano"><b>3</b> · a mano</span>
-    <span class="k-hueco"><b>3</b> · hueco</span>
+    <span class="k-mano"><b>4</b> · a mano</span>
+    <span class="k-hueco"><b>2</b> · hueco</span>
   </div>
 
   <section id="F1" class="hueco">
@@ -70,11 +70,73 @@
     <div class="falta"><b>Qué falta.</b> No está en ninguna pieza del repositorio.</div>
   </section>
 
-  <section id="F6" class="hueco">
-    <span class="tag">F6</span><span class="badge hueco">Hueco</span>
+  <section id="F6" class="mano">
+    <span class="tag">F6</span><span class="badge mano">A mano</span>
     <h2>Revisa costos y privacidad</h2>
-    <p>Qué cuesta cada corrida, qué límites tiene tu plan, cuánto se retiene y qué se usa o no para entrenar. Es la conversación que un equipo necesita tener <em>antes</em> de escalar el uso, no después — y es exactamente lo que la Fase 6 pide para pasar a la Etapa 4.</p>
-    <div class="falta"><b>Qué falta.</b> No está en ninguna pieza del repositorio. Es el hueco que más se nota cuando alguien pregunta «¿y esto cuánto nos cuesta?» en la primera demo.</div>
+    <p>Qué cuesta cada corrida, qué límites tiene tu plan, cuánto se retiene y qué se usa o no para entrenar. Es la conversación que un equipo necesita tener <em>antes</em> de escalar el uso, y es exactamente lo que la <a href="07-adopcion-por-etapas.html#E4">Etapa 4</a> pide para cerrar.</p>
+    <p><strong>Es la dependencia menos obvia del mapa:</strong> la última fase depende de algo de la primera. Un equipo que salta esta caja llega a la Etapa 4 con los cuatro criterios anteriores cumplidos y este imposible de responder.</p>
+
+    <div class="hint"><b>Lo primero: esta página envejece sola.</b> Los planes, los límites y las tarifas cambian sin que nadie toque el repositorio, y <b>una cifra vieja con aire de dato es peor que ninguna cifra</b>. Por eso cada número de abajo lleva su fecha y su fuente, y el peso está en lo durable: los comandos que miden <i>tu</i> costo y dónde vive la respuesta autoritativa. Si sigues el procedimiento, obtienes el número de hoy aunque esta página tenga un año.</div>
+
+    <p style="font-family:'Fraunces',serif;font-size:17px;color:#FFFCF6;margin:22px 0 6px"><strong>Mitad 1 · ¿Cuánto cuesta?</strong></p>
+
+    <p>Tres niveles, del más rápido al más confiable. <strong>Ninguno reemplaza al siguiente</strong>: el primero te orienta, el último es el que factura.</p>
+    <div class="ejecuadro">
+      <table class="rev">
+        <tr><th>Nivel</th><th>Qué usar</th><th>Qué te da, y qué no</th></tr>
+        <tr><td><strong>Tu sesión</strong></td><td><code>/usage</code> — <code>/cost</code> es su alias</td><td>El bloque <em>Session</em>: costo total, duración, cambios de código y desglose por modelo. Claude Code lo calcula <strong>localmente a precio de lista</strong>: es una <strong>estimación</strong>, no una factura. Se reinicia con <code>/clear</code></td></tr>
+        <tr><td><strong>Tu plan</strong></td><td><code>/usage</code>, en Pro, Max, Team o Enterprise</td><td>Qué consume tus límites, atribuido a skills, subagentes, plugins y servidores MCP, cada uno como porcentaje. <code>d</code> ve las últimas 24 horas, <code>w</code> los últimos 7 días. Sale del historial <strong>local de esta máquina</strong>: no incluye otros equipos ni claude.ai</td></tr>
+        <tr><td><strong>La organización</strong></td><td>La página de Uso de la Consola, el reporte de gasto de la organización, o la API de analítica</td><td>La cifra autoritativa. Depende del montaje: Teams/Enterprise tienen reporte de gasto con CSV; la Consola tiene su panel y la API de analítica de Claude Code; en Bedrock, Google Cloud o Foundry el gasto vive en tu consola de nube</td></tr>
+      </table>
+    </div>
+
+    <div class="hint"><b>Si tu organización paga tarifas contratadas, la estimación local no coincide con la factura</b>, porque se calcula a precio de lista. El ajuste es <code>modelPricing</code> en los <i>managed settings</i>, y la confirmación de que quedó puesto es que la línea <code>Total cost</code> agrega <code>at your organization's configured rates</code>.</div>
+
+    <div class="hint"><b>La única opción que funciona en todos los montajes es OpenTelemetry</b>, y es la única que entrega métricas por usuario casi en tiempo real: <code>claude_code.cost.usage</code> en USD y <code>claude_code.token.usage</code> en tokens. Se prende con <code>CLAUDE_CODE_ENABLE_TELEMETRY=1</code> más la configuración del exportador OTLP. <b>Lee la caja de la Mitad 3 antes de prenderla.</b></div>
+
+    <p><strong>Órdenes de magnitud publicados por Anthropic</strong>, verificados el <strong>2026-09-12</strong> en la documentación de Claude Code: alrededor de <strong>13 USD por desarrollador por día activo</strong> y <strong>150-250 USD por desarrollador al mes</strong>, con el 90 % de los usuarios por debajo de 30 USD por día activo. Son de despliegues empresariales y sirven para encuadrar una conversación de presupuesto, <strong>no para presupuestar</strong>.</p>
+
+    <div class="hint"><b>La recomendación oficial para estimar es el criterio de la Etapa 1.</b> Empezar con un <b>grupo piloto chico</b>, medir con las herramientas de arriba y <b>establecer una línea base antes de ampliar</b>. Es la misma frase con la que la <a href="07-adopcion-por-etapas.html#E1">Etapa 1</a> exige la línea base medida, y la misma que <a href="06-metricas-y-reporte.html#K3"><code>impact-metrics</code></a> aplica a las otras métricas: sin período anterior, se llama línea base y se dice.</div>
+
+    <p><strong>Qué mueve la aguja</strong>, en orden de impacto: el <strong>contexto largo</strong> —cada petición lleva la conversación entera, así que una pregunta de una línea en una sesión abierta todo el día arrastra toda la historia—, los <strong>fallos de caché</strong> tras una pausa larga, <strong>Opus dejado como modelo por defecto</strong>, y los <strong>equipos de agentes</strong>, que usan del orden de <strong>7 veces más tokens</strong> que una sesión normal. El hábito que más rinde es el más aburrido: <code>/clear</code> entre tareas que no tienen nada que ver.</p>
+
+    <p style="font-family:'Fraunces',serif;font-size:17px;color:#FFFCF6;margin:22px 0 6px"><strong>Mitad 2 · ¿Qué pasa con nuestro código?</strong></p>
+
+    <p>La respuesta <strong>depende de con qué cuenta iniciaste sesión</strong>, no de qué herramienta usas. Es la distinción que más se malentiende: Claude Code desde una cuenta Pro personal y Claude Code desde una organización comercial tienen políticas distintas.</p>
+    <div class="ejecuadro">
+      <table class="rev">
+        <tr><th></th><th>Free, Pro y Max</th><th>Team, Enterprise, API, Bedrock y Vertex</th></tr>
+        <tr><td><strong>¿Entrenan con esto?</strong></td><td>Es <strong>una elección tuya</strong>, no algo activado por defecto: se decide al registrarse o desde Configuración de privacidad, y se puede cambiar después</td><td><strong>No.</strong> Los productos comerciales quedaron explícitamente fuera de ese cambio</td></tr>
+        <tr><td><strong>¿Cuánto se retiene?</strong></td><td><strong>5 años</strong> si aceptas el entrenamiento; <strong>30 días</strong> si lo rechazas</td><td>En la API, el contenido de conversación <strong>no se retiene por defecto</strong>. La excepción son los <em>Covered Models</em>, que exigen 30 días</td></tr>
+        <tr><td><strong>¿Hay retención cero?</strong></td><td><strong>No.</strong> ZDR nunca cubre los planes de consumo, ni siquiera usando Claude Code desde ellos</td><td><strong>Sí, a pedido</strong>, y se habilita <strong>por organización</strong>. Para Claude Code: con claves de una organización comercial, o Claude Enterprise con ZDR</td></tr>
+      </table>
+    </div>
+
+    <div class="hint"><b>Aun con ZDR, el contenido marcado por los sistemas automáticos de confianza y seguridad puede retenerse hasta 2 años</b>, y lo exigido por ley también. «Retención cero» describe el flujo normal, no una garantía absoluta — y decirlo antes es más barato que descubrirlo en una auditoría.</div>
+
+    <div class="hint"><b>Las transcripciones locales son un archivo aparte.</b> Las sesiones que viven en la máquina de cada quien se conservan <b>6 años por defecto</b> para la API de cumplimiento, o el período que la organización configure. La pregunta «¿se retiene?» tiene dos respuestas distintas según se hable del servidor o de la laptop.</div>
+
+    <p style="font-family:'Fraunces',serif;font-size:17px;color:#FFFCF6;margin:22px 0 6px"><strong>Mitad 3 · Donde las dos chocan</strong></p>
+
+    <p>Esto es lo que ninguna de las dos mitades dice por su cuenta, y la razón por la que van en la misma caja: <strong>prender la telemetría de costo cambia la respuesta de privacidad.</strong></p>
+    <ul>
+      <li>Si se activa el registro de métricas en Claude Code, <strong>los datos de productividad quedan exentos de ZDR</strong>. La organización que negoció retención cero y después prende las métricas ya no tiene retención cero sobre esos datos.</li>
+      <li>Los atributos estándar de esas métricas incluyen <code>user.email</code>, presente siempre que esté disponible. <strong>La telemetría que responde «¿cuánto cuesta?» lleva identidad por defecto</strong>, y eso convierte una métrica de presupuesto en un dato por persona.</li>
+      <li>La buena noticia, que también hay que decir: los <strong>prompts, las respuestas, los parámetros y el contenido de las herramientas van redactados por defecto</strong>. Solo entran si alguien prende variables explícitas — <code>OTEL_LOG_USER_PROMPTS</code> y sus hermanas. Que el valor por defecto sea el prudente es un dato a favor, y conviene comprobar que nadie lo cambió.</li>
+    </ul>
+    <div class="hint"><b>Medir el costo y minimizar la retención son objetivos que se tocan</b>, y un equipo que responde las dos preguntas por separado toma la decisión sin verlo. No es un argumento para no medir: es un argumento para decidir las dos cosas en la misma conversación, que es de lo que trata esta caja.</div>
+
+    <p style="font-family:'Fraunces',serif;font-size:17px;color:#FFFCF6;margin:22px 0 6px"><strong>Qué hacer con esto, en concreto</strong></p>
+    <ol>
+      <li><strong>Antes de la primera demo</strong>, sabe con qué cuenta va a correr el piloto. Es lo que decide las tres filas de la Mitad 2, y es la pregunta que alguien va a hacer.</li>
+      <li><strong>Durante el piloto</strong> (<a href="07-adopcion-por-etapas.html#E1">Etapa 1</a>), corre <code>/usage</code> al cerrar cada sesión y anota el costo. Eso es tu línea base de costo, y se mide igual que las otras: una vez, al principio, porque <strong>no se puede corregir hacia atrás</strong>.</li>
+      <li><strong>Antes de sumar a la tercera persona</strong>, decide si vas a prender OpenTelemetry — con la Mitad 3 sobre la mesa, no después.</li>
+      <li><strong>En la Etapa 4</strong>, el número que liderazgo pide es el de la organización, no el de <code>/usage</code>. Ten claro de dónde sale en tu montaje antes de que te lo pidan.</li>
+    </ol>
+
+    <div class="falta"><b>Lo que esta caja deliberadamente no trae: la política de datos de tu equipo.</b> Qué se puede pegar en un prompt, qué repositorios quedan fuera, quién aprueba una excepción. Eso es un <b>acuerdo interno</b>, no documentación del método — el mismo criterio por el que el <a href="07-adopcion-por-etapas.html#E2">acuerdo de marcado de PRs</a> quedó como conversación y no como herramienta. La librería aporta el formato, no el acuerdo.</div>
+
+    <div class="fuente"><b>Fuente:</b> documentación oficial de Anthropic, consultada el <b>2026-09-12</b> — <code>code.claude.com/docs/en/costs</code>, <code>code.claude.com/docs/en/monitoring-usage</code>, <code>platform.claude.com/docs/en/manage-claude/api-and-data-retention</code> y el anuncio de actualización de los términos de consumo. <b>Vuelve a la fuente antes de citar una cifra</b>: lo de arriba describe el estado en esa fecha, no una constante.</div>
   </section>
 
   <footer>Plugin <code>sdlc-ia</code> · monorepo <code>workshop-desarrollo-sw-guiado-por-ia</code></footer>
