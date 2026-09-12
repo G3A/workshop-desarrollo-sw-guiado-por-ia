@@ -552,7 +552,7 @@ style P6 fill:#0b0f15,stroke:#6b2018,color:#FF9C8C
     VL3:B("3 · Seguridad","parcial","Ya están las tres capas de análisis estático: la revisión por modelo, las dependencias con OWASP Dep-Check, y el código propio con FindSecBugs y CodeQL. Lo que sigue faltando es el DAST, y quedó fuera de alcance a propósito: depende de una vista previa efímera que el plugin no puede garantizar.",P.f3,"VL3"),
     VL4:B("4 · Revisión humana","skill","Las seis categorías son del método; los quince ítems concretos los redacta la plantilla de agent-context-java, y lo dice como tal en vez de atribuirlos a una fuente. Viven en REVIEW.md, y la plantilla de PR trae las seis como casillas — nunca como check de CI, porque exigirlas convierte el juicio en trámite.",P.f3,"VL4"),
     GV:L("¿Aprueba la verificación?",P.f3,"GV"),
-    M1:B("Merge y marcado","skill","El trailer Asistido-por-IA va en cada commit y en el cuerpo de la PR, así sobrevive al squash. El merge lo corres tú.",P.f3,"M1"),
+    M1:B("Merge y marcado","skill","El trailer Asistido-por-IA va en cada commit y en el cuerpo de la PR, así el texto sobrevive al squash. Su condición de trailer no: GitHub reescribe el mensaje al mergear, así que se lee con --grep anclado y no con el lector de trailers de git. El merge lo corres tú.",P.f3,"M1"),
     MF:L("¿Más issues?",P.f3,"MF"),
     // Fase 4
     R1:B("Guarda la lección","mano","Visor c5: sin este paso, cada vuelta del ciclo aprende lo mismo que la anterior.",P.f4,"R1"),

@@ -26,7 +26,7 @@ git fetch origin
 git rev-list --count origin/dev --first-parent --since=2026-07-01 --until=2026-10-01
 
 # Of those, the AI-assisted ones
-git rev-list --count origin/dev --first-parent --since=2026-07-01 --until=2026-10-01 --grep=Asistido-por-IA
+git rev-list --count origin/dev --first-parent --since=2026-07-01 --until=2026-10-01 --grep="^Asistido-por-IA: "
 ```
 
 **`--first-parent` is not optional.** The integration branch receives by squash, so one first-parent
@@ -34,11 +34,27 @@ entry equals one pull request. Without the flag you count every reachable commit
 repository, 93 instead of 26.
 
 **Why `--grep` and not git's trailer reader.** The "correct" form would be `--format` with
-`%(trailers:key=Asistido-por-IA,valueonly)`. It **returns empty** even though the marker is in the
-message: git only treats the last contiguous block of lines as trailers, and in a PR body the
-marker ends up in its own paragraph, separated from the session and co-authorship lines that follow.
-`--grep` finds it wherever it sits, and works retroactively over the whole history regardless of
-when that gets fixed.
+`%(trailers:key=Asistido-por-IA,valueonly)`, and on a squash-merged history it **returns empty for
+every commit**. Git only parses the **last contiguous block** of the message as trailers, and
+**GitHub rewrites the message when it squashes**: it separates each trailer with a blank line and
+moves `Co-authored-by` last, so that final block is that one line and nothing else.
+
+**This is not a formatting mistake anyone can avoid.** The commits that produced the history below
+were written with the footer as a single contiguous block; GitHub broke it apart at merge time. So
+`--grep` is not a workaround waiting for a fix — it is the only correct way to read this marker out
+of a squash-merged branch. Verified over 109 first-parent commits of this monorepo:
+
+| Method | Result |
+|---|---|
+| `%(trailers:key=Asistido-por-IA,valueonly)` | **0** |
+| `--grep="^Asistido-por-IA: "` | **23** |
+
+**Anchor the pattern — `^Asistido-por-IA: `, not the bare string.** An unanchored `--grep` also
+matches any commit that merely *mentions* the marker in prose: a commit documenting this very
+behaviour would count as AI-assisted, inflating the metric. Proven on a two-commit probe — one
+carrying the real trailer, one only discussing it: unanchored counts 2, anchored counts 1. On this
+monorepo today both return 23, because no commit mentions it in prose yet; that is exactly why it
+is worth anchoring **before** one does.
 
 **Worked example**, September 2026: 26 integrated, 9 marked → **35 %**.
 

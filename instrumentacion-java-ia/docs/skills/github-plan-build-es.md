@@ -78,7 +78,8 @@ que sabe manejar, no una condición para funcionar.
      GitHub (`Closes #<n>`). Cada commit cierra además con el trailer
      `Asistido-por-IA: <modelo>`, con el modelo que corrió la sesión, y el cuerpo del PR lo
      repite: así el repositorio puede separar los commits asistidos por IA del resto con
-     `git log --format='%(trailers:key=Asistido-por-IA)'`, incluso después de un squash.
+     `git log --first-parent --grep="^Asistido-por-IA: "`. **No con el lector de trailers de
+     git**, que devuelve vacío en un historial con squash — ver más abajo.
    - **Vigilar el CI hasta que quede verde** y atender los comentarios de revisión uno por uno.
    - **Cerrar** — publica el resumen final como comentario en el issue y actualiza su estado a
      "en revisión".
@@ -87,6 +88,29 @@ que sabe manejar, no una condición para funcionar.
      un gate tarde o no atrapó ninguno) y, por cada lección, el destino y el texto exacto. «No
      hay ninguna» es una respuesta válida: inventar una para llenar el paso envenena los archivos
      a los que iría.
+
+## Cómo se lee el marcador `Asistido-por-IA` (y cómo no)
+
+El comando obvio es el lector de trailers de git, y **devuelve vacío en todos los commits** de un
+historial con squash:
+
+```
+git log --format='%(trailers:key=Asistido-por-IA,valueonly)'     # 0 resultados
+git log --first-parent --grep="^Asistido-por-IA: "               # el correcto
+```
+
+**No es un error de formato que alguien pueda evitar.** Git solo interpreta como trailers el
+**último bloque contiguo** del mensaje, y **GitHub reescribe el mensaje al hacer squash**: separa
+cada trailer con una línea en blanco y mueve `Co-authored-by` al final, así que ese último bloque
+queda siendo esa sola línea. Los commits que produjeron el historial de este monorepo se
+escribieron con el pie en un bloque contiguo; GitHub lo partió al mergear.
+
+Medido sobre los 109 commits de `--first-parent` de este monorepo: **0** con el lector de trailers,
+**23** con `--grep`.
+
+**Y el patrón va anclado.** Un `--grep=Asistido-por-IA` suelto también cuenta los commits que apenas
+*mencionan* el marcador en prosa — un commit que documente este comportamiento entraría como PR
+asistida e inflaría la métrica. `^Asistido-por-IA: ` calza con la línea del trailer y con nada más.
 
 ## Los seis destinos de una lección
 

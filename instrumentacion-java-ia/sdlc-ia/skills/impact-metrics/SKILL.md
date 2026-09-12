@@ -50,8 +50,11 @@ Establish:
    Everything is counted on its first-parent history.
 2. **The period.** Ask if it was not given. Default: the last full quarter.
 3. **Whether the AI marker is present at all** — `git rev-list --count <branch> --first-parent
-   --grep=Asistido-por-IA`. A zero on a repository that has been using the loop means the marker is
-   not being written, not that no PR used AI: say which, do not report `0 %`.
+   --grep="^Asistido-por-IA: "`. A zero on a repository that has been using the loop means the
+   marker is not being written, not that no PR used AI: say which, do not report `0 %`.
+   **Anchored on purpose**: a bare `--grep=Asistido-por-IA` also matches commits that merely
+   discuss the marker, and git's own trailer reader returns zero on squash-merged history —
+   `references/metric-definitions.md` has the measurements behind both.
 4. **Coverage availability** — does `target/site/jacoco/jacoco.xml` exist, or a JaCoCo plugin in the
    POM? If not, coverage is a missing metric with a named reason
    (`/sdlc-ia:instrument-project-java` control 10), not a zero.
