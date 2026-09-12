@@ -18,7 +18,7 @@ determinista solo si el disparo **y** la decisión quedan fuera del razonamiento
   modelo— decide si permite, bloquea o solo reporta. Por eso los hooks son un límite y MCP no.
 
 Es el mismo eje que la leyenda del visor `proceso-operacional-con-ia`, que marca uno por uno los
-nueve hooks como deterministas y los tres servidores MCP como no deterministas. Llamar a esta skill
+nueve hooks como deterministas y los servidores MCP como no deterministas. Llamar a esta skill
 «la capa no determinística», como decía antes, describe mal la mitad de lo que instala.
 
 ## Cómo se invoca
@@ -85,6 +85,52 @@ La regla no desapareció, se acotó: se escribe **solo con confirmación explíc
 del alcance, y **solo matchers `mcp__*`**. Todo lo demás de esa clave sigue siendo del usuario y no
 se toca nunca. Si ya hay reglas `mcp__*`, no las sobrescribe: reporta la diferencia y se detiene.
 
+## El servidor de navegador, la cuarta capa de verificación
+
+Es **la única capa donde el agente no podía comprobar su propio trabajo**. Las otras tres —local,
+CI y seguridad— las corre y las lee. La cuarta, «¿se ve como debería?», la declaraba terminada sin
+haberla mirado nunca.
+
+**Se ofrece solo si el descubrimiento encuentra interfaz** en el repositorio: plantillas de
+Thymeleaf/JTE/Freemarker, recursos estáticos, un subproyecto de frontend, controladores que
+devuelven vistas, o una suite de pruebas de navegador que ya exista. Es la misma regla que esconde
+tres de los nueve hooks: no se ofrece un control para un artefacto que el repositorio no tiene, y
+en un servicio REST puro un MCP de navegador es peso muerto que se paga en contexto cada sesión.
+**El resultado negativo se reporta**, con lo que se buscó — no se salta en silencio.
+
+**Cuál de los dos, se pregunta.** No se fija uno por defecto, porque responden preguntas distintas:
+
+| | Playwright MCP | Chrome DevTools MCP |
+|---|---|---|
+| Lo mantiene | Microsoft, mismo repositorio y licencia que Playwright | El equipo de Chrome DevTools, en Google |
+| La pregunta que contesta | «¿funciona y se ve como debería?» | «¿por qué va lento, o por qué falló esa petición?» |
+| Cómo lee la página | **Árbol de accesibilidad por defecto**, no imágenes | Trazas de rendimiento, peticiones de red, consola con stack traces mapeados |
+
+Dos datos que cambian la respuesta y por eso van en la pregunta: **Playwright MCP lee estructura,
+no capturas** —más barato y más fiable para hacer clic en lo correcto, pero «¿se ve bien?» necesita
+pedir una captura explícita—, y **ninguno de los dos necesita un navegador instalado antes**.
+Tampoco son razón para agregar Playwright a las dependencias del repositorio: elegirle el stack de
+pruebas a un equipo no es decisión de esta skill.
+
+### Lo que registrar el servidor **no** compra
+
+La documentación de Playwright MCP lo dice de su propio producto: las listas de orígenes
+(`--allowed-origins`, `--blocked-origins`) y la protección de acceso a archivos son **«defensas de
+conveniencia para atrapar accesos no intencionales, no una frontera de seguridad»** — no impiden
+redirecciones y se pueden sortear a propósito. **La aislación real exige permisos del lado del
+cliente.**
+
+Es palabra por palabra el eje de esta skill, dicho por el proveedor: **MCP solo agrega capacidad;
+los hooks y `permissions` son lo único que la quita.** Un servidor de navegador es justamente el
+caso que vuelve obligatorias las reglas `mcp__*`, no un adorno. La skill igual pasa `--isolated`
+—el perfil queda en memoria, no en disco, para que el agente no herede sesiones ya iniciadas— y
+acota los orígenes a los del propio sistema, pero lo dice como lo que es.
+
+**Y hay un segundo riesgo que no es de red:** un MCP de navegador mete **contenido de páginas web
+en el contexto del modelo**. Es la superficie clásica de inyección de prompts — texto de una página
+que ahora convive con tus instrucciones. Nada de esto lo resuelve; lo que sí se hace es mantener
+el radio chico y decirlo en el reporte.
+
 ## Fases principales
 
 1. **Descubrimiento silencioso** — confirma que es un repositorio Java, ubica el o los POM
@@ -98,7 +144,7 @@ se toca nunca. Si ya hay reglas `mcp__*`, no las sobrescribe: reporta la diferen
    Windows, porque los scripts de los hooks son bash puro y, sin Git Bash, Claude Code cae a
    PowerShell y los hooks simplemente no hacen nada.
 3. **Acordar el alcance** — pregunta solo lo que el descubrimiento no pudo resolver: qué
-   servidores MCP habilitar (GitHub, Context7, DBHub — solo si hay evidencia de que aplican), qué
+   servidores MCP habilitar (GitHub, Context7, DBHub y un servidor de navegador — solo si hay evidencia de que aplican, y cuál de los dos de navegador), qué
    hooks bloqueantes y cuáles de reporte activar (con checkboxes ya marcados para la guardia de
    secretos y el formateo al editar), si el registro de auditoría debe confirmarse
    explícitamente (porque graba el contenido completo de cada llamada) y qué ramas proteger.

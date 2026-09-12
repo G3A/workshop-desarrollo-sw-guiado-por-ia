@@ -12,7 +12,7 @@
   <a class="back" href="../Playbook-sdlc-ia.html">← Volver al diagrama</a>
   <div class="brand">Plugin sdlc-ia · Fase 3</div>
   <h1>Ciclo por feature</h1>
-  <p class="lead">La fase mejor cubierta del playbook: dos skills la recorren casi entera, de un documento de requisitos a una PR con el CI en verde. El único hueco que queda es la verificación en el navegador.</p>
+  <p class="lead">La fase mejor cubierta del playbook, y la primera sin una sola caja roja: dos skills la recorren entera, de un documento de requisitos a una PR con el CI en verde, y la cuarta capa de verificación ya tiene con qué mirar.</p>
   <div class="rule"></div>
 
   <nav class="phases">
@@ -28,10 +28,9 @@
   </nav>
 
   <div class="cobertura">
-    <span class="k-skill"><b>11</b> · skill</span>
+    <span class="k-skill"><b>12</b> · skill</span>
     <span class="k-parcial"><b>1</b> · parcial</span>
     <span class="k-mano"><b>2</b> · a mano</span>
-    <span class="k-hueco"><b>1</b> · hueco</span>
   </div>
 
   <h2 class="muted" style="font-family:'Fraunces',serif;margin-top:30px">Especificación</h2>
@@ -121,12 +120,26 @@
     <div class="fuente"><b>Fuente:</b> visor, nodo <code>v0</code>.</div>
   </section>
 
-  <section id="VW" class="hueco">
-    <span class="tag">VW</span><span class="badge hueco">Hueco</span>
+  <section id="VW" class="skill">
+    <span class="tag">VW</span><span class="badge skill">Skill</span>
     <h2>Verifica en el navegador</h2>
-    <p>El método pide que el agente mire el resultado con sus propios ojos: <strong>Playwright MCP</strong>, <strong>Chrome DevTools MCP</strong> o Claude for Chrome, para que pueda navegar la pantalla que acaba de construir antes de decir que terminó.</p>
-    <div class="falta"><b>Qué falta.</b> Ninguna skill del plugin registra ni maneja esos servidores — <code>instrument-agent-java</code> ofrece GitHub, Context7 y DBHub, ninguno de navegador. Y el hueco viene de arriba: sin los <em>design tokens</em> ni el <code>COMPONENTS.md</code> de la caja <code>X4</code>, tampoco hay contra qué comparar lo que el navegador muestre.</div>
-    <div class="hint"><b>La parte humana no es un hueco.</b> El visor la cubre en su nodo <code>vw</code>, y la deja deliberadamente manual: es la parte del proceso donde «se ve bien» todavía no tiene una forma barata de automatizarse del todo.</div>
+    <p>Era <strong>la única de las cuatro capas donde el agente no podía comprobar su propio trabajo</strong>. Las otras tres las corre y las lee; esta la declaraba terminada sin haberla mirado nunca. Lo cierra <code>instrument-agent-java</code>, sumando un <strong>servidor MCP de navegador</strong> a su catálogo.</p>
+    <p><strong>Se ofrece solo si el repositorio tiene interfaz</strong>: plantillas de Thymeleaf, JTE o Freemarker, recursos estáticos, un subproyecto de frontend, controladores que devuelven vistas, o una suite de navegador que ya exista. Es la misma regla que esconde tres de los nueve hooks — en un servicio REST puro, un MCP de navegador es peso muerto que se paga en contexto cada sesión.</p>
+    <p><strong>Cuál de los dos, se pregunta.</strong> No se fija uno por defecto, porque responden preguntas distintas:</p>
+    <div class="ejecuadro">
+      <table class="rev">
+        <tr><th></th><th>Playwright MCP</th><th>Chrome DevTools MCP</th></tr>
+        <tr><td><strong>Lo mantiene</strong></td><td>Microsoft, mismo repositorio y licencia que Playwright</td><td>El equipo de Chrome DevTools, en Google</td></tr>
+        <tr><td><strong>La pregunta que contesta</strong></td><td>«¿funciona y se ve como debería?»</td><td>«¿por qué va lento, o por qué falló esa petición?»</td></tr>
+        <tr><td><strong>Cómo lee la página</strong></td><td><strong>Árbol de accesibilidad</strong> por defecto, no imágenes</td><td>Trazas de rendimiento, peticiones de red, consola con <em>stack traces</em> mapeados</td></tr>
+      </table>
+    </div>
+    <div class="hint"><b>Playwright MCP lee estructura, no capturas</b>, y eso va en la pregunta porque cambia la respuesta: el agente recibe el árbol de accesibilidad, más barato y mucho más fiable para hacer clic en lo correcto — pero «¿se <i>ve</i> bien?» necesita pedir una captura explícita. Un equipo que espera que note una regresión visual por su cuenta se va a llevar una sorpresa, y conviene que la tenga antes de elegir.</div>
+    <div class="hint"><b>Lo que registrar el servidor NO compra, y lo dice el proveedor.</b> La documentación de Playwright MCP llama a <code>--allowed-origins</code> y a la protección de acceso a archivos <b>«defensas de conveniencia para atrapar accesos no intencionales, no una frontera de seguridad»</b> —no impiden redirecciones y se pueden sortear— y dice que la aislación real exige <b>permisos del lado del cliente</b>. Es <a href="00-referencia-e-inicio.html#RD">el eje de este playbook</a> dicho por el fabricante sobre su propio producto: <b>MCP solo agrega capacidad; <a href="03-preparacion-del-terreno.html#DMP">los hooks y <code>permissions</code></a> son lo único que la quita.</b> Un servidor de navegador es justamente el caso que vuelve obligatorias esas reglas, no un adorno.</div>
+    <div class="hint"><b>Y un segundo riesgo que no es de red.</b> Un MCP de navegador mete <b>contenido de páginas web en el contexto del modelo</b>: texto de una página que ahora convive con tus instrucciones, que es la superficie clásica de inyección de prompts. La skill mantiene el radio chico —<code>--isolated</code> para que el perfil no herede sesiones ya iniciadas, orígenes acotados a los del propio sistema— y reporta que la exposición restante es real. Es el mismo criterio con el que <a href="03-preparacion-del-terreno.html#N5N">las anotaciones de MCP</a> se tratan como pistas y no como hechos.</div>
+    <div class="hint"><b>Poder mirar no es saber contra qué comparar.</b> Los <em>design tokens</em> y el <code>COMPONENTS.md</code> de la caja <a href="03-preparacion-del-terreno.html#X4"><code>X4</code></a> siguen sin existir: el agente ya puede abrir la pantalla, pero «¿se ve como debería?» todavía no tiene una referencia escrita. Esta caja cierra la capacidad, no el criterio.</div>
+    <div class="hint"><b>La parte humana sigue siendo humana, y a propósito.</b> El visor la cubre en su nodo <code>vw</code>: es la parte del proceso donde «se ve bien» todavía no tiene una forma barata de automatizarse del todo.</div>
+    <div class="fuente"><b>Fuente:</b> <code>instrument-agent-java/references/mcp-servers.md</code>; documentación oficial de Playwright MCP y de Chrome DevTools MCP, consultada el <b>2026-09-12</b>.</div>
   </section>
 
   <h2 class="muted" style="font-family:'Fraunces',serif;margin-top:30px">Verificación en 4 capas</h2>

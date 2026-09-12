@@ -1,6 +1,6 @@
 ---
 name: instrument-agent-java
-description: Install the agent-facing instrumentation layer in a Java/Maven repository — project-scoped MCP servers in .mcp.json (non-deterministic: the model decides when to call them), plus a catalogue of deterministic Claude Code command hooks in .claude/settings.json backed by portable shell scripts. The catalogue covers a secret read-guard, scoped Spotless formatting, a dangerous-command blocker, a dependency sweep, an audit log, and guards for centrally-managed dependency versions and Flyway/Liquibase migrations. Every hook is proven to fire before the run ends. Invoke with `/sdlc-ia:instrument-agent-java`.
+description: Install the agent-facing instrumentation layer in a Java/Maven repository — project-scoped MCP servers in .mcp.json (non-deterministic: the model decides when to call them), including a browser server when the repository has a user interface, plus a catalogue of deterministic Claude Code command hooks in .claude/settings.json backed by portable shell scripts. The catalogue covers a secret read-guard, scoped Spotless formatting, a dangerous-command blocker, a dependency sweep, an audit log, an MCP write guard, and guards for centrally-managed dependency versions and Flyway/Liquibase migrations. Every hook is proven to fire before the run ends. Invoke with `/sdlc-ia:instrument-agent-java`.
 disable-model-invocation: true
 ---
 
@@ -16,7 +16,7 @@ deterministic only when both the trigger and the decision stay outside the model
 
 - **MCP servers are non-deterministic.** The model decides when to call a tool, and with which
   arguments. They add capability; they do not constrain it.
-- **The eight `type: command` hooks are deterministic.** The agent's lifecycle fires them at a
+- **The nine `type: command` hooks are deterministic.** The agent's lifecycle fires them at a
   fixed point (`PreToolUse`, `PostToolUse`, `SessionStart`…) and a shell script — not the model —
   decides allow, block or report. This is why they are a limit and MCP is not.
 
@@ -96,8 +96,8 @@ repository (or the team's own environment) actually meets their precondition.
 ## Phase 1 — Discover (silent)
 
 Run the full checklist in `references/discovery-checklist.md` (pom path, existing hooks/MCP
-config, Makefile, formatter, hook preconditions, git facts, database, docs, team OS) and report it
-as a table (artifact, status, what you found).
+config, Makefile, formatter, hook preconditions, git facts, database, **whether the repo has a user
+interface**, docs, team OS) and report it as a table (artifact, status, what you found).
 
 ---
 
@@ -121,10 +121,30 @@ Ask **only what Phase 1 could not answer**, and never put an acronym in a questi
 spelling it out. Use `AskUserQuestion` for the closed questions (max 4 options per call).
 
 1. **Which MCP servers.** Offer only what Phase 1 derived — GitHub if there is a `github.com`
-   remote or `.github/workflows/`, Context7 always, DBHub if a real connection string was found.
-   Name the environment variable each one needs. Resolve `npx --version` and, for each stdio
-   package chosen, `npm view <package> version` **in this step** — the number goes into Phase 4's
-   file and into the report as `<package>@<resolved version>`.
+   remote or `.github/workflows/`, Context7 always, DBHub if a real connection string was found,
+   and **a browser server only if checklist item 8b found a user interface**. Name the environment
+   variable each one needs. Resolve `npx --version` and, for each stdio package chosen,
+   `npm view <package> version` **in this step** — the number goes into Phase 4's file and into the
+   report as `<package>@<resolved version>`.
+
+1b. **Which browser server** — only when the previous question included one. **Ask; do not
+    default.** The two answer different questions, and which one the team needs is not something
+    the repository can tell you:
+
+    | Option | Description |
+    |---|---|
+    | Playwright MCP | "Does it work, and does it look right?" Reads the accessibility tree, not screenshots — a visual regression needs an explicit screenshot request. Same repository and licence as Playwright. |
+    | Chrome DevTools MCP | "Why is it slow, and why did that request fail?" Performance traces, network requests, console messages with source-mapped stack traces. From the Chrome DevTools team. |
+
+    Neither needs a browser installed first, and **neither is a reason to add Playwright to the
+    repository's dependencies** — choosing a testing stack is not this skill's call.
+
+    **Say in the same breath what registering it does not buy.** Playwright MCP's own documentation
+    calls `--allowed-origins` and the file-access guardrail *convenience defenses, not a security
+    boundary*, and says real isolation needs client-level permissions. That is this skill's axis,
+    from the vendor: the `mcp__*` rules of scope question 8 are what actually narrows it. And a
+    browser server pulls page content into the model's context, which is the classic
+    prompt-injection surface — `references/mcp-servers.md` carries both caveats in full.
 2. **Which hooks, split into two multi-select questions** — never bundle two hooks into one
    option, never put caveats in an option's description (those belong in Phase 6):
 
