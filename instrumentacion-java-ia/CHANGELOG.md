@@ -375,6 +375,32 @@ versión nueva", and `AGENTS.md`).
 
 ### Fixed
 
+- **The `Asistido-por-IA` marker was documented with a command that returns nothing.** Every place
+  that told you to read it with git's trailer reader —
+  `%(trailers:key=Asistido-por-IA,valueonly)` — was wrong on a squash-merged history, where it
+  returns **empty for every commit**. Measured over 109 first-parent commits of this monorepo:
+  **0** with the trailer reader, **23** with `--grep`.
+  - **The cause is not the commit's formatting, which is why the earlier diagnosis was wrong.**
+    The commits were written with the footer as one contiguous block; **GitHub rewrites the message
+    when it squashes**, separating each trailer with a blank line and moving `Co-authored-by` last.
+    Git parses only the last contiguous block as trailers, so that block is one `Co-authored-by`
+    line and the marker is no longer a trailer. **Nobody can fix this by writing the commit
+    differently**, so `--grep` is not a workaround pending a fix — it is the correct way to read
+    this marker out of a squash-merged branch, and the docs now say so instead of implying a fix is
+    coming.
+  - **`docs/skills/github-plan-build-es.md` claimed the trailer reader worked "incluso después de
+    un squash"** — the precise opposite of what happens.
+  - Corrected in six places: `github-plan-build`'s Step H, its Spanish doc, `impact-metrics`'
+    `SKILL.md` and `references/metric-definitions.md`, the viewer's commit node, and the playbook's
+    Fase 3.
+
+- **`impact-metrics` counted commits that only *mention* the marker.** `--grep=Asistido-por-IA` is
+  unanchored, so a commit such as "explain why `Asistido-por-IA` is not read" counts as an
+  AI-assisted pull request and inflates "% of PRs with AI" — and fixing this issue produces exactly
+  such commits. Now `--grep="^Asistido-por-IA: "`, which matches the trailer line and nothing else.
+  Proven on a two-commit probe (one carrying the real trailer, one only discussing it): unanchored
+  counts 2, anchored counts 1. On this monorepo both currently return 23 because no commit mentions
+  it in prose yet — which is exactly why it was worth anchoring before one did.
 - **`README.md` said the plugin has four skills** while the table below it listed seven, and typed
   "una catálogo de 8 hooks".
 - **`docs/skills/instrument-agent-java-es.md` listed seven hook scripts of eight** under "Qué
