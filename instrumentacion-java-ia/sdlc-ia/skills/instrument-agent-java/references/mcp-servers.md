@@ -186,6 +186,92 @@ Nothing in this skill solves that. What it can do is keep the blast radius small
 to the app's own hosts, `--isolated`, and the write-denying `mcp__*` permission rules — and say in
 the report that the remaining exposure is real. A caveat stated is a caveat the team can decide
 about.
+
+## Read what each server declares, and report the contradictions
+
+You are already connected to every server you just registered, to confirm it starts. Reading what
+it declares while that connection is open is nearly free, and it catches the contradiction **before
+the server is committed to the repository** rather than months later.
+
+**Do not list the annotations in the report.** Repeating what a server says about itself, without
+contrast, is precisely what the specification warns against. What goes in the report is
+**contradictions**.
+
+### What the specification actually says
+
+From the canonical `schema.ts`, `interface ToolAnnotations`:
+
+| Field | Meaning | **Default** |
+|---|---|---|
+| `readOnlyHint` | If true, the tool does not modify its environment | **`false`** |
+| `destructiveHint` | If true, the tool may perform destructive updates | **`true`** |
+| `idempotentHint` | If true, repeating the call adds no further effect | **`false`** |
+| `openWorldHint` | If true, the tool interacts with an open world of external entities | **`true`** |
+
+Three sentences from the specification govern everything below:
+
+> *"NOTE: all properties in ToolAnnotations are **hints**. They are not guaranteed to provide a
+> faithful description of tool behavior (including descriptive properties like `title`)."*
+
+> *"Clients should never make tool use decisions based on ToolAnnotations received from untrusted
+> servers."*
+
+> *"clients **MUST** consider tool annotations to be untrusted unless they come from trusted
+> servers."*
+
+And `destructiveHint` and `idempotentHint` are each *"meaningful only when `readOnlyHint == false`"*
+— which turns one specific combination into a contradiction checkable with no judgement at all.
+
+### Reading the tool list
+
+There is no Claude Code command that lists tools with their annotations: `claude mcp list` reports
+connection health, and `/mcp` is interactive. Use the **official MCP Inspector in CLI mode**, which
+exists for exactly this:
+
+```
+npx @modelcontextprotocol/inspector --cli <server command> --method tools/list --format json
+```
+
+`--format json` returns a single JSON object on stdout with no banners. The server's own flags go
+**after a `--` separator**; an HTTP server is given as a URL instead of a command.
+
+**Confirm the invocation returns JSON before relying on it**, and if it does not, report that the
+annotations could not be read — never let "could not check" be silently indistinguishable from
+"nothing to report". Same discipline as proving a hook fires.
+
+### The three findings
+
+**1 — The declaration contradicts itself.** `readOnlyHint: true` together with an explicitly
+declared `destructiveHint` or `idempotentHint`. The schema says those two are meaningful only when
+`readOnlyHint` is `false`, so a server that sets both is arguing with itself. This one needs no
+interpretation: report it as a fact.
+
+**2 — Declared read-only, named like a write.** `readOnlyHint: true` on a tool whose name or
+description says create, update, delete, write, insert, drop, set, push, merge, remove or execute.
+This one *is* a judgement call, which is exactly why the output goes to a person instead of to an
+automatic decision. Quote the tool name and the phrase that triggered it, so the reader can
+disagree in one glance.
+
+**3 — It declares nothing at all**, and this is the one that gets read backwards. **Absent
+annotations are not "safe."** With the schema's own defaults, an unannotated tool reads as
+**potentially destructive and open-world**. So "no annotations" is not "no findings": it is "every
+tool here falls to the pessimistic reading," and the report says so in those words.
+
+It is the same principle this package applies to its own controls — **a partial is more dangerous
+than a missing one**, because the team believes it is covered.
+
+### Why this is a report and not a gate
+
+Because the specification says these hints are not trustworthy, and a gate built on an untrustworthy
+input is worse than no gate: it manufactures confidence. **What actually blocks is the `mcp__*`
+permission rules** — the deterministic half, written in the phase after this one. This check feeds
+that decision with evidence; it does not replace it.
+
+And the relationship runs one way only: **a contradiction is a reason to tighten, never a reason to
+loosen.** Do not relax a deny rule because a tool declared itself read-only. That is the failure
+mode the specification's warning exists to prevent, and it would put a server's own claim in charge
+of the one mechanism that constrains it.
+about.
 ## Writing the file does not connect the servers
 
 A newly written `.mcp.json` leaves its servers at **`⏸ Pending approval`** until the user trusts
@@ -204,6 +290,10 @@ servers do not. Say which half of the run was proven and which half was only wri
 - Confirm the file parses: `python3 -c "import json;json.load(open('.mcp.json'))"`.
 - Start each stdio server once with `< /dev/null` so it exits instead of hanging on a handshake
   that never arrives, and confirm it does not immediately fail on an unsupported flag.
+- **Read each server's tool list and report the contradictions** — the section above. Do it in the
+  same pass: you are already connected, and a contradiction found now is found before the server is
+  committed. "Could not read the annotations" is itself a finding; never let it look like a clean
+  result.
 - Grep your own output for anything that looks like a credential rather than a `${VAR}`.
 - List every environment variable introduced, so Phase 6 can put them in `README.md`.
 - **Warn about the browser server's first run.** It downloads a browser the first time it is

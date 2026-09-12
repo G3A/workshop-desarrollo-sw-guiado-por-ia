@@ -28,9 +28,9 @@
   </nav>
 
   <div class="cobertura">
-    <span class="k-skill"><b>23</b> · skill</span>
+    <span class="k-skill"><b>24</b> · skill</span>
     <span class="k-parcial"><b>2</b> · parcial</span>
-    <span class="k-hueco"><b>7</b> · hueco</span>
+    <span class="k-hueco"><b>6</b> · hueco</span>
     <span class="k-fuera"><b>2</b> · fuera de alcance</span>
   </div>
 
@@ -327,12 +327,25 @@
     <div class="falta"><b>Qué falta.</b> Ninguna skill los registra ni los documenta en el repositorio del usuario.</div>
   </section>
 
-  <section id="N5N" class="hueco nodet">
-    <span class="tag">N5N</span><span class="badge hueco">Hueco</span><span class="tipo nodet">No determinista</span>
+  <section id="N5N" class="skill nodet">
+    <span class="tag">N5N</span><span class="badge skill">Skill</span><span class="tipo nodet">No determinista</span>
     <h2>Anotaciones de herramienta</h2>
-    <p><code>readOnlyHint</code> y <code>destructiveHint</code> las declara el servidor, y no deciden nada: son pistas para la interfaz. La especificación obliga a tratarlas como no confiables, porque las escribe el mismo servidor que querrías vigilar.</p>
-    <div class="falta"><b>Qué falta.</b> Ninguna skill las revisa al registrar un servidor. Un servidor que se declara de solo lectura y no lo es pasaría sin que nadie lo note.</div>
-    <div class="fuente"><b>Fuente:</b> blog oficial de MCP, «Tool Annotations as Risk Vocabulary»: <em>keep your actual safety guarantees in deterministic controls</em>. Citado en la leyenda del visor.</div>
+    <p><code>readOnlyHint</code> y <code>destructiveHint</code> las declara el servidor, y no deciden nada: son pistas para la interfaz. La especificación obliga a tratarlas como no confiables, porque las escribe <strong>el mismo servidor que querrías vigilar</strong>.</p>
+    <p>Lo cubre <code>instrument-agent-java</code> al escribir <code>.mcp.json</code>. <strong>Ya está conectado a cada servidor que registra</strong> para comprobar que arranca; leer lo que declara mientras esa conexión está abierta es casi gratis, y atrapa la contradicción <strong>antes de que el servidor quede en el repositorio</strong>.</p>
+    <div class="hint"><b>No las cree: las contrasta.</b> El reporte no lista las anotaciones — repetir lo que un servidor dice de sí mismo, sin contraste, es exactamente lo que la especificación advierte que no hay que hacer. Lo que va al reporte son <b>contradicciones</b>.</div>
+    <p><strong>Los tres hallazgos</strong>, y el tercero es el que todo el mundo lee al revés:</p>
+    <div class="ejecuadro">
+      <table class="rev">
+        <tr><th>Hallazgo</th><th>Por qué es real</th></tr>
+        <tr><td><strong>La declaración se contradice sola</strong><br><code>readOnlyHint: true</code> junto a un <code>destructiveHint</code> o <code>idempotentHint</code> declarados</td><td>El esquema dice que esos dos solo tienen sentido <em>cuando <code>readOnlyHint</code> es <code>false</code></em>. No hay nada que interpretar</td></tr>
+        <tr><td><strong>Se declara solo-lectura y se nombra como escritura</strong></td><td>Acá sí hay juicio, y por eso va a una persona: se cita el nombre y la frase que lo disparó, para poder discrepar de un vistazo</td></tr>
+        <tr><td><strong>No declara nada</strong></td><td><strong>Ausencia de anotaciones no es «seguro».</strong> Por defecto el esquema dice <code>readOnlyHint: false</code>, <code>destructiveHint: true</code>, <code>openWorldHint: true</code>: sin anotar, una herramienta se lee como <strong>potencialmente destructiva y de mundo abierto</strong></td></tr>
+      </table>
+    </div>
+    <div class="hint"><b>«Ninguna anotación» no es «ningún hallazgo».</b> Es el mismo principio con el que <a href="00-referencia-e-inicio.html#RB">un parcial es más peligroso que un hueco</a>: el equipo cree que está cubierto. El reporte lo dice con todas las letras en vez de dejarlo implícito.</div>
+    <div class="hint"><b>Es un reporte y no un gate, y eso es el punto.</b> La especificación dice que estas pistas no son confiables, y <b>un gate construido sobre un dato no confiable es peor que no tenerlo: fabrica confianza</b>. Lo que bloquea de verdad son <a href="#DMP">las reglas <code>mcp__*</code></a>; esto las alimenta con evidencia.</div>
+    <div class="hint"><b>Y va en un solo sentido.</b> Una contradicción es motivo para <b>apretar</b> la lista de negación, nunca para aflojarla. Relajar una regla porque una herramienta se declaró solo-lectura pondría la afirmación del servidor a cargo del único mecanismo que lo acota — justo lo que la advertencia de la especificación existe para evitar.</div>
+    <div class="fuente"><b>Fuente:</b> el <code>schema.ts</code> canónico de la especificación (consultado el <b>2026-09-12</b>): «all properties in ToolAnnotations are <b>hints</b>», «clients should never make tool use decisions based on ToolAnnotations received from untrusted servers», y —como requisito formal en la página de Tools— «clients <b>MUST</b> consider tool annotations to be untrusted unless they come from trusted servers».</div>
   </section>
 
   <section id="DMP" class="skill det">

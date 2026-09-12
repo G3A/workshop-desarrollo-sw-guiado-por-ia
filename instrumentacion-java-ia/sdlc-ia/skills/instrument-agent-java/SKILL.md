@@ -205,6 +205,13 @@ Write in this order:
 1. **`.mcp.json`** — follow `references/mcp-servers.md`. Merge into `mcpServers`, never replace.
    Every credential is `${ENV_VAR}`; never a literal. If the team chose no servers, still write
    `{"mcpServers": {}}` when the file is absent.
+
+   **Then read each server's tool list and report the contradictions**, in the same pass that
+   confirms the server starts — `references/mcp-servers.md`, "Read what each server declares".
+   You are already connected, and a contradiction found here is found **before** the server is
+   committed. Report contradictions, never the annotations themselves: repeating what a server says
+   about itself is what the specification warns against. **"Could not read them" is a finding**, not
+   a clean result.
 2. **The hook scripts**, into `scripts/agent-hooks/`, starting with `_lib.sh` — the
    template→output mapping is in `references/hook-catalog.md`'s intro.
 
@@ -249,6 +256,9 @@ an issue changes nothing, closing one does. Two postures were rejected and the r
   than one that was never installed.
 - Trusting the server's own `readOnlyHint` is not an option: the specification says to treat
   annotations as untrusted, because the server that declares them is the one you would be watching.
+  The contradiction report from the previous step **feeds this decision and never relaxes it**: a
+  tool that declared itself read-only and contradicts itself is a reason to widen the deny list,
+  and a tool that declared itself read-only credibly is still not a reason to narrow it.
 
 Classify each registered server's tools by consequence, **reading the tool list from the server**,
 not from memory. When a tool's name does not make the consequence obvious, it goes in the deny list
@@ -313,9 +323,15 @@ Update `AGENTS.md`, `README.md`, and (if present) `docs/infrastructure.md`/`docs
 Report, in order: files created/modified (config and docs separately); the audit log's contents
 and gitignore status, if installed; hooks **not** installed and why; MCP servers as
 written-pending-approval with their resolved versions, each `${ENV_VAR}` they need flagged as
-confirmed-in-`.env` or missing; known false positives, hook by hook (leading with
-`cp .env.example .env` being denied); that `.claude/settings.json` is Claude Code's alone — no
-other agent reads it.
+confirmed-in-`.env` or missing; **the annotation contradictions found per server, or that none
+were found, or that they could not be read** — those three are different results and the report
+says which; known false positives, hook by hook (leading with `cp .env.example .env` being denied);
+that `.claude/settings.json` is Claude Code's alone — no other agent reads it.
+
+When a server declares **no** annotations at all, say so in the words the specification implies:
+with its defaults, every unannotated tool reads as **potentially destructive and open-world**. "No
+annotations" is not "no findings", and a report that leaves that implicit is how a team concludes a
+server is harmless because it said nothing.
 
 **Then, last,** walk the **Try it** table in `references/verification-steps.md` §2 with the user —
 one line per installed hook and registered server.
