@@ -17,6 +17,29 @@ versión nueva", and `AGENTS.md`).
 
 ### Added
 
+- **`instrument-agent-java` offers a browser MCP server**, closing the fourth verification layer —
+  the only one where the agent could not check its own work. It runs the local gates, reads CI and
+  reads the security scan, then declared "the page works" without ever having looked at it.
+  - **Offered only when discovery finds a user interface** (checklist item 8b): templates, static
+    assets, a front-end subproject, view-returning controllers, or an existing browser test suite.
+    Same rule that hides three of the nine hooks — no control for an artifact the repo does not
+    have, and in a pure REST service a browser server is dead weight paid for in context every
+    session. **The negative result is reported with what was looked for**, never silently skipped.
+  - **Which of the two is asked, not defaulted.** Playwright MCP answers "does it work and does it
+    look right"; Chrome DevTools MCP answers "why is it slow and why did that request fail". The
+    question only appears for repositories that already have a UI, so it is not one more question
+    for everyone.
+  - **Playwright MCP reads the accessibility tree, not screenshots**, and that goes into the
+    question because it changes the answer: the agent gets structure, which is cheaper and far more
+    reliable for clicking the right thing, but "does it *look* right" needs an explicit screenshot
+    request. A team expecting it to notice a visual regression unprompted should hear that first.
+  - **Neither is a reason to add Playwright to the repository's dependencies.** Both download what
+    they need on first use, and choosing a team's testing stack is not this skill's call — the same
+    rule that stops `instrument-project-java` installing Testcontainers. The first run downloads a
+    browser, hundreds of megabytes, and the report says so rather than letting it look like a hang.
+  - **`@latest` is not used, even though the vendor's own page shows it.** The skill's pinning rule
+    does not weaken because the publisher is Microsoft.
+
 - **`instrument-project-java` gained control 13 — the SonarQube quality gate**, the thirteenth, and
   the one place in this package where **the consumer existed and the producer did not**.
   `debt-triage` already knew how to triage SonarQube findings and, in a freshly instrumented
@@ -249,6 +272,19 @@ versión nueva", and `AGENTS.md`).
 
 ### Changed
 
+- **The browser server is the case that makes the `mcp__*` permission rules non-optional**, and the
+  skill now says so citing the vendor. Playwright MCP's documentation calls `--allowed-origins` and
+  the file-access guardrail *convenience defenses to catch unintended access, not a security
+  boundary* — they do not stop redirects and can be deliberately circumvented — and states that
+  **real isolation requires client-level permissions**. That is this package's own axis, said by
+  the publisher about its own product: MCP only adds capability; hooks and `permissions` are the
+  only things that take it back. A team that reads `--allowed-origins` in a diff and concludes the
+  agent is fenced in has drawn the wrong conclusion from a real flag.
+- **The second caveat is stated too, because nothing here solves it:** a browser server pulls web
+  page content into the model's context, which is the classic prompt-injection surface. The skill
+  keeps the blast radius small — `--isolated` so no on-disk profile carries logged-in sessions,
+  origins scoped to the app's own hosts, the write-denying `mcp__*` rules — and reports that the
+  remaining exposure is real.
 - **`debt-triage` now names the control instead of suggesting "set up an analyzer".** When it finds
   nothing to triage on a Java/Maven repository it points at **control 13** (SonarQube, needs a
   server the team runs) or **control 11c** (CodeQL, free on a public repo, paid on a private one) —
