@@ -5,6 +5,8 @@
 #   {{CHECKOUT_MAJOR}}       {{SETUP_JAVA_MAJOR}}       {{CACHE_MAJOR}}      {{UPLOAD_ARTIFACT_MAJOR}}
 #   {{CODEQL_MAJOR}}         github/codeql-action  -- only if control 11c is installed
 #   {{CLAUDE_ACTION_MAJOR}}  anthropics/claude-code-action -- only if control 9b is installed
+#                            control 13 needs NO action placeholder: it runs the Maven scanner via
+#                            `make sonar`, whose version is pinned in pom.xml, not here.
 #   {{JAVA_VERSION}}         the repo's own <java.version> / <maven.compiler.release>, never guessed
 #   {{GITLEAKS_VERSION}}     gh release view --repo gitleaks/gitleaks --json tagName --jq .tagName
 #                            prints e.g. v8.30.1 -- write it WITHOUT the leading v (8.30.1): the URL
@@ -202,12 +204,73 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
 
+  # ── SonarQube quality gate — control 13. DELETE THIS JOB IF IT WAS DECLINED. ──────────────────
+  # This skill NEVER stands a SonarQube server up. The job assumes one the team already runs, named
+  # by the SONAR_HOST_URL repository variable. No server = control 13 reported out of scope.
+  #
+  # Its own job, and NOT part of `make ci`, for one reason: `make ci` has to run on any laptop with
+  # no credentials, and this needs a host and a token that are per-environment. That is the same
+  # shape as the codeql job above — and the opposite conclusion about the Ruleset:
+  #
+  #   REQUIRE THIS CHECK. Unlike codeql (a queue of findings to triage) and revision-ia (a model's
+  #   judgement), this is a pass/fail verdict against a bar the team set itself on the server. That
+  #   is exactly what a required check is for. /sdlc-ia:instrument-github-repo writes it.
+  #
+  # For a Maven project use the MAVEN SCANNER, as here — not SonarSource/sonarqube-scan-action.
+  # SonarSource's own documentation says so: the CLI action does not see the module graph, the test
+  # sources or the compiled bytecode, and silently analyses less.
+  sonar:
+    if: >-
+      github.event_name == 'push' ||
+      github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-latest
+    steps:
+      # fetch-depth: 0 is NOT optional here. Sonar decides what counts as new code from the
+      # history, and the quality gate is evaluated on new code -- a shallow clone degrades both.
+      - uses: actions/checkout@{{CHECKOUT_MAJOR}}
+        with:
+          fetch-depth: 0
+
+      # The scanner itself needs Java 21+ to RUN (since 2026-07-20 nothing lower is supported).
+      # Since scanner 5.0 it provisions a JDK 21 on its own, so {{JAVA_VERSION}} can be lower and
+      # the repo still analyses -- but that provisioning DOWNLOADS a JRE, which fails on a runner
+      # with no outbound internet. There, pin this to 21+ and add
+      # -Dsonar.scanner.skipJreProvisioning=true to the make target.
+      - name: Install JDK and Maven wrapper cache
+        uses: actions/setup-java@{{SETUP_JAVA_MAJOR}}
+        with:
+          distribution: temurin
+          java-version: "{{JAVA_VERSION}}"
+          cache: maven
+
+      - name: Cache the SonarQube analysis cache
+        uses: actions/cache@{{CACHE_MAJOR}}
+        with:
+          path: ~/.sonar/cache
+          key: sonar-${{ runner.os }}
+          restore-keys: sonar-${{ runner.os }}
+
+      - name: Analyze and wait for the quality gate
+        env:
+          # Repository SECRET -- never a literal, never an input to the workflow.
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          # Repository VARIABLE (Settings > Secrets and variables > Actions > Variables). The host
+          # is not a secret, and keeping it a variable means it shows in the log when it is wrong.
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+        # The make target carries -Dsonar.qualitygate.wait=true. WITHOUT that flag this step
+        # uploads the analysis and exits GREEN even when the gate failed -- a dashboard, not a
+        # gate. Do not "simplify" it away.
+        run: make sonar
+
 # Branch protection is what turns `check` from a report into a gate, and
 # `/sdlc-ia:instrument-github-repo` is what writes it — a Ruleset requiring the `check` status
 # check and an approving review. Until that runs, everything above reports and nothing blocks.
 #
-# REQUIRE `check`. Do NOT require `codeql` unless the team agreed to triage its findings on every
-# PR, and do NOT require `revision-ia` at all — see its comment above.
+# REQUIRE `check`, and REQUIRE `sonar` when control 13 is installed. Do NOT require `codeql` unless
+# the team agreed to triage its findings on every PR, and do NOT require `revision-ia` at all — see
+# their comments above. The line between the two groups is not how good the tool is: it is whether
+# the job produces a verdict against a bar the team set (required) or a queue of findings somebody
+# still has to judge (not required).
 #
 # Do NOT add paths-ignore to skip docs-only commits once `check` is a required status check: the
 # skipped run never reports, and the pull request waits for a check that will never arrive.

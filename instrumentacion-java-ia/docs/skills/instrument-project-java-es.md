@@ -4,7 +4,7 @@
 
 Instala la capa de **instrumentación determinística** en un repositorio Java/Maven: un conjunto
 de controles que una máquina puede verificar por sí sola, en milisegundos y sin ambigüedad, antes
-de que una persona revise el cambio. Cubre doce controles — desde builds reproducibles hasta un
+de que una persona revise el cambio. Cubre trece controles — desde builds reproducibles hasta un
 pipeline de CI, el escaneo de dependencias vulnerables, la cobertura del código nuevo y la
 separación de suites — y prueba que cada uno realmente falla cuando debería fallar antes de dar la
 corrida por terminada.
@@ -22,7 +22,7 @@ puede abrir).
 
 No recibe argumentos.
 
-## Los doce controles
+## Los trece controles
 
 | # | Control | Qué instala | Qué evita |
 |---|---------|--------------|-----------|
@@ -38,6 +38,7 @@ No recibe argumentos.
 | 10 | Cobertura de pruebas | JaCoCo con una regla **solo sobre el código nuevo**, que falla en CI y no en `make check` | Que el código recién escrito llegue sin una sola prueba, sin que nadie lo note |
 | 11 | Patrones de bug y SAST | SpotBugs (opt-in), **FindSecBugs** encima de él, y un job de **CodeQL** en CI | Defectos que compilan y pasan el estilo, y patrones inseguros en el código que el agente acaba de escribir |
 | 12 | Separación de suites | Failsafe para `*IT`, más `make test` y `make verify` | Que las pruebas rápidas y las lentas corran juntas, y por eso no se pueda exigir ninguna de las dos |
+| 13 | Quality gate | El scanner de Maven de **SonarQube** con `sonar.qualitygate.wait`, detrás de `make sonar` y de su propio job de CI (opt-in, contra un servidor que el equipo ya tenga) | Que el código nuevo entre por debajo de la barra que el equipo mismo se puso — y que `debt-triage` no encuentre ningún analizador que triajar |
 
 ## Las dos mitades de la seguridad del código, y el fallo silencioso
 
@@ -69,6 +70,39 @@ revisor no determinista con poder de veto bloquea PRs correctas por criterio del
 equipo aprende a ignorarlo o a pedir bypass. Lo que bloquea son los sensores deterministas y la
 aprobación humana; la revisión por IA aporta señal, no veredicto — es el propio eje del método
 aplicado a su propia herramienta.
+
+## El quality gate de SonarQube, y por qué es el único con un prerrequisito de infraestructura
+
+El control 13 es **opt-in**, como los controles 6, 9 y 11, pero por una razón más dura: los otros
+solo cuestan curaduría, este además **necesita un servidor que el equipo ya tenga**. La skill
+pregunta por `SONAR_HOST_URL` antes que nada; si no hay servidor, reporta el control fuera de
+alcance con su motivo y sigue — la misma salida que toma el control 8 con una CI que no es GitHub
+Actions.
+
+**La skill nunca levanta un servidor.** Ni un SonarQube local con `docker-compose` —eso la metería
+en el negocio de operar infraestructura: versiones, volúmenes, actualizaciones, y nada de lo que
+instala hoy tiene ese peso— ni SonarQube Cloud, que ata el repositorio a un servicio con cuenta y
+facturación propias. Las dos son decisiones del equipo.
+
+**El productor que le faltaba a `debt-triage`.** Es el único lugar del paquete donde existía el
+consumidor y no el productor: esa skill sabe leer hallazgos de SonarQube, y en un repositorio
+recién instrumentado no encontraba ninguno, porque nadie los publicaba.
+
+**Lo que lo convierte en gate y no en tablero es una sola bandera**: `sonar.qualitygate.wait`. Sin
+ella el scanner sube el análisis y **termina en verde aunque el quality gate falle**. Es la misma
+distinción que separa un workflow que corre de un Ruleset que bloquea, y el mismo fallo silencioso
+del control 11b: **un build verde no prueba que el código esté limpio, puede significar que falta
+la bandera**. Por eso la verificación exige que el build se haya puesto rojo de verdad.
+
+**El paso de romper es el segundo análisis, nunca el primero.** El quality gate se evalúa sobre
+código nuevo, y el primer análisis es el que establece la línea base: puede pasar sin nada dentro.
+Dar por verificado ese primer verde es exactamente cómo un control termina siendo creído sin haber
+disparado nunca.
+
+**Es el único job de CI, además de `check`, que sí debe ser obligatorio en el Ruleset.** La línea
+no es qué tan buena es la herramienta: es si el job produce un **veredicto** contra una barra que
+el equipo fijó (obligatorio) o una **cola de hallazgos** que alguien todavía tiene que juzgar
+(no obligatorio, como CodeQL y la revisión por IA).
 
 ## Fases principales
 
@@ -111,6 +145,9 @@ aplicado a su propia herramienta.
 - Plugin `dependency-check-maven` en `pom.xml`, `dependency-check-suppressions.xml` y
   `.github/dependabot.yml` (si se activa el control 9).
 - Clases de test de arquitectura (ArchUnit).
+- Plugin `sonar-maven-plugin` y propiedades `sonar.*` en `pom.xml`, el target `make sonar` y el job
+  `sonar` del workflow (si se activa el control 13). **Nunca un servidor**, ni un `docker-compose`
+  que lo levante. Tampoco escribe el token: es `SONAR_TOKEN`, un secreto del repositorio.
 - Workflow de CI (`.github/workflows/ci.yml`). Si el repositorio ya tiene su CI en otra
   plataforma, la skill lo reporta como fuera de alcance y le indica el target `make ci` que ese
   pipeline puede invocar; no escribe pipelines para otras plataformas.

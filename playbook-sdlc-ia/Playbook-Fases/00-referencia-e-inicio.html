@@ -42,8 +42,8 @@
       <table class="rev">
         <tr><th>Skill</th><th>Qué hace</th><th>Fase</th></tr>
         <tr><td><strong>agent-context-java</strong></td><td>Genera el paquete de contexto del repo: <code>AGENTS.md</code>, <code>CLAUDE.md</code>, <code>docs/architecture.md</code>, ADRs, <code>docs/java.md</code>.</td><td>2</td></tr>
-        <tr><td><strong>instrument-project-java</strong></td><td>Instala doce controles deterministas y prueba que cada uno falla antes de reportar éxito.</td><td>2</td></tr>
-        <tr><td><strong>instrument-agent-java</strong></td><td>Registra servidores MCP y ocho hooks de comando de Claude Code.</td><td>2</td></tr>
+        <tr><td><strong>instrument-project-java</strong></td><td>Instala trece controles deterministas y prueba que cada uno falla antes de reportar éxito.</td><td>2</td></tr>
+        <tr><td><strong>instrument-agent-java</strong></td><td>Registra servidores MCP y nueve hooks de comando de Claude Code, más las reglas de permiso sobre <code>mcp__*</code>.</td><td>2</td></tr>
         <tr><td><strong>instrument-github-repo</strong></td><td>Escribe el Ruleset que convierte los checks de CI en un juez. Nunca sobrescribe uno existente, y lo prueba bloqueando.</td><td>2</td></tr>
         <tr><td><strong>requirement-to-spec-java</strong></td><td>Convierte un documento de requisitos en spec y tareas, antes de que exista el issue.</td><td>3</td></tr>
         <tr><td><strong>github-plan-build</strong></td><td>Issue → plan → build test-first → PR verificada, con el CI vigilado hasta verde. Cierra proponiendo dónde va la lección de la vuelta.</td><td>3 y 4</td></tr>
@@ -71,7 +71,7 @@
     <span class="tag">RD</span><span class="tipo det">El eje</span>
     <h2>El eje de la instrumentación</h2>
     <p>Un control es <strong>determinista solo si el disparo y la decisión quedan los dos fuera del razonamiento del modelo</strong>. Basta que una de las dos dependa del modelo para que sea no determinista.</p>
-    <p>El eje es <em>quién dispara y quién decide</em>, no cómo está implementado. Por eso los ocho hooks de comando que instala <code>instrument-agent-java</code> son deterministas —el ciclo de vida del agente los dispara en un punto fijo, y un script de shell decide— mientras que los servidores MCP que la misma skill registra son no deterministas: el modelo decide cuándo llamarlos y con qué argumentos.</p>
+    <p>El eje es <em>quién dispara y quién decide</em>, no cómo está implementado. Por eso los nueve hooks de comando que instala <code>instrument-agent-java</code> son deterministas —el ciclo de vida del agente los dispara en un punto fijo, y un script de shell decide— mientras que los servidores MCP que la misma skill registra son no deterministas: el modelo decide cuándo llamarlos y con qué argumentos.</p>
     <div class="excep"><b>Dos excepciones que rompen la intuición.</b> Un hook <code>type: mcp_tool</code> es determinista, aunque llame a un servidor MCP, porque el modelo no eligió llamarlo. Y un hook <code>type: prompt</code> es no determinista, aunque sea un hook, porque la decisión sale de inferencia.</div>
     <div class="fuente"><b>Fuente:</b> la leyenda de <code>proceso-operacional-con-ia/comandos.json</code> (<code>instrumentacionTipos</code>), que cita la documentación de Claude Code y la especificación de MCP.</div>
   </section>

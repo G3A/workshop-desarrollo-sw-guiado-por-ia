@@ -4,7 +4,7 @@
 
 Escribe el **Ruleset de GitHub** que convierte los checks de CI en un juez de verdad.
 
-`instrument-project-java` instala doce controles, los prueba rompiendo uno por uno, y escribe
+`instrument-project-java` instala trece controles, los prueba rompiendo uno por uno, y escribe
 `.github/workflows/ci.yml`. Y ahí termina. **Un workflow que corre no bloquea nada**: lo que impide
 el merge es el Ruleset que exige ese workflow. Sin él, un repositorio queda con todos los sensores y
 ningún juez — los checks informan y el merge pasa igual.
