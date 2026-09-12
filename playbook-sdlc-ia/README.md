@@ -22,11 +22,11 @@ navegador basado en Chromium.
 |---|---|
 | **Skill** | La corre el plugin, con su comando. La caja nombra cuál. |
 | **Parcial** | Hay una skill que toca el paso, pero no lo cubre entero. La sección dice qué queda afuera. |
-| **A mano** | La haces tú, y el repositorio te enseña cómo: un nodo del visor `proceso-operacional-con-ia` o un manual de `manuales/`. |
+| **A mano** | La haces tú, y el repositorio te enseña cómo: un nodo del visor `proceso-operacional-con-ia`, un manual de `manuales/`, o la propia página de la fase cuando el paso es una conversación y no un comando. |
 | **Hueco** | Nadie la cubre acá: ni skill, ni visor, ni manual. |
 | **Fuera de alcance** | Frontera declarada del plugin, no un olvido: Azure DevOps, memoria semántica entre sesiones, agentes especialistas por stack — y una derivada de la segunda, los hooks `type: mcp_tool`. |
 
-Cobertura al momento de escribir esto: **39 skill · 3 parcial · 13 a mano · 13 hueco · 3 fuera de
+Cobertura al momento de escribir esto: **39 skill · 3 parcial · 14 a mano · 12 hueco · 3 fuera de
 alcance**, sobre 71 cajas con badge.
 
 ## Cómo se usa el diagrama
