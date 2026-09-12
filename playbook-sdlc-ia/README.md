@@ -26,7 +26,7 @@ navegador basado en Chromium.
 | **Hueco** | Nadie la cubre acá: ni skill, ni visor, ni manual. |
 | **Fuera de alcance** | Frontera declarada del plugin, no un olvido: Azure DevOps, memoria semántica entre sesiones, agentes especialistas por stack — y una derivada de la segunda, los hooks `type: mcp_tool`. |
 
-Cobertura al momento de escribir esto: **38 skill · 3 parcial · 13 a mano · 14 hueco · 3 fuera de
+Cobertura al momento de escribir esto: **39 skill · 3 parcial · 13 a mano · 13 hueco · 3 fuera de
 alcance**, sobre 71 cajas con badge.
 
 ## Cómo se usa el diagrama
@@ -75,7 +75,7 @@ Playbook-Fases/
   00-referencia-e-inicio.html    Las 9 skills, los 5 badges, el eje, las piezas del repo.
   01-fundamentos.html            Fase 0.
   02-cultura.html                Fase 1.
-  03-preparacion-del-terreno.html  Fase 2 — contexto, 9 sensores, el juez, hooks y MCP.
+  03-preparacion-del-terreno.html  Fase 2 — contexto, 13 controles, el juez, hooks y MCP.
   04-ciclo-por-feature.html      Fase 3 — spec, plan, build, verificación en 4 capas, merge.
   05-retroalimentacion.html      Fase 4.
   06-metricas-y-reporte.html     Fase 5.

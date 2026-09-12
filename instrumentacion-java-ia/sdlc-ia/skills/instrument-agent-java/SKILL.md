@@ -309,7 +309,7 @@ Do not commit. Leave the changes for the user to review.
 | Reference | Used by | What it covers |
 |---|---|---|
 | `references/discovery-checklist.md` | Phase 1 | The 10-item discovery checklist |
-| `references/hook-catalog.md` + `references/hook-catalog-2.md` | Phase 3, Phase 4, Phase 5 | The eight hooks: what each does, why, what it costs, what it misses |
+| `references/hook-catalog.md` + `references/hook-catalog-2.md` | Phase 3, Phase 4, Phase 5 | The nine hooks: what each does, why, what it costs, what it misses |
 | `references/mcp-servers.md` | Phase 1, Phase 3, Phase 4 | Deriving the server menu from the repo, and the config shape of each |
 | `references/verification-steps.md` | Phase 5, Phase 6 | Per-hook trigger/expected table, and the "Try it" walkthrough |
 | `references/report-and-docs.md` | Phase 6 | Which doc gets what, and when to skip one |

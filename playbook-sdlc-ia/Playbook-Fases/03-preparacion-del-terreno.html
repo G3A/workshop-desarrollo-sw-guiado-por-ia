@@ -28,9 +28,9 @@
   </nav>
 
   <div class="cobertura">
-    <span class="k-skill"><b>22</b> · skill</span>
+    <span class="k-skill"><b>23</b> · skill</span>
     <span class="k-parcial"><b>2</b> · parcial</span>
-    <span class="k-hueco"><b>8</b> · hueco</span>
+    <span class="k-hueco"><b>7</b> · hueco</span>
     <span class="k-fuera"><b>2</b> · fuera de alcance</span>
   </div>
 
@@ -157,13 +157,17 @@
     <div class="fuente"><b>Fuente:</b> <code>instrument-project-java/SKILL.md</code>, controles 6, 9, 11, 11b y 11c.</div>
   </section>
 
-  <section id="DQ" class="hueco">
-    <span class="tag">DQ</span><span class="badge hueco">Hueco</span>
+  <section id="DQ" class="skill">
+    <span class="tag">DQ</span><span class="badge skill">Skill</span>
     <h2>SonarQube · quality gate</h2>
-    <p>Hay una asimetría clara acá. <code>/sdlc-ia:debt-triage</code> sabe triajar hallazgos de SonarQube —los busca en el CI, en <code>sonar-project.properties</code> o en un target de build— pero <strong>ninguna skill instala el quality gate</strong>.</p>
-    <p>La propia skill lo trata como caso real, no como error: si la fase 1 no encuentra ningún analizador conectado, lo reporta diciendo qué buscó y dónde, en vez de fallar en silencio o inventar hallazgos.</p>
-    <div class="falta"><b>Qué falta.</b> Un control que instale Sonar como gate. Sin gate no hay hallazgos, y sin hallazgos <code>debt-triage</code> es una skill que no tiene sobre qué correr.</div>
-    <div class="fuente"><b>Fuente:</b> <code>debt-triage/SKILL.md</code>, fase 1, y <code>references/analyzer-detection.md</code>.</div>
+    <p>Era <strong>el único lugar del paquete donde existía el consumidor y no el productor</strong>: <code>/sdlc-ia:debt-triage</code> sabía triajar hallazgos de SonarQube y en un repositorio recién instrumentado no encontraba ninguno, porque nadie los publicaba. Lo cierra el <strong>control 13</strong> de <code>instrument-project-java</code>.</p>
+    <p>Se instala <strong>apagado por defecto</strong>, como los controles 6, 9 y 11 — pero por una razón más dura: los otros solo cuestan curaduría, este además <strong>necesita un servidor que el equipo ya tenga</strong>. La skill pregunta por <code>SONAR_HOST_URL</code> antes que nada; si no hay servidor, reporta el control fuera de alcance con su motivo, la misma salida que toma con una CI que no es GitHub Actions.</p>
+    <div class="hint"><b>La skill nunca levanta un servidor.</b> Ni un SonarQube local con <code>docker-compose</code> —eso la metería en el negocio de operar infraestructura: versiones, volúmenes, actualizaciones, y nada de lo que instala hoy tiene ese peso— ni SonarQube Cloud, que ata el repositorio a un servicio con cuenta y facturación propias. Las dos son decisiones del equipo.</div>
+    <div class="hint"><b>Una sola bandera lo convierte en gate y no en tablero:</b> <code>sonar.qualitygate.wait</code>. Sin ella el scanner sube el análisis y <b>termina en verde aunque el quality gate falle</b>. Es la misma distinción que separa <a href="#DCI">un workflow que corre</a> de <a href="#DCJ">un Ruleset que bloquea</a>, y el mismo fallo silencioso del control 11b: <b>un build verde no prueba que el código esté limpio, puede significar que falta la bandera</b>.</div>
+    <div class="hint"><b>El paso de romper es el segundo análisis, nunca el primero.</b> El quality gate se evalúa sobre código nuevo, y el primer análisis es el que establece la línea base: puede pasar sin nada dentro. Dar por verificado ese primer verde es exactamente cómo un control termina siendo creído sin haber disparado nunca.</div>
+    <div class="hint"><b>Es el único job que se suma a <code>check</code> como obligatorio en el Ruleset</b>, y la razón vale para todo el mapa: la línea no es qué tan buena es la herramienta, es <b>veredicto contra cola</b>. Un job que responde «¿pasa la barra?» puede bloquear; uno que responde «acá hay cosas para mirar» no, porque no hay estado en el que esté terminado. Por eso CodeQL y la revisión por IA quedan afuera.</div>
+    <div class="hint"><b>Depende del control 10.</b> El reporte de JaCoCo tiene que existir en la misma corrida del reactor, o cada análisis reporta 0 % de cobertura y el gate falla por el motivo equivocado. Por eso <code>make sonar</code> corre <code>verify</code> él mismo en vez de encadenar <code>make coverage</code>.</div>
+    <div class="fuente"><b>Fuente:</b> <code>instrument-project-java/SKILL.md</code>, control 13, y <code>debt-triage/references/analyzer-detection.md</code>.</div>
   </section>
 
   <section id="DCI" class="skill">

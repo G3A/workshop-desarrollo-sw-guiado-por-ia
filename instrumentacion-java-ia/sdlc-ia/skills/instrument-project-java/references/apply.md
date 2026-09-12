@@ -1,4 +1,4 @@
-# Applying the twelve controls
+# Applying the thirteen controls
 
 > Called from **Phase 3** of `SKILL.md`, after the scope questions are answered.
 
@@ -257,3 +257,86 @@ themselves is `/sdlc-ia:legacy-test-harness`.
 If the repo has no integration tests yet, the control still installs — an empty Failsafe run is
 green, and the separation is what lets the first `*IT` land without slowing the loop for everyone.
 Say so in the report rather than skipping the control.
+
+## 13 — Quality gate (SonarQube)
+
+Only if scope question 11 said yes — **off by default**, and for a harder reason than controls 6, 9
+and 11. Those cost curation; this one needs **a server the team already runs**. Confirm
+`SONAR_HOST_URL` reaches a live instance before writing anything
+(`curl -sS "$SONAR_HOST_URL/api/system/status"` returns `"status":"UP"`). No server means the
+control is **reported out of scope with its reason** — the same exit control 8 takes for a CI that
+is not GitHub Actions. **Never stand a server up**, local or managed.
+
+### The producer that was missing
+
+This is the only place in the package where the **consumer exists and the producer does not**.
+`/sdlc-ia:debt-triage` already knows how to triage SonarQube findings — it detects the analyzer by
+the `sonar:sonar` step in CI and reads them with
+`GET /api/issues/search?componentKeys=<key>&resolved=false` — and in a freshly instrumented
+repository it finds nothing to triage, because nothing publishes anything. Installing this control
+is what gives that skill something to run on, so **record the project key and the host URL in the
+report and in `AGENTS.md`**: the Maven scanner needs no `sonar-project.properties`, so without that
+line the key exists only inside the POM.
+
+### What makes it a gate and not a dashboard
+
+`-Dsonar.qualitygate.wait=true`. Without it the scanner uploads the analysis and **exits green even
+when the quality gate fails** — the build has no idea. With it, the scanner polls the server's
+compute-engine task and fails the build on `QUALITY GATE STATUS: FAILED`.
+
+This is the same distinction that separates a workflow that runs from a Ruleset that blocks, and
+the same silent failure mode as control 11b: **a green build does not prove the code is clean, it
+may mean the flag is missing.** Verification, not the build, is what tells the two apart — see
+`references/verification.md`, control 13.
+
+`sonar.qualitygate.timeout` defaults to **300 seconds**. Leave it unless a real run times out;
+raising it to hide a slow server turns a fast red into a slow red.
+
+### What to write
+
+Declare `org.sonarsource.scanner.maven:sonar-maven-plugin` in `pom.xml`, version **resolved at
+install time and pinned** like every other plugin here. Verified 2026-09-11: the current line is
+**5.7.0.6970** (released 2026-05-27).
+
+Set the analysis properties in `<properties>` so they are greppable and stable — in particular
+`sonar.projectKey` **written out explicitly** rather than left to its
+`${project.groupId}:${project.artifactId}` default, so `debt-triage` and the report name the same
+string. Never write the token: it is `SONAR_TOKEN` in the environment, a repository secret in CI.
+
+Point `sonar.coverage.jacoco.xmlReportPaths` at the path control 10 records
+(`target/site/jacoco/jacoco.xml`). **Control 13 depends on control 10**: the coverage report has to
+exist in the same reactor run, before the analysis goal, or every analysis reports 0 % coverage on
+new code and the gate fails for the wrong reason.
+
+### Where it runs
+
+One Makefile target, and its **own CI job** — not part of `make ci`:
+
+```makefile
+sonar:  ## Analyze and wait for the SonarQube quality gate (needs SONAR_HOST_URL and SONAR_TOKEN)
+	./mvnw -B -P coverage verify org.sonarsource.scanner.maven:sonar-maven-plugin:<pinned>:sonar -Dsonar.qualitygate.wait=true
+```
+
+One invocation on purpose, matching SonarSource's own recommendation for Maven projects: the
+coverage report and the analysis share a reactor, so the second cannot read a stale first.
+
+It stays **out of `make ci`** because `make ci` must run on any laptop with no credentials, and
+this target needs a per-environment host and token. That is the same reason CodeQL has its own job
+— but the resemblance ends there: **CodeQL must not be a required check and this one must be.**
+CodeQL's findings are a queue to triage; this is a pass/fail verdict against a bar the team set
+itself, which is exactly what a required check is for.
+
+**For Maven projects use the Maven scanner, not `sonarqube-scan-action`** — SonarSource's own
+documentation says so. The CLI action does not see the module graph, the test sources or the
+compiled bytecode, and silently analyses less.
+
+### Two version facts that block an install
+
+- **The scanner needs Java 21 or later to run.** Since scanner 5.0 it provisions a JDK 21 itself, so
+  a repository that compiles on 17 can still be analysed — but that provisioning **downloads a
+  JRE**, which fails in CI without outbound internet. There, pin the runner to 21+ and set
+  `sonar.scanner.skipJreProvisioning=true`. Since 2026-07-20 analyses on a runtime below 21 are not
+  supported at all.
+- **`fetch-depth: 0` is not optional.** Sonar decides what counts as new code from the history; a
+  shallow clone degrades it. The CI template already sets it for gitleaks — if secret scanning was
+  declined, control 13 keeps the setting alive on its own.

@@ -212,7 +212,7 @@ subgraph P2["FASE 2 · Preparación del terreno — donde el plugin hace casi to
     DA["Arquitectura e imports · ArchUnit<br/>SKILL · instrument-project-java"]:::skill
     DM["Migraciones de BD · Flyway<br/>PARCIAL · hay hook que protege la migración, no control que la exija"]:::parcial
     DS["Seguridad del código<br/>SKILL · gitleaks, OWASP Dep-Check, FindSecBugs y CodeQL"]:::skill
-    DQ["SonarQube · quality gate<br/>HUECO · debt-triage consume hallazgos, nadie instala el gate"]:::hueco
+    DQ["SonarQube · quality gate<br/>SKILL · instrument-project-java, control 13: el gate sobre código nuevo<br/>opt-in, contra un servidor que el equipo ya tenga — nunca lo levanta"]:::skill
     DCI["Workflow de CI en GitHub Actions<br/>SKILL · instrument-project-java"]:::skill
     DCJ["El juez · el Ruleset exige el check en verde y la PR aprobada<br/>SKILL · instrument-github-repo"]:::skill
     DCA["Azure DevOps · Pipelines y Branch Policies<br/>FUERA · el plugin solo escribe GitHub"]:::fuera
@@ -509,7 +509,7 @@ style P6 fill:#0b0f15,stroke:#6b2018,color:#FF9C8C
     DA:B("Arquitectura e imports","skill","ArchUnit y verificación de Spring Modulith. Si el repo ya las tiene, la skill las lee y confirma en vez de reinstalarlas.",P.f2,"DA"),
     DM:B("Migraciones de BD","parcial","El hook 7 impide editar una migración ya aplicada. Instalar Flyway como control del build no lo hace ninguna skill.",P.f2,"DM"),
     DS:B("Seguridad del código","skill","Las tres capas: gitleaks para secretos, OWASP Dependency-Check para CVEs de terceros, y FindSecBugs más CodeQL para el código propio. Los dos últimos van juntos porque se cubren mutuamente: FindSecBugs es local y portable pero envejece, y a CodeQL lo mantiene GitHub al día.",P.f2,"DS"),
-    DQ:B("SonarQube","hueco","debt-triage triaja hallazgos que Sonar ya reportó, pero ninguna skill instala el quality gate. Sin gate, no hay hallazgos que triajar.",P.f2,"DQ"),
+    DQ:B("SonarQube","skill","Control 13, opt-in: el scanner de Maven con sonar.qualitygate.wait, que es la bandera que lo vuelve gate y no tablero. Necesita un servidor que el equipo ya tenga; la skill nunca levanta uno. Es el productor que le faltaba a debt-triage.",P.f2,"DQ"),
     DCI:B("Workflow de CI","skill","instrument-project-java escribe .github/workflows/ci.yml. Es la única plataforma de CI que el plugin escribe.",P.f2,"DCI"),
     DCJ:B("El juez","skill","Lo escribe instrument-github-repo, la octava skill. Nunca sobrescribe un Ruleset existente: lo compara campo por campo y reporta las diferencias. Y lo prueba bloqueando una PR desechable, porque un 201 de la API no significa que el juez funcione.",P.f2,"DCJ"),
     DCA:B("Azure DevOps","fuera","Frontera declarada en el README del plugin: escribe GitHub Actions y GitHub Issues; otra plataforma se reporta fuera de alcance, no se adapta a mano.",P.f2,"DCA"),

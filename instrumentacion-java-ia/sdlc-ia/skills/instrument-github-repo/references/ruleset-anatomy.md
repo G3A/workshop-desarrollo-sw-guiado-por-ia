@@ -86,6 +86,21 @@ A context that never appears leaves every PR blocked forever, waiting for a chec
 exist. It looks exactly like a working gate until someone waits an hour, which is why Phase 1 of the
 skill refuses to proceed without one completed run.
 
+### Which jobs belong in this list
+
+`instrument-project-java`'s CI template can produce four jobs, and **only two of them belong here**:
+
+| Job | Required? | Why |
+|---|---|---|
+| `check` | **Yes** | The deterministic gates. This is the one the whole package exists to make blocking |
+| `sonar` (control 13) | **Yes**, when installed | A pass/fail verdict against a bar the team set on its own server. That is what a required check is |
+| `codeql` (control 11c) | No, unless the team agreed to triage on every PR | It produces a **queue of findings**, not a verdict. Requiring it makes the PR wait on work nobody scheduled |
+| `revision-ia` (control 9b) | **Never** | A non-deterministic reviewer with veto power blocks correct pull requests on a model's judgement, and the team learns to ask for bypasses |
+
+The line is not how good the tool is. It is **verdict versus queue**: a job that answers
+"does this pass the bar" can block; a job that answers "here are things to look at" cannot, because
+there is no state in which it is finished.
+
 ## The asymmetry between the two branches
 
 The observed rulesets differ in exactly two fields, and both differences are deliberate:

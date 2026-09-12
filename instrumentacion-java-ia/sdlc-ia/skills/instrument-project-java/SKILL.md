@@ -1,6 +1,6 @@
 ---
 name: instrument-project-java
-description: Install the deterministic instrumentation layer in a Maven-based Java/Spring repository so an AI coding agent cannot ship work that breaks the team's rules — reproducible inputs (wrapper pin, BOM-managed versions), a strict `-Werror` build with Error Prone, verifiable style (Spotless + Checkstyle), a single Makefile entry point, pre-commit/pre-push gates (Lefthook), secret scanning (gitleaks), Spring-Modulith-aware architecture fitness functions (ArchUnit), a GitHub Actions CI workflow, dependency vulnerability scanning (OWASP Dependency-Check plus Dependabot), new-code test coverage (JaCoCo), bug-pattern analysis (SpotBugs) and unit/integration suite separation (Failsafe). Every gate is proven to fail before the run ends. Invoke with `/sdlc-ia:instrument-project-java`.
+description: Install the deterministic instrumentation layer in a Maven-based Java/Spring repository so an AI coding agent cannot ship work that breaks the team's rules — reproducible inputs (wrapper pin, BOM-managed versions), a strict `-Werror` build with Error Prone, verifiable style (Spotless + Checkstyle), a single Makefile entry point, pre-commit/pre-push gates (Lefthook), secret scanning (gitleaks), Spring-Modulith-aware architecture fitness functions (ArchUnit), a GitHub Actions CI workflow, dependency vulnerability scanning (OWASP Dependency-Check plus Dependabot), new-code test coverage (JaCoCo), bug-pattern analysis (SpotBugs), unit/integration suite separation (Failsafe) and a SonarQube quality gate on new code (against a server the team already runs). Every gate is proven to fail before the run ends. Invoke with `/sdlc-ia:instrument-project-java`.
 disable-model-invocation: true
 ---
 
@@ -10,7 +10,7 @@ You are installing the **deterministic instrumentation** layer: everything a mac
 its own, in milliseconds, with no ambiguity — a sensor the agent hits by itself, **before any human
 reads the diff**.
 
-You install twelve controls, prove each one fails when it should, and record them in `AGENTS.md`.
+You install thirteen controls, prove each one fails when it should, and record them in `AGENTS.md`.
 
 | # | Control | Artifact | What it prevents |
 |---|---------|----------|-------------------|
@@ -26,6 +26,7 @@ You install twelve controls, prove each one fails when it should, and record the
 | 10 | Test coverage | `jacoco-maven-plugin`, new-code rule | New code arriving with no test, unnoticed |
 | 11 | Bug patterns + SAST | `spotbugs-maven-plugin`, `findsecbugs-plugin`, CodeQL job | Defects that compile and pass style; insecure patterns in the code the agent just wrote |
 | 12 | Test suite separation | `maven-failsafe-plugin`, `make test` / `make verify` | Fast and slow tests running as one, so neither can be required |
+| 13 | Quality gate (SonarQube) | `sonar-maven-plugin`, `sonar.qualitygate.wait`, `sonar` CI job | New code merging below the team's own bar; `debt-triage` finding no analyzer to triage |
 
 ## Philosophy
 
@@ -55,7 +56,7 @@ You install twelve controls, prove each one fails when it should, and record the
 
 Use Glob, Grep, Read, and read-only Bash. Work through `references/inspection.md` in full: Maven
 (or Gradle), module graph, Java target, BOM-managed vs. inline dependency versions, test setup,
-which of the nine controls already exist and in what state, existing GitHub Actions workflows, and
+which of the thirteen controls already exist and in what state, existing GitHub Actions workflows, and
 context docs. Then
 classify the architecture shape with `references/architecture-discovery.md`.
 
@@ -76,6 +77,7 @@ Check tooling per OS; install nothing yourself.
 | `make` | `make --version` | ships with Xcode CLT | `winget install ezwinports.make` | ships with the distro |
 | gitleaks (opt-in) | `gitleaks version` | `brew install gitleaks` | `winget install gitleaks` | `apt install gitleaks` on Debian trixie+/Ubuntu 25.04+; older LTS needs the release binary |
 | NVD API key (opt-in, control 9) | `NVD_API_KEY` set in the environment | request one at `https://nvd.nist.gov/developers/request-an-api-key` — free, no install; without it the scan still runs, throttled (first run 20+ min) | same | same |
+| SonarQube server (opt-in, control 13) | ask the user for `SONAR_HOST_URL`, then `curl -sS "$SONAR_HOST_URL/api/system/status"` | nothing to install — **this skill never stands a server up**; no server means control 13 is reported out of scope | same | same |
 
 `make` does not ship with Windows. If missing, surface the `winget` command as a prerequisite; do
 not silently switch task runners.
@@ -92,7 +94,8 @@ own untracked tooling). If not, stop and tell the user.
 
 Ask only what Phase 1 could not answer, in plain language (spell out acronyms, state costs):
 
-1. **Which controls to install** — default all twelve; `present` controls are reported, not
+1. **Which controls to install** — default all thirteen except the four that are **off by default**
+   (6, 9, 11 and 13, each with its own scope question below); `present` controls are reported, not
    reinstalled; `partial` ones get both exits (complete it, or remove the dead config).
 2. **Style formatter** — `spotless-maven-plugin` needs one. `google-java-format` is the zero-config
    default (2-space); `palantir-java-format` suits teams wanting 4-space. Pick one, say why in the
@@ -154,6 +157,26 @@ Ask only what Phase 1 could not answer, in plain language (spell out acronyms, s
     test framework the repo has not chosen: picking a testing stack for the team is more invasive
     than anything else this skill does, and contradicts its own rule of encoding what the repo
     already does. Growing the tests themselves is `/sdlc-ia:legacy-test-harness`, a different skill.
+11. **Quality gate (control 13)** — **off by default**, and for a harder reason than controls 6, 9
+    and 11: those only cost curation, this one needs **a SonarQube server the team already has**.
+    Ask for `SONAR_HOST_URL` first. If there is none, report control 13 out of scope with its
+    reason and move on — the same exit control 8 takes for a CI that is not GitHub Actions.
+
+    **This skill never stands a server up.** Not `docker-compose` with a local SonarQube — that
+    puts the plugin in the business of operating a server (versions, volumes, upgrades) and nothing
+    else it installs carries that weight — and not SonarQube Cloud, which ties the repository to a
+    service with its own account and billing. Both are the team's decision, not an instrumentation
+    fix.
+
+    When there **is** a server, offer `Yes — fails make ci`, `Report only`, `Skip`, and say what
+    closing it buys beyond the analyzers already installed: **the gate on new code**, and the
+    producer that `/sdlc-ia:debt-triage` has been missing — that skill can triage SonarQube
+    findings today and finds none to triage, because nothing publishes any. It is the only place in
+    this package where the consumer exists and the producer does not.
+
+    **Do not use the quality gate to replace CodeQL or FindSecBugs.** They overlap in part; Sonar
+    adds the new-code bar and the API `debt-triage` reads, and removing a working sensor to install
+    another is not an upgrade.
 
 Then install **in the order given in `references/apply.md`** — each control builds on the previous
 one, and that file carries the per-control detail (artifact, key snippet, template pointer, the two
@@ -186,6 +209,12 @@ Summary:
 | 11c | SAST (CodeQL) | Cannot be broken locally | Job present with `security-events: write`; findings visible under Security → Code scanning after one real run |
 | 9b | AI review in CI | Cannot be broken locally | The job runs on a real PR — and is verified by its **absence** from the Ruleset's required checks |
 | 12 | Suite separation | Add a failing `*IT` alongside a passing unit test | `make test` stays **green** and `make verify` fails — if both go red, the split did not take |
+| 13 | Quality gate | On the **second** analysis, add a new class with an untested branch | `make sonar` fails, printing `QUALITY GATE STATUS: FAILED` and the condition that failed — a green build means `sonar.qualitygate.wait` is missing, not that the gate passed |
+
+Control 13's break is the **second** analysis and never the first: the quality gate is evaluated on
+**new code**, and the first analysis is what establishes the baseline. A first run can pass the gate
+with nothing in it, and calling that "verified" is how a control gets believed without ever having
+fired.
 
 Control 10's break has **two halves**: red without a test proves the rule fires, green with one
 proves it is scoped to new code and not to the whole repo. A rule that stays red either way is a

@@ -86,7 +86,7 @@ outside that pattern. Control 1 is satisfied; nothing to install.
 
 ## 8. Existing controls
 
-For each of the twelve, record `present` / `partial` / `missing` **and what it contains**:
+For each of the thirteen, record `present` / `partial` / `missing` **and what it contains**:
 
 | Control | Look for | "Partial" looks like |
 |---|---|---|
@@ -102,6 +102,7 @@ For each of the twelve, record `present` / `partial` / `missing` **and what it c
 | Test coverage | `jacoco-maven-plugin`, a `check` goal with a `<rule>`, `target/site/jacoco/` | Agent and report bound but **no `check` goal** — a number nobody has to respect; or a `check` with a repo-wide ratio, which is the shape that gets lowered until it means nothing |
 | Bug patterns | `spotbugs-maven-plugin`, `spotbugs-exclude.xml` | Plugin declared with no `check` goal bound (report-only); or PMD installed alongside, which is the combination that gets both muted |
 | Test suite separation | `maven-failsafe-plugin`, `*IT`/`*ITCase` classes, `make test` and `make verify` | Failsafe declared with only `integration-test` and no `verify` goal — failures are reported and the build stays green; or Surefire still matching `*IT`, so the slow set runs in the fast loop |
+| Quality gate | `sonar-maven-plugin` in `pom.xml`, `sonar.*` properties, a `sonar-project.properties`, a `sonar:sonar` step in CI | An analysis step **without `sonar.qualitygate.wait`** — the canonical partial of this whole skill: the dashboard fills up, the build never goes red, and everyone believes there is a gate. Also: the job present but not a required check; or `sonar.coverage.jacoco.xmlReportPaths` pointing nowhere, so every analysis reports 0 % coverage and nobody trusts the number |
 
 **A partial control is more dangerous than a missing one** — the team believes it is covered. Call
 these out explicitly in the report.
