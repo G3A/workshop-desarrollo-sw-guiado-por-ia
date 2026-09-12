@@ -20,7 +20,7 @@ an accident of installing quality gates.
 
 ## 1. Extend `.PHONY`
 
-The existing line 2 lists every infra/model target. Append the seven new ones at the end — do not
+The existing line 2 lists every infra/model target. Append the ten new ones at the end — do not
 reorder what is already there:
 
 ```diff
@@ -30,13 +30,13 @@ reorder what is already there:
    pull-ministral pull-qwen35 pull-nemotron pull-granite41 pull-phi4mini pull-qwen25 \
 -  pin-embeddings-cpu seed ingest ingest-repos ingest-teams ingest-azdo psql health clean
 +  pin-embeddings-cpu seed ingest ingest-repos ingest-teams ingest-azdo psql health clean \
-+  format lint secrets sca check ci hooks
++  format lint secrets sca bugs coverage sonar check ci hooks
 ```
 
 ## 2. Append a new section after `## ---------------------------------------------------------------- desarrollo`
 
 The existing `build`/`test`/`verify`/`clean`/`psql` targets under that header stay exactly as they
-are — do not touch them. Add the seven new targets after `clean`, with a header comment consistent
+are — do not touch them. Add the ten new targets after `clean`, with a header comment consistent
 in *shape* with the existing section dividers (`## ---- <name>`) but the description text in
 English, since it belongs to the block this skill owns:
 
@@ -55,10 +55,19 @@ secrets:  ## Scan the working tree for committed secrets
 sca:  ## Scan dependencies for known vulnerabilities (gate: OWASP Dependency-Check, fails on CVSS >= 7)
 	./mvnw -q dependency-check:check
 
-check: lint build test  ## Single local confidence signal
+bugs:  ## Scan for bug patterns (gate: SpotBugs -- only when control 11 is installed)
+	./mvnw -q spotbugs:check
+
+coverage:  ## Coverage report plus the new-code rule (gate runs in CI, not in check)
+	./mvnw -q -P coverage verify
+
+sonar:  ## Analyze and wait for the SonarQube quality gate -- needs SONAR_HOST_URL and SONAR_TOKEN
+	./mvnw -B -P coverage verify org.sonarsource.scanner.maven:sonar-maven-plugin:<pinned>:sonar -Dsonar.qualitygate.wait=true
+
+check: lint build test  ## Single local confidence signal (fast: no coverage, no SCA)
 	@echo "OK -- the repo is green"
 
-ci: lint build test secrets sca  ## What the CI pipeline runs
+ci: lint build verify secrets sca coverage  ## What the CI pipeline runs
 	@echo "OK -- CI gates passed"
 
 hooks:  ## Install git hooks (Lefthook)
@@ -73,6 +82,15 @@ Notes on this block:
   `./mvnw -B test` including the architecture gate) rather than restating `./mvnw` invocations —
   **one definition of "the code is fine"**, the same rule `verify` already follows by wrapping
   `./mvnw -B clean verify`.
+- **`check` runs `test`; `ci` runs `verify`.** That single difference is control 12: the fast set
+  gates every local loop, the slow set gates the pipeline. If both ran the same target the split
+  would exist in the POM and not in practice.
+- `coverage` and `sca` are in `ci` and deliberately **not** in `check`. Both need a full run and,
+  in the case of `sca`, the network. A local gate that slow gets bypassed with `--no-verify` inside
+  a week, and a bypassed gate is worse than an absent one because the team believes it is covered.
+- `bugs` is chained from `lint` when control 11 is installed — it is a gate, not a report, so it
+  belongs on the path `check` walks. Leave the target out entirely when the control was declined,
+  rather than shipping one that fails because the plugin is not declared.
 - `secrets` is **not** in `check` — mirrors the .NET sibling skill's reasoning: local `check` stays
   fast for the inner loop; `ci` is the one that must catch everything, and `lefthook.yml`'s
   pre-commit already runs `gitleaks protect --staged` on every commit regardless.
@@ -86,6 +104,17 @@ Notes on this block:
   mirror, 20+ minutes without an API key, and every run needs the network), **yes** in `ci`. It
   needs the `dependency-check-maven` plugin declared in `pom.xml` first (control 9). If scope
   question 7 declined SCA, drop the target and drop it from `ci` in the same edit.
+- `sonar` is in **neither** `check` nor `ci`, and that is the one exception to "CI calls the
+  Makefile" — the CI workflow gives it its own job that calls this target directly. Every other
+  target here runs on a bare laptop with no credentials; this one needs a host and a token that
+  are per-environment, and putting it in `ci` would make `make ci` unrunnable for anyone without
+  them. `<pinned>` is the scanner version resolved at install time (verified 2026-09-11: the
+  current line is `5.7.0.6970`) — never `LATEST`, never left off. If control 13 was declined or
+  there is no server, drop the target entirely rather than shipping one that fails on the first
+  run.
+- `sonar` runs `verify` itself instead of depending on `coverage`. One reactor, on purpose: the
+  analysis has to read the JaCoCo XML that the same run produced, and a separate invocation reads
+  whatever was on disk from last time.
 
 ## 3. Nothing else changes
 

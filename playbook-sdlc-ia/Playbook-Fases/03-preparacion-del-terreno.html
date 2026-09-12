@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fase 2 · Preparación del terreno · Playbook del plugin sdlc-ia</title>
+<link rel="stylesheet" href="../vendor/fonts.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="../Playbook-sdlc-ia.html">← Volver al diagrama</a>
+  <div class="brand">Plugin sdlc-ia · Fase 2</div>
+  <h1>Preparación del terreno</h1>
+  <p class="lead">Donde el plugin hace casi todo su trabajo, y donde están casi todos sus huecos. Cuatro skills cubren esta fase: <code>agent-context-java</code> el contexto, <code>instrument-project-java</code> los sensores de código, <code>instrument-agent-java</code> lo que el agente puede alcanzar y lo que no puede saltarse, e <code>instrument-github-repo</code> el juez que hace que todo lo anterior bloquee de verdad.</p>
+  <div class="rule"></div>
+
+  <nav class="phases">
+    <a href="index.html">Índice</a>
+    <a href="00-referencia-e-inicio.html">Referencia</a>
+    <a href="01-fundamentos.html">Fase 0</a>
+    <a href="02-cultura.html">Fase 1</a>
+    <a class="active" href="03-preparacion-del-terreno.html">Fase 2</a>
+    <a href="04-ciclo-por-feature.html">Fase 3</a>
+    <a href="05-retroalimentacion.html">Fase 4</a>
+    <a href="06-metricas-y-reporte.html">Fase 5</a>
+    <a href="07-adopcion-por-etapas.html">Fase 6</a>
+  </nav>
+
+  <div class="cobertura">
+    <span class="k-skill"><b>24</b> · skill</span>
+    <span class="k-parcial"><b>2</b> · parcial</span>
+    <span class="k-hueco"><b>6</b> · hueco</span>
+    <span class="k-fuera"><b>2</b> · fuera de alcance</span>
+  </div>
+
+  <h2 class="muted" style="font-family:'Fraunces',serif;margin-top:30px">Contexto</h2>
+
+  <section id="X1" class="skill">
+    <span class="tag">X1</span><span class="badge skill">Skill</span>
+    <h2>Contexto de negocio</h2>
+    <p><code>/sdlc-ia:agent-context-java</code> genera <code>docs/business.md</code>, y <code>docs/target-user.md</code> si se lo pides. Antes de escribir, hace un descubrimiento silencioso del repositorio y después una entrevista de alrededor de diez preguntas — menos en un repo bien documentado, más en uno legado.</p>
+    <p>Dos reglas que conviene conocer antes de correrla: si ya hay documentación previa entra en <strong>modo aumentar</strong> y nunca sobrescribe; y si un dato no se puede leer del repositorio, deja un <code>&lt;!-- TODO --&gt;</code> en vez de inventarlo.</p>
+    <div class="fuente"><b>Fuente:</b> <code>agent-context-java/SKILL.md</code>, fases 1 a 3.</div>
+  </section>
+
+  <section id="X2" class="skill">
+    <span class="tag">X2</span><span class="badge skill">Skill</span>
+    <h2>Arquitectura y el porqué</h2>
+    <p>La misma corrida produce <code>docs/architecture.md</code> más de una a tres ADR semilla en <code>docs/adrs/</code>, con su plantilla y su README.</p>
+    <p>Las ADR semilla <strong>solo documentan decisiones que ya se tomaron</strong> —la elección del build tool y del JDK, el framework de persistencia, la adopción de Spring Modulith si corresponde— y nunca inventan la justificación detrás de ellas. Una ADR con un porqué inventado es peor que no tenerla: parece evidencia.</p>
+    <div class="fuente"><b>Fuente:</b> <code>agent-context-java/SKILL.md</code> y <code>templates/es/adrs/</code>.</div>
+  </section>
+
+  <section id="X3" class="skill">
+    <span class="tag">X3</span><span class="badge skill">Skill</span>
+    <h2>Modelo de datos, infraestructura y Java a fondo</h2>
+    <p><code>docs/data-model.md</code>, <code>docs/infrastructure.md</code> y un documento técnico propio, <code>docs/java.md</code>: grafo de módulos Maven o Gradle, JDK objetivo, inyección de dependencias de Spring, capa de persistencia, perfiles de configuración, límites de módulo si usa Spring Modulith, quality gates y el pipeline de CI.</p>
+    <p>Antes de terminar, la skill atomiza las afirmaciones importantes que escribió —versión del build tool, JDK, framework de persistencia, comandos, entidades clave— y confirma contigo las de baja confianza. El resultado queda en <code>docs/claims-ledger.md</code>.</p>
+    <div class="hint"><b>Por qué el ledger importa.</b> Un documento de contexto equivocado no falla: guía mal, en silencio, durante meses. El ledger deja por escrito qué se verificó y qué no.</div>
+    <div class="fuente"><b>Fuente:</b> <code>agent-context-java/SKILL.md</code>, fase 5, y <code>references/claim-validation.md</code>.</div>
+  </section>
+
+  <section id="X4" class="parcial">
+    <span class="tag">X4</span><span class="badge parcial">Parcial</span>
+    <h2>Intención visual</h2>
+    <p>Existe <code>design.md</code> como plantilla opcional —la skill la genera solo si la pides explícitamente— y ahí termina la cobertura.</p>
+    <div class="falta"><b>Qué falta.</b> Los <em>design tokens</em> y un <code>COMPONENTS.md</code> que el agente pueda leer antes de escribir UI. Sin eso, «pasar la intención visual al agente» en la Fase 3 no tiene de dónde leerla, y el hueco se paga otra vez en la caja <code>VW</code>.</div>
+  </section>
+
+  <h2 class="muted" style="font-family:'Fraunces',serif;margin-top:30px">Instrumentación determinista · los sensores y el juez</h2>
+
+  <section id="D1" class="skill">
+    <span class="tag">D1</span><span class="badge skill">Skill</span>
+    <h2>Lint estático</h2>
+    <p><code>/sdlc-ia:instrument-project-java</code> instala <strong>Checkstyle</strong> en modo estricto (control 3), que previene deuda nueva, y <strong>SpotBugs</strong> como <strong>control 11</strong>, que atrapa los defectos que compilan y pasan el estilo. Toda supresión queda con un comentario explicando por qué existe: una excepción sin comentario es deuda invisible.</p>
+    <p>SpotBugs es <strong>opt-in</strong>, como los secretos y el escaneo de dependencias, y por la misma razón: Checkstyle en estricto arranca en verde, mientras que SpotBugs sobre un repositorio existente arranca en rojo — y un control que nace en rojo se desactiva la primera semana. Cuando se activa, <strong>falla <code>make check</code></strong>: un sensor que solo reporta es un sensor que nadie lee.</p>
+    <div class="hint"><b>PMD queda fuera a propósito.</b> Dos analizadores nuevos gritando a la vez sobre un brownfield es la forma más rápida de que el equipo apague los dos, y PMD se superpone con Checkstyle en buena parte de sus reglas. SpotBugs encuentra defectos, no preferencias, así que lo que reporta es más difícil de descartar — y es lo que habilita <a href="#DS">FindSecBugs</a> después.</div>
+    <div class="fuente"><b>Fuente:</b> <code>instrument-project-java/SKILL.md</code>, controles 3 y 11.</div>
+  </section>
+
+  <section id="DF" class="skill">
+    <span class="tag">DF</span><span class="badge skill">Skill</span>
+    <h2>Formato</h2>
+    <p><strong>Spotless</strong> con <code>google-java-format</code> o <code>palantir-java-format</code> —la skill pregunta cuál— más un <code>.editorconfig</code>. También pregunta si reformatear todo el repositorio de una vez o solo lo tocado desde la rama base, porque un reformateo completo hace ilegible el siguiente diff.</p>
+    <div class="hint"><b>Ojo con el hook de formato.</b> El hook 2 de <code>instrument-agent-java</code> corre Spotless sobre el archivo recién editado, y en el camino <b>borra los imports que todavía no se usan</b>. Al escribir código a mano, agrega el import después del uso, no antes.</div>
+    <div class="fuente"><b>Fuente:</b> <code>instrument-project-java/SKILL.md</code>, control 3.</div>
+  </section>
+
+  <section id="DB" class="skill">
+    <span class="tag">DB</span><span class="badge skill">Skill</span>
+    <h2>Build reproducible y estricto</h2>
+    <p>Dos controles que van juntos: <strong>entradas reproducibles</strong> (Maven Wrapper fijado, versiones gestionadas por BOM) para que dos máquinas no resuelvan árboles de dependencias distintos, y <strong>build estricto</strong> (<code>-Xlint:all -Werror</code>) para que un warning no llegue a la rama de integración.</p>
+    <p>La skill nunca fija versiones de memoria: lee el JDK y Maven del wrapper y del POM del repositorio, y resuelve en el momento las versiones de las herramientas que instala.</p>
+    <div class="fuente"><b>Fuente:</b> <code>instrument-project-java/SKILL.md</code>, controles 1 y 2.</div>
+  </section>
+
+  <section id="DT" class="skill">
+    <span class="tag">DT</span><span class="badge skill">Skill</span>
+    <h2>Tipos y null-safety</h2>
+    <p>El <code>-Werror</code> del control 2 atrapa los warnings que <code>javac</code> ya emite. Eso es el piso. El techo lo pone <strong>Error Prone</strong>, que va <strong>dentro del mismo control 2</strong> —es un argumento más del compilador, no un control aparte— y atrapa los bugs de tipo de verdad: comparaciones que siempre dan falso, formatos mal aplicados, anotaciones de nulidad ignoradas.</p>
+    <p>Arranca con <strong>el conjunto ERROR únicamente</strong>, dejando los warnings visibles pero sin romper el build. Ese conjunto está afinado para no dar falsos positivos, así que arranca en verde en casi cualquier repositorio.</p>
+    <div class="hint"><b>Por qué no todo a error.</b> Promover cada warning rompe un repositorio existente el primer día, y ahí el equipo no sube el umbral: desinstala la herramienta. Es la misma lógica de «codifica lo que el repo ya hace» que la skill aplica con ArchUnit.</div>
+    <div class="hint"><b>Se prueba aparte del <code>-Werror</code>.</b> Los dos fallan por razones distintas, así que probar uno no dice nada del otro. La verificación mete una auto-comparación y exige que el build falle <b>nombrando la regla de Error Prone</b>. Un build verde ahí es un control presente en el POM y ausente al compilar, que es el peor de los dos estados.</div>
+    <div class="fuente"><b>Fuente:</b> <code>instrument-project-java/SKILL.md</code>, control 2.</div>
+  </section>
+
+  <section id="DU" class="skill">
+    <span class="tag">DU</span><span class="badge skill">Skill</span>
+    <h2>Tests unitarios y cobertura</h2>
+    <p><strong>JaCoCo</strong> es el <strong>control 10</strong>, con dos decisiones que lo hacen viable en un repositorio que ya existe.</p>
+    <p><strong>La regla se acota al código nuevo</strong>, nunca a todo el repositorio. Un umbral global sobre un brownfield nace en rojo, y su única salida es bajarlo hasta que deje de significar algo. Sobre código nuevo arranca en verde y aplica donde importa: lo que el agente acaba de escribir.</p>
+    <p><strong>Falla en CI, no en <code>make check</code>.</strong> La cobertura necesita una corrida completa más el reporte, y un gate local tan lento se esquiva con <code>--no-verify</code> en una semana. Es el mismo reparto que ya usan los controles 6 y 9.</p>
+    <div class="hint"><b>La verificación tiene dos mitades, y las dos son obligatorias.</b> En rojo sin prueba demuestra que la regla dispara; en verde con prueba demuestra que está acotada al código nuevo. Una regla que sigue en rojo con la prueba puesta es un umbral global disfrazado.</div>
+    <div class="hint"><b>Cierra también media Fase 5.</b> La cobertura es una de las cuatro métricas, así que este control es lo que le da su cuarta entrada — ver <a href="06-metricas-y-reporte.html#K1">K1</a>.</div>
+    <div class="fuente"><b>Fuente:</b> <code>instrument-project-java/SKILL.md</code>, control 10.</div>
+  </section>
+
+  <section id="DI" class="skill">
+    <span class="tag">DI</span><span class="badge skill">Skill</span>
+    <h2>Tests de integración y HTTP</h2>
+    <p>El <strong>control 12</strong> separa las suites: Surefire se queda con <code>*Test</code> y Failsafe toma <code>*IT</code>. <code>make check</code> corre las rápidas, <code>make ci</code> corre las lentas. <strong>Esa única diferencia es el control</strong> — si las dos corrieran lo mismo, la separación existiría en el POM y no en la práctica.</p>
+    <p>Resuelve el problema real: hoy las pruebas lentas y las rápidas corren mezcladas, así que no se puede exigir las de integración sin volver lento el ciclo de todos.</p>
+    <div class="hint"><b>Solo la separación, nunca el framework.</b> No instala Testcontainers, RestAssured ni WireMock: elegir un stack de pruebas por el equipo sería más invasivo que todo lo demás que hace la skill, y contradice su propia regla de codificar lo que el repositorio ya hace. Hacer <em>crecer</em> las pruebas es <code>/sdlc-ia:legacy-test-harness</code>, otra skill.</div>
+    <div class="hint"><b>Se instala aunque no haya pruebas de integración todavía.</b> Una corrida vacía de Failsafe es verde, y la separación es justo lo que permite que la primera <code>*IT</code> entre sin frenarle el ciclo a nadie.</div>
+    <div class="fuente"><b>Fuente:</b> <code>instrument-project-java/SKILL.md</code>, control 12; <code>legacy-test-harness/SKILL.md</code> para hacerlas crecer.</div>
+  </section>
+
+  <section id="DA" class="skill">
+    <span class="tag">DA</span><span class="badge skill">Skill</span>
+    <h2>Arquitectura e imports</h2>
+    <p><strong>ArchUnit</strong>, más verificación de Spring Modulith si el proyecto lo usa. Es el control que impide que la regla de dependencias se rompa en silencio.</p>
+    <p>Dos decisiones de diseño que cambian cómo se comporta la skill acá. Primera: <strong>codifica lo que el repositorio ya hace</strong>, no lo que debería hacer — si una regla nace en rojo, es una propuesta de refactor, no un sensor válido. Segunda: si el repositorio ya tiene ArchUnit instalado (como <code>base-conocimiento</code>), no lo reinstala: lo lee, confirma que sigue pasando, y reporta qué paquete no protege ninguna regla todavía.</p>
+    <div class="fuente"><b>Fuente:</b> <code>instrument-project-java/SKILL.md</code>, control 7, y <code>references/arch-tests.md</code>.</div>
+  </section>
+
+  <section id="DM" class="parcial">
+    <span class="tag">DM</span><span class="badge parcial">Parcial</span>
+    <h2>Migraciones de base de datos</h2>
+    <p>El hook 7 de <code>instrument-agent-java</code> —la guardia de migraciones generadas— <strong>impide editar una migración de Flyway o Liquibase que ya fue aplicada</strong>. Se ofrece solo si el repositorio ya tiene migraciones, porque un hook que se activa en una acción legítima y cotidiana no es un sensor, es un error con una política pegada.</p>
+    <div class="falta"><b>Qué falta.</b> Proteger una migración existente no es lo mismo que exigir que los cambios de esquema pasen por una. Instalar Flyway como control del build —con su verificación en <code>make check</code>— no lo hace ninguna skill.</div>
+    <div class="fuente"><b>Fuente:</b> <code>instrument-agent-java/SKILL.md</code>, hook 7.</div>
+  </section>
+
+  <section id="DS" class="skill">
+    <span class="tag">DS</span><span class="badge skill">Skill</span>
+    <h2>Seguridad del código</h2>
+    <p>Tres capas, y las tres <strong>apagadas por defecto</strong> porque todas cuestan curar hallazgos:</p>
+    <ul>
+      <li><strong>Secretos</strong> — gitleaks, para que una credencial no llegue al historial de git.</li>
+      <li><strong>Dependencias de terceros</strong> — OWASP Dependency-Check detrás de <code>make sca</code>, que falla <code>make ci</code> con CVSS ≥ 7, más Dependabot.</li>
+      <li><strong>El código propio</strong> — FindSecBugs sobre SpotBugs, más un job de CodeQL en CI. Era el punto ciego: se revisaba lo que trajeron terceros y no lo que el agente acaba de escribir, que es justo el código que nadie revisó todavía.</li>
+    </ul>
+    <div class="hint"><b>FindSecBugs y CodeQL van juntos, o no va ninguno.</b> Cada uno cubre la debilidad del otro: FindSecBugs corre en tu máquina y es portable, pero su última versión fija internamente una versión anterior de SpotBugs, así que el par local envejece. A CodeQL lo mantiene GitHub al día, pero solo corre en el pipeline.</div>
+    <div class="hint"><b>El fallo a atajar es el silencio.</b> Un plugin de SpotBugs que no carga <b>no rompe el build: reporta cero hallazgos</b>, y eso se ve igual que «código limpio». Por eso la verificación mete una inyección SQL a propósito y exige que el fallo <b>nombre la regla de FindSecBugs</b>. Un build en verde ahí no prueba nada, y por eso también el par de versiones se fija junto y no por separado.</div>
+    <div class="hint"><b>El costo se comprueba antes de prometerlo.</b> CodeQL es gratis en repositorios <b>públicos</b>; en uno <b>privado</b> exige GitHub Advanced Security, que es de pago. Ahí la skill instala solo el par local y lo dice, en vez de dejar que el costo aparezca en una página de facturación.</div>
+    <div class="fuente"><b>Fuente:</b> <code>instrument-project-java/SKILL.md</code>, controles 6, 9, 11, 11b y 11c.</div>
+  </section>
+
+  <section id="DQ" class="skill">
+    <span class="tag">DQ</span><span class="badge skill">Skill</span>
+    <h2>SonarQube · quality gate</h2>
+    <p>Era <strong>el único lugar del paquete donde existía el consumidor y no el productor</strong>: <code>/sdlc-ia:debt-triage</code> sabía triajar hallazgos de SonarQube y en un repositorio recién instrumentado no encontraba ninguno, porque nadie los publicaba. Lo cierra el <strong>control 13</strong> de <code>instrument-project-java</code>.</p>
+    <p>Se instala <strong>apagado por defecto</strong>, como los controles 6, 9 y 11 — pero por una razón más dura: los otros solo cuestan curaduría, este además <strong>necesita un servidor que el equipo ya tenga</strong>. La skill pregunta por <code>SONAR_HOST_URL</code> antes que nada; si no hay servidor, reporta el control fuera de alcance con su motivo, la misma salida que toma con una CI que no es GitHub Actions.</p>
+    <div class="hint"><b>La skill nunca levanta un servidor.</b> Ni un SonarQube local con <code>docker-compose</code> —eso la metería en el negocio de operar infraestructura: versiones, volúmenes, actualizaciones, y nada de lo que instala hoy tiene ese peso— ni SonarQube Cloud, que ata el repositorio a un servicio con cuenta y facturación propias. Las dos son decisiones del equipo.</div>
+    <div class="hint"><b>Una sola bandera lo convierte en gate y no en tablero:</b> <code>sonar.qualitygate.wait</code>. Sin ella el scanner sube el análisis y <b>termina en verde aunque el quality gate falle</b>. Es la misma distinción que separa <a href="#DCI">un workflow que corre</a> de <a href="#DCJ">un Ruleset que bloquea</a>, y el mismo fallo silencioso del control 11b: <b>un build verde no prueba que el código esté limpio, puede significar que falta la bandera</b>.</div>
+    <div class="hint"><b>El paso de romper es el segundo análisis, nunca el primero.</b> El quality gate se evalúa sobre código nuevo, y el primer análisis es el que establece la línea base: puede pasar sin nada dentro. Dar por verificado ese primer verde es exactamente cómo un control termina siendo creído sin haber disparado nunca.</div>
+    <div class="hint"><b>Es el único job que se suma a <code>check</code> como obligatorio en el Ruleset</b>, y la razón vale para todo el mapa: la línea no es qué tan buena es la herramienta, es <b>veredicto contra cola</b>. Un job que responde «¿pasa la barra?» puede bloquear; uno que responde «acá hay cosas para mirar» no, porque no hay estado en el que esté terminado. Por eso CodeQL y la revisión por IA quedan afuera.</div>
+    <div class="hint"><b>Depende del control 10.</b> El reporte de JaCoCo tiene que existir en la misma corrida del reactor, o cada análisis reporta 0 % de cobertura y el gate falla por el motivo equivocado. Por eso <code>make sonar</code> corre <code>verify</code> él mismo en vez de encadenar <code>make coverage</code>.</div>
+    <div class="fuente"><b>Fuente:</b> <code>instrument-project-java/SKILL.md</code>, control 13, y <code>debt-triage/references/analyzer-detection.md</code>.</div>
+  </section>
+
+  <section id="DCI" class="skill">
+    <span class="tag">DCI</span><span class="badge skill">Skill</span>
+    <h2>Workflow de CI</h2>
+    <p><code>instrument-project-java</code> escribe <code>.github/workflows/ci.yml</code>. Es la <strong>única plataforma de CI que el plugin escribe</strong>: si el repositorio ya tiene su pipeline en otra, la skill lo reporta como fuera de alcance y le indica el target <code>make ci</code> que ese pipeline puede invocar.</p>
+    <p>El control 4 es lo que hace que esto tenga sentido: un <code>Makefile</code> como punto de entrada único —parchado si ya existe, nunca reemplazado— para que el pipeline y tu terminal corran exactamente lo mismo.</p>
+    <div class="fuente"><b>Fuente:</b> <code>instrument-project-java/SKILL.md</code>, controles 4 y 8.</div>
+  </section>
+
+  <section id="DCJ" class="skill">
+    <span class="tag">DCJ</span><span class="badge skill">Skill</span>
+    <h2>El juez</h2>
+    <p>Es la caja más importante de la fase. <strong>Un workflow que corre no bloquea nada.</strong> Lo que bloquea el merge es el <strong>Ruleset</strong> de GitHub que exige el check en verde y la PR aprobada.</p>
+    <p><code>/sdlc-ia:instrument-github-repo</code> lo escribe. Es una <strong>skill aparte</strong> y no un paso más de <code>instrument-project-java</code> porque cambia la configuración del remoto a través de la API: otros permisos, otra forma de fallar, y sin un <code>git checkout</code> que deshaga nada.</p>
+    <div class="hint"><b>Nunca sobrescribe uno existente.</b> Un Ruleset puede llevar protecciones que alguien puso a mano. La skill lo trae, lo compara campo por campo y reporta tres columnas —qué tiene, qué escribiría, qué cambiaría eso— y se detiene. Es el mismo «fusiona, nunca reemplaza» que el resto del paquete aplica al <code>Makefile</code> y a <code>.mcp.json</code>.</div>
+    <div class="hint"><b>Se prueba bloqueando, no confiando en un <code>201</code>.</b> Abre una PR desechable contra la rama protegida y confirma que GitHub la reporta como bloqueada, y por el motivo configurado. Hay <b>tres formas</b> de tener un Ruleset que devuelve 201 y no protege nada: el nombre pelado de la rama en vez del ref completo, <code>enforcement</code> en <code>evaluate</code>, y un check que ninguna corrida produce. Solo un intento de merge las distingue.</div>
+    <div class="hint"><b>El campo que parece un descuido y no lo es.</b> El Ruleset de la rama de liberación usa <code>strict_required_status_checks_policy: false</code>. Como la integración entra por squash, esa rama nunca contiene los merge commits de las liberaciones anteriores: con <code>true</code>, toda liberación quedaría bloqueada como «behind».</div>
+    <div class="fuente"><b>Fuente:</b> <code>instrument-github-repo/SKILL.md</code> y <code>references/ruleset-anatomy.md</code>, cuyas formas se leyeron de Rulesets vivos vía API, no de la documentación. El visor sigue explicando el porqué en su nodo <code>pz</code>.</div>
+  </section>
+
+  <section id="DCA" class="fuera">
+    <span class="tag">DCA</span><span class="badge fuera">Fuera de alcance</span>
+    <h2>Azure DevOps</h2>
+    <p>El Playbook del método nombra Azure DevOps a la par de GitHub en cada paso donde la plataforma importa: Pipelines como juez, Branch Policies como bloqueo, work items como tracker.</p>
+    <p>Este plugin no. Su <code>AGENTS.md</code> lo dice como regla dura: «escribe solo GitHub Actions como CI y GitHub Issues como tracker; otra plataforma se reporta fuera de alcance, no se adapta a mano».</p>
+    <div class="hint"><b>No es un olvido, es la frontera de la versión pública sin marca.</b> Vale la pena saber que hay un punto donde ni el método puede estar a la par: para Azure DevOps Pipelines <b>no hay acción oficial de Claude Code</b>. Existe para GitHub Actions y hay integración nativa para GitLab.</div>
+    <div class="fuente"><b>Fuente:</b> <code>instrumentacion-java-ia/AGENTS.md</code> y <code>README.md</code>, sección «Alcance deliberado».</div>
+  </section>
+
+  <h2 class="muted" style="font-family:'Fraunces',serif;margin-top:30px">Instrumentación no determinista · guía escrita y capacidades</h2>
+
+  <section id="N1" class="skill">
+    <span class="tag">N1</span><span class="badge skill">Skill</span>
+    <h2>Archivo guía</h2>
+    <p><code>agent-context-java</code> arma <code>AGENTS.md</code> como una <strong>tabla de contenidos de menos de 80 líneas</strong> —dónde encontrar cada cosa, los comandos que de verdad se usan, las reglas no obvias, testing, estilo y seguridad— y deja <code>CLAUDE.md</code> como una sola línea que lo importa.</p>
+    <p>El límite de 80 líneas es deliberado: el contenido de fondo va en los documentos especializados. <code>AGENTS.md</code> es un índice, no una enciclopedia — un archivo guía que nadie lee entero es un archivo guía que el agente tampoco respeta.</p>
+    <p>Se escribe en <code>AGENTS.md</code> y no en un archivo propio de cada herramienta porque es un estándar abierto que ya leen varios agentes.</p>
+    <div class="fuente"><b>Fuente:</b> <code>agent-context-java/SKILL.md</code>, fase 4.</div>
+  </section>
+
+  <section id="N2" class="skill">
+    <span class="tag">N2</span><span class="badge skill">Skill</span>
+    <h2>Criterios de revisión · REVIEW.md</h2>
+    <p><code>/sdlc-ia:agent-context-java</code> lo genera junto al archivo guía, más una <strong>plantilla de PR</strong> corta que enlaza a él.</p>
+    <p>Sigue siendo un archivo distinto de <code>AGENTS.md</code> <strong>a propósito</strong>, y la distinción es la razón de que sean dos: <code>AGENTS.md</code> son las reglas que el agente respeta <em>al generar</em>; <code>REVIEW.md</code> es qué mirar en un diff <em>ya escrito</em>. Cada uno se carga en un sitio distinto — el revisor de PRs en la nube lee <code>REVIEW.md</code>, la revisión local lee el archivo guía. Un criterio que deba valer en los dos va en el archivo guía.</p>
+    <div class="hint"><b>La plantilla de PR enlaza, no repite.</b> Trae las seis categorías como casillas y apunta a <code>REVIEW.md</code> para el detalle. Copiar los quince ítems ahí crearía una segunda lista que se desincroniza con la primera en tres sprints.</div>
+    <div class="hint"><b>Y nunca es un check de CI.</b> Un workflow que exija las casillas marcadas convierte el juicio humano en trámite: se marcan las seis sin mirar, y el registro empieza a mentir. Dejan rastro de qué se revisó; no lo garantizan.</div>
+    <div class="hint"><b>Cierra también media Fase 4.</b> La tabla de enrutamiento de lecciones tenía una de sus cinco filas —«criterio → <code>REVIEW.md</code>»— apuntando a un archivo inexistente. Ver <a href="05-retroalimentacion.html#R2">R2</a>.</div>
+    <div class="fuente"><b>Fuente:</b> <code>agent-context-java/SKILL.md</code>, fase 4, y <code>templates/es/REVIEW.md.template</code>.</div>
+  </section>
+
+  <section id="N4" class="hueco">
+    <span class="tag">N4</span><span class="badge hueco">Hueco</span>
+    <h2>Skills, subagentes y plugins propios</h2>
+    <p>El paso pide que el equipo construya sus propias capacidades: una skill para el flujo que repite, un subagente para la revisión que siempre hace igual.</p>
+    <div class="falta"><b>Qué falta.</b> Es la ironía del paquete: <em>sdlc-ia es un conjunto de skills, pero ninguna de sus skills crea skills</em>. Un repositorio instrumentado con el plugin sale con ocho comandos prestados y cero propios.</div>
+  </section>
+
+  <section id="N6" class="skill">
+    <span class="tag">N6</span><span class="badge skill">Skill</span>
+    <h2>Code review por IA</h2>
+    <p><strong>En tu máquina:</strong> <code>github-plan-build</code> corre la revisión de código siempre, y la de seguridad si el cambio toca autenticación o entradas externas, antes de abrir la PR.</p>
+    <p><strong>En el pipeline:</strong> <code>instrument-project-java</code> escribe un job de <strong>claude-code-action</strong> en el workflow. Es la mitad que no se puede saltar — corre en cada PR, se acuerde alguien o no.</p>
+    <div class="hint"><b>Por qué claude-code-action y no CodeRabbit.</b> La revisión de CodeRabbit es gratis, pero lo único suyo que bloquea el merge son sus pre-merge checks, que son de pago. El plugin no debería empujar a un plan pago para cerrar un hueco.</div>
+    <div class="hint"><b>Y nunca se exige como check obligatorio en el Ruleset.</b> Un revisor no determinista con poder de veto bloquea PRs correctas por criterio del modelo, y el equipo aprende a ignorarlo o a pedir bypass — lo que erosiona los checks que sí deben bloquear. Lo que bloquea son los sensores deterministas y la aprobación humana; esto aporta señal, no veredicto. Es el <a href="00-referencia-e-inicio.html#RD">eje del método</a> aplicado a su propia herramienta, y <b>la verificación es por ausencia</b>: se comprueba que NO esté entre los checks requeridos.</div>
+    <div class="fuente"><b>Fuente:</b> <code>instrument-project-java/SKILL.md</code>, control 9b; <code>github-plan-build</code>, paso G; visor, nodo <code>cr</code>.</div>
+  </section>
+
+  <h2 class="muted" style="font-family:'Fraunces',serif;margin-top:30px">Hooks · los seis tipos</h2>
+
+  <section id="DH" class="skill det">
+    <span class="tag">DH</span><span class="badge skill">Skill</span><span class="tipo det">Determinista</span>
+    <h2>Hook de Git · lefthook</h2>
+    <p>Dispara Git en el evento, decide el script. Es el control 5 de <code>instrument-project-java</code>: <code>lefthook.yml</code> con gates de pre-commit y pre-push, para que los errores no aparezcan recién en la revisión.</p>
+    <p>Corre aunque el agente no esté abierto — esa es la diferencia con los hooks del agente, y la razón por la que son dos arneses distintos y no uno solo.</p>
+    <div class="hint"><b>Instalarlo es un paso aparte.</b> Un hook de Git que existe en el repositorio pero no está instalado en tu máquina no protege nada. El visor lo cubre en el nodo <code>b4</code>: una vez por clon, no por commit.</div>
+    <div class="fuente"><b>Fuente:</b> <code>instrument-project-java/SKILL.md</code>, control 5; visor, nodos <code>b3</code> y <code>b4</code>.</div>
+  </section>
+
+  <section id="DAH" class="skill det">
+    <span class="tag">DAH</span><span class="badge skill">Skill</span><span class="tipo det">Determinista</span>
+    <h2>Hook de comando del agente · <code>type: command</code></h2>
+    <p>Dispara el ciclo de vida del agente en un punto fijo —<code>PreToolUse</code>, <code>PostToolUse</code>, <code>SessionStart</code>…— y decide un script de shell: permite, bloquea o reporta. <strong>El modelo no participa de ninguna de las dos mitades</strong>, y por eso son deterministas.</p>
+    <p>El catálogo de <code>instrument-agent-java</code> son ocho. Los dos primeros vienen encendidos; el resto se ofrecen, y tres se esconden si el repositorio no tiene el artefacto que protegen.</p>
+    <div class="ejecuadro">
+      <table class="rev">
+        <tr><th>#</th><th>Hook</th><th>¿Bloquea?</th><th>Por defecto</th></tr>
+        <tr><td>1</td><td>Guardia de lectura de secretos</td><td><strong>Sí</strong> — <code>.env</code>, claves privadas, <code>secrets.json</code>, bajo Bash, PowerShell o Read</td><td>Activado</td></tr>
+        <tr><td>2</td><td>Formateo al editar</td><td>No — corre Spotless sobre el archivo recién editado</td><td>Activado</td></tr>
+        <tr><td>3</td><td>Bloqueo de comandos peligrosos (Bash)</td><td><strong>Sí</strong> — <code>rm -rf</code> fuera del repo, <code>sudo</code>, force-push</td><td>Ofrecido</td></tr>
+        <tr><td>4</td><td>Barrido de dependencias</td><td>No — reporta desactualizadas o vulnerables al iniciar sesión</td><td>Ofrecido</td></tr>
+        <tr><td>5</td><td>Registro de auditoría</td><td>No — registra cada llamada a herramienta</td><td>Ofrecido</td></tr>
+        <tr><td>6</td><td>Guardia de versión centralizada</td><td>No — advierte si una dependencia nueva fija su propia versión</td><td>Solo si el POM ya usa BOM</td></tr>
+        <tr><td>7</td><td>Guardia de migraciones generadas</td><td><strong>Sí</strong> — migración ya aplicada</td><td>Solo si hay Flyway o Liquibase</td></tr>
+        <tr><td>8</td><td>Bloqueo de comandos peligrosos (PowerShell)</td><td><strong>Sí</strong> — con su propio tokenizador</td><td>Solo si el equipo usa Windows</td></tr>
+      </table>
+    </div>
+    <div class="hint"><b>Dos advertencias que la propia skill deja por escrito.</b> Los hooks <b>no son un límite de seguridad real</b>: corren con tu shell y tus permisos, y hacen coincidencia de texto, no de intención. Y en Windows dependen de Git Bash — sin él, Claude Code cae a PowerShell y quedan inertes en silencio.</div>
+    <div class="fuente"><b>Fuente:</b> <code>instrument-agent-java/SKILL.md</code> y <code>references/hook-catalog.md</code>. Los scripts tienen su propia suite de regresión: <code>bash tests/run.sh</code>.</div>
+  </section>
+
+  <section id="DHH" class="hueco det">
+    <span class="tag">DHH</span><span class="badge hueco">Hueco</span><span class="tipo det">Determinista</span>
+    <h2>Hook HTTP · <code>type: http</code></h2>
+    <p>Misma garantía que el hook de comando, con el trabajo hecho fuera de la máquina: el ciclo del agente dispara, y decide el servicio que recibe el POST.</p>
+    <div class="falta"><b>Qué falta.</b> El catálogo no lo incluye. Es el tipo natural para un equipo que quiere centralizar la política —un servicio que decide igual para todos los desarrolladores— en vez de repartir ocho scripts por máquina.</div>
+  </section>
+
+  <section id="DMH" class="fuera det">
+    <span class="tag">DMH</span><span class="badge fuera">Fuera de alcance</span><span class="tipo det">Determinista</span>
+    <h2>Hook de herramienta MCP · <code>type: mcp_tool</code></h2>
+    <p>Es la excepción que rompe la intuición: <strong>un MCP que no elige el modelo</strong>. La herramienta corre en un punto fijo del ciclo de vida, porque la llama el hook. El servidor es el mismo que sería no determinista si lo eligiera el modelo, pero cambió quién dispara, y con eso cambia el tipo.</p>
+    <div class="hint"><b>Es la única frontera <i>derivada</i> del mapa, y por eso vale la pena leerla entera.</b> El mecanismo sirve. Lo que no existe en este plugin es algo a lo que llamar: su único caso de uso aquí era inyectar lecciones al arrancar la sesión desde un servidor MCP de memoria, y <a href="05-retroalimentacion.html#R3">esa memoria ya estaba fuera de alcance</a>. Un hook sin destinatario no es un hueco: es una caja que se quedó sin para qué.</div>
+    <div class="hint"><b>Y no se suple inyectando el archivo.</b> La sala de espera que eligió <a href="05-retroalimentacion.html#R2">el Paso K</a> es <code>docs/lecciones.md</code>, en el repositorio. Meterla sola en el contexto <b>mataría la presión de promover</b> — exactamente el argumento con el que se descartó el servidor de memoria. La sala de espera tiene que incomodar.</div>
+    <div class="hint"><b>Si algún día vuelve, vuelve con la otra.</b> Las dos fronteras son una sola decisión vista desde dos fases distintas.</div>
+    <div class="fuente"><b>Fuente:</b> <code>instrumentacion-java-ia/README.md</code>, «Alcance deliberado».</div>
+  </section>
+
+  <section id="NHP" class="hueco nodet">
+    <span class="tag">NHP</span><span class="badge hueco">Hueco</span><span class="tipo nodet">No determinista</span>
+    <h2>Hook de prompt · <code>type: prompt</code></h2>
+    <p>La otra excepción: el disparo es fijo, pero la decisión sale de un modelo en una sola vuelta. Por eso un hook puede ser no determinista.</p>
+    <div class="falta"><b>Qué falta.</b> El catálogo no lo incluye. Sirve para lo que un script no puede juzgar: si el mensaje de commit describe de verdad el cambio, si el diff se salió del alcance del plan.</div>
+  </section>
+
+  <section id="NHA" class="hueco nodet">
+    <span class="tag">NHA</span><span class="badge hueco">Hueco</span><span class="tipo nodet">No determinista</span>
+    <h2>Hook de agente · <code>type: agent</code></h2>
+    <p>Igual que el de prompt, con más alcance: un subagente lee archivos y corre comandos antes de decidir.</p>
+    <div class="falta"><b>Qué falta.</b> El catálogo no lo incluye.</div>
+  </section>
+
+  <h2 class="muted" style="font-family:'Fraunces',serif;margin-top:30px">MCP · una caja por primitiva del protocolo</h2>
+
+  <section id="N5T" class="skill nodet">
+    <span class="tag">N5T</span><span class="badge skill">Skill</span><span class="tipo nodet">No determinista</span>
+    <h2>Herramienta MCP · <code>tools</code></h2>
+    <p>La especificación las define «model-controlled»: <strong>el modelo decide cuándo llamarlas y con qué argumentos</strong>. Eso las hace no deterministas, aunque el servidor del otro lado sea cómputo fijo.</p>
+    <p><code>instrument-agent-java</code> registra en <code>.mcp.json</code> los que tengan evidencia de aplicar: GitHub, Context7 y DBHub. Dos reglas duras al escribir el archivo: <strong>fusiona, nunca reemplaza</strong>, y usa siempre <code>${VARIABLE_DE_ENTORNO}</code> en vez de una credencial literal.</p>
+    <div class="hint"><b>Cada versión se resuelve y se fija.</b> Un servidor MCP vía <code>npx</code> sin versión fijada se resuelve de nuevo en cada sesión, así que un <code>.mcp.json</code> versionado terminaría ejecutando mañana un código que nadie revisó hoy.</div>
+    <div class="hint"><b>Escrito, no probado.</b> La skill lo dice explícitamente: los servidores MCP quedan «pendientes de aprobación» hasta que confías el workspace, así que esa mitad se verifica como archivo válido, no como servidor funcionando.</div>
+    <div class="fuente"><b>Fuente:</b> <code>instrument-agent-java/SKILL.md</code>, fases 4 y 5, y <code>references/mcp-servers.md</code>.</div>
+  </section>
+
+  <section id="N5R" class="hueco nodet">
+    <span class="tag">N5R</span><span class="badge hueco">Hueco</span><span class="tipo nodet">No determinista</span>
+    <h2>Recurso MCP · <code>resources</code></h2>
+    <p>«Application-controlled»: lo traes tú o la aplicación cliente —en Claude Code, con <code>@servidor:recurso</code>— pero qué hace el modelo con ese contexto no lo decide nadie más que él. No es un control, es contexto.</p>
+    <div class="falta"><b>Qué falta.</b> Ninguna skill configura recursos. El wiki del equipo, el esquema de la base y la documentación interna se siguen pegando en el chat a mano.</div>
+  </section>
+
+  <section id="N5P" class="hueco nodet">
+    <span class="tag">N5P</span><span class="badge hueco">Hueco</span><span class="tipo nodet">No determinista</span>
+    <h2>Prompt MCP · <code>prompts</code></h2>
+    <p>«User-controlled»: tú lo lanzas con <code>/mcp__servidor__prompt</code>, pero es una plantilla que el modelo sigue con probabilidad, no un comando que se ejecuta.</p>
+    <div class="falta"><b>Qué falta.</b> Ninguna skill los registra ni los documenta en el repositorio del usuario.</div>
+  </section>
+
+  <section id="N5N" class="skill nodet">
+    <span class="tag">N5N</span><span class="badge skill">Skill</span><span class="tipo nodet">No determinista</span>
+    <h2>Anotaciones de herramienta</h2>
+    <p><code>readOnlyHint</code> y <code>destructiveHint</code> las declara el servidor, y no deciden nada: son pistas para la interfaz. La especificación obliga a tratarlas como no confiables, porque las escribe <strong>el mismo servidor que querrías vigilar</strong>.</p>
+    <p>Lo cubre <code>instrument-agent-java</code> al escribir <code>.mcp.json</code>. <strong>Ya está conectado a cada servidor que registra</strong> para comprobar que arranca; leer lo que declara mientras esa conexión está abierta es casi gratis, y atrapa la contradicción <strong>antes de que el servidor quede en el repositorio</strong>.</p>
+    <div class="hint"><b>No las cree: las contrasta.</b> El reporte no lista las anotaciones — repetir lo que un servidor dice de sí mismo, sin contraste, es exactamente lo que la especificación advierte que no hay que hacer. Lo que va al reporte son <b>contradicciones</b>.</div>
+    <p><strong>Los tres hallazgos</strong>, y el tercero es el que todo el mundo lee al revés:</p>
+    <div class="ejecuadro">
+      <table class="rev">
+        <tr><th>Hallazgo</th><th>Por qué es real</th></tr>
+        <tr><td><strong>La declaración se contradice sola</strong><br><code>readOnlyHint: true</code> junto a un <code>destructiveHint</code> o <code>idempotentHint</code> declarados</td><td>El esquema dice que esos dos solo tienen sentido <em>cuando <code>readOnlyHint</code> es <code>false</code></em>. No hay nada que interpretar</td></tr>
+        <tr><td><strong>Se declara solo-lectura y se nombra como escritura</strong></td><td>Acá sí hay juicio, y por eso va a una persona: se cita el nombre y la frase que lo disparó, para poder discrepar de un vistazo</td></tr>
+        <tr><td><strong>No declara nada</strong></td><td><strong>Ausencia de anotaciones no es «seguro».</strong> Por defecto el esquema dice <code>readOnlyHint: false</code>, <code>destructiveHint: true</code>, <code>openWorldHint: true</code>: sin anotar, una herramienta se lee como <strong>potencialmente destructiva y de mundo abierto</strong></td></tr>
+      </table>
+    </div>
+    <div class="hint"><b>«Ninguna anotación» no es «ningún hallazgo».</b> Es el mismo principio con el que <a href="00-referencia-e-inicio.html#RB">un parcial es más peligroso que un hueco</a>: el equipo cree que está cubierto. El reporte lo dice con todas las letras en vez de dejarlo implícito.</div>
+    <div class="hint"><b>Es un reporte y no un gate, y eso es el punto.</b> La especificación dice que estas pistas no son confiables, y <b>un gate construido sobre un dato no confiable es peor que no tenerlo: fabrica confianza</b>. Lo que bloquea de verdad son <a href="#DMP">las reglas <code>mcp__*</code></a>; esto las alimenta con evidencia.</div>
+    <div class="hint"><b>Y va en un solo sentido.</b> Una contradicción es motivo para <b>apretar</b> la lista de negación, nunca para aflojarla. Relajar una regla porque una herramienta se declaró solo-lectura pondría la afirmación del servidor a cargo del único mecanismo que lo acota — justo lo que la advertencia de la especificación existe para evitar.</div>
+    <div class="fuente"><b>Fuente:</b> el <code>schema.ts</code> canónico de la especificación (consultado el <b>2026-09-12</b>): «all properties in ToolAnnotations are <b>hints</b>», «clients should never make tool use decisions based on ToolAnnotations received from untrusted servers», y —como requisito formal en la página de Tools— «clients <b>MUST</b> consider tool annotations to be untrusted unless they come from trusted servers».</div>
+  </section>
+
+  <section id="DMP" class="skill det">
+    <span class="tag">DMP</span><span class="badge skill">Skill</span><span class="tipo det">Determinista</span>
+    <h2>Reglas de permiso sobre la herramienta</h2>
+    <p>Es <strong>lo único determinista del grupo MCP</strong>, y es exactamente cómo se gobierna un servidor MCP sin depender del modelo. <code>/sdlc-ia:instrument-agent-java</code> lo escribe con <strong>dos mecanismos</strong>, cada uno donde rinde:</p>
+    <div class="ejecuadro">
+      <table class="rev">
+        <tr><th></th><th>Decide sobre</th><th>Bueno para</th></tr>
+        <tr><td><strong>Reglas <code>permissions</code></strong></td><td>El <strong>nombre</strong> de la herramienta</td><td>La postura general, legible de un vistazo y auditable en un diff</td></tr>
+        <tr><td><strong>Hook 9</strong></td><td>Los <strong>argumentos</strong></td><td>Qué repositorio, qué tabla, qué rama — lo que un nombre no puede expresar</td></tr>
+      </table>
+    </div>
+    <p><strong>La postura por defecto niega escrituras y permite lecturas</strong>, ordenando por consecuencia y no por servidor: leer un issue no cambia nada, cerrarlo sí.</p>
+    <div class="hint"><b>Dos alternativas descartadas, y por qué.</b> <code>ask</code> para todo <code>mcp__*</code> es seguro y agotador: el agente se detiene en cada lectura y a los dos días alguien permite todo para poder trabajar — un gate que se apaga protege menos que uno que nunca se instaló. Y fiarse del <code>readOnlyHint</code> del servidor no es opción: la especificación obliga a tratar las anotaciones como no confiables, porque las declara el mismo servidor al que querrías vigilar.</div>
+    <div class="hint"><b>Hubo que levantar una regla dura de la propia skill.</b> Declaraba que <em>nunca</em> tocaba <code>permissions</code>, y era incoherente consigo misma: su catálogo de hooks ya le decía al usuario que cerrara un hueco «con una regla de negación en permissions, no con un hook». Ahora la escribe <b>solo con confirmación explícita</b> y <b>solo matchers <code>mcp__*</code></b>; el resto de esa clave sigue siendo del usuario.</div>
+    <div class="hint"><b>No rompe <code>github-plan-build</code>, y el reporte lo dice.</b> Esa skill va por la CLI <code>gh</code>, no por el servidor MCP de GitHub, así que la lista de negación no le aplica. Sin esa frase, la primera persona que la lea apaga el control entero para desbloquear algo que nunca estuvo bloqueado.</div>
+    <div class="fuente"><b>Fuente:</b> <code>instrument-agent-java/SKILL.md</code>, fase 4; <code>templates/permissions.json.template</code>; suite de regresión de los hooks, 225 casos.</div>
+  </section>
+
+  <section id="G1" class="dec">
+    <span class="tag">G1</span>
+    <h2>¿Terreno listo?</h2>
+    <p>Contexto escrito, sensores instalados y probados fallando, el juez configurado, hooks disparando de verdad en tu máquina, MCP registrado. Si falta algo, vuelve al primer sensor; el orden de los controles es el orden en que uno depende del anterior.</p>
+    <p>La pregunta que más se salta: <strong>¿viste disparar cada hook, en esta máquina?</strong> El visor la pone como nodo propio (<code>b5</code>) porque un hook que existe en <code>.claude/settings.json</code> pero nunca se vio actuar no es un hook, es una promesa. <code>instrument-agent-java</code> lo verifica rompiendo: dispara cada hook instalado de verdad y después restaura todo.</p>
+    <div class="fuente"><b>Fuente:</b> visor, nodo <code>b5</code>; <code>instrument-agent-java/SKILL.md</code>, fase 5.</div>
+  </section>
+
+  <h2 class="muted" style="font-family:'Fraunces',serif;margin-top:30px">Antes del primer issue — solo si el repositorio lo necesita</h2>
+
+  <section id="DT0" class="skill">
+    <span class="tag">DT0</span><span class="badge skill">Skill</span>
+    <h2>Triaja la deuda que ya estaba</h2>
+    <p><code>/sdlc-ia:debt-triage</code>. Sumar un agente a un repositorio con deuda sin atender no la resuelve: la multiplica. La skill agrupa los hallazgos abiertos <strong>por regla, no por archivo</strong> —la misma regla disparando 40 veces suele compartir una sola línea de razonamiento— y a cada uno le pone un veredicto con su motivo: <strong>real</strong>, <strong>falso positivo</strong> o <strong>riesgo aceptado</strong>.</p>
+    <p>Nunca aplica el auto-fix de la herramienta a ciegas, y nunca cambia comportamiento sin red: un hallazgo real en código sin ninguna prueba cerca queda mejor como issue archivado que como un cambio silencioso.</p>
+    <div class="fuente"><b>Fuente:</b> <code>debt-triage/SKILL.md</code>; visor, nodo <code>ds</code>.</div>
+  </section>
+
+  <section id="LT0" class="skill">
+    <span class="tag">LT0</span><span class="badge skill">Skill</span>
+    <h2>Arnés de pruebas para un repositorio legacy</h2>
+    <p><code>/sdlc-ia:legacy-test-harness</code>. Es el camino que se toma cuando la pregunta «¿hay una estrategia de pruebas?» resuelve que no. Mapea las costuras al estilo Feathers <strong>antes de tocar nada</strong>, y clasifica cada una: cortable desde la prueba, o requiere una edición de producción — esta última se propone como issue, nunca se aplica inline.</p>
+    <p>El gate de realidad de la fase 5 es lo que separa esta skill de un generador de scaffolding: cada prueba nueva tiene que apuntar a una clase bajo la raíz de producción y <strong>fallar si se revierte el comportamiento que apunta</strong>. Una prueba que pasa incondicionalmente no cuenta como capa generada.</p>
+    <div class="hint"><b>Cuándo no correrla.</b> Un repositorio que ya tiene arnés sólido —<code>base-conocimiento</code>, con ArchUnit, Testcontainers, Mockito, AssertJ, jqwik y WireMock— resuelve esa pregunta en «sí» y nunca llega acá.</div>
+    <div class="fuente"><b>Fuente:</b> <code>legacy-test-harness/SKILL.md</code>; visor, nodos <code>GT</code> y <code>bt</code>.</div>
+  </section>
+
+  <footer>Plugin <code>sdlc-ia</code> · monorepo <code>workshop-desarrollo-sw-guiado-por-ia</code></footer>
+</div>
+<script src="nav.js"></script>
+</body>
+</html>

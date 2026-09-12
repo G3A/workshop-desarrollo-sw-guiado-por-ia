@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fase 5 · Métricas y reporte · Playbook del plugin sdlc-ia</title>
+<link rel="stylesheet" href="../vendor/fonts.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="../Playbook-sdlc-ia.html">← Volver al diagrama</a>
+  <div class="brand">Plugin sdlc-ia · Fase 5</div>
+  <h1>Métricas y reporte a liderazgo</h1>
+  <p class="lead">La cubre <code>impact-metrics</code>, la novena skill. Entrega <strong>dos métricas de las cuatro</strong>, y las otras dos las reporta como faltantes con su motivo — que es una decisión, no una limitación.</p>
+  <div class="rule"></div>
+
+  <nav class="phases">
+    <a href="index.html">Índice</a>
+    <a href="00-referencia-e-inicio.html">Referencia</a>
+    <a href="01-fundamentos.html">Fase 0</a>
+    <a href="02-cultura.html">Fase 1</a>
+    <a href="03-preparacion-del-terreno.html">Fase 2</a>
+    <a href="04-ciclo-por-feature.html">Fase 3</a>
+    <a href="05-retroalimentacion.html">Fase 4</a>
+    <a class="active" href="06-metricas-y-reporte.html">Fase 5</a>
+    <a href="07-adopcion-por-etapas.html">Fase 6</a>
+  </nav>
+
+  <div class="cobertura">
+    <span class="k-skill"><b>3</b> · skill</span>
+  </div>
+
+  <section id="K1" class="skill">
+    <span class="tag">K1</span><span class="badge skill">Skill</span>
+    <h2>Las 4 métricas, medidas del historial de PRs</h2>
+    <p><code>/sdlc-ia:impact-metrics</code> entrega <strong>dos</strong>, y deja las otras dos con su motivo escrito:</p>
+    <div class="ejecuadro">
+      <table class="rev">
+        <tr><th>Métrica</th><th>v1</th><th>Qué la frena</th></tr>
+        <tr><td>% de PRs con IA</td><td><strong>Entra</strong></td><td>Nada</td></tr>
+        <tr><td>Lead time (mediana)</td><td><strong>Entra</strong></td><td>Nada</td></tr>
+        <tr><td>Retrabajo</td><td>Fuera</td><td>La definición y el tamaño de muestra</td></tr>
+        <tr><td>Cobertura</td><td>Condicional</td><td>Solo si el repositorio tiene el reporte de JaCoCo del control 10</td></tr>
+      </table>
+    </div>
+    <div class="hint"><b>El principio que las separa no es la dificultad, es la certeza de la definición.</b> Las cuatro salen de git y de <code>gh</code>. Pero contar commits con un marcador es contar, y «de abierto a merge» significa lo mismo para todos; las otras dos exigen acordar algo antes. <b>Un primer reporte con un número discutible desacredita los otros tres</b> — la reunión se vuelve sobre metodología en vez de sobre el trabajo.</div>
+    <div class="hint"><b>Lo que falta se reporta, no se omite.</b> Una fila vacía con su motivo dice qué no se sabe todavía; omitirla sugiere que no importaba.</div>
+    <div class="hint"><b>Cero no es un resultado.</b> Un repositorio que lleva tiempo usando el ciclo y reporta <code>0 %</code> está diciendo que el marcador no se escribe, no que ninguna PR usó IA. La skill dice cuál de las dos cosas es.</div>
+    <div class="hint"><b>Se reporta la mediana, no el promedio.</b> En el período de prueba: 14 horas de mediana contra 62 de promedio, arrastrado por una sola PR de 172. El promedio describe el peor caso disfrazado de caso típico.</div>
+    <div class="fuente"><b>Fuente:</b> <code>impact-metrics/references/metric-definitions.md</code>, con cada comando corrido contra un repositorio real y su salida.</div>
+  </section>
+
+  <section id="K2" class="skill">
+    <span class="tag">K2</span><span class="badge skill">Skill</span>
+    <h2>La encuesta cualitativa</h2>
+    <p>Cuatro preguntas en escala de 1 a 5 —confianza, fricción, valor, alineación— que capturan lo que el historial no puede: <strong>los cuatro números pueden mejorar mientras el equipo la pasa peor</strong>.</p>
+    <p><strong>El plugin no es una plataforma de encuestas.</strong> Posee tres cosas: el cuestionario, el requisito de anonimato y el formato de agregación. La captura es del equipo, con el formulario que ya tenga.</p>
+    <div class="hint"><b>«¿A quién le paso mis respuestas?» A nadie.</b> Cualquier persona intermedia mata el anonimato: si alguien recibe respuestas y las junta, esa persona sabe quién dijo qué, el equipo lo sabe, y responde en consecuencia. El formulario es el intermediario, configurado para no saberlo.</div>
+    <div class="hint"><b>Solo se versiona el agregado</b>, una fila por pregunta. Quitar el nombre de una fila por persona <b>no da anonimato</b>: con un equipo chico el patrón de cuatro respuestas identifica igual, y si la exportación arrastró una marca de tiempo, el orden termina el trabajo. Y git es permanente.</div>
+    <div class="hint"><b>La trampa más común está en la configuración.</b> En cuentas de trabajo de Microsoft Forms, «Registrar nombre» viene <b>activada por defecto</b>. La plantilla trae qué apagar en cada herramienta y el paso de comprobarlo respondiendo uno mismo antes de compartirlo — un formulario que crees anónimo y no lo es es peor que uno declaradamente con nombre.</div>
+    <div class="hint"><b>Por debajo del piso de muestra no se publica nada.</b> Con pocas respuestas, una distribución señala a una persona igual que un nombre. Se reporta «muestra insuficiente», que es información honesta.</div>
+    <div class="fuente"><b>Fuente:</b> <code>impact-metrics/templates/es/encuesta-cualitativa.md.template</code>, con el procedimiento completo.</div>
+  </section>
+
+  <section id="K3" class="skill">
+    <span class="tag">K3</span><span class="badge skill">Skill</span>
+    <h2>El reporte a liderazgo</h2>
+    <p>Diagnóstico, métricas comparadas contra la línea base y compromiso del próximo período. <strong>Se deriva del agregado</strong>, que se escribe primero — así el período siguiente se compara contra un archivo y no contra un párrafo.</p>
+    <p><strong>Cada cifra lleva de dónde salió.</strong> Un reporte cuyas cifras no se pueden recalcular es una anécdota con números.</p>
+    <div class="hint"><b>Genera y no envía.</b> Escribe el archivo, abre la PR y se detiene. Ni correo, ni chat, ni Discussion. Es coherente con todo el paquete, que nunca hace merge, nunca despliega y nunca manda una comunicación real — <code>github-plan-build</code> escala explícitamente en «comunicaciones reales a clientes», y un reporte a liderazgo es eso.</div>
+    <div class="hint"><b>Y la PR no es trámite:</b> pone los números delante de alguien antes de que salgan del equipo, y deja un enlace permanente, que es lo que de verdad se comparte.</div>
+    <div class="hint"><b>Sin período anterior, se llama línea base y se dice.</b> Es el criterio de avance de la Etapa 1, y decirlo vale más que inventar una tendencia. Cadencia trimestral: es el horizonte en el que liderazgo decide presupuesto, y el mínimo para que el retrabajo signifique algo.</div>
+    <div class="fuente"><b>Fuente:</b> <code>impact-metrics/SKILL.md</code>, fases 5 y 6.</div>
+  </section>
+
+  <section id="GA" class="dec">
+    <span class="tag">GA</span>
+    <h2>¿Se cumple el criterio de avance de tu etapa actual?</h2>
+    <p>El rombo que conecta esta fase con la siguiente. No hay un criterio único: <strong>cada etapa tiene el suyo</strong>, y son distintos a propósito. Lo que basta para pasar de una persona a una escuadra no basta para pasar de una escuadra al equipo completo.</p>
+    <p>Los cuatro criterios están en la <a href="07-adopcion-por-etapas.html">Fase 6</a>. Si no se cumple el tuyo, la salida no es «escala igual»: es <a href="07-adopcion-por-etapas.html#AJ">consolidar y ajustar</a> con el mismo alcance.</p>
+    <div class="hint"><b>Este rombo ya se puede responder.</b> Hasta que existió <code>impact-metrics</code>, un equipo llegaba acá sin ningún número y decidía escalar por intuición — que es justo lo que la Fase 5 existe para evitar. Dos de los cuatro criterios se evalúan con estas cifras.</div>
+  </section>
+
+  <footer>Plugin <code>sdlc-ia</code> · monorepo <code>workshop-desarrollo-sw-guiado-por-ia</code></footer>
+</div>
+<script src="nav.js"></script>
+</body>
+</html>

@@ -43,6 +43,27 @@ Work through, and report as a table (artifact, status, what you found):
 8. **The database.** `grep` for `spring.datasource.url` / a JDBC URL prefix in
    `application*.yml`/`.properties`. More than one profile is normal (H2 locally, Postgres in
    production) — report every one found and ask which the agent should reach.
+8b. **Does this repository have a user interface?** This decides whether a browser MCP is offered
+    at all — the same "no control for an artifact the repo does not have" rule that hides three of
+    the nine hooks. Look for, and report which of these matched:
+
+    | Signal | Where |
+    |---|---|
+    | Server-rendered templates | `src/main/resources/templates/**` — Thymeleaf, JTE, Freemarker, Mustache |
+    | Static assets served by the app | `src/main/resources/static/**`, `src/main/resources/public/**` |
+    | A front-end subproject | `package.json` with a UI framework dependency, `angular.json`, `vite.config.*`, `next.config.*`, `svelte.config.*` |
+    | View-returning controllers | `@Controller` **without** `@ResponseBody` (as opposed to `@RestController`), or a `ModelAndView` return type |
+    | A browser test suite already there | Playwright, Cypress, Selenium or `@SpringBootTest` with a `WebDriver` |
+
+    **The negative result is a real answer, not a failed check.** A repository with only
+    `@RestController`, no templates and no static directory is a pure REST service, and a browser
+    MCP there is dead weight the team pays for in context on every session. Report "no UI found,
+    browser MCP not offered" with what you looked for — never silently skip it, and never offer it
+    anyway "just in case".
+
+    A repo with a browser test suite but no UI of its own (an end-to-end suite pointed at another
+    service) is a **yes**: the agent still has something to look at. Say which case it is.
+
 9. **Documentation and its language.** `AGENTS.md`, `CLAUDE.md`, `README.md`, `docs/` — note
    whether `AGENTS.md` already has `Agent hooks`/`MCP` sections (Phase 6 updates them, never
    duplicates) and which language the prose is in (Phase 6 must not switch mid-document).

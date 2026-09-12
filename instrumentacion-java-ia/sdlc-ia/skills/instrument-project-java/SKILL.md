@@ -1,6 +1,6 @@
 ---
 name: instrument-project-java
-description: Install the deterministic instrumentation layer in a Maven-based Java/Spring repository so an AI coding agent cannot ship work that breaks the team's rules — reproducible inputs (wrapper pin, BOM-managed versions), a strict `-Werror` build, verifiable style (Spotless + Checkstyle), a single Makefile entry point, pre-commit/pre-push gates (Lefthook), secret scanning (gitleaks), Spring-Modulith-aware architecture fitness functions (ArchUnit), a GitHub Actions CI workflow, and dependency vulnerability scanning (OWASP Dependency-Check plus Dependabot). Every gate is proven to fail before the run ends. Invoke with `/sdlc-ia:instrument-project-java`.
+description: Install the deterministic instrumentation layer in a Maven-based Java/Spring repository so an AI coding agent cannot ship work that breaks the team's rules — reproducible inputs (wrapper pin, BOM-managed versions), a strict `-Werror` build with Error Prone, verifiable style (Spotless + Checkstyle), a single Makefile entry point, pre-commit/pre-push gates (Lefthook), secret scanning (gitleaks), Spring-Modulith-aware architecture fitness functions (ArchUnit), a GitHub Actions CI workflow, dependency vulnerability scanning (OWASP Dependency-Check plus Dependabot), new-code test coverage (JaCoCo), bug-pattern analysis (SpotBugs), unit/integration suite separation (Failsafe) and a SonarQube quality gate on new code (against a server the team already runs). Every gate is proven to fail before the run ends. Invoke with `/sdlc-ia:instrument-project-java`.
 disable-model-invocation: true
 ---
 
@@ -10,19 +10,23 @@ You are installing the **deterministic instrumentation** layer: everything a mac
 its own, in milliseconds, with no ambiguity — a sensor the agent hits by itself, **before any human
 reads the diff**.
 
-You install nine controls, prove each one fails when it should, and record them in `AGENTS.md`.
+You install thirteen controls, prove each one fails when it should, and record them in `AGENTS.md`.
 
 | # | Control | Artifact | What it prevents |
 |---|---------|----------|-------------------|
 | 1 | Reproducible inputs | `.mvn/wrapper/*`, `pom.xml` BOMs | Two machines resolving a different Maven or dependency tree |
-| 2 | Strict build | `maven-compiler-plugin` `-Werror` | A warning reaching `main` |
+| 2 | Strict build | `maven-compiler-plugin` `-Werror` + Error Prone | A warning reaching `main`; a type-level bug compiling clean |
 | 3 | Style | `.editorconfig`, Spotless, Checkstyle | Formatting noise and naming drift in every diff |
 | 4 | Entry point | `Makefile` (patched) | Nobody knowing how the repo is verified |
 | 5 | Shift-left | `lefthook.yml` | Errors surfacing at review time |
 | 6 | Secrets | `gitleaks` | A credential reaching the history |
 | 7 | Architecture tests | `archunit-junit5` / Spring Modulith | The dependency rule silently breaking |
 | 8 | CI | `.github/workflows/ci.yml` | Local gates being skipped |
-| 9 | Dependency vulnerabilities (SCA) | `dependency-check-maven`, `dependency-check-suppressions.xml`, `.github/dependabot.yml` | A dependency with a known CVE shipping unnoticed |
+| 9 | Dependency vulnerabilities (SCA) + AI review in CI | `dependency-check-maven`, `dependency-check-suppressions.xml`, `.github/dependabot.yml`, `claude-code-action` job | A dependency with a known CVE shipping unnoticed; a review that only happens when someone remembers |
+| 10 | Test coverage | `jacoco-maven-plugin`, new-code rule | New code arriving with no test, unnoticed |
+| 11 | Bug patterns + SAST | `spotbugs-maven-plugin`, `findsecbugs-plugin`, CodeQL job | Defects that compile and pass style; insecure patterns in the code the agent just wrote |
+| 12 | Test suite separation | `maven-failsafe-plugin`, `make test` / `make verify` | Fast and slow tests running as one, so neither can be required |
+| 13 | Quality gate (SonarQube) | `sonar-maven-plugin`, `sonar.qualitygate.wait`, `sonar` CI job | New code merging below the team's own bar; `debt-triage` finding no analyzer to triage |
 
 ## Philosophy
 
@@ -52,7 +56,7 @@ You install nine controls, prove each one fails when it should, and record them 
 
 Use Glob, Grep, Read, and read-only Bash. Work through `references/inspection.md` in full: Maven
 (or Gradle), module graph, Java target, BOM-managed vs. inline dependency versions, test setup,
-which of the nine controls already exist and in what state, existing GitHub Actions workflows, and
+which of the thirteen controls already exist and in what state, existing GitHub Actions workflows, and
 context docs. Then
 classify the architecture shape with `references/architecture-discovery.md`.
 
@@ -73,6 +77,7 @@ Check tooling per OS; install nothing yourself.
 | `make` | `make --version` | ships with Xcode CLT | `winget install ezwinports.make` | ships with the distro |
 | gitleaks (opt-in) | `gitleaks version` | `brew install gitleaks` | `winget install gitleaks` | `apt install gitleaks` on Debian trixie+/Ubuntu 25.04+; older LTS needs the release binary |
 | NVD API key (opt-in, control 9) | `NVD_API_KEY` set in the environment | request one at `https://nvd.nist.gov/developers/request-an-api-key` — free, no install; without it the scan still runs, throttled (first run 20+ min) | same | same |
+| SonarQube server (opt-in, control 13) | ask the user for `SONAR_HOST_URL`, then `curl -sS "$SONAR_HOST_URL/api/system/status"` | nothing to install — **this skill never stands a server up**; no server means control 13 is reported out of scope | same | same |
 
 `make` does not ship with Windows. If missing, surface the `winget` command as a prerequisite; do
 not silently switch task runners.
@@ -89,7 +94,8 @@ own untracked tooling). If not, stop and tell the user.
 
 Ask only what Phase 1 could not answer, in plain language (spell out acronyms, state costs):
 
-1. **Which controls to install** — default all nine; `present` controls are reported, not
+1. **Which controls to install** — default all thirteen except the four that are **off by default**
+   (6, 9, 11 and 13, each with its own scope question below); `present` controls are reported, not
    reinstalled; `partial` ones get both exits (complete it, or remove the dead config).
 2. **Style formatter** — `spotless-maven-plugin` needs one. `google-java-format` is the zero-config
    default (2-space); `palantir-java-format` suits teams wanting 4-space. Pick one, say why in the
@@ -114,6 +120,63 @@ Ask only what Phase 1 could not answer, in plain language (spell out acronyms, s
    curate (one entry per accepted finding, with its reason), and a pre-existing tree that may
    already carry a High CVE and block `make ci` from day one — say so. Offer
    `Yes — make ci and Dependabot`, `Report only (never fails the build)`, `Skip`.
+8. **Coverage threshold (control 10)** — on by default, but the rule is scoped to **new code only**
+   (`limit` on `CLASS`/`LINE` over the changed set), never a repo-wide number. A repo-wide
+   threshold on a brownfield is born red and its only exit is lowering it until it means nothing;
+   a new-code rule is born green and applies where it matters — the same "encode what the repo
+   already does" principle as control 7. It fails **CI only**, never `make check`: coverage is slow,
+   and a slow local gate gets bypassed with `--no-verify`. Confirm the percentage with the user;
+   do not invent one.
+8b. **AI review in the pipeline (control 9b)** — on by default when the repo is on GitHub. Local
+    review already happens inside `/sdlc-ia:github-plan-build`; this is the half nobody can skip.
+    Install **`claude-code-action`**, not CodeRabbit — the only part of CodeRabbit that blocks a
+    merge is paid, and this plugin should not push a team onto a paid plan to close a gap. It needs
+    an `ANTHROPIC_API_KEY` repository secret; if it does not exist yet, write the job and say it
+    stays red until they add it, rather than one that skips silently and looks installed.
+    **Never required in the Ruleset** — see the template's own comment.
+9. **Bug patterns and SAST (controls 11, 11b, 11c)** — off by default, like secrets and SCA, for the same reason:
+   Checkstyle in strict mode prevents *new* debt and starts green, while SpotBugs over a brownfield
+   starts red, and a control born red is switched off in its first week. Install **SpotBugs only —
+   never PMD alongside it**: two new analyzers shouting at once is the fastest way to get both
+   muted, and PMD overlaps Checkstyle across much of its ruleset. When enabled it **fails
+   `make check`** — a sensor that only reports is a sensor nobody reads. Offer
+   `Yes — fails make check`, `Report only`, `Skip`.
+
+   Saying yes installs **all three together**: SpotBugs (11), **FindSecBugs** (11b) and **CodeQL**
+   (11c). They are one answer because they cover each other: SpotBugs finds defects, FindSecBugs
+   adds the security rules on top of it, and CodeQL covers what FindSecBugs' release pace does not —
+   its latest release pins an older SpotBugs, so the local pair ages while CodeQL does not.
+
+   **Check visibility before promising CodeQL** (`gh repo view --json visibility`): free on a
+   **public** repository, **paid** on a private one (it needs GitHub Advanced Security). On a
+   private repo without it, install the local pair alone and say why — never let the user find the
+   cost on a billing page.
+10. **Test suite separation (control 12)** — on by default. Split unit from integration via
+    `maven-failsafe-plugin` (`*IT` / `*ITCase`) so `make test` stays fast and `make verify` runs the
+    slow set. Install **the split and the profile only** — never Testcontainers, RestAssured or any
+    test framework the repo has not chosen: picking a testing stack for the team is more invasive
+    than anything else this skill does, and contradicts its own rule of encoding what the repo
+    already does. Growing the tests themselves is `/sdlc-ia:legacy-test-harness`, a different skill.
+11. **Quality gate (control 13)** — **off by default**, and for a harder reason than controls 6, 9
+    and 11: those only cost curation, this one needs **a SonarQube server the team already has**.
+    Ask for `SONAR_HOST_URL` first. If there is none, report control 13 out of scope with its
+    reason and move on — the same exit control 8 takes for a CI that is not GitHub Actions.
+
+    **This skill never stands a server up.** Not `docker-compose` with a local SonarQube — that
+    puts the plugin in the business of operating a server (versions, volumes, upgrades) and nothing
+    else it installs carries that weight — and not SonarQube Cloud, which ties the repository to a
+    service with its own account and billing. Both are the team's decision, not an instrumentation
+    fix.
+
+    When there **is** a server, offer `Yes — fails make ci`, `Report only`, `Skip`, and say what
+    closing it buys beyond the analyzers already installed: **the gate on new code**, and the
+    producer that `/sdlc-ia:debt-triage` has been missing — that skill can triage SonarQube
+    findings today and finds none to triage, because nothing publishes any. It is the only place in
+    this package where the consumer exists and the producer does not.
+
+    **Do not use the quality gate to replace CodeQL or FindSecBugs.** They overlap in part; Sonar
+    adds the new-code bar and the API `debt-triage` reads, and removing a working sensor to install
+    another is not an upgrade.
 
 Then install **in the order given in `references/apply.md`** — each control builds on the previous
 one, and that file carries the per-control detail (artifact, key snippet, template pointer, the two
@@ -132,7 +195,7 @@ Summary:
 | # | Control | Break | Expect |
 |---|---|---|---|
 | 1 | Reproducible inputs | Point `distributionUrl` at a non-existent Maven patch | `./mvnw -v` fails, naming the URL |
-| 2 | Strict build | Add an unused import | `mvn compile` fails with an ERROR, not a warning |
+| 2 | Strict build | Add an unused import; then a self-comparison (`x == x`) | `mvn compile` fails twice — once on the warning, once on the Error Prone check by name |
 | 3 | Style | Reorder imports in a real file | `make lint` fails, naming the file |
 | 4 | Entry point | No break needed | `make help` lists every target; `make check` chains them |
 | 5 | Shift-left | Stage a bad file, commit with a disposable identity | `BLOCKED` — confirmed by `HEAD` before/after, not the printed text |
@@ -140,6 +203,22 @@ Summary:
 | 7 | Architecture | Add a forbidden dependency + real usage | `mvn test` fails, naming rule and type |
 | 8 | CI | Cannot be broken locally | Verify by inspection — pinned JDK, calls `make ci`, every branch |
 | 9 | Dependency vulnerabilities | Add a compile-scope dependency with a known High CVE | `make sca` fails, naming the CVE and the artifact; `dependabot.yml` verified by inspection |
+| 10 | Test coverage | Add a new class with a branch and no test | The coverage check fails, naming the class and the missed percentage — and the same class **with** a test passes |
+| 11 | Bug patterns | Introduce a known pattern (e.g. a boxed comparison by `==`) | `make check` fails, naming the SpotBugs rule |
+| 11b | SAST (FindSecBugs) | Concatenate user input into a SQL string | `make check` fails **naming the FindSecBugs rule** — a green build here means the plugin is not loading, not that the code is clean |
+| 11c | SAST (CodeQL) | Cannot be broken locally | Job present with `security-events: write`; findings visible under Security → Code scanning after one real run |
+| 9b | AI review in CI | Cannot be broken locally | The job runs on a real PR — and is verified by its **absence** from the Ruleset's required checks |
+| 12 | Suite separation | Add a failing `*IT` alongside a passing unit test | `make test` stays **green** and `make verify` fails — if both go red, the split did not take |
+| 13 | Quality gate | On the **second** analysis, add a new class with an untested branch | `make sonar` fails, printing `QUALITY GATE STATUS: FAILED` and the condition that failed — a green build means `sonar.qualitygate.wait` is missing, not that the gate passed |
+
+Control 13's break is the **second** analysis and never the first: the quality gate is evaluated on
+**new code**, and the first analysis is what establishes the baseline. A first run can pass the gate
+with nothing in it, and calling that "verified" is how a control gets believed without ever having
+fired.
+
+Control 10's break has **two halves**: red without a test proves the rule fires, green with one
+proves it is scoped to new code and not to the whole repo. A rule that stays red either way is a
+repo-wide threshold in disguise, which scope question 8 ruled out.
 
 Controls 5–6 are verified by a **real commit**; if the hook does not fire, undo it with
 `git reset --soft HEAD~1`. Restore every change, run `make check`, capture the real output. **Do
@@ -183,6 +262,16 @@ restated with the evidence this run produced. Do not commit — leave the diff f
   shape — derive it from the module graph.
 - Do NOT report success until `make check` is green and every gate has been proven to fail.
 - Do NOT install a `commit-msg` Conventional Commits hook without evidence from `git log`.
+- Do NOT write a repo-wide coverage threshold. Control 10 is scoped to new code, or it is not
+  installed.
+- Do NOT install PMD next to SpotBugs, and do NOT turn control 11 on by default.
+- Do NOT resolve SpotBugs and FindSecBugs separately — pin the pair, and prove the security plugin
+  loads by seeing it name its own rule. A green build proves nothing there.
+- Do NOT write the CodeQL job on a private repository without GitHub Advanced Security. Say it is
+  paid and install the local pair alone.
+- Do NOT make the AI review a required status check.
+- Do NOT add a test framework (Testcontainers, RestAssured, WireMock) under control 12 — it
+  separates the suites the repo already has and nothing more.
 - Do NOT commit or push.
 - Do NOT touch GitHub repository settings (Rulesets, Environments, `CODEOWNERS`) — name them as
   the manual step that remains.

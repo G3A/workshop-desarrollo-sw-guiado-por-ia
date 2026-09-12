@@ -1,4 +1,4 @@
-# Applying the nine controls
+# Applying the thirteen controls
 
 > Called from **Phase 3** of `SKILL.md`, after the scope questions are answered.
 
@@ -20,6 +20,21 @@ Declare (or extend) `maven-compiler-plugin`'s `<configuration>` with
 `<compilerArgs><arg>-Xlint:all</arg><arg>-Werror</arg></compilerArgs>`. Under
 `spring-boot-starter-parent` the plugin is already version-managed — add only `<configuration>`,
 never a `<version>`.
+
+Then add **Error Prone** to the same plugin, as an annotation processor path plus the
+`-XDcompilePolicy=simple` and `-Xplugin:ErrorProne` compiler args. `-Werror` catches what `javac`
+already emits; Error Prone catches the type-level defects that compile clean — self-comparisons,
+format strings that do not match their arguments, nullness annotations ignored.
+
+- **Severity: the ERROR set only.** Leave the WARNING checks visible but non-fatal
+  (`-Xep:<Check>:WARN` is not needed — the default WARNING severity already behaves that way; do
+  not promote them with `-XepAllErrorsAsWarnings` inverted). The ERROR set is tuned for no false
+  positives, so it starts green on almost any repository. Turning everything into an error breaks a
+  brownfield on day one, and the team uninstalls the tool instead of raising the bar.
+- Resolve the Error Prone version at install time and pin it, like every other version here.
+- On JDK 16+ the compiler needs `--add-exports`/`--add-opens` flags for Error Prone to reach the
+  compiler internals; read the project's current Error Prone installation notes rather than
+  reproducing a flag list from memory, and confirm `./mvnw -q compile` is green before moving on.
 
 ## 3 — Style
 
@@ -136,3 +151,192 @@ through the same Ruleset as everyone else's.
 needs: an `actions/cache` step for the NVD mirror and `NVD_API_KEY: ${{ secrets.NVD_API_KEY }}` on
 the `make ci` step. Tell the user to create that repository secret; without it CI still passes,
 just slower.
+
+### 9b — AI review in the pipeline
+
+Local review is already covered: `/sdlc-ia:github-plan-build` runs `/code-review` and, when the
+change touches authentication or external input, `/security-review` before opening the PR. What is
+missing is the half **you cannot skip** — one that runs on the pull request whether or not anyone
+remembered.
+
+Add the `claude-code-action` job from the CI template. Not CodeRabbit: its review is free, but the
+only part of it that blocks a merge — pre-merge checks — is paid, and this plugin should not push a
+team onto a paid plan to close a gap.
+
+**Do not add it to the Ruleset as a required check, and say why in the report.** A
+non-deterministic reviewer with veto power blocks correct pull requests on a model's judgement, and
+the team learns either to ignore it or to ask for a bypass. What blocks is the deterministic sensors
+and the human approval; AI review contributes signal, not a verdict. This is the method's own axis
+applied to its own tooling.
+
+It needs `ANTHROPIC_API_KEY` as a repository secret. Without it the job fails on every PR, so if the
+secret does not exist yet, **write the job and tell the user it stays red until they add it** —
+rather than writing a job that silently skips and looks installed.
+
+## 10 — Test coverage
+
+On by default. Declare `org.jacoco:jacoco-maven-plugin`, version resolved at install time and
+pinned, with two executions: `prepare-agent` (bound to `initialize`) and `report` (bound to
+`verify`).
+
+**The rule is scoped to new code, never to the repository.** A repo-wide `LINE` ratio on a
+brownfield is born red, and its only exit is lowering it until it means nothing — the same failure
+mode control 7 avoids by encoding what the repo already does. Scope the `check` goal to the classes
+the branch touched, and confirm the percentage with the user in scope question 8 instead of
+inventing one.
+
+**It fails CI only, never `make check`.** Coverage needs a full test run plus report generation; a
+local gate that slow gets bypassed with `--no-verify` inside a week. Bind the `check` goal behind
+the CI profile and let `make ci` chain it — the same split controls 6 and 9 already use.
+
+Read the report path the plugin writes (`target/site/jacoco/jacoco.xml`) and record it in the
+report: the metrics skill of the Fase 5 backlog reads coverage from there, and a moved path
+silently produces a missing metric rather than an error.
+
+## 11 — Bug patterns
+
+Only if scope question 9 said yes — **off by default**, like controls 6 and 9 and for the same
+reason: Checkstyle in strict mode prevents new debt and starts green, while SpotBugs over a
+brownfield starts red.
+
+Declare `com.github.spotbugs:spotbugs-maven-plugin`, version resolved and pinned, with
+`<effort>Max</effort>` and a `<threshold>` agreed with the user. **SpotBugs alone — never PMD
+alongside it.** Two new analyzers shouting at once is the fastest way to get both muted, and PMD
+overlaps Checkstyle across much of its ruleset.
+
+Bind the `check` goal so it **fails `make check`**: a sensor that only reports is a sensor nobody
+reads, and this one was switched on deliberately. Before wiring the gate, run it once and report
+the existing findings for triage, exactly as control 9 does — a pre-existing tree that already
+trips a dozen patterns blocks every build otherwise. An exclusion goes in a
+`spotbugs-exclude.xml` with its reason, never by lowering the threshold.
+
+### 11b — FindSecBugs, the security half
+
+Only when control 11 is installed; it is a SpotBugs **plugin**, not a tool of its own. Declare it
+under the SpotBugs plugin's `<plugins>` (the nested one, not Maven's), version resolved and pinned.
+
+**Pin the pair, not each one separately.** Verified 2026-09-11: SpotBugs releases continuously
+(4.10.x line), FindSecBugs is still on **1.14.0**, and that release pins SpotBugs 4.8.3 internally.
+Resolving SpotBugs "to latest" on its own is asking for the mismatch. Record both versions together
+in the report, as one decision.
+
+**The failure mode here is silence, not an error.** A SpotBugs plugin that does not load **does not
+break the build: it reports zero findings**, which looks exactly like clean code. So the
+verification is not "did the build pass" — see `references/verification.md`, control 11b.
+
+### 11c — CodeQL, the half FindSecBugs cannot keep up with
+
+Same scope answer as 11b. FindSecBugs runs locally and is portable, which is its real advantage;
+what it does not cover is everything published after its last release. CodeQL is maintained by
+GitHub at a continuous pace, which is precisely that weakness — so the two are installed together,
+each covering the other's blind spot.
+
+**Check the repository's visibility before offering it**
+(`gh repo view --json visibility`). CodeQL is **free on public repositories**; on a **private** one
+it requires GitHub Advanced Security, which is **paid**. On a private repo without it, say so and
+install FindSecBugs alone — never leave the user to discover the cost from a billing page.
+
+It goes in the CI workflow as its own job, not in `make ci`: it is a GitHub-hosted analysis, and
+`make` targets stay runnable on a laptop. `templates/ci/github-actions.yml.template` carries the
+job.
+
+## 12 — Test suite separation
+
+On by default. Split the fast set from the slow one so each can be required where it belongs:
+`maven-surefire-plugin` keeps `*Test`, `maven-failsafe-plugin` takes `*IT` / `*ITCase` and binds
+`integration-test` and `verify`.
+
+New Makefile targets: `test` (surefire only) and `verify` (both). `make check` chains `test`;
+`make ci` chains `verify`.
+
+**Install the split and the profile only.** Never add Testcontainers, RestAssured, WireMock or any
+other test framework: choosing a testing stack for the team is more invasive than anything else this
+skill does, and contradicts its own rule of encoding what the repo already does. Growing the tests
+themselves is `/sdlc-ia:legacy-test-harness`.
+
+If the repo has no integration tests yet, the control still installs — an empty Failsafe run is
+green, and the separation is what lets the first `*IT` land without slowing the loop for everyone.
+Say so in the report rather than skipping the control.
+
+## 13 — Quality gate (SonarQube)
+
+Only if scope question 11 said yes — **off by default**, and for a harder reason than controls 6, 9
+and 11. Those cost curation; this one needs **a server the team already runs**. Confirm
+`SONAR_HOST_URL` reaches a live instance before writing anything
+(`curl -sS "$SONAR_HOST_URL/api/system/status"` returns `"status":"UP"`). No server means the
+control is **reported out of scope with its reason** — the same exit control 8 takes for a CI that
+is not GitHub Actions. **Never stand a server up**, local or managed.
+
+### The producer that was missing
+
+This is the only place in the package where the **consumer exists and the producer does not**.
+`/sdlc-ia:debt-triage` already knows how to triage SonarQube findings — it detects the analyzer by
+the `sonar:sonar` step in CI and reads them with
+`GET /api/issues/search?componentKeys=<key>&resolved=false` — and in a freshly instrumented
+repository it finds nothing to triage, because nothing publishes anything. Installing this control
+is what gives that skill something to run on, so **record the project key and the host URL in the
+report and in `AGENTS.md`**: the Maven scanner needs no `sonar-project.properties`, so without that
+line the key exists only inside the POM.
+
+### What makes it a gate and not a dashboard
+
+`-Dsonar.qualitygate.wait=true`. Without it the scanner uploads the analysis and **exits green even
+when the quality gate fails** — the build has no idea. With it, the scanner polls the server's
+compute-engine task and fails the build on `QUALITY GATE STATUS: FAILED`.
+
+This is the same distinction that separates a workflow that runs from a Ruleset that blocks, and
+the same silent failure mode as control 11b: **a green build does not prove the code is clean, it
+may mean the flag is missing.** Verification, not the build, is what tells the two apart — see
+`references/verification.md`, control 13.
+
+`sonar.qualitygate.timeout` defaults to **300 seconds**. Leave it unless a real run times out;
+raising it to hide a slow server turns a fast red into a slow red.
+
+### What to write
+
+Declare `org.sonarsource.scanner.maven:sonar-maven-plugin` in `pom.xml`, version **resolved at
+install time and pinned** like every other plugin here. Verified 2026-09-11: the current line is
+**5.7.0.6970** (released 2026-05-27).
+
+Set the analysis properties in `<properties>` so they are greppable and stable — in particular
+`sonar.projectKey` **written out explicitly** rather than left to its
+`${project.groupId}:${project.artifactId}` default, so `debt-triage` and the report name the same
+string. Never write the token: it is `SONAR_TOKEN` in the environment, a repository secret in CI.
+
+Point `sonar.coverage.jacoco.xmlReportPaths` at the path control 10 records
+(`target/site/jacoco/jacoco.xml`). **Control 13 depends on control 10**: the coverage report has to
+exist in the same reactor run, before the analysis goal, or every analysis reports 0 % coverage on
+new code and the gate fails for the wrong reason.
+
+### Where it runs
+
+One Makefile target, and its **own CI job** — not part of `make ci`:
+
+```makefile
+sonar:  ## Analyze and wait for the SonarQube quality gate (needs SONAR_HOST_URL and SONAR_TOKEN)
+	./mvnw -B -P coverage verify org.sonarsource.scanner.maven:sonar-maven-plugin:<pinned>:sonar -Dsonar.qualitygate.wait=true
+```
+
+One invocation on purpose, matching SonarSource's own recommendation for Maven projects: the
+coverage report and the analysis share a reactor, so the second cannot read a stale first.
+
+It stays **out of `make ci`** because `make ci` must run on any laptop with no credentials, and
+this target needs a per-environment host and token. That is the same reason CodeQL has its own job
+— but the resemblance ends there: **CodeQL must not be a required check and this one must be.**
+CodeQL's findings are a queue to triage; this is a pass/fail verdict against a bar the team set
+itself, which is exactly what a required check is for.
+
+**For Maven projects use the Maven scanner, not `sonarqube-scan-action`** — SonarSource's own
+documentation says so. The CLI action does not see the module graph, the test sources or the
+compiled bytecode, and silently analyses less.
+
+### Two version facts that block an install
+
+- **The scanner needs Java 21 or later to run.** Since scanner 5.0 it provisions a JDK 21 itself, so
+  a repository that compiles on 17 can still be analysed — but that provisioning **downloads a
+  JRE**, which fails in CI without outbound internet. There, pin the runner to 21+ and set
+  `sonar.scanner.skipJreProvisioning=true`. Since 2026-07-20 analyses on a runtime below 21 are not
+  supported at all.
+- **`fetch-depth: 0` is not optional.** Sonar decides what counts as new code from the history; a
+  shallow clone degrades it. The CI template already sets it for gitleaks — if secret scanning was
+  declined, control 13 keeps the setting alive on its own.

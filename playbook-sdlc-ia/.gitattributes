@@ -1,0 +1,6 @@
+# vendor/ es una copia literal de librerías de terceros (Mermaid, MIT; Inter, Fraunces y
+# JetBrains Mono, SIL OFL). No se edita a mano y no debe contar como código del repositorio:
+# ni en el diff de una PR, ni en las estadísticas de lenguaje de GitHub.
+vendor/** linguist-vendored
+vendor/mermaid.min.js -diff -text
+vendor/fonts/*.woff2 binary

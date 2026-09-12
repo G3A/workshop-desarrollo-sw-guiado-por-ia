@@ -2,12 +2,24 @@
 
 ## Qué es
 
-Instala la capa de **instrumentación no determinística** en un repositorio Java/Maven: los
-controles cuyo motor es el criterio de un agente de IA, no un cálculo exacto. Configura qué
-sistemas puede alcanzar el agente (servidores MCP en `.mcp.json`) y qué no puede pasar por alto
-(un catálogo de hooks de Claude Code en `.claude/settings.json`, respaldados por scripts de
-shell). Es el complemento de `instrument-project-java`, que instala los controles que una máquina
-puede decidir sola en milisegundos.
+Instala la capa de instrumentación **que mira hacia el agente** en un repositorio Java/Maven: qué
+sistemas puede alcanzar (servidores MCP en `.mcp.json`) y qué no puede pasar por alto (un catálogo
+de hooks de Claude Code en `.claude/settings.json`, respaldados por scripts de shell). Es el
+complemento de `instrument-project-java`, que mira hacia el código: los sensores que corren sobre
+el repositorio (build, estilo, arquitectura, CI) esté o no abierto un agente.
+
+Las dos mitades que instala caen a lados opuestos del eje de la instrumentación. Un control es
+determinista solo si el disparo **y** la decisión quedan fuera del razonamiento del modelo:
+
+- **Los servidores MCP son no deterministas.** El modelo decide cuándo llamar una herramienta, y
+  con qué argumentos. Agregan capacidad; no la limitan.
+- **Los nueve hooks `type: command` son deterministas.** El ciclo de vida del agente los dispara en
+  un punto fijo (`PreToolUse`, `PostToolUse`, `SessionStart`…) y un script de shell —no el
+  modelo— decide si permite, bloquea o solo reporta. Por eso los hooks son un límite y MCP no.
+
+Es el mismo eje que la leyenda del visor `proceso-operacional-con-ia`, que marca uno por uno los
+nueve hooks como deterministas y los servidores MCP como no deterministas. Llamar a esta skill
+«la capa no determinística», como decía antes, describe mal la mitad de lo que instala.
 
 ## Cómo se invoca
 
@@ -17,10 +29,13 @@ puede decidir sola en milisegundos.
 
 No recibe argumentos.
 
-## El catálogo de ocho hooks
+## El catálogo de nueve hooks
 
 Primero amplía las capacidades del agente (MCP), después le pone límites (hooks) — en ese
-orden, porque MCP solo agrega capacidad y los hooks la quitan.
+orden, porque MCP solo agrega capacidad y los hooks la quitan. **El hook 9 y las reglas de permiso
+son la segunda mitad de ese orden**, la que faltaba: hasta ahora la skill registraba los servidores
+que amplían el alcance del agente y se negaba a configurar el único mecanismo determinista que lo
+acota.
 
 | # | Hook | Qué bloquea | Por defecto |
 |---|------|-------------|-------------|
@@ -32,6 +47,145 @@ orden, porque MCP solo agrega capacidad y los hooks la quitan.
 | 6 | Guardia de versión centralizada | No — advierte si una dependencia nueva fija su propia versión | Ofrecido, solo si el POM ya usa `<dependencyManagement>` o un BOM |
 | 7 | Guardia de migraciones generadas | Sí — impide editar una migración de Flyway/Liquibase ya aplicada | Ofrecido, solo si el repositorio tiene migraciones Flyway o Liquibase |
 | 8 | Bloqueo de comandos peligrosos (PowerShell) | Sí — `Remove-Item -Recurse` fuera del repo, `runas`, force-push, `mvn deploy`, con su propio tokenizador | Ofrecido, solo si el equipo usa Windows |
+| 9 | Guardia de escrituras por MCP | Sí — una llamada que apunta a otro repositorio, o una sentencia que escribe en la base | Ofrecido, solo si hay algún servidor MCP registrado |
+
+## Las reglas de permiso sobre MCP
+
+**Dos mecanismos, cada uno donde rinde**, con el mismo reparto que la skill ya hace entre los hooks
+de Git y los del agente:
+
+| | Escribe en | Decide sobre | Bueno para |
+|---|---|---|---|
+| Reglas `permissions` | `.claude/settings.json` | El **nombre** de la herramienta | La postura general, legible de un vistazo y auditable en un diff |
+| Hook 9 | `scripts/agent-hooks/mcp-write-guard.sh` | Los **argumentos** | Lo que un nombre no puede expresar: qué repositorio, qué tabla, qué rama |
+
+**La postura por defecto es negar escrituras y permitir lecturas.** Ordena por consecuencia y no
+por servidor: leer un issue no cambia nada, cerrarlo sí. Se descartaron dos alternativas:
+
+- **`ask` para todo `mcp__*`** es seguro y agotador. El agente se detiene en cada lectura de issue
+  y a los dos días alguien permite todo para poder trabajar. Un gate que se apaga protege menos que
+  uno que nunca se instaló.
+- **Fiarse del `readOnlyHint` del servidor** no es opción: la especificación obliga a tratar las
+  anotaciones como no confiables, porque las declara el mismo servidor al que querrías vigilar.
+
+## Las anotaciones: no se creen, se contrastan
+
+La skill **ya se conecta a cada servidor que registra** para comprobar que arranca. Mientras esa
+conexión está abierta, lee la lista de herramientas y busca contradicciones — y lo hace **antes de
+que el servidor quede escrito en el repositorio**, no meses después.
+
+**No lista las anotaciones en el reporte.** Repetir lo que un servidor dice de sí mismo, sin
+contraste, es exactamente lo que la especificación advierte que no hay que hacer. Lo que va al
+reporte son **contradicciones**.
+
+### Lo que dice el esquema, con sus valores por defecto
+
+| Campo | Qué significa | **Por defecto** |
+|---|---|---|
+| `readOnlyHint` | Si es `true`, la herramienta no modifica su entorno | **`false`** |
+| `destructiveHint` | Si es `true`, puede hacer actualizaciones destructivas | **`true`** |
+| `idempotentHint` | Si es `true`, repetirla con los mismos argumentos no agrega efecto | **`false`** |
+| `openWorldHint` | Si es `true`, interactúa con un mundo abierto de entidades externas | **`true`** |
+
+Y tres frases del propio esquema que mandan sobre todo lo demás: **«todas las propiedades de
+`ToolAnnotations` son pistas; no está garantizado que describan fielmente el comportamiento»**,
+**«los clientes nunca deberían tomar decisiones de uso de herramientas basándose en anotaciones
+recibidas de servidores no confiables»**, y —como requisito formal— **«los clientes DEBEN
+considerar las anotaciones como no confiables salvo que vengan de servidores confiables»**.
+
+Además, `destructiveHint` e `idempotentHint` solo tienen sentido **cuando `readOnlyHint` es
+`false`**. Eso convierte una combinación concreta en una contradicción comprobable sin interpretar
+nada.
+
+### Los tres hallazgos
+
+1. **La declaración se contradice a sí misma** — `readOnlyHint: true` junto a un `destructiveHint`
+   o `idempotentHint` declarados. Según el esquema, esos dos solo tienen sentido cuando
+   `readOnlyHint` es `false`. No hay nada que interpretar: se reporta como hecho.
+2. **Se declara solo-lectura y se nombra como escritura** — `readOnlyHint: true` en una herramienta
+   que se llama o se describe como crear, actualizar, borrar, escribir, insertar o ejecutar. Acá sí
+   hay juicio, y por eso el resultado va a una persona y no a una decisión automática: se cita el
+   nombre y la frase que lo disparó, para que quien lee pueda discrepar de un vistazo.
+3. **No declara nada**, y este es el que se lee al revés. **Ausencia de anotaciones no es
+   «seguro»**: con los valores por defecto del esquema, una herramienta sin anotar se lee como
+   **potencialmente destructiva y de mundo abierto**. «Ninguna anotación» no es «ningún hallazgo».
+
+Es el mismo principio que el paquete aplica a sus propios controles: **un parcial es más peligroso
+que un faltante**, porque el equipo cree que está cubierto.
+
+### Por qué es un reporte y no un gate
+
+Porque la especificación dice que estas pistas no son confiables, y **un gate construido sobre un
+dato no confiable es peor que no tenerlo: fabrica confianza**. Lo que bloquea de verdad son las
+reglas `mcp__*`. Este chequeo alimenta esa decisión con evidencia; no la reemplaza.
+
+Y la relación va en **un solo sentido**: una contradicción es motivo para **apretar**, nunca para
+aflojar. No se relaja una regla de negación porque una herramienta se haya declarado solo-lectura —
+eso pondría la afirmación del servidor a cargo del único mecanismo que lo acota, que es justo lo
+que la advertencia de la especificación existe para evitar.
+
+**No rompe `github-plan-build`.** La lista de negación parece que frenaría el ciclo de entrega
+—abre PRs, comenta issues, mueve etiquetas—, y no lo hace: esa skill va por la CLI `gh` sobre Bash,
+no por el servidor MCP de GitHub, así que ninguno de esos matchers le aplica. La skill lo dice en el
+reporte, porque sin esa frase la primera persona que lea la lista apaga el control entero para
+desbloquear algo que nunca estuvo bloqueado.
+
+### Por qué se levantó una regla dura
+
+Hasta esta versión, la skill declaraba que **nunca** tocaba `permissions`. Era incoherente consigo
+misma por dos lados: su propio `references/hook-catalog.md` ya le dice al usuario que cierre un
+hueco «con una regla de negación en permissions, no con un hook», y su orden declarado —MCP
+primero, hooks después— quedaba a medio ejecutar.
+
+La regla no desapareció, se acotó: se escribe **solo con confirmación explícita** en la pregunta 6
+del alcance, y **solo matchers `mcp__*`**. Todo lo demás de esa clave sigue siendo del usuario y no
+se toca nunca. Si ya hay reglas `mcp__*`, no las sobrescribe: reporta la diferencia y se detiene.
+
+## El servidor de navegador, la cuarta capa de verificación
+
+Es **la única capa donde el agente no podía comprobar su propio trabajo**. Las otras tres —local,
+CI y seguridad— las corre y las lee. La cuarta, «¿se ve como debería?», la declaraba terminada sin
+haberla mirado nunca.
+
+**Se ofrece solo si el descubrimiento encuentra interfaz** en el repositorio: plantillas de
+Thymeleaf/JTE/Freemarker, recursos estáticos, un subproyecto de frontend, controladores que
+devuelven vistas, o una suite de pruebas de navegador que ya exista. Es la misma regla que esconde
+tres de los nueve hooks: no se ofrece un control para un artefacto que el repositorio no tiene, y
+en un servicio REST puro un MCP de navegador es peso muerto que se paga en contexto cada sesión.
+**El resultado negativo se reporta**, con lo que se buscó — no se salta en silencio.
+
+**Cuál de los dos, se pregunta.** No se fija uno por defecto, porque responden preguntas distintas:
+
+| | Playwright MCP | Chrome DevTools MCP |
+|---|---|---|
+| Lo mantiene | Microsoft, mismo repositorio y licencia que Playwright | El equipo de Chrome DevTools, en Google |
+| La pregunta que contesta | «¿funciona y se ve como debería?» | «¿por qué va lento, o por qué falló esa petición?» |
+| Cómo lee la página | **Árbol de accesibilidad por defecto**, no imágenes | Trazas de rendimiento, peticiones de red, consola con stack traces mapeados |
+
+Dos datos que cambian la respuesta y por eso van en la pregunta: **Playwright MCP lee estructura,
+no capturas** —más barato y más fiable para hacer clic en lo correcto, pero «¿se ve bien?» necesita
+pedir una captura explícita—, y **ninguno de los dos necesita un navegador instalado antes**.
+Tampoco son razón para agregar Playwright a las dependencias del repositorio: elegirle el stack de
+pruebas a un equipo no es decisión de esta skill.
+
+### Lo que registrar el servidor **no** compra
+
+La documentación de Playwright MCP lo dice de su propio producto: las listas de orígenes
+(`--allowed-origins`, `--blocked-origins`) y la protección de acceso a archivos son **«defensas de
+conveniencia para atrapar accesos no intencionales, no una frontera de seguridad»** — no impiden
+redirecciones y se pueden sortear a propósito. **La aislación real exige permisos del lado del
+cliente.**
+
+Es palabra por palabra el eje de esta skill, dicho por el proveedor: **MCP solo agrega capacidad;
+los hooks y `permissions` son lo único que la quita.** Un servidor de navegador es justamente el
+caso que vuelve obligatorias las reglas `mcp__*`, no un adorno. La skill igual pasa `--isolated`
+—el perfil queda en memoria, no en disco, para que el agente no herede sesiones ya iniciadas— y
+acota los orígenes a los del propio sistema, pero lo dice como lo que es.
+
+**Y hay un segundo riesgo que no es de red:** un MCP de navegador mete **contenido de páginas web
+en el contexto del modelo**. Es la superficie clásica de inyección de prompts — texto de una página
+que ahora convive con tus instrucciones. Nada de esto lo resuelve; lo que sí se hace es mantener
+el radio chico y decirlo en el reporte.
 
 ## Fases principales
 
@@ -46,7 +200,7 @@ orden, porque MCP solo agrega capacidad y los hooks la quitan.
    Windows, porque los scripts de los hooks son bash puro y, sin Git Bash, Claude Code cae a
    PowerShell y los hooks simplemente no hacen nada.
 3. **Acordar el alcance** — pregunta solo lo que el descubrimiento no pudo resolver: qué
-   servidores MCP habilitar (GitHub, Context7, DBHub — solo si hay evidencia de que aplican), qué
+   servidores MCP habilitar (GitHub, Context7, DBHub y un servidor de navegador — solo si hay evidencia de que aplican, y cuál de los dos de navegador), qué
    hooks bloqueantes y cuáles de reporte activar (con checkboxes ya marcados para la guardia de
    secretos y el formateo al editar), si el registro de auditoría debe confirmarse
    explícitamente (porque graba el contenido completo de cada llamada) y qué ramas proteger.
@@ -71,9 +225,10 @@ orden, porque MCP solo agrega capacidad y los hooks la quitan.
 - `.mcp.json` (fusionado con lo que ya exista).
 - `scripts/agent-hooks/_lib.sh` y un script por cada hook instalado (`secret-read-guard.sh`,
   `format-on-edit.sh`, `block-dangerous-bash.sh`, `dependency-sweep.sh`, `audit-log.sh`,
-  `version-pin-guard.sh`, `generated-files-guard.sh`).
-- `.claude/settings.json` — únicamente la clave `hooks`; nunca toca `permissions` y nunca escribe
-  en `.claude/settings.local.json`.
+  `version-pin-guard.sh`, `generated-files-guard.sh`, `block-dangerous-powershell.sh`,
+  `mcp-write-guard.sh`) — los nueve de la tabla de arriba.
+- `.claude/settings.json` — la clave `hooks`, y la clave `permissions` **solo con confirmación
+  explícita y solo con matchers `mcp__*`**. Nunca escribe en `.claude/settings.local.json`.
 - `.gitignore` (agrega `logs/` antes de crear el registro de auditoría, para que no se publique
   por accidente).
 - Secciones de `AGENTS.md`, `README.md`, `docs/infrastructure.md` y `docs/java.md`, si ya

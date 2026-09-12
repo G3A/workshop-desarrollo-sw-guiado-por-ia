@@ -3,12 +3,16 @@
 ## Qué es
 
 Toma un issue de GitHub y lo lleva, con la mayor autonomía posible, hasta tener un **pull
-request abierto, con CI en verde, los comentarios de revisión atendidos y el issue
-actualizado**. Lee el issue y su discusión con la CLI `gh`, hace las preguntas de diseño que el
-issue dejó abiertas, explora el repositorio, redacta un plan y lo somete a una revisión
-adversarial desde tres ángulos distintos, pide aprobación explícita solo cuando el cambio lo
-amerita, y después implementa con test primero, corre los propios gates del repositorio, abre el
-pull request y lo acompaña hasta que quede verde.
+request abierto, con CI en verde, los comentarios de revisión atendidos, el issue
+actualizado y la lección de la vuelta enrutada**. Lee el issue y su discusión con la CLI `gh`,
+hace las preguntas de diseño que el issue dejó abiertas, explora el repositorio, redacta un plan y
+lo somete a una revisión adversarial desde tres ángulos distintos, pide aprobación explícita solo
+cuando el cambio lo amerita, y después implementa con test primero, corre los propios gates del
+repositorio, abre el pull request y lo acompaña hasta que quede verde.
+
+El último paso —enrutar la lección— es el único que hace que la vuelta 20 sea distinta de la 1.
+**Propone** a cuál de los cinco destinos va cada lección y con qué texto exacto; no escribe en
+`AGENTS.md`, ni en el checklist de revisión, ni en un sensor. Aplicarlo es tuyo.
 
 No asume ninguna arquitectura ni stack en particular: un repositorio Java/Spring es un caso más
 que sabe manejar, no una condición para funcionar.
@@ -74,10 +78,58 @@ que sabe manejar, no una condición para funcionar.
      GitHub (`Closes #<n>`). Cada commit cierra además con el trailer
      `Asistido-por-IA: <modelo>`, con el modelo que corrió la sesión, y el cuerpo del PR lo
      repite: así el repositorio puede separar los commits asistidos por IA del resto con
-     `git log --format='%(trailers:key=Asistido-por-IA)'`, incluso después de un squash.
+     `git log --first-parent --grep="^Asistido-por-IA: "`. **No con el lector de trailers de
+     git**, que devuelve vacío en un historial con squash — ver más abajo.
    - **Vigilar el CI hasta que quede verde** y atender los comentarios de revisión uno por uno.
    - **Cerrar** — publica el resumen final como comentario en el issue y actualiza su estado a
      "en revisión".
+   - **Enrutar la lección** — tres preguntas sobre la vuelta que acaba de cerrar (qué costó más
+     de lo previsto, qué tuviste que decir a mano que el agente debería haber sabido, qué atrapó
+     un gate tarde o no atrapó ninguno) y, por cada lección, el destino y el texto exacto. «No
+     hay ninguna» es una respuesta válida: inventar una para llenar el paso envenena los archivos
+     a los que iría.
+
+## Cómo se lee el marcador `Asistido-por-IA` (y cómo no)
+
+El comando obvio es el lector de trailers de git, y **devuelve vacío en todos los commits** de un
+historial con squash:
+
+```
+git log --format='%(trailers:key=Asistido-por-IA,valueonly)'     # 0 resultados
+git log --first-parent --grep="^Asistido-por-IA: "               # el correcto
+```
+
+**No es un error de formato que alguien pueda evitar.** Git solo interpreta como trailers el
+**último bloque contiguo** del mensaje, y **GitHub reescribe el mensaje al hacer squash**: separa
+cada trailer con una línea en blanco y mueve `Co-authored-by` al final, así que ese último bloque
+queda siendo esa sola línea. Los commits que produjeron el historial de este monorepo se
+escribieron con el pie en un bloque contiguo; GitHub lo partió al mergear.
+
+Medido sobre los 109 commits de `--first-parent` de este monorepo: **0** con el lector de trailers,
+**23** con `--grep`.
+
+**Y el patrón va anclado.** Un `--grep=Asistido-por-IA` suelto también cuenta los commits que apenas
+*mencionan* el marcador en prosa — un commit que documente este comportamiento entraría como PR
+asistida e inflaría la métrica. `^Asistido-por-IA: ` calza con la línea del trailer y con nada más.
+
+## Los seis destinos de una lección
+
+| Si la lección es… | Va a… | Con qué forma |
+|---|---|---|
+| Una regla que el agente debe respetar al generar | `AGENTS.md` | Una línea corta |
+| Un criterio que solo aplica al revisar | el checklist (`REVIEW.md`, si el repositorio lo tiene) | Una viñeta de qué mirar en el diff |
+| El porqué de una decisión ya descartada | un ADR en `docs/adrs/` | Contexto, decisión, consecuencias |
+| Algo que una máquina puede comprobar | deja de ser texto | una prueba, una regla de lint o un hook |
+| Una preferencia tuya, no del equipo | `~/.claude/CLAUDE.md` | fuera del repositorio, a propósito |
+| Todavía ninguna de las anteriores | `docs/lecciones.md`, la sala de espera | Una línea, **con la fecha en que entró** |
+
+La cuarta fila es la que más rinde y la que menos se usa: **toda lección que una máquina pueda
+comprobar debería terminar dejando de ser texto.** Un criterio escrito se olvida; un sensor no.
+
+**La sala de espera lleva fecha, y la fecha es el mecanismo.** Cada entrada de `docs/lecciones.md`
+termina promovida a uno de los cinco destinos o borrada; una entrada que lleva meses ahí no es una
+lección pendiente, es una lección que no era. Sin fecha, el archivo se vuelve el vertedero que el
+método dice que no debe ser.
 
 ## Qué archivos toca o crea
 
@@ -90,7 +142,9 @@ trabajo. Además:
   issue que no sea el que está trabajando).
 - Abre el pull request correspondiente.
 
-Nunca hace merge del PR, nunca activa auto-merge y nunca despliega a producción.
+Nunca hace merge del PR, nunca activa auto-merge y nunca despliega a producción. Y **no escribe
+`docs/lecciones.md`, `AGENTS.md`, `REVIEW.md` ni un ADR**: el último paso propone el texto, lo
+pegas tú.
 
 ## Decisiones de diseño a tener en cuenta
 
@@ -109,6 +163,15 @@ Nunca hace merge del PR, nunca activa auto-merge y nunca despliega a producción
   comunicaciones reales a clientes, un fallo de CI ambiguo (no se sabe si es intermitente o real),
   un ciclo de arreglos que no converge después de tres intentos sobre el mismo job, una decisión
   de producto sin respuesta clara, o falta de una credencial o permiso.
+- **El paso que enruta la lección propone y no aplica**, por dos razones y la segunda es
+  mecánica. Un paso que edita el archivo que gobierna al agente cierra un bucle donde el agente
+  escribe sus propias reglas y la vuelta siguiente las lee, sin que nadie haya mirado en el medio.
+  Y para cuando llega ese paso, **el PR ya está abierto y en verde**: una regla nueva es sobre el
+  *proceso*, no sobre la feature, cambia todas las vueltas siguientes, se revisa distinto y por
+  eso va en su propio PR.
+- **No propone inyectar `docs/lecciones.md` en el contexto del agente.** La sala de espera tiene
+  que incomodar: una recuperación cómoda mata la presión de promover, que es el mismo argumento
+  por el que el paquete no trae un servidor de memoria.
 - **No asume ninguna arquitectura.** No revisa ni recomienda Clean Architecture, hexagonal, MVC
   ni ningún otro patrón con nombre propio: el plan sigue lo que el repositorio ya hace.
 - **Los comandos de gate más comunes vienen preaprobados** (`make`, `npm`/`pnpm`/`yarn`,
