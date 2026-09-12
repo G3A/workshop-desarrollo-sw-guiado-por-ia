@@ -115,10 +115,24 @@ versus real, unclear error, possibly pre-existing — escalate rather than guess
    that is running this session, as the harness reports it (e.g. `claude-opus-5`), never
    guessed. Git trailer format: last paragraph of the message, `Key: value`, separated
    from the `LINK-TOKEN` line by a blank line, since `Closes #<n>` is not a trailer and
-   would break the block. This is what lets the repo tell AI-assisted commits from the
-   rest (`git log --format='%h %(trailers:key=Asistido-por-IA,valueonly)'`) and feed the
-   AI-vs-non-AI split in its metrics. Any `Co-Authored-By` or session trailers the
-   harness adds go in the same paragraph.
+   would break the block. Any `Co-Authored-By` or session trailers the harness adds go in
+   the same paragraph.
+
+   **Read it back with `--grep`, anchored — never with git's trailer reader.** The obvious
+   command is `--format` with `%(trailers:key=Asistido-por-IA,valueonly)`, and on a
+   squash-merged history it **returns empty for every commit**. This is not a formatting
+   mistake you can avoid: **GitHub rewrites the message when it squashes**, separating each
+   trailer with a blank line and moving `Co-authored-by` last, so the final contiguous block
+   — the only one git parses — is that one line. Verified over 109 first-parent commits of
+   this monorepo: `0` with the trailer reader, `23` with `--grep`.
+
+   ```
+   git log --first-parent --grep="^Asistido-por-IA: " --format="%h %s"
+   ```
+
+   **Anchor the pattern.** A bare `--grep=Asistido-por-IA` also matches a commit that merely
+   *mentions* the marker in prose — a commit documenting this very behaviour counts as
+   AI-assisted. `^Asistido-por-IA: ` matches the trailer line and nothing else.
 
    **`confirm-push` checkpoint — only when the argument was given.** With every commit
    in place and Step G green, stop *before* the push and ask once with

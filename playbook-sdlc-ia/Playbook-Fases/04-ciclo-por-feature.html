@@ -197,11 +197,14 @@
   <section id="M1" class="skill goal">
     <span class="tag">M1</span><span class="badge skill">Skill</span>
     <h2>Merge, con el PR marcado como asistido por IA</h2>
-    <p>Cada commit que la skill hace, y el cuerpo del PR, terminan con el trailer <code>Asistido-por-IA: &lt;modelo&gt;</code>, con el id del modelo que corrió la sesión. Va en los dos lugares a propósito: así <strong>sobrevive a un squash merge</strong> que tome el cuerpo del PR como mensaje del commit.</p>
+    <p>Cada commit que la skill hace, y el cuerpo del PR, terminan con el trailer <code>Asistido-por-IA: &lt;modelo&gt;</code>, con el id del modelo que corrió la sesión. Va en los dos lugares a propósito: así <strong>el texto sobrevive a un squash merge</strong>.</p>
     <p>Eso deja el repositorio con una consulta que separa lo asistido del resto:</p>
-    <pre class="snippet">git log --format='%(trailers:key=Asistido-por-IA)'</pre>
+    <pre class="snippet">git log --first-parent --grep="^Asistido-por-IA: "</pre>
+    <div class="hint"><b>El texto sobrevive; su condición de <i>trailer</i>, no.</b> El comando obvio —<code>git log --format='%(trailers:key=Asistido-por-IA,valueonly)'</code>— <b>devuelve vacío en todos los commits</b> de un historial con squash. Git solo interpreta como trailers el <b>último bloque contiguo</b> del mensaje, y <b>GitHub reescribe el mensaje al hacer squash</b>: separa cada trailer con una línea en blanco y mueve <code>Co-authored-by</code> al final, así que ese último bloque queda siendo esa sola línea.</div>
+    <div class="hint"><b>No es un error de formato que alguien pueda evitar</b>, y por eso <code>--grep</code> no es un rodeo temporal sino el camino correcto. Medido sobre los 109 commits de <code>--first-parent</code> de este monorepo: <b>0</b> con el lector de trailers, <b>23</b> con <code>--grep</code>. Los commits se escribieron con el pie en un solo bloque; GitHub lo partió al mergear.</div>
+    <div class="hint"><b>Y el patrón va anclado.</b> Un <code>--grep=Asistido-por-IA</code> suelto también cuenta los commits que apenas <i>mencionan</i> el marcador en prosa — uno que documente este mismo comportamiento entraría como PR asistida e inflaría <a href="06-metricas-y-reporte.html#K1">la métrica de la Fase 5</a>.</div>
     <div class="hint"><b>El merge lo corres tú.</b> La skill nunca hace merge, nunca activa auto-merge y nunca despliega. Es el Ruleset el que habilita o bloquea el botón.</div>
-    <div class="hint"><b>Guarda este dato para la Fase 5.</b> Es la única de las cuatro métricas cuyo insumo ya está escrito en cada commit — y nadie lo lee todavía.</div>
+    <div class="hint"><b>Y es la cláusula que vuelve real <a href="02-cultura.html#C2">el acuerdo de permiso</a>:</b> el marcador de una PR que salió mal <b>se queda</b>. Si desaparece de los intentos fallidos, la métrica mide solo los éxitos.</div>
     <div class="fuente"><b>Fuente:</b> <code>github-plan-build</code>, paso G; <code>AGENTS.md</code> del monorepo; visor, nodos <code>mg</code> y <code>G6</code>.</div>
   </section>
 
