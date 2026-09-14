@@ -215,9 +215,12 @@ el radio chico y decirlo en el reporte.
    MCP no se puede verificar de la misma forma porque los servidores quedan "pendientes de
    aprobación" hasta que el usuario confía en el workspace — ahí la skill solo confirma que el
    archivo es válido y dice explícitamente que esa mitad quedó escrita, no probada.
-6. **Documentar y reportar** — actualiza `AGENTS.md` (secciones de hooks y de MCP) y `README.md`
-   (prerrequisitos, variables de entorno, paso de confianza del workspace) si ya existen; no crea
-   el paquete de documentación desde cero. Cierra con una tabla "pruébalo tú mismo": una línea por
+6. **Documentar y reportar** — escribe las tablas de hooks y de MCP en `docs/infrastructure.md` y
+   deja en `AGENTS.md` una sección de hooks y otra de MCP de una línea cada una, con el enlace:
+   `AGENTS.md` es un índice de menos de ~80 líneas y la skill actualiza esas secciones, nunca las
+   duplica. Solo si `docs/infrastructure.md` no existe las tablas van en `AGENTS.md`, y el reporte
+   lo dice. También actualiza `README.md` (prerrequisitos, variables de entorno, paso de confianza
+   del workspace). Todo eso si ya existe; no crea el paquete de documentación desde cero. Cierra con una tabla "pruébalo tú mismo": una línea por
    cada hook o servidor instalado, con qué pedirle al agente y qué se debería ver como resultado.
 
 ## Qué archivos toca o crea

@@ -128,7 +128,10 @@ el equipo fijó (obligatorio) o una **cola de hallazgos** que alguien todavía t
    imports) y confirma que el control efectivamente lo detiene. Deshace cada cambio de prueba
    después. No se reporta éxito con ningún control en rojo.
 5. **Documentar y reportar** — actualiza `AGENTS.md`/`CLAUDE.md` si ya existen, agregando una
-   sección de "Checks to run" y el detalle de las reglas de arquitectura ahora vigentes. No crea
+   sección de "Checks to run" y el detalle de las reglas de arquitectura ahora vigentes. El
+   detalle del CI va a `docs/java.md` o `docs/infrastructure.md` si existen, con una sección `CI`
+   de una línea en `AGENTS.md` que enlaza ahí: `AGENTS.md` se mantiene por debajo de ~80 líneas y
+   un párrafo copiado en dos lugares termina desalineado. No crea
    el paquete de documentación desde cero: si no existe, reporta el hueco y sugiere correr
    `/sdlc-ia:agent-context-java` primero. Al final reporta el árbol de archivos tocados, las
    versiones resueltas, la salida real (en verde) del comando de verificación, y cada excepción

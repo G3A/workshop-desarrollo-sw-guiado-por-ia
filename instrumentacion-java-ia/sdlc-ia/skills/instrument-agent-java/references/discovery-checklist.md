@@ -65,8 +65,9 @@ Work through, and report as a table (artifact, status, what you found):
     service) is a **yes**: the agent still has something to look at. Say which case it is.
 
 9. **Documentation and its language.** `AGENTS.md`, `CLAUDE.md`, `README.md`, `docs/` — note
-   whether `AGENTS.md` already has `Agent hooks`/`MCP` sections (Phase 6 updates them, never
-   duplicates) and which language the prose is in (Phase 6 must not switch mid-document).
+   whether `AGENTS.md` already has `Agent hooks`/`MCP` sections, whether `docs/infrastructure.md`
+   exists (Phase 6 puts the tables there and leaves one-line links in `AGENTS.md`; it updates,
+   never duplicates) and which language the prose is in (Phase 6 must not switch mid-document).
 10. **The team's OS.** Ask only if the repo gives no signal. Two separate questions hide inside
     "Windows," and each decides something different:
     - Is anyone on Windows **without** Git Bash? Then Claude Code falls back to PowerShell for

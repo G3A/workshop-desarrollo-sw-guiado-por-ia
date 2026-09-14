@@ -162,7 +162,7 @@ seguido sin costo.
 **Estado**: los pasos 1, 2, 3 y 4 están implementados desde F1 (el conector de documentos locales
 ya compara hashes, salta lo que no cambió y borra los huérfanos). Lo único que falta es que el
 paso 2 ocurra **solo, cada X tiempo**: hoy hay que dispararlo a mano con `make ingest`. Eso es
-[F8](#f8--la-carpeta-vigilada-ingesta-sin-comandos).
+[F8](#f8--la-carpeta-vigilada-ingesta-sin-comandos--completado).
 
 ### Módulos (Spring Modulith)
 

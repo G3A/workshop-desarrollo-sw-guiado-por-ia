@@ -96,6 +96,12 @@ conflict.
   asserted text with a `<!-- TODO: verify — <claim> -->` marker. Do not assert it.
 - Re-check that corrected claims didn't break cross-doc consistency (e.g. a JDK version named in
   both `architecture.md` and `java.md`).
+- **A ledger row does not propagate.** When a claim is confirmed, corrected or invalidated —
+  including rows already in an existing `docs/claims-ledger.md` in augment mode — search `AGENTS.md`
+  and every file under `docs/` for the **opposite** statement and fix it in the same pass. In
+  `base-conocimiento` (issue #120) the ledger already confirmed the CI and the actuator exposure
+  while `infrastructure.md` still said "no `.github/workflows/`" and `java.md` "exposure not
+  confirmed": five sentences contradicted rows the ledger held as true.
 
 ## Step 6 — Persist the ledger
 
