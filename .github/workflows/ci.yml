@@ -86,5 +86,34 @@ jobs:
           path: "base-conocimiento/**/target/surefire-reports/**"
           if-no-files-found: ignore
 
+  changelog-liberado:
+    # Solo en PRs hacia main (#125). En dev, entre una liberacion y otra, [unreleased] es el estado
+    # normal: como paso de `check` fallaria en cada push. Hacia main significa lo contrario --
+    # que falta la PR chore/release-<version> a dev, y main recibiria el codigo nuevo con la
+    # version vieja en plugin.json (paso con #122, se reparo con #123 y #124).
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: El CHANGELOG no empieza con [unreleased]
+        working-directory: .
+        run: |
+          set -euo pipefail
+          CHANGELOG="${CHANGELOG:-instrumentacion-java-ia/CHANGELOG.md}"
+          # La primera entrada de version es lo que se esta por liberar.
+          PRIMERA="$(grep -m1 '^## \[' "$CHANGELOG" || true)"
+          echo "Primera entrada de ${CHANGELOG}: ${PRIMERA:-(ninguna)}"
+          if [ -z "$PRIMERA" ]; then
+            echo "::error file=${CHANGELOG}::El CHANGELOG no tiene ninguna entrada de version."
+            exit 1
+          fi
+          if printf '%s\n' "$PRIMERA" | grep -qi '^## \[unreleased\]'; then
+            echo "::error file=${CHANGELOG}::El CHANGELOG todavia empieza con [unreleased]. Falta la PR chore/release-<version> a dev, que sube plugin.json y fecha esta entrada, antes de liberar a main (ADR 0001)."
+            exit 1
+          fi
+          echo "OK: ${PRIMERA#'## '} es la version que llega a main."
+
 # La proteccion de rama es lo que convierte esto de un reporte en un gate:
 # Settings > Branches > exigir el status check `check` antes de mergear.
