@@ -2,7 +2,8 @@
 Placeholders:
   {{PROJECT_NAME}}
   {{SOURCES_ROWS}}         — one row per file with definitions: source · mechanism · themes found
-  {{THEME_COLUMNS}}        — one header per theme found, e.g. "Light (`:root`) | Dark (`prefers-color-scheme: dark`)"; the separator row gets one `---` per column
+  {{THEME_COLUMNS}}        — one header per theme found, e.g. "Light (`:root`) | Dark (`prefers-color-scheme: dark`)"
+  {{SEPARATOR_ROW}}        — one `---` cell per header column: with two themes, "|---|---|---|---|"
   {{TOKEN_ROWS}}           — one row per name × source file, values exactly as written
   {{CONTEXTUAL_OVERRIDES}} — overrides by width, print, @supports or component selector; or "None."
   {{FINDINGS}}             — names exclusive to one source and values that differ between sources; or "None: a single source."
@@ -13,7 +14,8 @@ RULES OF THIS TEMPLATE (delete this comment when writing the file)
   - Several sources are NOT unified and none is picked as "the real one": record them all and put
     the difference under Findings.
   - A UI but no tokens -> the file still ships, with the TODO below and "What was searched". That
-    TODO is the correct output, not a discovery shortfall.
+    TODO is the correct output, not a discovery shortfall. With no tokens, delete the whole
+    "Tokens" table (header included) instead of leaving it with no columns.
   - Paths relative to the project root. A name missing from a theme is "not defined".
 -->
 
@@ -33,7 +35,7 @@ value is missing here, it is missing from the repository.
 ## Tokens
 
 | Token | {{THEME_COLUMNS}} | Source |
-|---|---|---|---|
+{{SEPARATOR_ROW}}
 {{TOKEN_ROWS}}
 
 ## Contextual overrides

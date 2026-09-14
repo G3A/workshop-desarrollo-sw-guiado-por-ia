@@ -249,8 +249,9 @@ the ledger to `docs/claims-ledger.md`.
 ## Phase 6 — Verify
 
 1. Print a tree of files written (or augmented) — in the resolved language.
-2. Check every link in `AGENTS.md`, `docs/java.md` and, when generated, `docs/design.md` resolves to
-   a file that exists (use Read).
+2. Check every link in `AGENTS.md`, `docs/java.md` and, when generated, `docs/design.md`,
+   `docs/design-tokens.md` and `COMPONENTS.md` resolves to a file that exists (use Read) — the last
+   three link to each other across the root and `docs/`.
    Include the PR template's link to `REVIEW.md`: a relative path that does not resolve is the
    failure mode of this pair, and it only shows up months later, when someone clicks it mid-review.
 3. Remind the user, in the resolved language, to commit — suggest a commit message matching that

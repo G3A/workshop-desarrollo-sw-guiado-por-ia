@@ -66,8 +66,8 @@ the team.
 ## 3. How to record tokens
 
 One row per **name × source file**. Columns: token · one value column per theme found · source
-(`path:line`, path **relative to the project root**, so the file reads the same wherever the
-project is checked out).
+(`path:line`, or `path:line,line` when the themes are defined on different lines — path **relative
+to the project root**, so the file reads the same wherever the project is checked out).
 
 **What counts as a theme** — one column each:
 

@@ -14,9 +14,10 @@ una falla del descubrimiento.
 
 ## Qué se buscó
 
-Solo en archivos versionados dentro de `src/main/resources/static/`, la única raíz de interfaz:
+Solo en archivos versionados dentro de `src/main/resources/static/`, la única raíz de interfaz (la
+detección de interfaz ya había confirmado que no existe `src/main/resources/templates/`):
 
-- Fragmentos Thymeleaf (`th:fragment`) y plantillas en `src/main/resources/templates/`: no hay.
+- Fragmentos Thymeleaf (`th:fragment`): no hay.
 - Plantillas JTE (`*.jte`): no hay.
 - Componentes de Angular (`*.component.ts`), React (`*.tsx`, `*.jsx`) y Vue (`*.vue`): no hay.
 - Historias de Storybook (`*.stories.*`): no hay.

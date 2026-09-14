@@ -2,7 +2,8 @@
 Placeholders:
   {{PROJECT_NAME}}
   {{SOURCES_ROWS}}         — una fila por archivo con definiciones: origen · mecanismo · temas encontrados
-  {{THEME_COLUMNS}}        — un encabezado por tema encontrado, ej. "Claro (`:root`) | Oscuro (`prefers-color-scheme: dark`)"; la fila separadora lleva un `---` por columna
+  {{THEME_COLUMNS}}        — un encabezado por tema encontrado, ej. "Claro (`:root`) | Oscuro (`prefers-color-scheme: dark`)"
+  {{SEPARATOR_ROW}}        — una celda `---` por columna del encabezado: con dos temas, "|---|---|---|---|"
   {{TOKEN_ROWS}}           — una fila por nombre × archivo de origen, valores tal como están escritos
   {{CONTEXTUAL_OVERRIDES}} — redefiniciones por ancho, print, @supports o selector de componente; o "Ninguna."
   {{FINDINGS}}             — nombres exclusivos por origen y valores distintos entre orígenes; o "Ninguno: una sola fuente."
@@ -13,7 +14,8 @@ REGLAS DE ESTA PLANTILLA (borra este comentario al escribir el archivo)
   - Varias fuentes NO se unifican ni se elige la "verdadera": se registran todas y la diferencia va
     a Hallazgos.
   - Hay interfaz pero no hay tokens -> el archivo sale igual, con el TODO de abajo y "Qué se buscó".
-    Ese pendiente es la salida correcta, no una falla del descubrimiento.
+    Ese pendiente es la salida correcta, no una falla del descubrimiento. Sin tokens, borra la
+    tabla de «Tokens» entera (encabezado incluido) en vez de dejarla sin columnas.
   - Rutas relativas a la raíz del proyecto. Un nombre ausente en un tema es "no definido".
 -->
 
@@ -33,7 +35,7 @@ si un valor falta aquí, falta en el repositorio.
 ## Tokens
 
 | Token | {{THEME_COLUMNS}} | Origen |
-|---|---|---|---|
+{{SEPARATOR_ROW}}
 {{TOKEN_ROWS}}
 
 ## Redefiniciones contextuales
