@@ -48,6 +48,16 @@ versión nueva", and `AGENTS.md`).
   drift apart. In augment mode, a TODO section is replaced by the link, and a section with the
   team's own content is kept, with the link on top and the duplication reported.
 
+### Fixed
+
+- **`github-plan-build` Step G passes `/code-review` a range, not a bare SHA.** The step said to
+  pass "the branch's real starting point (`git merge-base HEAD <base-branch>`)". Taken literally,
+  `/code-review medium <merge-base>` reviews **that one commit** — in the run of issue #114, the
+  already-merged 0.3.0 release — and comes back with no findings, which looks exactly like a green
+  gate. With `<merge-base>..HEAD` the same review found four real findings in the branch. The step
+  now asks for the range, says why the bare SHA fails, and how to notice: a report about files the
+  branch never touched reviewed the wrong target.
+
 ## [0.3.0] — 2026-09-12
 
 ### Added
