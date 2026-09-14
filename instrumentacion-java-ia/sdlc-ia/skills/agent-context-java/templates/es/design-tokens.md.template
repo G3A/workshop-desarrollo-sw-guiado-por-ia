@@ -1,0 +1,54 @@
+<!--
+Placeholders:
+  {{PROJECT_NAME}}
+  {{SOURCES_ROWS}}         — una fila por archivo con definiciones: origen · mecanismo · temas encontrados
+  {{THEME_COLUMNS}}        — un encabezado por tema encontrado, ej. "Claro (`:root`) | Oscuro (`prefers-color-scheme: dark`)"; la fila separadora lleva un `---` por columna
+  {{TOKEN_ROWS}}           — una fila por nombre × archivo de origen, valores tal como están escritos
+  {{CONTEXTUAL_OVERRIDES}} — redefiniciones por ancho, print, @supports o selector de componente; o "Ninguna."
+  {{FINDINGS}}             — nombres exclusivos por origen y valores distintos entre orígenes; o "Ninguno: una sola fuente."
+  {{SEARCHED}}             — raíces de interfaz y señales revisadas (references/visual-intent.md, secciones 1 y 2)
+
+REGLAS DE ESTA PLANTILLA (borra este comentario al escribir el archivo)
+  - Se LEE del repositorio; NUNCA se propone un valor, una escala, una rampa ni una paleta.
+  - Varias fuentes NO se unifican ni se elige la "verdadera": se registran todas y la diferencia va
+    a Hallazgos.
+  - Hay interfaz pero no hay tokens -> el archivo sale igual, con el TODO de abajo y "Qué se buscó".
+    Ese pendiente es la salida correcta, no una falla del descubrimiento.
+  - Rutas relativas a la raíz del proyecto. Un nombre ausente en un tema es "no definido".
+-->
+
+# Design tokens — {{PROJECT_NAME}}
+
+Lo que este repositorio **ya define**, leído de su código. Nada de lo que sigue es una propuesta:
+si un valor falta aquí, falta en el repositorio.
+
+## Dónde se definen
+
+| Origen | Mecanismo | Temas |
+|---|---|---|
+{{SOURCES_ROWS}}
+
+<!-- TODO: si la tabla está vacía, el repositorio no define tokens todavía. Decidirlos es del equipo. -->
+
+## Tokens
+
+| Token | {{THEME_COLUMNS}} | Origen |
+|---|---|---|---|
+{{TOKEN_ROWS}}
+
+## Redefiniciones contextuales
+
+{{CONTEXTUAL_OVERRIDES}}
+
+## Hallazgos
+
+{{FINDINGS}}
+
+## Qué se buscó
+
+{{SEARCHED}}
+
+## Docs relacionados
+
+- [Diseño](./design.md)
+- [Componentes](../COMPONENTS.md)

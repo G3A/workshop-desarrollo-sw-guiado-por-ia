@@ -1,0 +1,54 @@
+<!--
+Placeholders:
+  {{PROJECT_NAME}}
+  {{SOURCES_ROWS}}         — one row per file with definitions: source · mechanism · themes found
+  {{THEME_COLUMNS}}        — one header per theme found, e.g. "Light (`:root`) | Dark (`prefers-color-scheme: dark`)"; the separator row gets one `---` per column
+  {{TOKEN_ROWS}}           — one row per name × source file, values exactly as written
+  {{CONTEXTUAL_OVERRIDES}} — overrides by width, print, @supports or component selector; or "None."
+  {{FINDINGS}}             — names exclusive to one source and values that differ between sources; or "None: a single source."
+  {{SEARCHED}}             — UI roots and signals checked (references/visual-intent.md, sections 1 and 2)
+
+RULES OF THIS TEMPLATE (delete this comment when writing the file)
+  - READ from the repository; NEVER propose a value, a scale, a ramp or a palette.
+  - Several sources are NOT unified and none is picked as "the real one": record them all and put
+    the difference under Findings.
+  - A UI but no tokens -> the file still ships, with the TODO below and "What was searched". That
+    TODO is the correct output, not a discovery shortfall.
+  - Paths relative to the project root. A name missing from a theme is "not defined".
+-->
+
+# Design tokens — {{PROJECT_NAME}}
+
+What this repository **already defines**, read from its code. Nothing below is a proposal: if a
+value is missing here, it is missing from the repository.
+
+## Where they are defined
+
+| Source | Mechanism | Themes |
+|---|---|---|
+{{SOURCES_ROWS}}
+
+<!-- TODO: if the table is empty, the repository defines no tokens yet. Choosing them is the team's call. -->
+
+## Tokens
+
+| Token | {{THEME_COLUMNS}} | Source |
+|---|---|---|---|
+{{TOKEN_ROWS}}
+
+## Contextual overrides
+
+{{CONTEXTUAL_OVERRIDES}}
+
+## Findings
+
+{{FINDINGS}}
+
+## What was searched
+
+{{SEARCHED}}
+
+## Related docs
+
+- [Design](./design.md)
+- [Components](../COMPONENTS.md)
