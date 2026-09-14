@@ -93,3 +93,8 @@ skill en `Playbook-sdlc-ia.html` y en `Playbook-Fases/`.
 
 Cuando un hueco se cierre, la caja cambia de `:::hueco` a `:::skill` en el diagrama, su sección
 cambia de badge, y los contadores del índice y de la fase se actualizan con ella.
+
+**Esta regla la verifica un sensor, no la memoria:** `node playbook-sdlc-ia/verificar-cobertura.mjs`
+(igual en PowerShell y en bash, sin dependencias) falla si, para alguna caja, no coinciden la clase
+del diagrama, su dato `B(...)`, la clase y el badge de su sección, o si un contador del índice, de
+este README o de la barra de una fase no sale del diagrama. Corre en el CI, en el job `check`.
