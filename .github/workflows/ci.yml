@@ -71,6 +71,13 @@ jobs:
       - name: Run the same gates as local
         run: make ci
 
+      # Sensor del playbook (#117): una caja que cambia de badge sin que cambien su dato B(), su
+      # seccion y los contadores falla aca. Node ya viene en el runner; el script no tiene
+      # dependencias. Corre en la raiz, no en base-conocimiento/.
+      - name: Playbook coverage is consistent
+        working-directory: .
+        run: node playbook-sdlc-ia/verificar-cobertura.mjs
+
       - name: Publish test results
         if: always()
         uses: actions/upload-artifact@v7

@@ -26,7 +26,7 @@ navegador basado en Chromium.
 | **Hueco** | Nadie la cubre acá: ni skill, ni visor, ni manual. |
 | **Fuera de alcance** | Frontera declarada del plugin, no un olvido: Azure DevOps, memoria semántica entre sesiones, agentes especialistas por stack — y una derivada de la segunda, los hooks `type: mcp_tool`. |
 
-Cobertura al momento de escribir esto: **42 skill · 3 parcial · 14 a mano · 9 hueco · 3 fuera de
+Cobertura al momento de escribir esto: **43 skill · 2 parcial · 14 a mano · 9 hueco · 3 fuera de
 alcance**, sobre 71 cajas con badge.
 
 ## Cómo se usa el diagrama
@@ -93,3 +93,8 @@ skill en `Playbook-sdlc-ia.html` y en `Playbook-Fases/`.
 
 Cuando un hueco se cierre, la caja cambia de `:::hueco` a `:::skill` en el diagrama, su sección
 cambia de badge, y los contadores del índice y de la fase se actualizan con ella.
+
+**Esta regla la verifica un sensor, no la memoria:** `node playbook-sdlc-ia/verificar-cobertura.mjs`
+(igual en PowerShell y en bash, sin dependencias) falla si, para alguna caja, no coinciden la clase
+del diagrama, su dato `B(...)`, la clase y el badge de su sección, o si un contador del índice, de
+este README o de la barra de una fase no sale del diagrama. Corre en el CI, en el job `check`.

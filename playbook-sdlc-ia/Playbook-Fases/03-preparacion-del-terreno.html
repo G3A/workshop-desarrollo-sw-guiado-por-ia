@@ -28,8 +28,8 @@
   </nav>
 
   <div class="cobertura">
-    <span class="k-skill"><b>24</b> · skill</span>
-    <span class="k-parcial"><b>2</b> · parcial</span>
+    <span class="k-skill"><b>25</b> · skill</span>
+    <span class="k-parcial"><b>1</b> · parcial</span>
     <span class="k-hueco"><b>6</b> · hueco</span>
     <span class="k-fuera"><b>2</b> · fuera de alcance</span>
   </div>
@@ -61,11 +61,14 @@
     <div class="fuente"><b>Fuente:</b> <code>agent-context-java/SKILL.md</code>, fase 5, y <code>references/claim-validation.md</code>.</div>
   </section>
 
-  <section id="X4" class="parcial">
-    <span class="tag">X4</span><span class="badge parcial">Parcial</span>
+  <section id="X4" class="skill">
+    <span class="tag">X4</span><span class="badge skill">Skill</span>
     <h2>Intención visual</h2>
-    <p>Existe <code>design.md</code> como plantilla opcional —la skill la genera solo si la pides explícitamente— y ahí termina la cobertura.</p>
-    <div class="falta"><b>Qué falta.</b> Los <em>design tokens</em> y un <code>COMPONENTS.md</code> que el agente pueda leer antes de escribir UI. Sin eso, «pasar la intención visual al agente» en la Fase 3 no tiene de dónde leerla, y el hueco se paga otra vez en la caja <code>VW</code>.</div>
+    <p>Si el repositorio tiene interfaz, <code>/sdlc-ia:agent-context-java</code> ofrece tres archivos juntos: <code>docs/design-tokens.md</code> con cada token que el repositorio ya define —un valor por tema y el archivo de origen—, <code>COMPONENTS.md</code> en la raíz con los componentes que existen, y <code>docs/design.md</code>, que se queda solo con los principios de UX y enlaza a los otros dos. En un servicio REST puro no ofrece ninguno, y dice qué buscó.</p>
+    <p><strong>Formato desde el repositorio, nunca una escala propuesta.</strong> La skill no inventa escalas de espaciado, rampas tipográficas ni paletas: donde el repositorio no dice nada, deja un pendiente. Es la misma regla con la que <a href="02-cultura.html#C2"><code>EXPERIMENTS.md</code></a> sale con pendientes.</p>
+    <div class="hint"><b>Los tres errores que el descubrimiento no comete.</b> Buscar solo en <code>*.css</code>, cuando los tokens viven dentro de <code>&lt;style&gt;</code> en un HTML; buscar solo <code>tailwind.config.js</code>, que Tailwind v4 ya no detecta por su cuenta; y quedarse con un tema, cuando un <code>:root</code> claro y otro oscuro significan dos valores por token. <code>base-conocimiento</code> tiene los tres.</div>
+    <div class="hint"><b>Una divergencia se reporta, no se resuelve.</b> <code>base-conocimiento</code> define sus tokens dos veces, una por página, y las copias se separaron: tres nombres exclusivos de cada lado y <code>--bg-elevado</code> con dos valores. La skill escribe los dos orígenes y lo marca como hallazgo. Elegir en silencio convertiría una inconsistencia real en un documento que la esconde.</div>
+    <div class="fuente"><b>Fuente:</b> <code>agent-context-java/SKILL.md</code>, fase 1g, y <code>references/visual-intent.md</code>; especificación DTCG 2025.10 y documentación de Tailwind CSS v4, consultadas el <b>2026-09-14</b>.</div>
   </section>
 
   <h2 class="muted" style="font-family:'Fraunces',serif;margin-top:30px">Instrumentación determinista · los sensores y el juez</h2>
