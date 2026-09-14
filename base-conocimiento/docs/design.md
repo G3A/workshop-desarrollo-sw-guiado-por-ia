@@ -2,11 +2,12 @@
 
 ## Sistema de diseño
 
-<!-- TODO: no hay tokens de diseño, guía tipográfica ni Figma/Storybook en el repo — la UI es
-HTML/JS servido como estáticos (`src/main/resources/static/`), sin build ni framework de
-componentes. Completar si el equipo formaliza un sistema de diseño más adelante. -->
+Ver [design-tokens.md](./design-tokens.md) — lo que el repositorio ya define, con sus orígenes y
+divergencias.
 
 ## Patrones de componentes
+
+Ver [COMPONENTS.md](../COMPONENTS.md) — lo que ya existe para reutilizar.
 
 La UI vive en `src/main/resources/static/` como archivos planos: `index.html`, `app.js`,
 `admin.html`/`admin.js`, `ayuda.js`, `historial-db.js` — sin bundler, sin JSX, sin dependencias de

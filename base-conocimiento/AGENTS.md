@@ -16,6 +16,8 @@ Este archivo solo captura lo que no es obvio leyendo el código. Para arquitectu
 - [Java — profundidad técnica](docs/java.md) — módulos, JDK, DI, persistencia, quality gates, CI.
 - [Usuario objetivo](docs/target-user.md) — quién usa el sistema y qué le importa.
 - [Diseño](docs/design.md) — el adaptador web (HTML/JS sin build).
+- [Design tokens](docs/design-tokens.md) — los tokens que ya definen `index.html` y `admin.html`, y en qué divergen.
+- [Componentes](COMPONENTS.md) — léelo antes de escribir UI; hoy no hay estructura de componentes.
 - [Decisiones (ADRs)](docs/adrs/) — 13 decisiones registradas, desde la tabla única de embeddings hasta el módulo de acciones independiente del RAG.
 - [Plan del proyecto, fase por fase](docs/plans/plan-base-conocimiento.md) — historia de cómo se llegó al estado actual.
 - [Investigación VRAM/modelo LLM](docs/investigacion-vram-y-modelo-llm.md) — por qué Gemma3:4b y el trade-off GPU/CPU.
