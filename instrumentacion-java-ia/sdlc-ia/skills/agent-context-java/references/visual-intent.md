@@ -30,7 +30,9 @@ answer "is there a UI?" the same way — keep them identical.
   not a failed check.
 - **Only a browser test suite pointed at another service** → there is nothing of this repository's
   own to read. Report that case by name and do not offer the option.
-- **A UI signal matched** → the matched directories are the **UI roots** for sections 2 and 4.
+- **A UI signal matched** → the matched directories are the **UI roots** for sections 2 and 4 —
+  except a browser test suite's own directory: it proves there is something to look at, but it
+  holds tests and their reports, not the UI.
 
 ## 2. Where tokens live
 
