@@ -71,6 +71,11 @@ jobs:
       - name: Run the same gates as local
         run: make ci
 
+      # Sensor de enlaces (#128): un enlace relativo o un ancla de la documentacion de
+      # base-conocimiento que no resuelve falla aca. En #120 aparecieron dos que nadie veia.
+      - name: Docs links resolve
+        run: node scripts/verificar-enlaces.mjs
+
       # Sensor del playbook (#117): una caja que cambia de badge sin que cambien su dato B(), su
       # seccion y los contadores falla aca. Node ya viene en el runner; el script no tiene
       # dependencias. Corre en la raiz, no en base-conocimiento/.
