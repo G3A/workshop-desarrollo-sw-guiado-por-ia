@@ -54,6 +54,15 @@ reemplazables" signifique algo, no solo una intención escrita. Una segunda regl
 `acciones` del RAG: no puede depender de `orquestacion`, `recuperacion`, `ingesta`, `modelos` ni
 de los adaptadores.
 
+### La interfaz web
+
+La UI vive en `src/main/resources/static/` como archivos planos: `index.html`, `app.js`,
+`admin.html`/`admin.js`, `ayuda.js`, `historial-db.js`, `idiomas.js` — sin bundler, sin JSX, sin
+dependencias de build. El adaptador `web` (`ChatController`, `AccionesController`, `WebConfig`,
+`RedireccionIndiceFilter`) solo expone REST y Server-Sent Events; toda la lógica de UI es
+JavaScript plano consumiendo esos endpoints. Sus tokens: [design-tokens.md](design-tokens.md);
+sus componentes: [COMPONENTS.md](../COMPONENTS.md).
+
 ### Núcleo compartido y adaptadores
 
 Dos fachadas. La del RAG:
