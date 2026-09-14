@@ -229,7 +229,10 @@ not report success with a gate in the red.**
 ## Phase 5 — Document and report
 
 Update `AGENTS.md`/`CLAUDE.md` if present — a "Checks to run" section, `make hooks` in setup, the
-layering rules now enforced, the CI paragraph. **Update what exists; do not create the doc pack** —
+layering rules now enforced. The CI detail (workflow path, trigger, steps, what blocks) goes to
+`docs/java.md` (quality gates) or `docs/infrastructure.md` (CI/CD) when they exist, with a one-line
+`CI` section in `AGENTS.md` linking there: `agent-context-java` keeps `AGENTS.md` under ~80 lines,
+and a paragraph copied into both drifts. **Update what exists; do not create the doc pack** —
 if missing, report the gap and point at `/sdlc-ia:agent-context-java`.
 
 For control 8 on GitHub, say explicitly that the workflow is **written but not yet enforced**:

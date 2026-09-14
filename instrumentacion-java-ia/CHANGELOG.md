@@ -13,6 +13,27 @@ version bump (verified 0.1.0 → 0.2.0). Updating on any machine is `update.ps1`
 the plugin root, which uninstalls and reinstalls (see the README, "Actualizar cuando sale una
 versión nueva", and `AGENTS.md`).
 
+## [0.4.1] — 2026-09-14
+
+### Changed
+
+- **`instrument-agent-java` and `instrument-project-java` no longer undo an `AGENTS.md` index.**
+  `agent-context-java` keeps `AGENTS.md` under ~80 lines, but `instrument-agent-java` wrote the
+  full hooks and MCP tables into it and `instrument-project-java` its CI paragraph. In issue #120
+  `base-conocimiento` moved them to `docs/`; the next run of either skill would have put them
+  back. Now the tables go to `docs/infrastructure.md` (the hooks re-counted against
+  `.claude/settings.json`, which in #120 had 8 scripts against a documented 7) and the CI detail
+  to `docs/java.md` or `docs/infrastructure.md`, each with a one-line section and a link left in
+  `AGENTS.md` — updated, never duplicated. Without `docs/infrastructure.md` the tables stay in
+  `AGENTS.md` and the report names the missing doc pack. The Spanish guides of both skills say
+  the same (#128).
+- **`agent-context-java` fixes the docs that contradict its ledger.** Step 5 of
+  `references/claim-validation.md` now searches `AGENTS.md` and `docs/` for the opposite of every
+  claim it confirms, corrects or invalidates, and fixes it in the same pass. In issue #120 the
+  ledger of `base-conocimiento` already held the CI and the actuator exposure as confirmed while
+  five sentences in `infrastructure.md`, `java.md` and `architecture.md` still said otherwise: a
+  ledger row does not propagate on its own (#128).
+
 ## [0.4.0] — 2026-09-14
 
 ### Added

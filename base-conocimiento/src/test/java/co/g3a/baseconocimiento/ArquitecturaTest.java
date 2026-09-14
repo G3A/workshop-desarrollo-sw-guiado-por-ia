@@ -136,6 +136,9 @@ class ArquitecturaTest {
   @Test
   @DisplayName("Compartido no depende de nadie")
   void compartidoEsHoja() {
+    // allowEmptyShould en false: `compartido` ya tiene clases reales (Dominio), asi que la
+    // regla debe morder de verdad. Con true, renombrar el paquete la dejaba verde sin
+    // revisar ninguna clase.
     noClasses()
         .that()
         .resideInAPackage(RAIZ + ".compartido..")
@@ -152,7 +155,7 @@ class ArquitecturaTest {
             RAIZ + ".teams..",
             RAIZ + ".seguridad..")
         .because("es solo vocabulario: si depende de algo, deja de ser compartido")
-        .allowEmptyShould(true)
+        .allowEmptyShould(false)
         .check(clases);
   }
 
