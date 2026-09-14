@@ -27,7 +27,9 @@ contexto:
   `chore/release-<versión>` a `dev`, que sube la versión del plugin y fecha el CHANGELOG, y de
   inmediato la PR `dev` → `main`. La PR `chore/release` no forma parte de ninguna feature y no se
   abre «por si acaso»: abrirla es decidir liberar. Por qué así y no con una rama `release/` al
-  estilo git-flow: `docs/adrs/0001-liberar-con-chore-release-a-dev.md`.
+  estilo git-flow: `docs/adrs/0001-liberar-con-chore-release-a-dev.md`. Si la PR `dev` → `main` llega
+  sin ese primer paso, el job `changelog-liberado` del CI falla: el CHANGELOG todavía empieza con
+  `[unreleased]`.
 - `Closes #N` cierra el issue cuando el commit llega a `main`, es decir, con la PR de liberación;
   el merge de la rama de trabajo a `dev` no lo cierra. Si el issue debe cerrarse antes, se cierra a
   mano y se dice en el comentario final.
