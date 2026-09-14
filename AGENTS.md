@@ -40,9 +40,9 @@ contexto:
   y la rama al día con `dev`, solo squash) y `release-main` (PR con una aprobación, checks `check` y
   `changelog-liberado` en verde, solo merge commit). En `release-main` los checks **no** exigen
   que `dev` esté al día con `main`: como `dev` se integra por squash, nunca contiene los merge
-  commits de las liberaciones anteriores, y con esa exigencia toda liberación quedaría bloqueada como «behind». Mientras el
-  repo tenga una sola persona, ambos Rulesets llevan bypass del rol Administrador, porque nadie
-  puede aprobar su propia PR; al sumarse alguien, se retira.
+  commits de las liberaciones anteriores, y con esa exigencia toda liberación quedaría bloqueada
+  como «behind». Mientras el repo tenga una sola persona, ambos Rulesets llevan bypass del rol
+  Administrador, porque nadie puede aprobar su propia PR; al sumarse alguien, se retira.
 
 ## Commits
 
