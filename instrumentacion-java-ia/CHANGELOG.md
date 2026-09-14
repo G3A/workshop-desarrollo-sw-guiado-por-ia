@@ -27,6 +27,12 @@ versión nueva", and `AGENTS.md`).
   `AGENTS.md` — updated, never duplicated. Without `docs/infrastructure.md` the tables stay in
   `AGENTS.md` and the report names the missing doc pack. The Spanish guides of both skills say
   the same (#128).
+- **`agent-context-java` fixes the docs that contradict its ledger.** Step 5 of
+  `references/claim-validation.md` now searches `AGENTS.md` and `docs/` for the opposite of every
+  claim it confirms, corrects or invalidates, and fixes it in the same pass. In issue #120 the
+  ledger of `base-conocimiento` already held the CI and the actuator exposure as confirmed while
+  five sentences in `infrastructure.md`, `java.md` and `architecture.md` still said otherwise: a
+  ledger row does not propagate on its own (#128).
 
 ## [0.4.0] — 2026-09-14
 
