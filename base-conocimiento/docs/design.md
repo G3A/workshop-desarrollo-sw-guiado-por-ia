@@ -1,17 +1,9 @@
 # Diseño — Base de Conocimiento
 
-## Sistema de diseño
-
-<!-- TODO: no hay tokens de diseño, guía tipográfica ni Figma/Storybook en el repo — la UI es
-HTML/JS servido como estáticos (`src/main/resources/static/`), sin build ni framework de
-componentes. Completar si el equipo formaliza un sistema de diseño más adelante. -->
-
-## Patrones de componentes
-
-La UI vive en `src/main/resources/static/` como archivos planos: `index.html`, `app.js`,
-`admin.html`/`admin.js`, `ayuda.js`, `historial-db.js` — sin bundler, sin JSX, sin dependencias de
-build. El adaptador `web` (`ChatController`, `WebConfig`, `RedireccionIndiceFilter`) solo expone
-REST y Server-Sent Events; toda la lógica de UI es JavaScript plano consumiendo esos endpoints.
+- **Design tokens:** [design-tokens.md](./design-tokens.md) — lo que el repositorio ya define, con
+  sus orígenes y divergencias.
+- **Componentes:** [COMPONENTS.md](../COMPONENTS.md) — lo que ya existe para reutilizar.
+- **Dónde vive la UI:** [Arquitectura](./architecture.md#la-interfaz-web).
 
 ## Principios de UX
 

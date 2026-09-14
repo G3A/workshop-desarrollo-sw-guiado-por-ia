@@ -1,0 +1,35 @@
+<!--
+Placeholders:
+  {{PROJECT_NAME}}
+  {{COMPONENT_ROWS}} — one row per component found: name · kind · path · parameters only if the code declares them
+  {{SEARCHED}}       — UI roots and signals checked (references/visual-intent.md, sections 1 and 4)
+
+RULES OF THIS TEMPLATE (delete this comment when writing the file)
+  - Record what exists. Do not describe how a component "should" look and do not propose shared
+    primitives.
+  - No component structure (plain HTML and JavaScript, no fragments, templates, components or
+    stories) -> delete the table and keep the TODO. That TODO is the correct output, not a shortfall.
+-->
+
+# COMPONENTS.md — {{PROJECT_NAME}}
+
+The UI components this repository **already has**. Read it before writing new UI: reusing what
+exists comes first.
+
+## Components
+
+| Component | Kind | Path | Parameters |
+|---|---|---|---|
+{{COMPONENT_ROWS}}
+
+<!-- TODO: no component structure was found (see "What was searched"). If the team adopts one, this
+     file is where it gets recorded. -->
+
+## What was searched
+
+{{SEARCHED}}
+
+## Related docs
+
+- [Design](docs/design.md)
+- [Design tokens](docs/design-tokens.md)

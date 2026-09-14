@@ -11,6 +11,13 @@ play; `data-model.md` records the migration tool (Flyway/Liquibase), location, a
 (startup vs CI); `infrastructure.md` records the CI system, config/profile layering, and
 deployment shape (layered jar, Docker, or WAR on an app server).
 
+## Visual intent (only if Phase 1g found a UI and the user opted in)
+
+`docs/design-tokens.md` carries every token read from the repo — one row per name × source file, a
+value column per theme, findings for divergent sources; `COMPONENTS.md` carries the components
+found, or the TODO; `docs/design.md` keeps only UX principles and links to both. What to read and
+how to record it: `references/visual-intent.md` — not restated here.
+
 ## ADR seeds
 
 1–3 decisions **clearly made**, with Status, Context (alternatives), Decision, Consequences
@@ -23,7 +30,8 @@ fabricate the rationale.
 - **Opening:** 2 lines max (project name + one-line purpose).
 - **"Where to find things":** every doc, one line each, including `docs/java.md` ("deep Java
   context: module graph, JDK target, DI, persistence, Modulith boundaries") and any pre-existing
-  repo docs from Phase 1b.
+  repo docs from Phase 1b. When visual intent was generated, `COMPONENTS.md` ("read before writing
+  UI") and `docs/design-tokens.md` get a line each — appended to an existing list in augment mode.
 - **"Commands":** the 3–6 commands a developer actually runs — wrapper over bare tool, `Makefile`
   over raw invocations, profile-activation flag if needed locally, unit/integration split
   (checklist §9).
