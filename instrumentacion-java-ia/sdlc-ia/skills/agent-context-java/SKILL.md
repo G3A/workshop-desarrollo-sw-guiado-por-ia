@@ -1,6 +1,6 @@
 ---
 name: agent-context-java
-description: Generate a documentation pack for a Java/Spring repository so AI coding agents can reason about it — AGENTS.md, REVIEW.md and a PR template for the human review layer, an optional EXPERIMENTS.md holding the team's written agreement on what may fail, architecture, ADRs, data model, infrastructure, plus a `docs/java.md` deep-dive covering the Maven/Gradle module graph, JDK target, Spring DI, JPA/Hibernate or Spring Data persistence, Spring profiles & config, Spring Modulith module boundaries, quality gates, and CI. Output docs default to Spanish; pass `en` for English. Invoke with `/sdlc-ia:agent-context-java` (or `/sdlc-ia:agent-context-java en`).
+description: Generate a documentation pack for a Java/Spring repository so AI coding agents can reason about it — AGENTS.md, REVIEW.md and a PR template for the human review layer, an optional EXPERIMENTS.md holding the team's written agreement on what may fail, optional visual intent read from the repo when it has a UI (docs/design-tokens.md and COMPONENTS.md, never proposing a value), architecture, ADRs, data model, infrastructure, plus a `docs/java.md` deep-dive covering the Maven/Gradle module graph, JDK target, Spring DI, JPA/Hibernate or Spring Data persistence, Spring profiles & config, Spring Modulith module boundaries, quality gates, and CI. Output docs default to Spanish; pass `en` for English. Invoke with `/sdlc-ia:agent-context-java` (or `/sdlc-ia:agent-context-java en`).
 disable-model-invocation: true
 ---
 
@@ -91,6 +91,12 @@ Seed the one-line project summary from it. Don't copy large chunks.
 Grep `@Entity`, `@Table`, `@Document`, and repository interfaces for dominant domain nouns
 (`Order`, `Invoice`, `Patient`). Use only as Phase 2 prompts — don't hallucinate.
 
+### 1g. Visual intent — only if there is a UI
+
+Run `references/visual-intent.md`: section 1 decides whether the repository has a user interface;
+if it does, sections 2 and 4 collect the tokens and components it **already has**. No UI → keep the
+list of signals checked for the report; the visual-intent docs are neither offered nor written.
+
 ---
 
 ## Phase 2 — Interview
@@ -104,8 +110,11 @@ batched calls. Long-form answers don't fit it — ask those in plain chat.
 
 ### 2a. Batch A — scope and disambiguation (one `AskUserQuestion`)
 
-1. **Optional docs** — "Generate also `target-user.md`, `design.md` and/or `EXPERIMENTS.md`?"
-   (`multiSelect`). For the third one, say what it is and what it is not in the option itself:
+1. **Optional docs** — "Generate also `target-user.md`, visual intent and/or `EXPERIMENTS.md`?"
+   (`multiSelect`). **Visual intent** — `docs/design.md` + `docs/design-tokens.md` +
+   `COMPONENTS.md`, one option because `design.md` links to the other two — is offered **only if 1g
+   found a UI**; otherwise drop the option and say in the report that no UI was found and what was
+   checked. For `EXPERIMENTS.md`, say what it is and what it is not in the option itself:
    *the written agreement about what the team may try with the agent and what happens when it goes
    wrong — the form only; **you fill in the content**, and the skill will not answer it for you.*
 2. **Augment-mode confirmation** — only if Phase 1b found existing docs: list them, then
@@ -154,7 +163,9 @@ For each doc, read `templates/<lang>/<doc>.md.template` (`<lang>` resolved above
 - `docs/business.md`, `docs/architecture.md`, `docs/data-model.md`, `docs/infrastructure.md`,
   `docs/java.md`
 - `docs/adrs/README.md` + `docs/adrs/adr-template.md` + `docs/adrs/0001-<slug>.md` (1–3 seed ADRs)
-- `docs/target-user.md`, `docs/design.md` (only if opted in)
+- `docs/target-user.md` (only if opted in)
+- `docs/design.md`, `docs/design-tokens.md`, `COMPONENTS.md` (repo root) — only if 1g found a UI and
+  the user opted in; see the second exception below
 - `EXPERIMENTS.md` (repo root, only if opted in) — see the exception below
 
 Rules: short sentences, sacrifice grammar for clarity. No info for a section →
@@ -171,6 +182,13 @@ Leave every other slot open, and say in the report that you did so on purpose: a
 posture invented by a model is the exact hallucination this skill exists to prevent. **Augment mode never clobbers
 user content** — fill TODO slots or append a clearly marked subsection, leave the rest alone;
 pre-existing docs are read-only, cross-link instead of editing.
+
+**`docs/design-tokens.md` and `COMPONENTS.md` are the second exception.** They record what the
+repository already defines; they **never propose a value** — no scale, ramp, palette or colour
+roles. A UI with no tokens, or with no component structure, still gets the file, with a TODO and the
+list of what was searched: **that TODO is the correct output**. When tokens are defined in more than
+one place, never pick a copy or unify values — every source is written and the difference is a
+finding. How to read, record, and augment an existing `design.md`: `references/visual-intent.md`.
 
 What each doc must carry from the Java discovery, and the ADR seeds, are in
 `references/doc-content-map.md`.
@@ -231,13 +249,16 @@ the ledger to `docs/claims-ledger.md`.
 ## Phase 6 — Verify
 
 1. Print a tree of files written (or augmented) — in the resolved language.
-2. Check every link in `AGENTS.md` and `docs/java.md` resolves to a file that exists (use Read).
+2. Check every link in `AGENTS.md`, `docs/java.md` and, when generated, `docs/design.md`,
+   `docs/design-tokens.md` and `COMPONENTS.md` resolves to a file that exists (use Read) — the last
+   three link to each other across the root and `docs/`.
    Include the PR template's link to `REVIEW.md`: a relative path that does not resolve is the
    failure mode of this pair, and it only shows up months later, when someone clicks it mid-review.
 3. Remind the user, in the resolved language, to commit — suggest a commit message matching that
    language (e.g. `docs: bootstrap Java context pack for AI coding agents` in English,
    `docs: agrega el paquete de contexto Java para agentes de IA` in Spanish):
-   `git add AGENTS.md CLAUDE.md REVIEW.md .github/ docs/` then `git commit -m "<message>"` (two
+   `git add AGENTS.md CLAUDE.md REVIEW.md .github/ docs/` — plus `EXPERIMENTS.md` and `COMPONENTS.md`
+   when they were generated — then `git commit -m "<message>"` (two
    commands, no `&&`, so it works in Windows PowerShell 5.1 too);
    fill `<!-- TODO -->` markers, review the ADRs, skim `docs/claims-ledger.md` for anything
    unverified; if quality gates were absent, consider Checkstyle/Spotless + an arch-linting test
@@ -250,6 +271,8 @@ the ledger to `docs/claims-ledger.md`.
 
 - `references/java-inspection.md` + `references/java-inspection-2.md` — the full Java discovery
   checklist (Phase 1c).
+- `references/visual-intent.md` — whether there is a UI, and how tokens and components are read
+  from the repo (Phase 1g, Phase 3).
 - `references/doc-content-map.md` — what each doc carries, and the `AGENTS.md` section list
   (Phase 3, Phase 4).
 - `references/claim-validation.md` — the Claimify-inspired claim-validation procedure (Phase 5).
@@ -263,6 +286,9 @@ the ledger to `docs/claims-ledger.md`.
 - Do NOT fabricate framework or dependency versions, providers, endpoint names, or schema you
   haven't read.
 - Do NOT answer `EXPERIMENTS.md` for the team. Its TODOs are the deliverable, not a shortfall.
+- Do NOT propose design values in `docs/design-tokens.md` or `COMPONENTS.md`. Read them or leave the TODO.
+- Do NOT pick one copy of a token defined in several places, and do NOT unify values: report the
+  divergence as a finding.
 - DO leave `<!-- TODO -->` markers where human input is needed, and delete sections that don't
   apply rather than padding them.
 - DO keep every doc focused: each has one job, delegated from AGENTS.md.

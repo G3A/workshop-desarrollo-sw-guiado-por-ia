@@ -1,17 +1,16 @@
 <!--
 Placeholders:
   {{PROJECT_NAME}}
+
+Tokens and components are NOT repeated here: they live in docs/design-tokens.md and COMPONENTS.md,
+which are read from the repository (references/visual-intent.md). Two copies drift apart.
 -->
 
 # Design — {{PROJECT_NAME}}
 
-## Design system
-
-<!-- TODO: tokens, typography, color scales. Link to Figma / Storybook if they exist. -->
-
-## Component patterns
-
-<!-- TODO: how components are organized, naming conventions, shared primitives. -->
+- **Design tokens:** [design-tokens.md](./design-tokens.md) — what the repository already defines,
+  with its sources and divergences.
+- **Components:** [COMPONENTS.md](../COMPONENTS.md) — what already exists to reuse.
 
 ## UX principles
 

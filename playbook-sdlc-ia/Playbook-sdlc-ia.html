@@ -198,7 +198,7 @@ subgraph P2["FASE 2 · Preparación del terreno — donde el plugin hace casi to
     X1["Contexto de negocio<br/>business.md · target-user.md<br/>SKILL · agent-context-java"]:::skill
     X2["Arquitectura y el porqué<br/>architecture.md + ADRs<br/>SKILL · agent-context-java"]:::skill
     X3["Modelo de datos, infraestructura y Java a fondo<br/>data-model.md · infrastructure.md · java.md<br/>SKILL · agent-context-java"]:::skill
-    X4["Intención visual, si hay UI<br/>design.md, solo si lo pides<br/>PARCIAL · sin design tokens ni COMPONENTS.md"]:::parcial
+    X4["Intención visual, si hay UI<br/>design.md · design-tokens.md · COMPONENTS.md<br/>SKILL · agent-context-java"]:::skill
     X1-->X2-->X3-->X4
   end
   subgraph P2B["Instrumentación determinista · sensores de código y el juez de CI"]
@@ -498,7 +498,7 @@ style P6 fill:#0b0f15,stroke:#6b2018,color:#FF9C8C
     X1:B("Contexto de negocio","skill","agent-context-java genera business.md, y target-user.md si lo pides.",P.f2,"X1"),
     X2:B("Arquitectura y ADRs","skill","architecture.md más una a tres ADR semilla, que solo documentan decisiones ya tomadas.",P.f2,"X2"),
     X3:B("Datos, infraestructura y Java","skill","data-model.md, infrastructure.md y java.md: módulos Maven, JDK, persistencia, perfiles, Modulith.",P.f2,"X3"),
-    X4:B("Intención visual","parcial","design.md existe como plantilla opcional, pero nadie genera design tokens ni COMPONENTS.md.",P.f2,"X4"),
+    X4:B("Intención visual","skill","Si el repositorio tiene interfaz, agent-context-java lee los tokens y componentes que ya existen y escribe docs/design-tokens.md y COMPONENTS.md. Nunca propone un valor, y si dos copias de los tokens se separaron lo reporta como hallazgo, sin elegir ninguna.",P.f2,"X4"),
     // Fase 2 · deterministas
     D1:B("Lint estático","skill","Checkstyle en modo estricto, y SpotBugs como control 11 — opt-in, porque sobre un brownfield arranca en rojo. PMD queda fuera a propósito: dos analizadores nuevos gritando a la vez terminan los dos apagados.",P.f2,"D1"),
     DF:B("Formato","skill","Spotless con google-java-format o palantir-java-format, más .editorconfig.",P.f2,"DF"),

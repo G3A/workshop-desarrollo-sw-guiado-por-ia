@@ -1,0 +1,35 @@
+<!--
+Placeholders:
+  {{PROJECT_NAME}}
+  {{COMPONENT_ROWS}} — una fila por componente encontrado: nombre · tipo · ruta · parámetros solo si el código los declara
+  {{SEARCHED}}       — raíces de interfaz y señales revisadas (references/visual-intent.md, secciones 1 y 4)
+
+REGLAS DE ESTA PLANTILLA (borra este comentario al escribir el archivo)
+  - Se registra lo que existe. No se describe cómo "debería" verse un componente ni se proponen
+    primitivas compartidas.
+  - Sin estructura de componentes (HTML y JavaScript planos, sin fragmentos, plantillas, componentes
+    ni historias) -> borra la tabla y deja el TODO. Ese pendiente es la salida correcta, no una falla.
+-->
+
+# COMPONENTS.md — {{PROJECT_NAME}}
+
+Los componentes de interfaz que este repositorio **ya tiene**. Léelo antes de escribir UI nueva:
+reutilizar lo que existe va primero.
+
+## Componentes
+
+| Componente | Tipo | Ruta | Parámetros |
+|---|---|---|---|
+{{COMPONENT_ROWS}}
+
+<!-- TODO: no se encontró estructura de componentes (ver «Qué se buscó»). Si el equipo la adopta,
+     este archivo es donde se registra. -->
+
+## Qué se buscó
+
+{{SEARCHED}}
+
+## Docs relacionados
+
+- [Diseño](docs/design.md)
+- [Design tokens](docs/design-tokens.md)
