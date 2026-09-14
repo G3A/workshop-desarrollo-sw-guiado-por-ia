@@ -15,6 +15,39 @@ versión nueva", and `AGENTS.md`).
 
 ## [unreleased]
 
+### Added
+
+- **`agent-context-java` reads the visual intent from the repository** — `docs/design-tokens.md`
+  and `COMPONENTS.md`, in both `templates/es/` and `templates/en/`, plus
+  `references/visual-intent.md` with the discovery. Closes box `X4` of the playbook, from partial
+  to skill: an agent that can already open the screen through a browser MCP now has a written
+  reference for what it should look like.
+  - **Format from the repo, never a proposed scale.** The skill records the tokens and components
+    the repository **already has** and leaves a TODO where it says nothing. It never proposes a
+    spacing scale, a type ramp, a palette or colour roles — inventing a team's design decisions is
+    the same hallucination as inventing its risk posture. A `*.tokens.json` is read if present,
+    never written.
+  - **Offered only when there is a UI**, detected with the same signals as `instrument-agent-java`
+    checklist item 8b. A pure REST service gets none of the three files, and the report says what
+    was checked.
+  - **The three mistakes discovery must not make**, each one present in `base-conocimiento`:
+    searching only `*.css` (its tokens live inside `<style>` in HTML), searching only
+    `tailwind.config.js` (Tailwind v4 uses `@theme` and no longer auto-detects it), and keeping one
+    theme (a light and a dark `:root` mean two values per token). Signal table verified on
+    2026-09-14 against DTCG 2025.10 and Tailwind CSS's docs.
+  - **A divergence is reported, not resolved.** Tokens defined in several files are all written;
+    names found in only one source and values that differ become findings. The skill never picks
+    the "real" copy.
+  - **`COMPONENTS.md` with a TODO is a correct output**, like `EXPERIMENTS.md`: plain HTML and
+    JavaScript have no component structure to discover.
+
+### Changed
+
+- **`docs/design.md` no longer repeats "Design system" and "Component patterns"**: it keeps UX
+  principles, the one part discovery cannot read, and links to the two new files — two copies
+  drift apart. In augment mode, a TODO section is replaced by the link, and a section with the
+  team's own content is kept, with the link on top and the duplication reported.
+
 ### Fixed
 
 - **`github-plan-build` Step G passes `/code-review` a range, not a bare SHA.** The step said to
