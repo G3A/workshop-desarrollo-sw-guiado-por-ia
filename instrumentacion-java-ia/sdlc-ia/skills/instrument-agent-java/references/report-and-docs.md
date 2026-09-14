@@ -18,7 +18,8 @@
 3. **`docs/infrastructure.md`** and **`docs/java.md`**, if present — in `docs/infrastructure.md`,
    the hooks table (each hook, what it blocks, its matcher, which script) and the MCP table (each
    server, its transport, what it reaches, the environment variable it needs), re-counted against
-   `.claude/settings.json` rather than copied from a previous report; and (only if hook 6 or 7 was
-   installed) the version-centralisation or migration-immutability
-   rule now enforced at edit time. Skip a document entirely if neither hook that would touch it
-   was installed, and say so.
+   `.claude/settings.json` rather than copied from a previous report — `docs/infrastructure.md`
+   gets these whenever any hook or MCP server was installed. Separately, and only if hook 6 or 7
+   was installed, the version-centralisation or migration-immutability rule now enforced at edit
+   time goes to whichever of the two documents covers it. Skip `docs/java.md` entirely if neither
+   hook 6 nor 7 was installed, and say so.
