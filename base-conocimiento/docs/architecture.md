@@ -45,7 +45,7 @@ verificadas por ArchUnit y `ApplicationModules.verify()` en cada build (`Arquite
 | `web` | Adaptador UI HTML/JS: REST, SSE, estáticos |
 | `teams` | Adaptador Bot Connector |
 | `seguridad` | Filtro de token Bearer sobre el API programático |
-| `compartido` | Tipos de dominio: `Cita`, `Fragmento`, `Proyecto`, `Respuesta` |
+| `compartido` | Tipos de dominio, anidados en `Dominio`: `ProyectoId`, `Pregunta`, `IdiomaRespuesta`, `Filtros`, `Fragmento`, `Cita`, `Respuesta` — records y un enum, sin lógica de negocio |
 
 **La regla que ArchUnit hace cumplir**: `web`, `teams` y `seguridad` solo pueden depender de las
 dos fachadas (`orquestacion.Consultar` y `acciones.Acciones`) y de `compartido`. Nunca de

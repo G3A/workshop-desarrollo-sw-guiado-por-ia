@@ -23,8 +23,8 @@ antes de tocar un módulo:
   quedan fuera a propósito, mismo motivo que `recuperacion`.
 - `teams`: protocolo Bot Connector implementado directo, sin SDK — el SDK Java murió en noviembre
   de 2023 y el resto del Bot Framework SDK se archivó en enero de 2026.
-- `compartido`: no depende de nadie, sin lógica — solo vocabulario (`Cita`, `Fragmento`,
-  `Proyecto`, `Respuesta`).
+- `compartido`: no depende de nadie, sin lógica — solo vocabulario, anidado en
+  `compartido/Dominio.java` (los tipos, en [architecture.md](architecture.md#módulos-spring-modulith)).
 - `seguridad`: filtro de token Bearer sobre el API programático. Adaptador piel, como `web` y
   `teams` — no depende del núcleo y el núcleo no depende de él.
 
@@ -65,7 +65,7 @@ cada corrida, ver `pom.xml` y https://lwn.net/Articles/1075317/), `wiremock` 3.1
 ## DI / composición
 
 Constructor injection idiomático en `@Service`/`@Component`/`@Repository`. Confirmado con grep
-dirigido (`@Autowired`/`@Inject` → 0 resultados en `src/main`; los 14 usos de `@Value` son todos
+dirigido (`@Autowired`/`@Inject` → 0 resultados en `src/main`; los usos de `@Value` son todos
 parámetro de constructor): no hay field injection en código de producción. Sin `@Profile`
 condicionales detectados en el árbol principal más allá de la configuración de perfiles de Docker
 Compose (no de Spring).
@@ -73,9 +73,9 @@ Compose (no de Spring).
 ## Fronteras de módulo (Spring Modulith)
 
 Ver la regla completa y sus tres adaptadores en [architecture.md](architecture.md#módulos-spring-modulith)
-y el archivo `ArquitecturaTest`. Son 6 pruebas: 5 de ArchUnit (6 `noClasses()` en total, con
-`allowEmptyShould(false)` explícito en las que cubren adaptadores y núcleo, para que no nazcan
-verdes por vacías) más `ApplicationModules.verify()`. Cubren a `web`, `teams` y `seguridad` por
+y el archivo `ArquitecturaTest`. Son 6 pruebas: 5 de ArchUnit (6 `noClasses()` en total, las seis
+con `allowEmptyShould(false)` explícito, para que no nazcan verdes por vacías) más
+`ApplicationModules.verify()`. Cubren a `web`, `teams` y `seguridad` por
 igual, en las dos direcciones, incluyen la frontera lateral entre `seguridad` y los otros dos
 adaptadores, y la independencia de `acciones` respecto del RAG y de los adaptadores.
 `ApplicationModules.verify()` corre en el mismo ciclo de test que el resto (`make test`), no está
@@ -92,19 +92,30 @@ Flyway en `src/main/resources/db/migration/`, aplicadas al arrancar la app (auto
 ## Configuración y perfiles
 
 `.env`/`.env.example` (31 variables) es la fuente de configuración, consumida por Docker Compose e
-inyectada como variables de entorno al contenedor `api` — no se detectaron `application-{perfil}.yml`
-múltiples ni `@ConfigurationProperties` explorados en esta pasada
-(<!-- TODO: listar las clases `@ConfigurationProperties` reales, ej. las que ya se ven en
-`SeguridadPropiedades`, `RecuperacionPropiedades`, `TeamsPropiedades`, `UmbralRelevanciaPropiedades` -->).
+inyectada como variables de entorno al contenedor `api`. Un solo `application.yml`, sin
+`application-{perfil}.yml`. Las propiedades tipadas son 7 records `@ConfigurationProperties`,
+registrados con `@ConfigurationPropertiesScan` en `BaseConocimientoApplication`:
+
+| Record | Prefijo |
+|---|---|
+| `acciones.AccionesPropiedades` | `kb.acciones` |
+| `ingesta.AzureDevOpsPropiedades` | `kb.azdo` |
+| `ingesta.GraphPropiedades` | `kb.graph` |
+| `orquestacion.UmbralRelevanciaPropiedades` | `kb.orquestacion.umbral-relevancia` |
+| `recuperacion.RecuperacionPropiedades` | `kb.recuperacion` |
+| `seguridad.SeguridadPropiedades` | `kb` |
+| `teams.TeamsPropiedades` | `kb.teams` |
 
 ## Build, run, test
 
 Ver los comandos en [AGENTS.md](../AGENTS.md#comandos). `maven-surefire-plugin` incluye
 `**/*Test.java`, `**/*Tests.java` y `**/*Properties.java` (este último son las propiedades de
 jqwik) — no hay Failsafe/split unit-integration explícito; las pruebas que necesitan Postgres real
-usan Testcontainers dentro del mismo `test` de Surefire. Frameworks: JUnit 5, AssertJ (vía
-`spring-boot-starter-test`), ArchUnit, jqwik (property-based), Testcontainers, WireMock (dobla el
-JWKS de Bot Framework).
+usan Testcontainers (`spring-boot-testcontainers` + `testcontainers-postgresql`) dentro del mismo
+`test` de Surefire. Frameworks: JUnit 5, AssertJ y Mockito (vía `spring-boot-starter-test`),
+ArchUnit, jqwik (property-based), Testcontainers y WireMock, que dobla los HTTP externos: el JWKS y
+el conector de Bot Framework, Graph, Azure DevOps y la salud de Ollama. `ArquitecturaTest` corre en
+el mismo ciclo y falla el build si se cruza una frontera de módulo.
 
 ## Quality gates
 
@@ -115,7 +126,14 @@ JWKS de Bot Framework).
 | Spotless | **Presente y bloquea** — `google-java-format` sobre todo el código, sin `ratchetFrom`; `spotless:check` en `make lint` |
 | SpotBugs / PMD | Ausente |
 | SonarQube | Ausente |
-| CI (`.github/workflows`) | **Presente** — corre `make ci` en cada push/PR, con JDK 25 |
+| Compilador | **Presente y bloquea** — `-Xlint:all -Werror` en `maven-compiler-plugin`: cualquier warning rompe el build |
+| Secretos (gitleaks) | **Solo en CI** — `make ci` suma `secrets`; el `lefthook.yml` del monorepo no lo corre en pre-commit |
+| CI (`.github/workflows`) | **Presente** — `ci.yml` en la raíz del monorepo (Actions solo lee workflows ahí), `working-directory: base-conocimiento`, corre `make ci` en cada push/PR con JDK 25; detalle en [infrastructure.md](infrastructure.md#cicd) |
+
+Spotless usa `google-java-format` (2 espacios) sin `ratchetFrom`: el formato es uniforme en el
+repositorio entero, no solo en lo que cambió. `make format` lo aplica y `make lint` lo verifica
+junto con Checkstyle (`checkstyle.xml` + `checkstyle-suppressions.xml`), que cubre lo que Spotless no
+formatea (imports no usados, naming, largo de línea).
 
 Formato, estilo, arquitectura y CI bloquean de verdad; lo que sigue sin cubrirse es análisis
 estático de bugs (SpotBugs/PMD) y métricas de calidad (SonarQube). Esta tabla la cerró
@@ -135,16 +153,17 @@ empaquetado WAR.
 
 ## Transversales
 
-Observabilidad: `spring-boot-starter-actuator` en el classpath, exposición real no confirmada (ver
-[infrastructure.md](infrastructure.md)). Sin `resilience4j`/Spring Retry ni mensajería
-(Kafka/RabbitMQ/JMS) detectados. Señal de IA: `spring-ai-*` (ver arriba) y este mismo repo trae
-`instrumentacion-java-ia/` como módulo hermano del monorepo — no hay `.mcp.json` en
-`base-conocimiento/` todavía (llega en la etapa F2 de la validación, vía
-`/sdlc-ia:instrument-agent-java`).
+Observabilidad: `spring-boot-starter-actuator` expone `health,info,metrics`
+(`management.endpoints.web.exposure.include` en `application.yml`), sin acotar por perfil (ver
+[infrastructure.md](infrastructure.md#observabilidad)). Sin `resilience4j`/Spring Retry ni
+mensajería (Kafka/RabbitMQ/JMS) detectados. Señal de IA: `spring-ai-*` (ver arriba) y este mismo
+repo trae `instrumentacion-java-ia/` como módulo hermano del monorepo. `.mcp.json` y los hooks del
+agente viven en la raíz del monorepo, no en `base-conocimiento/`: ver
+[infrastructure.md](infrastructure.md#agente-de-ia-hooks-y-mcp).
 
 ## Reglas reforzadas al editar (hooks del agente)
 
-Desde `/sdlc-ia:instrument-agent-java` (ver `AGENTS.md#hooks-del-agente`), dos de las reglas de
+Desde `/sdlc-ia:instrument-agent-java` (ver [infrastructure.md](infrastructure.md#agente-de-ia-hooks-y-mcp)), dos de las reglas de
 este documento ya no dependen solo de que alguien las lea:
 
 - **Versiones centralizadas** (`dependencyManagement`/BOMs arriba): un hook avisa si una edición
