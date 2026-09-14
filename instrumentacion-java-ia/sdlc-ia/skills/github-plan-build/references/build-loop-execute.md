@@ -77,11 +77,14 @@ dependency lint the repo defines. **A gate that does not exist degrades to green
 name the ones you skipped**, so "green" is never mistaken for "complete".
 
 Then run **`/code-review`** at medium effort, review only (no `--fix`), scoped to
-**this ticket's actual diff**: pass the branch's real starting point
-(`git merge-base HEAD <base-branch>`), not the target `/code-review` would pick on its
-own. A branch built on top of another PR, or carrying accumulated history, makes the
+**this ticket's actual diff**: pass the branch's real range, `<merge-base>..HEAD` (where
+`<merge-base>` is `git merge-base HEAD <base-branch>`), not the target `/code-review` would
+pick on its own. A branch built on top of another PR, or carrying accumulated history, makes the
 default comparison far wider than the ticket — diluting the review exactly where it
-needs to be sharpest. Treat correctness and security findings as red. Run
+needs to be sharpest. **Pass the range, never the bare SHA:** `/code-review <merge-base>`
+reviews that one commit — someone else's, already merged — and comes back clean, which reads
+exactly like a green gate. If the report talks about files this branch never touched, it
+reviewed the wrong target; run it again with the range. Treat correctness and security findings as red. Run
 **`/security-review`** as well when the diff touches auth, secrets, input parsing, or
 external I/O.
 
