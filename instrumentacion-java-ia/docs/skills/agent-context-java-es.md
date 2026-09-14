@@ -56,7 +56,9 @@ argumento. Fuera de eso, trabaja sobre el repositorio en el que se ejecuta.
 5. **Validación de afirmaciones** — antes de terminar, revisa las afirmaciones importantes que
    escribió (versión del build tool, JDK objetivo, framework de persistencia, comandos, entidades
    clave) y confirma con el usuario las que tienen baja confianza, en vez de dejarlas sin verificar.
-   El resultado queda registrado en `docs/claims-ledger.md`.
+   El resultado queda registrado en `docs/claims-ledger.md`. Cada afirmación que confirma, corrige
+   o invalida la busca también al revés en `AGENTS.md` y `docs/`, y corrige ahí la frase contraria:
+   una fila del registro no se propaga sola a los documentos.
 6. **Verificación final** — imprime el árbol de archivos generados o modificados, confirma que
    todos los enlaces dentro de `AGENTS.md` y `docs/java.md` apunten a archivos que realmente
    existen, y recuerda al usuario cómo confirmar el trabajo con `git`.

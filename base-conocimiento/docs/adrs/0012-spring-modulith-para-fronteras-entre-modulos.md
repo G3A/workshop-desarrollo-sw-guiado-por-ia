@@ -35,7 +35,7 @@ explícitas (`noClasses().that()...`) en el mismo ciclo que el resto de las prue
 
 - **A favor**: la promesa "los adaptadores son piel" pasa de intención a gate del build — un PR
   que la viole no pasa CI (una vez que exista CI, ver
-  [F2 de la validación](../../validacion-workshop/)). Un solo módulo Maven sigue siendo simple de
+  [F2 de la validación](../../../validacion-workshop/)). Un solo módulo Maven sigue siendo simple de
   compilar y desplegar (un solo jar por capas).
 - **En contra**: la frontera solo se verifica en tiempo de test, no en tiempo de compilación — un
   desarrollador puede escribir el código que la viola y solo se entera al correr `make test`. Las
