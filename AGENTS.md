@@ -1,6 +1,6 @@
 # AGENTS.md — workshop-desarrollo-sw-guiado-por-ia
 
-Monorepo del taller de desarrollo de software guiado por IA. Tres piezas, cada una con su propio
+Monorepo del taller de desarrollo de software guiado por IA. Cuatro piezas, cada una con su propio
 contexto:
 
 - `base-conocimiento/` — la aplicación Java/Spring del taller. Tiene su `AGENTS.md`.
@@ -12,6 +12,9 @@ contexto:
   del método NO cubre el plugin todavía.
 - `docs/adrs/` — decisiones que atraviesan el monorepo (ramas, liberaciones). Las de cada pieza
   viven en su carpeta.
+- `REVIEW.md` — qué mirar en un diff ya escrito (lo lee el servicio de Code Review; no repite las
+  reglas de generación de los `AGENTS.md`). `EXPERIMENTS.md` — el acuerdo sobre qué puede fallar
+  con el agente; sus pendientes los completa el equipo.
 
 ## Ramas y pull requests
 
