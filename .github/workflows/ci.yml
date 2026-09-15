@@ -1,11 +1,18 @@
 name: CI
 
 on:
-  # Cada push, cada rama. Un gate que solo corre en main avisa la rotura despues de compartida;
-  # en una rama de feature avisa a quien la escribio, mientras todavia tiene el contexto.
-  push:
-  # Suma PRs abiertas desde forks, cuyos commits nunca disparan el push de arriba.
+  # Toda PR, venga de este repo o de un fork: es la corrida que el Ruleset mira en una rama de
+  # trabajo. Avisa la rotura a quien la escribio antes de compartirla; antes de abrir la PR, eso
+  # lo hace el pre-push local (`make check`).
   pull_request:
+  # Y cada commit que llega a dev o main, para que la rama integrada tenga su propio verde.
+  #
+  # NO `push:` en todas las ramas con un `if` que salte el job en la PR para no correr dos veces
+  # (#132): un job saltado por un `if` reporta "Success" como check requerido, y la copia saltada
+  # de una corrida podia tapar el rojo de la otra sobre el mismo commit. En un commit de dev
+  # corren las dos, enteras; ninguna salta.
+  push:
+    branches: [dev, main]
 
 # Una corrida por rama. Un segundo push cancela el primero en vez de encolarse detras.
 concurrency:
@@ -22,11 +29,7 @@ defaults:
 
 jobs:
   check:
-    # Sin esto, cada PR dentro de este mismo repo corre dos veces: una por el push a su rama y
-    # otra por el evento pull_request. Los PR de forks igual corren -- su push nunca llego aca.
-    if: >-
-      github.event_name == 'push' ||
-      github.event.pull_request.head.repo.full_name != github.repository
+    # Sin `if`, a proposito: es un check requerido y no puede tener una copia saltada (#132).
     runs-on: ubuntu-latest
 
     steps:
@@ -90,35 +93,6 @@ jobs:
           name: test-results
           path: "base-conocimiento/**/target/surefire-reports/**"
           if-no-files-found: ignore
-
-  changelog-liberado:
-    # Solo en PRs hacia main (#125). En dev, entre una liberacion y otra, [unreleased] es el estado
-    # normal: como paso de `check` fallaria en cada push. Hacia main significa lo contrario --
-    # que falta la PR chore/release-<version> a dev, y main recibiria el codigo nuevo con la
-    # version vieja en plugin.json (paso con #122, se reparo con #123 y #124).
-    if: github.event_name == 'pull_request' && github.base_ref == 'main'
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: El CHANGELOG no empieza con [unreleased]
-        working-directory: .
-        run: |
-          set -euo pipefail
-          CHANGELOG="${CHANGELOG:-instrumentacion-java-ia/CHANGELOG.md}"
-          # La primera entrada de version es lo que se esta por liberar.
-          PRIMERA="$(grep -m1 '^## \[' "$CHANGELOG" || true)"
-          echo "Primera entrada de ${CHANGELOG}: ${PRIMERA:-(ninguna)}"
-          if [ -z "$PRIMERA" ]; then
-            echo "::error file=${CHANGELOG}::El CHANGELOG no tiene ninguna entrada de version."
-            exit 1
-          fi
-          if printf '%s\n' "$PRIMERA" | grep -qi '^## \[unreleased\]'; then
-            echo "::error file=${CHANGELOG}::El CHANGELOG todavia empieza con [unreleased]. Falta la PR chore/release-<version> a dev, que sube plugin.json y fecha esta entrada, antes de liberar a main (ADR 0001)."
-            exit 1
-          fi
-          echo "OK: ${PRIMERA#'## '} es la version que llega a main."
 
 # La proteccion de rama es lo que convierte esto de un reporte en un gate:
 # Settings > Branches > exigir el status check `check` antes de mergear.
