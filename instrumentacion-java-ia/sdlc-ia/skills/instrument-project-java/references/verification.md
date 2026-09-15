@@ -193,9 +193,12 @@ Cannot be broken locally. Verify by inspection instead:
 - installs the JDK/Maven from the repo's own pinned source (wrapper `distributionUrl`,
   `<java.version>`), never a hardcoded literal in the workflow;
 - calls `make ci` rather than restating the steps;
-- triggers on **every push, on every branch** — not only the default one;
-- a second push to the same branch cancels the first (`concurrency` + `cancel-in-progress`);
-- a pull request inside the repository does not run the whole workflow twice;
+- triggers on **every pull request**, from the repository or a fork, and on `push` to the protected
+  branches — not only the default one;
+- a second push to the same ref cancels the first (`concurrency` + `cancel-in-progress`);
+- **no required job (`check`, `sonar`) has an `if`**: grep the file for `if:` at job level; the only
+  one allowed is on `revision-ia`, which is never required. A skipped job reports "Success" to a
+  Ruleset, so a skippable required job is a gate that can be skipped;
 - the workflow runs on the next push, but it is a report, not a gate, until a Ruleset on the
   integration branch requires it as a status check — Phase 5 says so explicitly;
 - if control 9 was installed: the NVD cache step is present and the `make ci` step reads

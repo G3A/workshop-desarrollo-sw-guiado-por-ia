@@ -8,6 +8,11 @@
 #                            control 13 needs NO action placeholder: it runs the Maven scanner via
 #                            `make sonar`, whose version is pinned in pom.xml, not here.
 #   {{JAVA_VERSION}}         the repo's own <java.version> / <maven.compiler.release>, never guessed
+#   {{PROTECTED_BRANCHES}}   the branches a Ruleset protects, as a YAML list: the integration branch
+#                            and the release branch when they differ (`[dev, main]`), else the
+#                            default branch alone (`[main]`). The repo's own convention first
+#                            (AGENTS.md, a "Branching" section), then
+#                            gh repo view --json defaultBranchRef --jq .defaultBranchRef.name
 #   {{GITLEAKS_VERSION}}     gh release view --repo gitleaks/gitleaks --json tagName --jq .tagName
 #                            prints e.g. v8.30.1 -- write it WITHOUT the leading v (8.30.1): the URL
 #                            below adds the v itself and the archive name has none.
@@ -37,26 +42,28 @@
 name: CI
 
 on:
-  # Every branch, every push. A gate that only runs on main tells the team about breakage after it
-  # is already shared; on a feature branch it tells the person who wrote it, while they still have
-  # the context.
-  push:
-  # Adds pull requests opened from forks, whose commits never triggered the push event above.
+  # Every pull request, from this repository or a fork: that is the run a Ruleset reads on a work
+  # branch, and it tells the person who wrote the change while they still have the context. Before
+  # the PR exists, the pre-push hook (control 5, `make check`) does that locally.
   pull_request:
+  # And every commit that lands on a protected branch, so the integrated branch has its own green.
+  #
+  # Do NOT go back to `push:` on every branch plus an `if` that skips the job on same-repo pull
+  # requests to avoid running twice. A job skipped by an `if` reports "Success" as a required
+  # status check (GitHub Docs, "Troubleshooting required status checks"), and with both events on
+  # the same commit the skipped copy can stand in for a red one. No required job in this file
+  # carries an `if` that can skip it.
+  push:
+    branches: {{PROTECTED_BRANCHES}}
 
-# One run per branch. A second push cancels the first instead of queueing behind it.
+# One run per ref. A second push cancels the first instead of queueing behind it.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   check:
-    # Without this, every pull request inside this repository runs twice: once for the push to its
-    # branch and once for the pull_request event. Fork PRs still run -- their push never reached
-    # this repository.
-    if: >-
-      github.event_name == 'push' ||
-      github.event.pull_request.head.repo.full_name != github.repository
+    # No `if`, on purpose: this is the required check, and it must never have a skipped copy.
     runs-on: ubuntu-latest
 
     steps:
@@ -146,9 +153,6 @@ jobs:
   # Its own job and not part of `make ci` on purpose: it is a GitHub-hosted analysis, and the make
   # targets stay runnable on a laptop.
   codeql:
-    if: >-
-      github.event_name == 'push' ||
-      github.event.pull_request.head.repo.full_name != github.repository
     runs-on: ubuntu-latest
     permissions:
       # security-events: write is what lets the results reach the Security tab. Without it the
@@ -188,6 +192,8 @@ jobs:
   # NEEDS the ANTHROPIC_API_KEY repository secret. Without it the job fails on every PR — that is
   # deliberate and visible, rather than skipping silently and looking installed.
   revision-ia:
+    # The one `if` in this file, and it is safe only because this job is never required: on a push
+    # to a protected branch it reports skipped, which would read as "Success" if it were.
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
@@ -220,9 +226,7 @@ jobs:
   # SonarSource's own documentation says so: the CLI action does not see the module graph, the test
   # sources or the compiled bytecode, and silently analyses less.
   sonar:
-    if: >-
-      github.event_name == 'push' ||
-      github.event.pull_request.head.repo.full_name != github.repository
+    # No `if`: REQUIRE this check (below), so the same rule as `check` applies.
     runs-on: ubuntu-latest
     steps:
       # fetch-depth: 0 is NOT optional here. Sonar decides what counts as new code from the
