@@ -13,6 +13,20 @@ version bump (verified 0.1.0 → 0.2.0). Updating on any machine is `update.ps1`
 the plugin root, which uninstalls and reinstalls (see the README, "Actualizar cuando sale una
 versión nueva", and `AGENTS.md`).
 
+## [unreleased]
+
+### Fixed
+
+- **`instrument-project-java`'s CI template no longer lets a skipped job pass a required check.**
+  The template ran on `push` to every branch plus `pull_request`, and skipped `check`, `codeql` and
+  `sonar` on same-repo pull requests with an `if` to avoid a double run. GitHub counts a job
+  skipped by a conditional as "Success" for a required status check, and with both events on the
+  same commit a skipped copy could stand in for a red one. The template now runs on every
+  `pull_request` and on `push` to the protected branches only (new placeholder
+  `{{PROTECTED_BRANCHES}}`), and no required job has an `if`. `references/apply.md` says why the
+  old shape must not come back, and `references/verification.md` checks for it. Cost: a push to a
+  branch without a pull request no longer runs CI; the pre-push hook covers it (#132).
+
 ## [0.4.1] — 2026-09-14
 
 ### Changed

@@ -85,8 +85,13 @@ platform this skill writes (scope question 4). Resolve and pin gitleaks once
 (`gh release view --repo gitleaks/gitleaks --json tagName --jq .tagName` prints `v8.30.1`; write
 `8.30.1`, **without** the `v` — the template's URL adds it and the archive name has none), verify SHA256 against
 `checksums.txt` before extracting, install to `$HOME/.local/bin` without `sudo` — never re-resolve
-`releases/latest` per run. The workflow calls `make ci`, nothing else. Every push, every branch,
-`concurrency`+`cancel-in-progress` so a second push cancels the first.
+`releases/latest` per run. The workflow calls `make ci`, nothing else. It triggers on every
+`pull_request` and on `push` to `{{PROTECTED_BRANCHES}}` only, with `concurrency`+`cancel-in-progress`
+so a second push cancels the first. **No required job carries an `if` that can skip it**: a job
+skipped by a conditional reports "Success" as a required status check, and with `push` and
+`pull_request` on the same commit the skipped copy can stand in for a red one (issue #132 of the
+workshop monorepo). The old shape — `push` on every branch plus an `if` that skips same-repo pull
+requests to avoid a double run — is exactly that hole; do not reintroduce it.
 
 ## 9 — Dependency vulnerabilities (SCA)
 
