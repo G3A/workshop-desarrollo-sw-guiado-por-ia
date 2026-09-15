@@ -61,12 +61,15 @@ TLS terminator). No está en el repo — es conocimiento operativo del equipo. -
 - **Herramienta:** GitHub Actions. `.github/workflows/ci.yml` vive en la **raíz del monorepo**, no
   en `base-conocimiento/` (Actions solo lee workflows ahí), y corre con
   `working-directory: base-conocimiento`.
-- **Trigger:** push a cualquier rama, más las PR abiertas desde forks. Un segundo push a la misma
-  rama cancela la corrida anterior.
+- **Trigger:** toda PR, más cada push a `dev` y `main`. Un push a una rama sin PR no corre CI: ahí
+  avisa el pre-push local (`make check`). Un segundo push al mismo ref cancela la corrida anterior.
+  El job `check` no tiene `if`: un job saltado por un condicional cuenta como exitoso para un check
+  requerido, y la copia saltada podía tapar un rojo sobre el mismo commit (#132).
 - **Pasos (job `check`):** instala gitleaks 8.30.1 (con verificación de checksum) y JDK 25, corre
-  `make ci` (lint, build, pruebas y escaneo de secretos) y publica los reportes de Surefire como
-  artefacto. El mismo workflow verifica además otras piezas del monorepo (el playbook, y el
-  CHANGELOG del plugin en las PR hacia `main`).
+  `make ci` (lint, build, pruebas y escaneo de secretos), el sensor de enlaces de la documentación
+  y publica los reportes de Surefire como artefacto. El mismo workflow verifica además el playbook;
+  el CHANGELOG del plugin lo verifica un workflow aparte, `liberacion.yml`, solo en las PR hacia
+  `main`.
 - **CD:** no hay. El camino a producción sigue siendo **manual**: `make up` a mano cuando hace falta.
 
 ## Agente de IA (hooks y MCP)
