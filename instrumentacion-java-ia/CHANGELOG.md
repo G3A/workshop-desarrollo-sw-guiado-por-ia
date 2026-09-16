@@ -17,6 +17,23 @@ versión nueva", and `AGENTS.md`).
 
 ### Fixed
 
+- **`EXPERIMENTS.md`'s "never an experiment" list is a declared subset, not a copy.** The template
+  told the skill to copy `github-plan-build`'s escalation list "so the two say the same thing", and
+  a real run followed it literally: it copied the escalation list and **deleted** "changes touching
+  authentication, secrets, or people's data" for not being there. The two lists never said the same
+  thing because they answer different questions — the escalation list mixes **boundaries of the
+  permission** (production writes, real outreach, working around a missing credential) with **gates
+  of the delivery loop** (an ambiguous CI failure, a non-converging loop, a product-judgment call,
+  which is reversible and whose trigger only exists inside the loop). Section 2 now ships written
+  in the template as a declared subset of the *Escalation* section of `github-plan-build/SKILL.md`
+  — cited by file, since a second full copy lives in `references/build-loop-execute.md` — adds the
+  missing-credential row, keeps the authentication row marked as covered by Step G's mandatory
+  `/security-review` gate rather than by a stop (reviewed, not permitted), and names the three
+  gates it deliberately leaves out — neither a copy nor a strict subset, and the text says so.
+  Phase 3 now carries a prohibition instead of a build instruction, narrowing the surface where the
+  skill could drift from its own template, and augment mode now says what to do
+  with an already-written section 2: leave it, append a provenance note. "Real communications to
+  customers" becomes "real outreach to real recipients" (#138).
 - **`agent-context-java` no longer writes `REVIEW.md` where nothing reads it.** The skill said
   "`REVIEW.md` (repo root)", and in a monorepo "root" is ambiguous: a real run over a project in a
   subfolder left it at the *project* root, where neither reader loads it — the cloud Code Review
