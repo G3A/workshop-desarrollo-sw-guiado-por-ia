@@ -515,7 +515,7 @@ style P6 fill:#0b0f15,stroke:#6b2018,color:#FF9C8C
     DCA:B("Azure DevOps","fuera","Frontera declarada en el README del plugin: escribe GitHub Actions y GitHub Issues; otra plataforma se reporta fuera de alcance, no se adapta a mano.",P.f2,"DCA"),
     // Fase 2 · no deterministas
     N1:B("Archivo guía","skill","AGENTS.md como índice de menos de 80 líneas, y CLAUDE.md como una sola línea que lo importa.",P.f2,"N1"),
-    N2:B("REVIEW.md","skill","Lo genera agent-context-java junto al archivo guía, con una plantilla de PR que enlaza a él. Sigue siendo un archivo distinto de AGENTS.md a propósito: el revisor de PRs en la nube carga REVIEW.md y la revisión local carga el archivo guía.",P.f2,"N2"),
+    N2:B("REVIEW.md","skill","Lo genera agent-context-java con una plantilla de PR que enlaza a él, y los dos van a la raíz del repositorio git — no junto al archivo guía, que se queda con el proyecto cuando este vive en una subcarpeta. Sigue siendo un archivo distinto de AGENTS.md a propósito: el revisor de PRs en la nube carga REVIEW.md, y solo desde esa raíz.",P.f2,"N2"),
     N4:B("Skills y subagentes propios","hueco","El plugin es un conjunto de skills, pero ninguna de ellas crea skills ni subagentes en el repo del usuario.",P.f2,"N4"),
     N6:B("Code review por IA","skill","En tu máquina la corre github-plan-build antes de abrir la PR; en el pipeline la instala instrument-project-java como un job más. Nunca se exige como check obligatorio: un revisor no determinista con veto bloquea PRs correctas, y el equipo aprende a pedir bypass.",P.f2,"N6"),
     // Fase 2 · hooks
