@@ -16,6 +16,10 @@ WHERE THE ITEMS COME FROM
 
 WHAT THE SKILL DOES WHEN GENERATING IT
   - Substitute <PROJECT>, <RUN-COMMAND> and <INTEGRATION-BRANCH> with real values.
+  - This file ALWAYS goes to the git repository root: it is the only place the Code Review
+    service reads it. If the project lives in a subfolder, keep the "ONLY IF THE PROJECT IS
+    NOT AT THE ROOT" block and substitute <PROJECT-FOLDER> and <PIECES>; if the project IS
+    the root, delete that block entirely.
   - Add items the discovery justifies (a migrations item only if the repo has Flyway or
     Liquibase, say), marked as added.
   - In augment mode, never rewrite an existing REVIEW.md: fill gaps and append.
@@ -26,6 +30,11 @@ WHAT THE SKILL DOES WHEN GENERATING IT
 
 These criteria apply to **every diff**, whether a person or a model wrote it. They matter more when
 a model wrote it, because the code reads plausible even when it is wrong.
+
+<!-- ONLY IF THE PROJECT IS NOT AT THE ROOT — delete the whole block if the project IS the root -->
+It lives at the repository root because the Code Review service only reads `REVIEW.md` there; it
+applies to <PIECES>. Items that only hold for `<PROJECT-FOLDER>` say so.
+<!-- END OF CONDITIONAL BLOCK -->
 
 Anything a machine can check **is not here** — that is a sensor (linter, test, hook, CI). If an
 item on this list can be automated, promote it to a sensor and delete it from here. This list is

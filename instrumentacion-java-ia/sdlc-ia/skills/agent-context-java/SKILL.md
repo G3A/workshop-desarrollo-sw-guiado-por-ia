@@ -250,20 +250,32 @@ is in `references/doc-content-map.md`. Enforce the ~80-line ceiling — move ove
 
 `AGENTS.md` holds the rules the agent must respect **while generating**; `REVIEW.md` holds the
 criteria for **what to look at in a diff that already exists**. They are different files because
-they load in different places: the cloud PR-review service reads `REVIEW.md`, while the local
-`/code-review` reads the guide file. A criterion that must hold in both goes in `AGENTS.md`; one
+they load in different places: the cloud PR-review service reads `REVIEW.md` — at the repository
+root, and nowhere else — while the local `/code-review` never reads `REVIEW.md` at all and follows
+`CLAUDE.md`, the one line that imports `AGENTS.md`, at every level of the hierarchy. A criterion
+that must hold in both goes in `AGENTS.md`; one
 that only applies while reviewing goes in `REVIEW.md`. Say this in the report — a team that copies
 the same lines into both ends up maintaining neither.
 
-Write it from `templates/<lang>/REVIEW.md.template`: six categories, fifteen items. **The six
-categories are the method's** (verification layer 4). **The fifteen concrete items are this
-template's own wording, not a quotation** — say so when you report, and invite the team to change
-them.
+Write it from `templates/<lang>/REVIEW.md.template`, **at the repository root**: six categories,
+fifteen items. **The six categories are the method's** (verification layer 4). **The fifteen
+concrete items are this template's own wording, not a quotation** — say so when you report, and
+invite the team to change them.
+
+When the project is in a subfolder, the template's conditional preamble block explains where the
+file lives and which pieces it covers — fill in the folder names, don't redraft the sentence — and
+each item that only holds for this project **names its folder inside the item's own text**, not
+with a prefix or tag. An item true everywhere says nothing extra. How to scope, what to do with
+generic items an earlier run left behind, and when writing to the root becomes a question:
+**`references/monorepo-roots.md`**.
 
 Then write `.github/pull_request_template.md` from
-`templates/<lang>/pull_request_template.md.template`. It is deliberately **short and links to
-`REVIEW.md` instead of repeating it** — a second copy of the list drifts from the first within a
-few sprints. Its six boxes are the categories, not the fifteen items.
+`templates/<lang>/pull_request_template.md.template`, **also at the repository root** — GitHub only
+looks for it there, so in a subfolder it is dead paper. Its `../REVIEW.md` link needs no
+adjustment: relative to `.github/`, it resolves exactly when both files sit at that root. It is
+deliberately **short and links to `REVIEW.md` instead of repeating it** — a second copy of the list
+drifts from the first within a few sprints. Its six boxes are the categories, not the fifteen
+items.
 
 Three rules for this pair:
 

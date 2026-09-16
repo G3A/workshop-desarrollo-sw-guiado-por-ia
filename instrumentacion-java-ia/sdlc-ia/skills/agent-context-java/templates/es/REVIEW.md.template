@@ -16,6 +16,10 @@ DE DÓNDE SALEN LOS ÍTEMS
 
 QUÉ HACE LA SKILL AL GENERARLO
   - Sustituye <PROYECTO>, <COMANDO-DE-ARRANQUE> y <RAMA-DE-INTEGRACIÓN> con datos reales.
+  - Este archivo va SIEMPRE en la raíz del repositorio git: es el único sitio donde el
+    servicio de Code Review lo lee. Si el proyecto está en una subcarpeta, conserva el
+    bloque "SOLO SI EL PROYECTO NO ESTÁ EN LA RAÍZ" y sustituye <CARPETA-DEL-PROYECTO> y
+    <PIEZAS>; si el proyecto ES la raíz, borra ese bloque entero.
   - Añade los ítems específicos que el descubrimiento justifique (por ejemplo, un ítem de
     migraciones solo si el repo tiene Flyway o Liquibase), marcándolos como añadidos.
   - En modo aumentar NO reescribe un REVIEW.md existente: rellena huecos y anexa.
@@ -26,6 +30,11 @@ QUÉ HACE LA SKILL AL GENERARLO
 
 Estos criterios se aplican a **todo diff**, lo haya escrito una persona o un modelo. Pesan más
 cuando lo escribió un modelo, porque el código sale plausible incluso cuando está mal.
+
+<!-- SOLO SI EL PROYECTO NO ESTÁ EN LA RAÍZ — bórralo entero si el proyecto ES la raíz -->
+Vive en la raíz del repositorio porque el servicio de Code Review solo lee `REVIEW.md` ahí; aplica
+a <PIEZAS>. Los ítems que solo valen para `<CARPETA-DEL-PROYECTO>` lo dicen.
+<!-- FIN DEL BLOQUE CONDICIONAL -->
 
 Lo que una máquina puede comprobar **no está aquí**: eso son sensores (linters, pruebas, hooks,
 CI). Si un ítem de esta lista se puede automatizar, súbelo a un sensor y bórralo de aquí. Esta
