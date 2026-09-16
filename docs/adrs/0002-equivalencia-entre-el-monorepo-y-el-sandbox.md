@@ -21,8 +21,10 @@ Dos hechos que enmarcan la decisión:
 - **La omisión de #141 fue deliberada y estaba escrita, pero en un sitio que nadie vuelve a leer.**
   El commit de squash de la PR #41 del sandbox (`ae096be`) dice: «REVIEW.md, la plantilla de PR y
   EXPERIMENTS.md quedan fuera: en el monorepo viven en su raiz y aplican a las cuatro piezas». El
-  razonamiento era correcto para el monorepo y equivocado para el sandbox, y nadie lo revisó durante
-  un mes porque un mensaje de commit no se consulta: se escribe una vez y se entierra.
+  razonamiento era correcto para el monorepo y equivocado para el sandbox, y hizo falta abrir un
+  issue aparte para volver sobre él: un mensaje de commit no se consulta, se escribe una vez y se
+  entierra. Esta vez se revisó el mismo día; el problema no es cuánto tardó, sino que el registro
+  depende de que alguien recuerde que existe.
 - **La regla que decide dónde va cada archivo ya estaba escrita**, en
   `instrumentacion-java-ia/sdlc-ia/skills/agent-context-java/references/monorepo-roots.md`: cada
   archivo se ancla a la raíz de **quien lo lee**. `REVIEW.md`, la plantilla de PR y `EXPERIMENTS.md`
@@ -34,7 +36,8 @@ Dos hechos que enmarcan la decisión:
 Opciones evaluadas para registrar las divergencias:
 
 1. **Seguir en los mensajes de commit**, como hizo #41. Cuesta cero y es lo que ya pasó: el registro
-   existe pero nadie lo encuentra, y la decisión se revisa por accidente un mes después.
+   existe pero nadie lo encuentra, y la decisión se revisa cuando alguien abre un issue por otra
+   razón.
 2. **El `docs/claims-ledger.md` de cada repo.** Es donde ya se registra qué afirma cada documento y
    si sigue vigente, y de hecho ahí van las afirmaciones sobre dónde vive cada archivo. Pero el
    ledger contesta «¿esto sigue siendo cierto?», no «¿por qué los dos repos difieren?»; y al haber
@@ -64,9 +67,12 @@ Todo `base-conocimiento/` del monorepo ↔ la raíz del sandbox. La verificació
 blob, no por fechas ni por confianza:
 
 ```
-git ls-tree -r origin/dev -- base-conocimiento     # en el monorepo
-git ls-tree -r origin/dev                          # en el sandbox
+git ls-tree -r origin/dev -- base-conocimiento | sed 's|base-conocimiento/||'   # en el monorepo
+git ls-tree -r origin/dev                                                       # en el sandbox
 ```
+
+El `sed` no es adorno: sin él, el listado del monorepo prefija cada ruta con `base-conocimiento/` y
+la comparación marca como distintos el 100 % de los archivos.
 
 ### Qué difiere a propósito
 
@@ -86,17 +92,23 @@ carpeta más arriba de `base-conocimiento/`, así que la comparación de árbole
 sin que falte nada.
 
 **Los tres archivos de la raíz, desde #141:** `REVIEW.md`, `.github/pull_request_template.md` y
-`EXPERIMENTS.md` existen en los dos repos, con tres diferencias deliberadas:
+`EXPERIMENTS.md` pasan a estar en los dos repos —en el sandbox con la PR #43, que es la que espeja
+este issue—, con estas diferencias deliberadas:
 
 - el `REVIEW.md` del sandbox no lleva el bloque condicional del preámbulo ni el prefijo
   `base-conocimiento/` en sus ítems, y no menciona el plugin ni `playbook-sdlc-ia/vendor/`, que allá
   no existen;
-- la plantilla de PR difiere en su comentario final, porque el sandbox mergea por squash con el
-  mensaje **por defecto** y el monorepo con el cuerpo de la PR;
-- el `EXPERIMENTS.md` del sandbox cubre un solo proyecto y cita el plugin por URL, no por ruta.
+- la plantilla de PR difiere en dos puntos: su comentario final, porque el sandbox mergea por squash
+  con el mensaje **por defecto** y el monorepo con el cuerpo de la PR; y el enlace a `REVIEW.md`,
+  que es una URL absoluta al propio repositorio y por construcción nunca puede ser idéntica. La URL
+  absoluta no es capricho: una ruta relativa **404** en el cuerpo renderizado de una PR, que es el
+  único sitio donde alguien hace clic en ese enlace. La plantilla que genera `agent-context-java`
+  todavía emite la forma relativa: es el issue #146;
+- el `EXPERIMENTS.md` del sandbox cubre un solo proyecto y cita la skill por URL, no por ruta, y no
+  lleva el comentario de procedencia que el del monorepo sí tiene.
 
-Su sección 2 —los límites del permiso— **sí es idéntica en los dos**: es del equipo, no del
-repositorio.
+Los **cuatro límites del permiso** de su sección 2 son los mismos en los dos, palabra por palabra:
+son del equipo, no del repositorio.
 
 ### Qué no es divergencia, sino pendiente
 
