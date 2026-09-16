@@ -198,13 +198,38 @@ growing the file in silence.
 
 `AGENTS.md` lives in the project and lists every doc. Its link to `REVIEW.md` must climb out of the
 project: one `../` per segment of the `--show-prefix` value (`base-conocimiento/` → `../REVIEW.md`).
-The PR template's own `../REVIEW.md` needs no adjustment — it is relative to `.github/`, and with
-both files at the repository root it resolves as written.
+**The PR template is the exception, and it is not a path problem but a context one.** Its link to
+`REVIEW.md` must be an **absolute URL** — `https://github.com/<slug>/blob/<integration-branch>/REVIEW.md`,
+with both values from Phase 1a:
 
-**Verify every link from the directory of the file that contains it**, not from the working
-directory. This is not a hypothetical: the Phase 6 link check already existed and did not catch
-this bug, because resolving `../REVIEW.md` from the wrong starting point found a `REVIEW.md` that
-no reader would ever load.
+- **The slug** is `gh repo view`'s `nameWithOwner`, taken whole. Do not parse it out of
+  `git remote get-url origin`, which returns SSH, HTTPS and `.git`-suffixed shapes — three regexes,
+  written twice because PowerShell and bash disagree, to recover a value one flag already gives.
+- **`origin` only**, and no guessing between remotes. A fork has an `upstream`; this monorepo has a
+  mirror repository. A link built from the wrong remote points at a parallel repo whose `REVIEW.md`
+  may differ or not exist, and it still looks like a working link.
+- **The integration branch before the default branch**, because a repo that integrates on `dev` and
+  releases to `main` is the common case, and the criteria a reviewer needs are the ones on the branch
+  the PR targets — not the ones last released.
+
+As a file in `.github/`, `../REVIEW.md` resolves perfectly; in the
+**rendered body of a PR**, which is the only place anyone clicks it, it 404s. GitHub copies the
+template verbatim into the PR body and rewrites no relative paths, so the browser resolves it against
+the PR's own URL (`/owner/repo/pull/123/../REVIEW.md`).
+
+**Verify every link from the context where it is read**, not from the working directory. Two contexts,
+two checks:
+
+| Link | Read as | Verified from |
+|---|---|---|
+| `AGENTS.md` → `REVIEW.md` | a file, by the agent | the directory of the file that contains it |
+| PR template → `REVIEW.md` | a URL, in a rendered PR body | the string itself, against Phase 1a's values |
+
+This is not a hypothetical, and the Phase 6 check has now missed a bug for each reason: resolving
+`../REVIEW.md` from the wrong starting point found a `REVIEW.md` no reader would ever load, and
+resolving the PR template's link from `.github/` reported green over a link that 404s for every
+reviewer. Checking a link from where it happens to live, rather than from where it is used, is the
+shape of both failures.
 
 ## The orphan from an earlier run
 
