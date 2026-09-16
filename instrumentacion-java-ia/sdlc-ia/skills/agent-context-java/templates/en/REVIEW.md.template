@@ -15,18 +15,28 @@ WHERE THE ITEMS COME FROM
   quotation of any source. Change them as your team learns.
 
 WHAT THE SKILL DOES WHEN GENERATING IT
-  - Substitute <PROJECT>, <RUN-COMMAND> and <INTEGRATION-BRANCH> with real values.
+  - Substitute <REPOSITORY>, <RUN-COMMAND>, <PROJECT-FOLDER> and <PIECES> with real values.
+    <REPOSITORY> is the name of the REPOSITORY, not of the project: this file lives at the
+    repository root and may come to cover several projects, so titling it with the
+    repository makes the two-project case cease to exist. It resolves always and without
+    the network — it is the name of the git repository's root folder — unlike the PR
+    template's link, which does need the remote.
   - This file ALWAYS goes to the git repository root: it is the only place the Code Review
     service reads it. If the project lives in a subfolder, keep the "ONLY IF THE PROJECT IS
-    NOT AT THE ROOT" block and substitute <PROJECT-FOLDER> and <PIECES>; if the project IS
-    the root, delete that block entirely.
+    NOT AT THE ROOT" blocks and substitute <PROJECT-FOLDER> and <PIECES>; if the project IS
+    the root, delete those blocks entirely. <FOLDER-ALREADY-COVERED> appears only in the
+    second conditional block, and is substituted only when the file already covered another
+    project.
   - Add items the discovery justifies (a migrations item only if the repo has Flyway or
     Liquibase, say), marked as added.
-  - In augment mode, never rewrite an existing REVIEW.md: fill gaps and append.
+  - In augment mode, never rewrite an existing REVIEW.md: fill gaps and append. One single
+    exception, and only if the file carries this template's signature: the title line, when
+    it still names one project and the file already covers another. With which guards and
+    when: references/monorepo-roots.md, "When a second Java project arrives".
   - Delete this header before writing the target file.
 -->
 
-# REVIEW.md — what to look at in a <PROJECT> diff
+# REVIEW.md — what to look at in a <REPOSITORY> diff
 
 These criteria apply to **every diff**, whether a person or a model wrote it. They matter more when
 a model wrote it, because the code reads plausible even when it is wrong.
@@ -34,6 +44,16 @@ a model wrote it, because the code reads plausible even when it is wrong.
 <!-- ONLY IF THE PROJECT IS NOT AT THE ROOT — delete the whole block if the project IS the root -->
 It lives at the repository root because the Code Review service only reads `REVIEW.md` there; it
 applies to <PIECES>. Items that only hold for `<PROJECT-FOLDER>` say so.
+<!-- END OF CONDITIONAL BLOCK -->
+
+<!-- ONLY IF THE FILE ALREADY COVERED ANOTHER PROJECT — written ONCE and never repeated; before
+     adding it, check it is not already there. It is an assumption, not a fact: if someone added
+     items by hand, the sentence covers those too without being true, which is why the report names
+     it as something to verify. references/monorepo-roots.md, "When a second Java project
+     arrives". -->
+Items that do not name a folder were written when this file covered only
+`<FOLDER-ALREADY-COVERED>`: read them as written for that piece, and check them before applying
+them to another.
 <!-- END OF CONDITIONAL BLOCK -->
 
 Anything a machine can check **is not here** — that is a sensor (linter, test, hook, CI). If an
@@ -85,8 +105,12 @@ only for what needs judgement.
 
 ## 6 · Run the change yourself
 
-- [ ] **Start it and use it** (`<RUN-COMMAND>`). The most skipped item and the one that catches
-      most: green CI only says the tests that exist pass.
+<!-- ONLY IF THE PROJECT IS NOT AT THE ROOT: the command names its folder inside the item, like any
+     other scoped item. If the project IS the root, delete " in `<PROJECT-FOLDER>`". With a second
+     project this item is NOT rewritten: a sibling bullet is appended with the other piece's
+     command, and each one names its own. -->
+- [ ] **Start it and use it** in `<PROJECT-FOLDER>` (`<RUN-COMMAND>`). The most skipped item and
+      the one that catches most: green CI only says the tests that exist pass.
 
 ---
 
