@@ -12,10 +12,23 @@ POR QUÉ NO ES UN CHECK DE CI
   ahora el registro miente. Las casillas dejan rastro de qué se revisó; no lo garantizan.
 
 QUÉ HACE LA SKILL AL GENERARLA
-  - Sustituye <RAMA-DE-INTEGRACIÓN> con la rama real que declare el repositorio.
+  - Sustituye <RAMA-DE-INTEGRACIÓN> con la rama real que declare el repositorio, y
+    <REPOSITORIO-GITHUB> con el `owner/repo` del remoto (un solo valor ya combinado: así
+    no hay que parsear la URL del remoto, que llega en tres formas distintas).
   - Si ya existe una plantilla de PR, NO la reemplaza: anexa la sección de revisión al
     final y lo dice en el reporte.
   - Borra este encabezado antes de escribir el archivo destino.
+
+POR QUÉ EL ENLACE A REVIEW.md ES UNA URL ABSOLUTA Y NO `../REVIEW.md`
+  Porque el único sitio donde alguien hace clic en ese enlace es el CUERPO RENDERIZADO
+  de la PR, y ahí una ruta relativa da 404: GitHub copia esta plantilla verbatim y no
+  reescribe rutas, así que el navegador la resuelve contra la URL de la PR
+  (/owner/repo/pull/123/../REVIEW.md). Como archivo en .github/ la ruta relativa sí
+  resuelve — y eso es justo lo que hacía que la comprobación de enlaces diera verde
+  sobre un enlace roto. Un enlace se ancla al contexto donde se RENDERIZA.
+  Si no hay `gh`, no hay remoto `origin`, o el remoto no es de GitHub: NO inventes la
+  URL. Deja el enlace con un <!-- TODO: URL absoluta a REVIEW.md --> y dilo en el
+  reporte de la fase 6.
 -->
 
 ## Qué cambia y por qué
@@ -31,8 +44,9 @@ Closes #
 
 ## Revisión humana
 
-Los criterios completos, con su porqué, están en [`REVIEW.md`](../REVIEW.md). Marca lo que
-revisaste de verdad; una casilla marcada sin mirar es peor que una vacía.
+Los criterios completos, con su porqué, están en
+[`REVIEW.md`](https://github.com/<REPOSITORIO-GITHUB>/blob/<RAMA-DE-INTEGRACIÓN>/REVIEW.md). Marca
+lo que revisaste de verdad; una casilla marcada sin mirar es peor que una vacía.
 
 - [ ] **Alucinaciones de API** — métodos, firmas y claves de configuración que existen en la versión fijada
 - [ ] **Fidelidad al proyecto** — resuelve como este repositorio resuelve, sin abrir una segunda forma de hacer lo mismo
