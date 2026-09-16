@@ -85,11 +85,14 @@ la comparación marca como distintos el 100 % de los archivos.
 | `.gitignore`, `.gitleaks.toml`, `.gitleaksignore` | Huellas y rutas propias de cada repo. |
 | `docs/infrastructure.md`, `docs/java.md`, `docs/adrs/0012-*.md` | Mismo texto con las rutas del monorepo reescritas para el standalone, y el conteo de hooks y la ubicación del CI, que difieren de verdad. |
 
-**Existen solo en el sandbox, por la forma del repositorio (11 archivos):**
-`.claude/settings.json`, `.mcp.json`, `lefthook.yml`, `.github/workflows/ci.yml` y los siete
-`scripts/agent-hooks/*.sh`. En el monorepo sus equivalentes viven en la raíz del repositorio, una
-carpeta más arriba de `base-conocimiento/`, así que la comparación de árboles los ve como ausentes
-sin que falte nada.
+**Existen solo en el sandbox, por la forma del repositorio (14 archivos):**
+`.claude/settings.json`, `.mcp.json`, `lefthook.yml`, `.github/workflows/ci.yml`, los siete
+`scripts/agent-hooks/*.sh` y —desde #141— `REVIEW.md`, `.github/pull_request_template.md` y
+`EXPERIMENTS.md`. En el monorepo sus equivalentes viven en la raíz del repositorio, una carpeta más
+arriba de `base-conocimiento/`, así que la comparación de árboles los ve como ausentes sin que falte
+nada. **Los tres últimos son el caso que más confunde**: existen en los dos repos, con el mismo
+contenido salvo lo que se dice abajo, y aun así la receta los lista como «solo en el sandbox».
+Comprobarlos exige comparar contra la raíz del monorepo, no contra `base-conocimiento/`.
 
 **Los tres archivos de la raíz, desde #141:** `REVIEW.md`, `.github/pull_request_template.md` y
 `EXPERIMENTS.md` pasan a estar en los dos repos —en el sandbox con la PR #43, que es la que espeja
