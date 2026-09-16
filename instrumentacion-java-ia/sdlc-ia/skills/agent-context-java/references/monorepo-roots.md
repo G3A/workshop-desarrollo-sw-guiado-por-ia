@@ -199,8 +199,8 @@ growing the file in silence.
 `AGENTS.md` lives in the project and lists every doc. Its link to `REVIEW.md` must climb out of the
 project: one `../` per segment of the `--show-prefix` value (`base-conocimiento/` → `../REVIEW.md`).
 **The PR template is the exception, and it is not a path problem but a context one.** Its link to
-`REVIEW.md` must be an **absolute URL** — `https://github.com/<slug>/blob/<integration-branch>/REVIEW.md`,
-with both values from Phase 1a:
+`REVIEW.md` must be an **absolute URL**, with both values from Phase 1a:
+`https://github.com/<slug>/blob/<integration-branch>/REVIEW.md`.
 
 - **The slug** is `gh repo view`'s `nameWithOwner`, taken whole. Do not parse it out of
   `git remote get-url origin`, which returns SSH, HTTPS and `.git`-suffixed shapes — three regexes,
@@ -222,8 +222,8 @@ two checks:
 
 | Link | Read as | Verified from |
 |---|---|---|
-| `AGENTS.md` → `REVIEW.md` | a file, by the agent | the directory of the file that contains it |
-| PR template → `REVIEW.md` | a URL, in a rendered PR body | the string itself, against Phase 1a's values |
+| `AGENTS.md` → `REVIEW.md` | a file, by the agent | the directory of the file containing it |
+| PR template → `REVIEW.md` | a URL, in a rendered PR body | the string, against Phase 1a's values |
 
 This is not a hypothetical, and the Phase 6 check has now missed a bug for each reason: resolving
 `../REVIEW.md` from the wrong starting point found a `REVIEW.md` no reader would ever load, and
