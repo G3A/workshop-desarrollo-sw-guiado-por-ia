@@ -13,8 +13,12 @@ WHY IT IS NOT A CI CHECK
 
 WHAT THE SKILL DOES WHEN GENERATING IT
   - Substitute <INTEGRATION-BRANCH> with the branch the repository actually declares, and
-    <GITHUB-REPOSITORY> with the remote's `owner/repo` (one already-combined value, so there
-    is no remote URL to parse — it arrives in three different shapes).
+    <REPOSITORY-URL> with the repository's web URL exactly as
+    `gh repo view <origin-url> --json url` returns it — host included, as one value. The host
+    is there on purpose: `gh` talks to GitHub Enterprise too, and a hand-written `github.com`
+    sends those teams to a public path that 404s, or to a stranger's repo with the same slug.
+    And `origin`'s URL is passed in because bare `gh repo view` prefers `upstream`: on a fork
+    it would answer about the other repository.
   - If a PR template already exists, do NOT replace it: append the review section and say so
     in the report.
   - Delete this header before writing the target file.
@@ -44,7 +48,7 @@ Closes #
 ## Human review
 
 The full criteria, with their reasoning, are in
-[`REVIEW.md`](https://github.com/<GITHUB-REPOSITORY>/blob/<INTEGRATION-BRANCH>/REVIEW.md). Tick what
+[`REVIEW.md`](<REPOSITORY-URL>/blob/<INTEGRATION-BRANCH>/REVIEW.md). Tick what
 you actually reviewed; a box ticked unread is worse than an empty one.
 
 - [ ] **API hallucinations** — methods, signatures and config keys that exist in the pinned version

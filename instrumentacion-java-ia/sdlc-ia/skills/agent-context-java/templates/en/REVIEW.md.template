@@ -22,11 +22,15 @@ WHAT THE SKILL DOES WHEN GENERATING IT
     the network — it is the name of the git repository's root folder — unlike the PR
     template's link, which does need the remote.
   - This file ALWAYS goes to the git repository root: it is the only place the Code Review
-    service reads it. If the project lives in a subfolder, keep the "ONLY IF THE PROJECT IS
-    NOT AT THE ROOT" blocks and substitute <PROJECT-FOLDER> and <PIECES>; if the project IS
-    the root, delete those blocks entirely. <FOLDER-ALREADY-COVERED> appears only in the
-    second conditional block, and is substituted only when the file already covered another
-    project.
+    service reads it. It has THREE conditional blocks and each resolves differently — there
+    is no single rule for all of them:
+      1. "ONLY IF THE PROJECT IS NOT AT THE ROOT" (the preamble): in a subfolder, substitute
+         <PROJECT-FOLDER> and <PIECES>; if the project IS the root, delete the WHOLE block.
+      2. "SUBFOLDER ONLY: THE FOLDER GOES INSIDE THE ITEM" (category 6): if the project IS the
+         root, **do not delete the item** — it is the only one in its category, and deleting it
+         takes the whole category with it. Delete just the fragment " in `<PROJECT-FOLDER>`".
+      3. "ONLY IF THE FILE ALREADY COVERED ANOTHER PROJECT": never written on a first run.
+         Substitute <FOLDER-ALREADY-COVERED> only when it genuinely applies, and only once.
   - Add items the discovery justifies (a migrations item only if the repo has Flyway or
     Liquibase, say), marked as added.
   - In augment mode, never rewrite an existing REVIEW.md: fill gaps and append. One single
@@ -105,10 +109,11 @@ only for what needs judgement.
 
 ## 6 · Run the change yourself
 
-<!-- ONLY IF THE PROJECT IS NOT AT THE ROOT: the command names its folder inside the item, like any
-     other scoped item. If the project IS the root, delete " in `<PROJECT-FOLDER>`". With a second
-     project this item is NOT rewritten: a sibling bullet is appended with the other piece's
-     command, and each one names its own. -->
+<!-- SUBFOLDER ONLY: THE FOLDER GOES INSIDE THE ITEM. The command names its folder, like any other
+     scoped item. If the project IS the root, do NOT delete the item — it is the only one in this
+     category — delete just " in `<PROJECT-FOLDER>`". With a second project this item is not
+     rewritten either: a sibling bullet is appended with the other piece's command, and each one
+     names its own. -->
 - [ ] **Start it and use it** in `<PROJECT-FOLDER>` (`<RUN-COMMAND>`). The most skipped item and
       the one that catches most: green CI only says the tests that exist pass.
 

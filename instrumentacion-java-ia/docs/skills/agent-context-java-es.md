@@ -33,11 +33,12 @@ argumento. Fuera de eso, trabaja sobre el repositorio en el que se ejecuta.
    persistencia, configuración) y revisa el `README` y las entidades del dominio para tener
    material para las preguntas siguientes. Además decide si el repositorio tiene **interfaz**
    (plantillas, estáticos, un subproyecto frontend, controladores que devuelven vistas o una suite
-   de navegador) y, si la tiene, lee los tokens y componentes que ya existen. Resuelve también el
-   `owner/repo` del remoto y la rama de integración —la que declare tu `AGENTS.md`, y si no la
-   declara, la rama por defecto—, que es lo que la plantilla de PR necesita para enlazar
-   `REVIEW.md` por URL absoluta. Si no hay remoto de GitHub, deja un `TODO` en ese enlace y lo dice:
-   no inventa la URL.
+   de navegador) y, si la tiene, lee los tokens y componentes que ya existen. Resuelve también la
+   **URL web del repositorio** —con su host, preguntándole a `gh` por la URL de `origin`, no por el
+   repositorio «base», que en un fork es el ajeno— y la rama de integración: la que declare tu
+   `AGENTS.md`, y si no la declara, la rama por defecto. Eso es lo que la plantilla de PR necesita
+   para enlazar `REVIEW.md` por URL absoluta, y por eso funciona igual en GitHub Enterprise. Si no
+   hay remoto usable, deja un `TODO` en ese enlace y lo dice: no inventa la URL.
 2. **Entrevista** — hace alrededor de diez preguntas (menos en un repo bien documentado, más en
    uno legado y sin documentar), agrupadas en tandas: qué documentos opcionales generar, cómo
    proceder si ya hay documentación, ambigüedades que la lectura del código no resolvió, datos que

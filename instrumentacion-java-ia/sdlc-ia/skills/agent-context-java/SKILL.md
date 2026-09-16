@@ -99,19 +99,26 @@ dotfiles repo and the three root files land there. This is a precondition, not a
 Carry the result into Phases 3, 4 and 6; report it in Phase 2. Per-file anchoring and the
 reasoning: **`references/monorepo-roots.md`**.
 
-**Then resolve the repository's GitHub slug and its integration branch** — the PR template's link to
-`REVIEW.md` needs both, and nothing else in this skill resolves them. Same two commands
-`instrument-github-repo` and `impact-metrics` already use:
+**Then resolve the repository's web URL and its integration branch** — the PR template's link to
+`REVIEW.md` needs both, and nothing else in this skill resolves them. Three commands, in this order:
 
 ```
 gh auth status
-gh repo view --json nameWithOwner,defaultBranchRef
+git -C <project-root> remote get-url origin
+gh repo view <that-url> --json url,defaultBranchRef
 ```
 
-Take `nameWithOwner` as **one value**, never parsed out of a remote URL; take the integration branch
-from `AGENTS.md`/`CLAUDE.md`, **falling back** to `defaultBranchRef` — the order `impact-metrics`
-already uses. Unresolvable (no `gh`, no `origin`, not a GitHub remote) degrades the PR template's link
-to a `<!-- TODO -->`, never back to the relative path that was the bug.
+- **Pass `origin`'s URL to `gh repo view` explicitly.** Bare `gh repo view` resolves the base repo
+  from the remote set and **prefers `upstream` over `origin`**, so on a fork — or a repo with a mirror
+  remote — it answers about the *other* repository and the link points at a parallel repo's
+  `REVIEW.md`. Passing the URL is what pins it; you still never parse that URL yourself, `gh` does.
+- **Take `url`, not `nameWithOwner`.** `url` carries the **host**, and `gh` works against GitHub
+  Enterprise too: a hardcoded `https://github.com/` would send every GHES team to a public path that
+  404s — or to a stranger's repository with the same slug.
+- **The integration branch** from `AGENTS.md`/`CLAUDE.md`, **falling back** to `defaultBranchRef` —
+  the order `impact-metrics` already uses.
+- Unresolvable (no `gh`, no `origin`, `gh` errors on the URL) degrades the PR template's link to a
+  `<!-- TODO -->`, never back to the relative path that was the bug.
 
 **`REVIEW.md`'s title is a different resolution**: the repository's own root-folder name, with no
 network and no `gh`. A repo with no usable remote still gets a correctly titled `REVIEW.md`. Why each
@@ -368,12 +375,27 @@ the ledger to `docs/claims-ledger.md`.
    link to `REVIEW.md`, which climbs out of the project (`../REVIEW.md`) when the roots differ.
 
    **The PR template's link is not read as a file at all** — it is rendered in a PR body, so checking
-   it from `.github/` passes over a link that 404s for every reviewer. Check it **as a URL** instead:
-   it starts with `https://github.com/`, its slug and branch are the exact values Phase 1a resolved in
-   *this* run (not merely a plausible shape), and `REVIEW.md` exists at the repository root. Say in the
-   report that this is a string check, not a request — nothing here reaches GitHub. Two findings to
-   report rather than fix: a `<!-- TODO -->` left because the slug was unresolvable, and a template
-   that already existed whose URL names a branch `git rev-parse --verify <branch>` no longer finds.
+   it from `.github/` passes over a link that 404s for every reviewer. Check it **as a URL**: its base
+   is character-for-character the `url` Phase 1a resolved in *this* run and its branch is that run's
+   integration branch — never merely "looks like a GitHub URL", which is what let a wrong host and a
+   fork's slug through. Say in the report that this is a string check: nothing here reaches GitHub.
+
+   Three outcomes are **reported, not fixed**:
+   - A `<!-- TODO -->` left because the URL was unresolvable.
+   - **A template written by an older run, whose link is still the relative `../REVIEW.md`.** This is
+     the common case, not an edge one — every repo instrumented before this change has one, and "an
+     existing PR template is never replaced" forbids fixing it. Report it with the exact line and the
+     replacement URL, and say it stays broken in every PR body until someone applies it.
+   - A template whose URL names a branch that no longer exists. Check the **remote** ref —
+     `git ls-remote --exit-code --heads origin <branch>`, or `refs/remotes/origin/<branch>` — never a
+     bare local name: a shallow or `--single-branch` clone has no local `dev`, and `git rev-parse
+     --verify dev` would report a rename that never happened.
+
+   One thing the check **cannot** confirm, and the report says so instead of implying otherwise: on
+   the run that *creates* `REVIEW.md`, the file does not exist on the integration branch yet, so the
+   link 404s until this lands there. `git cat-file -e origin/<branch>:REVIEW.md` distinguishes "not
+   merged yet" from "wrong path" — the first is expected and worth one line in the report, the second
+   is a bug.
 3. Remind the user, in the resolved language, to commit — suggest a commit message matching that
    language (e.g. `docs: bootstrap Java context pack for AI coding agents` in English,
    `docs: agrega el paquete de contexto Java para agentes de IA` in Spanish):
