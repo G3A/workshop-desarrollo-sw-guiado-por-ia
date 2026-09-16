@@ -81,8 +81,10 @@ persona eligió a mano — ver [Acciones sobre documentos seleccionados](#accion
 
 ## Esquema de datos
 
-Cuatro tablas más la cola (`V1__esquema.sql`). La decisión central: **todas las fuentes caen en la
-misma tabla `chunks`** — ver [ADR-0001](adrs/0001-tabla-unica-de-embeddings.md).
+Seis tablas en `V1__esquema.sql`. Aquí van las cuatro que definen el pipeline; las otras dos, la
+cola `ingest_jobs` y `term_stats`, están en [data-model.md](data-model.md). La decisión central:
+**todas las fuentes caen en la misma tabla `chunks`** — ver
+[ADR-0001](adrs/0001-tabla-unica-de-embeddings.md).
 
 - `sources` — una fila por fuente (`local_docs`, `local_git`, `teams_channel`, `azure_devops`), con
   `config jsonb`, `project_id` y su propia cadencia de refresco.

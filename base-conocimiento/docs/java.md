@@ -33,7 +33,8 @@ antes de tocar un módulo:
 - **JDK 25** (`<java.version>25</java.version>`), LTS — Spring Boot 4.1 lo soporta plenamente
   (su línea base es 17).
 - Sin mismatch entre el JDK declarado y el del contenedor: el `Dockerfile` usa
-  `eclipse-temurin:25` en las tres etapas (deps, build y runtime). Antes de la sincronización con
+  `eclipse-temurin:25` en sus cuatro etapas: `deps` y `runtime` lo declaran (`-jdk` y `-jre`), y
+  `build` y `layers` lo heredan de `deps`. Antes de la sincronización con
   `base-conocimiento-sandbox` el `pom` compilaba a 21 dentro de una imagen 25; ya no.
 
 ## Dependencias y BOMs

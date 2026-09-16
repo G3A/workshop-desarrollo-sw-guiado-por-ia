@@ -51,6 +51,9 @@ make ingest            # ingiere el corpus de ejemplo (vault/documentos)
 Docker Compose en una VM/máquina propia — `make up` con el override de GPU si el host la tiene
 (`compose.gpu.yml`); no hay manifiestos de Kubernetes en el repo.
 
+**Secretos:** el mismo archivo `.env` que lee Docker Compose, puesto a mano en el host. No hay
+gestor de secretos; `.env.example` sigue siendo la lista de lo que ese archivo debe traer.
+
 ### Topología
 
 <!-- TODO: describir qué máquina/VM concreta corre esto hoy y si hay algo delante (reverse proxy,
