@@ -14,6 +14,7 @@ cambio estructural.
 - [Decisiones (ADRs)](docs/adrs/) — 13, desde la tabla única de embeddings hasta el módulo `acciones` independiente del RAG.
 - [Plan del proyecto](docs/plans/plan-base-conocimiento.md) · [investigación VRAM/LLM](docs/investigacion-vram-y-modelo-llm.md) · [bot de Teams](docs/teams/registro-azure-bot.md).
 - [Registro de afirmaciones](docs/claims-ledger.md) — qué afirma cada doc, su fuente y si sigue vigente.
+- [`REVIEW.md`](../REVIEW.md) · [`EXPERIMENTS.md`](../EXPERIMENTS.md) — en la raíz del monorepo, no aquí: qué mirar en un diff ya escrito (lo lee el servicio de Code Review) y el acuerdo sobre qué puede fallar con el agente.
 
 ## Comandos
 
