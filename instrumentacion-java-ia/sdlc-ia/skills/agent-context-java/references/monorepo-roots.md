@@ -160,10 +160,15 @@ and its guards: **"When a second Java project arrives"**, below.
 The `REVIEW.md` at the repository root was written when there was one project. Everything here is
 about the **merge**, and none of it fires unless the trigger says so.
 
-**The trigger — all three at once:** Phase 1a's prefix is non-empty (this project is a subfolder),
-`REVIEW.md` already exists at the repository root, **and** its preamble does not name this run's
-project folder. Without the third condition, a second run over the *same* project — regenerating
-docs after a refactor — adds the scope line and claims two pieces where there is one.
+**The trigger, and it is not about where this project sits:** `REVIEW.md` already exists at the
+repository root, it carries the signature below, **and the folder it already covers is not this run's
+project**. That last condition is the whole test. A second run over the *same* project — regenerating
+docs after a refactor — fails it, and rightly: nothing changed about what the file covers.
+
+Do **not** make the trigger "this project is in a subfolder". The mirror case is real and this
+skill's own history produces it: the first project in a subfolder, the second one **at the repository
+root** (empty prefix). Gate on the prefix and the trigger never fires for it, leaving exactly the
+half-scoped file this section exists to prevent.
 
 **The signature, checked before touching anything.** Treat the file as this skill's only if it
 carries the template's shape: the six numbered categories plus the closing "how this list evolves"
@@ -200,14 +205,17 @@ growing the file in silence.
 project: one `../` per segment of the `--show-prefix` value (`base-conocimiento/` → `../REVIEW.md`).
 **The PR template is the exception, and it is not a path problem but a context one.** Its link to
 `REVIEW.md` must be an **absolute URL**, with both values from Phase 1a:
-`https://github.com/<slug>/blob/<integration-branch>/REVIEW.md`.
+`<repository-url>/blob/<integration-branch>/REVIEW.md`.
 
-- **The slug** is `gh repo view`'s `nameWithOwner`, taken whole. Do not parse it out of
-  `git remote get-url origin`, which returns SSH, HTTPS and `.git`-suffixed shapes — three regexes,
-  written twice because PowerShell and bash disagree, to recover a value one flag already gives.
-- **`origin` only**, and no guessing between remotes. A fork has an `upstream`; this monorepo has a
-  mirror repository. A link built from the wrong remote points at a parallel repo whose `REVIEW.md`
-  may differ or not exist, and it still looks like a working link.
+- **The base is `gh repo view`'s `url`, host included** — not `nameWithOwner` behind a written-out
+  `https://github.com/`. `gh` authenticates against GitHub Enterprise just as happily, and a
+  hardcoded host sends those teams to a public path that 404s, or to an unrelated repository that
+  happens to share the slug. Either way the link looks fine.
+- **Pin it to `origin` by passing `origin`'s URL to `gh repo view`.** Bare `gh repo view` resolves the
+  base repo from the remote set and prefers `upstream`: on a fork, or in a repo with a mirror remote
+  like this monorepo's, it answers about the *other* repository. Passing the URL in is also what keeps
+  "never parse the remote URL" true — `gh` parses it, so SSH, HTTPS and `.git`-suffixed shapes stop
+  being three regexes written twice because PowerShell and bash disagree.
 - **The integration branch before the default branch**, because a repo that integrates on `dev` and
   releases to `main` is the common case, and the criteria a reviewer needs are the ones on the branch
   the PR targets — not the ones last released.

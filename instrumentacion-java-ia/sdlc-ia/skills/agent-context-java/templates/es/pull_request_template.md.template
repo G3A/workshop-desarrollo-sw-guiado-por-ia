@@ -13,8 +13,12 @@ POR QUÉ NO ES UN CHECK DE CI
 
 QUÉ HACE LA SKILL AL GENERARLA
   - Sustituye <RAMA-DE-INTEGRACIÓN> con la rama real que declare el repositorio, y
-    <REPOSITORIO-GITHUB> con el `owner/repo` del remoto (un solo valor ya combinado: así
-    no hay que parsear la URL del remoto, que llega en tres formas distintas).
+    <URL-DEL-REPOSITORIO> con la URL web del repositorio tal cual la devuelve
+    `gh repo view <url-de-origin> --json url` — con su host y todo, en un solo valor. Lleva
+    el host a propósito: `gh` también habla con GitHub Enterprise, y ahí un `github.com`
+    escrito a mano manda al equipo a una ruta pública que da 404, o al repo de otro con el
+    mismo nombre. Y se le pasa la URL de `origin` porque `gh repo view` a secas prefiere
+    `upstream`: en un fork responderia por el repositorio ajeno.
   - Si ya existe una plantilla de PR, NO la reemplaza: anexa la sección de revisión al
     final y lo dice en el reporte.
   - Borra este encabezado antes de escribir el archivo destino.
@@ -45,7 +49,7 @@ Closes #
 ## Revisión humana
 
 Los criterios completos, con su porqué, están en
-[`REVIEW.md`](https://github.com/<REPOSITORIO-GITHUB>/blob/<RAMA-DE-INTEGRACIÓN>/REVIEW.md). Marca
+[`REVIEW.md`](<URL-DEL-REPOSITORIO>/blob/<RAMA-DE-INTEGRACIÓN>/REVIEW.md). Marca
 lo que revisaste de verdad; una casilla marcada sin mirar es peor que una vacía.
 
 - [ ] **Alucinaciones de API** — métodos, firmas y claves de configuración que existen en la versión fijada

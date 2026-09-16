@@ -25,18 +25,30 @@ versión nueva", and `AGENTS.md`).
   the link "needs no adjustment" because it resolves relative to `.github/`. It does, as a file; as a
   PR body it does not, and `SKILL.md` and `references/monorepo-roots.md` said the wrong thing in
   identical words. The templates now emit
-  `https://github.com/<slug>/blob/<integration-branch>/REVIEW.md`, and Phase 1a resolves both values
-  — with `gh auth status` and `gh repo view --json nameWithOwner,defaultBranchRef`, the two commands
-  `instrument-github-repo` and `impact-metrics` already use, from `origin` only and never by parsing
-  a remote URL's three shapes. The slug is one combined placeholder, so no shell has to run a regex
-  per remote form. Unresolvable (no `gh`, no `origin`, not GitHub) degrades to a `<!-- TODO -->` and
+  `<repository-url>/blob/<integration-branch>/REVIEW.md`, and Phase 1a resolves both values with
+  `gh auth status`, `git remote get-url origin` and `gh repo view <that-url> --json
+  url,defaultBranchRef`. Two details that a first pass got wrong and `/code-review` caught: the URL of
+  `origin` is passed in **explicitly**, because bare `gh repo view` resolves the base repo from the
+  remote set and prefers `upstream` — on a fork, or in a repo with a mirror remote, it answers about
+  the other repository and the link points at a parallel repo's `REVIEW.md`. And the base is `url`,
+  **host included**, not `nameWithOwner` behind a written-out `https://github.com/`: `gh` works
+  against GitHub Enterprise too, where a hardcoded host is a 404 or someone else's repo with the same
+  slug. Passing the URL to `gh` is also what keeps "never parse a remote URL" true — SSH, HTTPS and
+  `.git`-suffixed shapes stop being three regexes written twice for PowerShell and bash.
+  Unresolvable (no `gh`, no `origin`, `gh` errors) degrades to a `<!-- TODO -->` and
   a report line, never back to the relative path. This corrects what #121's own entry below got
   wrong: "its link check now resolves each link from the directory of the file that contains it" is
   the right rule for `AGENTS.md`'s link and the **wrong** one for the PR template's — Phase 6 now
   checks that one as a URL, against the values this run resolved, and says it is a string check with
-  no network. It also reports a template written earlier whose URL names a branch
-  `git rev-parse --verify` no longer finds: because an existing PR template is never replaced,
-  renaming the integration branch would otherwise leave a 404 no later run could fix (#146).
+  no network. Three outcomes are reported rather than fixed, since an existing PR template is never
+  replaced: an unresolvable URL left as a TODO; **a template from an older run still carrying the
+  relative link**, which is every repo instrumented before this change and not an edge case, reported
+  with the exact replacement line; and a template whose URL names a branch that no longer exists,
+  checked against the **remote** ref (`git ls-remote --exit-code --heads origin <branch>`) because a
+  shallow or `--single-branch` clone has no local `dev` and would report a rename that never happened.
+  The report also distinguishes "not merged yet" from "wrong path" with
+  `git cat-file -e origin/<branch>:REVIEW.md`: on the run that creates `REVIEW.md`, the link genuinely
+  404s until the file lands on the integration branch, and saying so beats implying otherwise (#146).
 - **`agent-context-java` knows what to do with `REVIEW.md` when a second Java project appears.**
   #121 anchored the file to the repository root and scoped its items to one project's folder. With
   two projects the second run produced a file worse than the one it found: the title still named the
@@ -45,8 +57,10 @@ versión nueva", and `AGENTS.md`).
   the "run it yourself" item kept the first project's command. `monorepo-roots.md` said to report the
   old items as ambiguous, and reporting is not fixing. The template now titles with the
   **repository**, not the project, so the case stops existing instead of being repaired later, and a
-  new section, "When a second Java project arrives", carries the merge: the trigger (three conditions
-  at once, so a second run over the *same* project does not claim two pieces), a signature check of
+  new section, "When a second Java project arrives", carries the merge: the trigger — the folder the
+  file already covers is not this run's project, deliberately **not** "this project is in a subfolder",
+  which would miss a first project in a subfolder and a second one at the repository root — a
+  signature check of
   the six categories before the one line this skill ever rewrites — the title — so a `REVIEW.md` the
   team wrote by hand is reported and left alone, and one conditional preamble sentence declaring the
   old items' default scope instead of rewriting fifteen items of the team's text, with an
