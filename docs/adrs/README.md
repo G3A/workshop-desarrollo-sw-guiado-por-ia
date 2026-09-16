@@ -11,3 +11,6 @@ Contexto, Decisión, Consecuencias), una página, nombre `NNNN-slug-corto.md`.
 
 - `0001-liberar-con-chore-release-a-dev` — liberar es una PR `chore/release-<versión>` a `dev`
   seguida de la PR `dev` → `main`, no una rama `release/` al estilo git-flow.
+- `0002-equivalencia-entre-el-monorepo-y-el-sandbox` — qué se espeja entre `base-conocimiento/` y
+  `base-conocimiento-sandbox`, qué difiere a propósito y por qué, y qué es residuo pendiente de
+  limpieza en vez de divergencia acordada.
