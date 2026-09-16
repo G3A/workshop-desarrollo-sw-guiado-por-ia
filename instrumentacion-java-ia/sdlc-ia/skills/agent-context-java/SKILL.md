@@ -63,24 +63,21 @@ Look for `pom.xml`, `build.gradle`, `build.gradle.kts`, `settings.gradle`(`.kts`
 `gradlew`. If nothing matches, stop and tell the user this skill only applies to Java
 repositories. Write no files.
 
-The directory holding that build file is the **project root**. It is not always the **repository
-root**: in a monorepo the Java project may live in a subfolder, and a file written to the wrong one
-can be read by nobody while the run still reports success. Resolve it with one command, in the
-project directory:
+The directory holding that build file is the **project root** — not always the **repository root**.
+In a monorepo the Java project lives in a subfolder, and a file written to the wrong root is read
+by nobody while the run still reports success. One command, in the project directory:
 
 ```
 git rev-parse --show-prefix
 ```
 
-Empty → the two roots are the same and nothing below changes. Non-empty (e.g.
-`base-conocimiento/`) → the project is in a subfolder, and that value is also the relative prefix
-for cross-root links. **Never compare the two paths as strings** — `--show-toplevel` returns
-forward slashes and would differ from the working directory on every Windows repo, including when
-the project *is* the root.
+Empty → both roots are the same, nothing below changes. Non-empty (`base-conocimiento/`) → a
+subfolder, and that value is the relative prefix for cross-root links. **Never compare the paths as
+strings**: `--show-toplevel` returns forward slashes and differs from the working directory on
+every Windows repo, including when the project *is* the root.
 
-Carry the result into Phases 3, 4 and 6, and report it in Phase 2. The guards this needs (no
-repository, a project not tracked by the repository it sits in), which files go to which root, and
-why: **`references/monorepo-roots.md`**.
+Carry it into Phases 3, 4 and 6; report it in Phase 2. Guards, per-file anchoring and the
+reasoning: **`references/monorepo-roots.md`**.
 
 ### 1b. Detect prior context → augment mode
 
@@ -91,12 +88,11 @@ necessarily yours (many repos ship their own architecture notes, DB dumps) — c
 `docs/java.md` and AGENTS.md instead of editing it. If those docs are in one language, that
 overrides the output-language default — see "Output language" above.
 
-When the roots differ, also read `REVIEW.md`, `.github/pull_request_template.md` and
-`EXPERIMENTS.md` **at the repository root** — but only to decide "append, don't overwrite". They
-**never** switch augment mode on: otherwise a monorepo whose root holds `AGENTS.md` and `docs/`
-would put a brand-new Java subproject into augment mode and refuse to create its own `AGENTS.md`.
-A `REVIEW.md` found in the project folder is an **orphan** from an older run — nobody loads it;
-report it in Phase 6, never append to it.
+When the roots differ, also read `REVIEW.md`, the PR template and `EXPERIMENTS.md` **at the
+repository root**, but only to decide "append, don't overwrite" — they **never** switch augment
+mode on, or a monorepo would put a brand-new subproject into it and refuse to create its
+`AGENTS.md`. A `REVIEW.md` in the project folder is an **orphan** from an older run: report it in
+Phase 6, never append to it.
 
 ### 1c. Deep Java discovery
 
@@ -186,10 +182,10 @@ Do not proceed to Phase 3 until the interview is complete.
 For each doc, read `templates/<lang>/<doc>.md.template` (`<lang>` resolved above), substitute placeholders
 (`{{UPPER_SNAKE}}`, declared at the top of each template), write to the target path:
 
-Each path is anchored to one of the two roots from Phase 1a — **the root of whoever reads the
-file**. They coincide unless the project is in a subfolder.
+Each path is anchored to one of Phase 1a's two roots — **the root of whoever reads the file**. They
+coincide unless the project is in a subfolder.
 
-**Project root** — the agent reads these, following links, at every level of the hierarchy:
+**Project root** — the agent reads these, at every level of the hierarchy:
 
 - `AGENTS.md`, `CLAUDE.md` — see Phase 4
 - `docs/business.md`, `docs/architecture.md`, `docs/data-model.md`, `docs/infrastructure.md`,
@@ -201,15 +197,14 @@ file**. They coincide unless the project is in a subfolder.
 
 **Repository root** — an external reader loads these, and only looks there:
 
-- `REVIEW.md` — the cloud Code Review service reads it at the repository root, and nowhere else
-- `.github/pull_request_template.md` — GitHub looks for it in the repository, never in a subfolder.
-  One per repository, ever: if the root already has one linking to `REVIEW.md`, append nothing
-- `EXPERIMENTS.md` (only if opted in) — the agreement is the team's, not one folder's; two of them
-  in a repository is the failure to avoid. See the exception below
+- `REVIEW.md` — the cloud Code Review service reads it there and nowhere else
+- `.github/pull_request_template.md` — GitHub never looks in a subfolder. One per repository, ever:
+  if the root already has one linking to `REVIEW.md`, append nothing
+- `EXPERIMENTS.md` (only if opted in) — the agreement is the team's, not one folder's; two in a
+  repository is the failure to avoid. See the exception below
 
-Writing to the repository root is unprompted when it is free, and a question when those files
-already belong to someone else — the rule, the guards and the reasoning:
-**`references/monorepo-roots.md`**.
+Write to the repository root unprompted when it is free; ask once when those files already belong
+to someone else — **`references/monorepo-roots.md`**.
 
 Rules: short sentences, sacrifice grammar for clarity. No info for a section →
 `<!-- TODO: fill in -->`, don't hallucinate; a whole section that doesn't apply (no UI, no
@@ -262,12 +257,10 @@ fifteen items. **The six categories are the method's** (verification layer 4). *
 concrete items are this template's own wording, not a quotation** — say so when you report, and
 invite the team to change them.
 
-When the project is in a subfolder, the template's conditional preamble block explains where the
-file lives and which pieces it covers — fill in the folder names, don't redraft the sentence — and
-each item that only holds for this project **names its folder inside the item's own text**, not
-with a prefix or tag. An item true everywhere says nothing extra. How to scope, what to do with
-generic items an earlier run left behind, and when writing to the root becomes a question:
-**`references/monorepo-roots.md`**.
+In a subfolder, keep the template's conditional preamble block — fill in the folder names, don't
+redraft the sentence — and make each project-only item **name its folder inside its own text**, not
+with a prefix or tag; an item true everywhere says nothing extra. Generic items an earlier run left
+behind: **`references/monorepo-roots.md`**.
 
 Then write `.github/pull_request_template.md` from
 `templates/<lang>/pull_request_template.md.template`, **also at the repository root** — GitHub only
@@ -303,18 +296,28 @@ the ledger to `docs/claims-ledger.md`.
 
 ## Phase 6 — Verify
 
-1. Print a tree of files written (or augmented) — in the resolved language.
+1. Print a tree of files written (or augmented) — in the resolved language. **Say which root each
+   file went to** when the two differ: nothing was asked before writing outside the project, so
+   this is the only place the user learns it, and a bare `REVIEW.md` in the tree reads exactly like
+   the bug. Name any orphan `<project>/REVIEW.md` here too — nobody loads it — and propose the
+   move; never run `git mv` yourself.
 2. Check every link in `AGENTS.md`, `docs/java.md` and, when generated, `docs/design.md`,
    `docs/design-tokens.md` and `COMPONENTS.md` resolves to a file that exists (use Read) — the last
    three link to each other across the root and `docs/`.
-   Include the PR template's link to `REVIEW.md`: a relative path that does not resolve is the
-   failure mode of this pair, and it only shows up months later, when someone clicks it mid-review.
+   **Resolve each link from the directory of the file that contains it**, not from the working
+   directory — **this check already existed and still missed the bug**, because resolving
+   `../REVIEW.md` from the wrong starting point found a file no reader would ever load. Include the
+   PR template's link, and `AGENTS.md`'s own link to `REVIEW.md`, which climbs out of the project
+   (`../REVIEW.md`) when the roots differ.
 3. Remind the user, in the resolved language, to commit — suggest a commit message matching that
    language (e.g. `docs: bootstrap Java context pack for AI coding agents` in English,
    `docs: agrega el paquete de contexto Java para agentes de IA` in Spanish):
-   `git add AGENTS.md CLAUDE.md REVIEW.md .github/ docs/` — plus `EXPERIMENTS.md` and `COMPONENTS.md`
-   when they were generated — then `git commit -m "<message>"` (two
-   commands, no `&&`, so it works in Windows PowerShell 5.1 too);
+   `git add AGENTS.md CLAUDE.md docs/ :/REVIEW.md :/.github/` — plus `:/EXPERIMENTS.md` and
+   `COMPONENTS.md` when they were generated — then `git commit -m "<message>"` (two
+   commands, no `&&`, so it works in Windows PowerShell 5.1 too). `:/` is git's magic pathspec for
+   "from the repository root", so this runs from the project directory either way, with no `cd` to
+   undo; run from the repository root instead, `AGENTS.md` matches nothing and git stages **zero**
+   files. Remind them too to
    fill `<!-- TODO -->` markers, review the ADRs, skim `docs/claims-ledger.md` for anything
    unverified; if quality gates were absent, consider Checkstyle/Spotless + an arch-linting test
    (ArchUnit, or `ApplicationModules.verify()` if modules exist); re-run
@@ -331,11 +334,16 @@ the ledger to `docs/claims-ledger.md`.
 - `references/doc-content-map.md` — what each doc carries, and the `AGENTS.md` section list
   (Phase 3, Phase 4).
 - `references/claim-validation.md` — the Claimify-inspired claim-validation procedure (Phase 5).
+- `references/monorepo-roots.md` — which root each file belongs to when the project is a subfolder,
+  how to detect it, and how to scope items (Phase 1a, Phase 3, Phase 4, Phase 6).
 - `templates/es/` / `templates/en/` — the doc skeletons, one set per output language.
 
 ## Rules
 
 - Do NOT write application code.
+- Do NOT write `REVIEW.md`, the PR template or `EXPERIMENTS.md` inside the project folder when that
+  folder is not the repository root. Nobody reads them there, and the run would report success over
+  a file that does nothing.
 - Do NOT overwrite existing docs without explicit user opt-in; enrich by filling TODOs or
   appending clearly marked sections.
 - Do NOT fabricate framework or dependency versions, providers, endpoint names, or schema you
