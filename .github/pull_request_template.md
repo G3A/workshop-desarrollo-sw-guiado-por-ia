@@ -9,8 +9,9 @@
 
 ## Revisión humana
 
-Los criterios completos, con su porqué, están en [`REVIEW.md`](../REVIEW.md). Marca lo que
-revisaste de verdad; una casilla marcada sin mirar es peor que una vacía.
+Los criterios completos, con su porqué, están en
+[`REVIEW.md`](https://github.com/G3A/workshop-desarrollo-sw-guiado-por-ia/blob/dev/REVIEW.md). Marca
+lo que revisaste de verdad; una casilla marcada sin mirar es peor que una vacía.
 
 - [ ] **Alucinaciones de API** — métodos, firmas y claves de configuración que existen en la versión fijada
 - [ ] **Fidelidad al proyecto** — resuelve como este repositorio resuelve, sin abrir una segunda forma de hacer lo mismo
