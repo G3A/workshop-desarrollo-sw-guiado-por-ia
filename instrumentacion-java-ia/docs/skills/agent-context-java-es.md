@@ -169,10 +169,18 @@ demás documentos un `TODO` significa que el descubrimiento no alcanzó; aquí s
 respuesta no está en el repositorio y no debe inventarse**. Inventarle a un equipo su postura de
 riesgo es exactamente la alucinación contra la que esta skill está escrita.
 
-La skill solo rellena el nombre del proyecto, la rama de integración, y la lista de «qué nunca es
-un experimento» —copiada de la lista de escalamiento de `github-plan-build`, para que las dos digan
-lo mismo y marcada como punto de partida—. Todo lo demás queda abierto, y el reporte dice que fue
-a propósito.
+La skill solo rellena el nombre del proyecto y la rama de integración. La lista de «qué nunca es un
+experimento» ya viene escrita en la plantilla, como **subconjunto declarado** de la sección
+«Escalation» de `github-plan-build`: toma de ahí las filas que son **límites del permiso**
+—producción, destinatarios reales, rodear una credencial que falta— y deja fuera, a propósito y
+diciéndolo, las que son **gates del ciclo**: una falla de CI ambigua, un ciclo de arreglos que no
+converge y una decisión de producto sin fuente de verdad, que además es reversible.
+
+Las dos listas contestan preguntas distintas, así que no deben ser idénticas. Pedir que se copiaran
+fue justo lo que hizo que una corrida real borrara «cambios que tocan autenticación, secretos o
+datos de personas» por no estar en el escalamiento; esa fila se queda, marcada como lo que es: el
+ciclo de entrega no se detiene ante ella, le exige `/security-review` como gate obligatorio y no
+avanza en rojo. Todo lo demás queda abierto, y el reporte dice que fue a propósito.
 
 ### La cláusula que decide si el acuerdo es real
 
