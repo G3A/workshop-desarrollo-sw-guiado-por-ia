@@ -186,15 +186,30 @@ Do not proceed to Phase 3 until the interview is complete.
 For each doc, read `templates/<lang>/<doc>.md.template` (`<lang>` resolved above), substitute placeholders
 (`{{UPPER_SNAKE}}`, declared at the top of each template), write to the target path:
 
-- `AGENTS.md`, `CLAUDE.md` (repo root) — see Phase 4
-- `REVIEW.md` (repo root) + `.github/pull_request_template.md` — see Phase 4
+Each path is anchored to one of the two roots from Phase 1a — **the root of whoever reads the
+file**. They coincide unless the project is in a subfolder.
+
+**Project root** — the agent reads these, following links, at every level of the hierarchy:
+
+- `AGENTS.md`, `CLAUDE.md` — see Phase 4
 - `docs/business.md`, `docs/architecture.md`, `docs/data-model.md`, `docs/infrastructure.md`,
   `docs/java.md`
 - `docs/adrs/README.md` + `docs/adrs/adr-template.md` + `docs/adrs/0001-<slug>.md` (1–3 seed ADRs)
 - `docs/target-user.md` (only if opted in)
-- `docs/design.md`, `docs/design-tokens.md`, `COMPONENTS.md` (repo root) — only if 1g found a UI and
+- `docs/design.md`, `docs/design-tokens.md`, `COMPONENTS.md` — only if 1g found a UI and
   the user opted in; see the second exception below
-- `EXPERIMENTS.md` (repo root, only if opted in) — see the exception below
+
+**Repository root** — an external reader loads these, and only looks there:
+
+- `REVIEW.md` — the cloud Code Review service reads it at the repository root, and nowhere else
+- `.github/pull_request_template.md` — GitHub looks for it in the repository, never in a subfolder.
+  One per repository, ever: if the root already has one linking to `REVIEW.md`, append nothing
+- `EXPERIMENTS.md` (only if opted in) — the agreement is the team's, not one folder's; two of them
+  in a repository is the failure to avoid. See the exception below
+
+Writing to the repository root is unprompted when it is free, and a question when those files
+already belong to someone else — the rule, the guards and the reasoning:
+**`references/monorepo-roots.md`**.
 
 Rules: short sentences, sacrifice grammar for clarity. No info for a section →
 `<!-- TODO: fill in -->`, don't hallucinate; a whole section that doesn't apply (no UI, no
