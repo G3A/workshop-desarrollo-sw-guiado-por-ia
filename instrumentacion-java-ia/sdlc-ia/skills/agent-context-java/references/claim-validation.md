@@ -98,7 +98,9 @@ conflict.
   both `architecture.md` and `java.md`).
 - **A ledger row does not propagate.** When a claim is confirmed, corrected or invalidated —
   including rows already in an existing `docs/claims-ledger.md` in augment mode — search `AGENTS.md`
-  and every file under `docs/` for the **opposite** statement and fix it in the same pass. In
+  and every file under `docs/` for the **opposite** statement and fix it in the same pass. Both are
+  the **project's**, not the repository's: in a monorepo, `docs/` resolved against the repository
+  root would sweep sibling projects and edit documents this run never wrote. In
   `base-conocimiento` (issue #120) the ledger already confirmed the CI and the actuator exposure
   while `infrastructure.md` still said "no `.github/workflows/`" and `java.md` "exposure not
   confirmed": five sentences contradicted rows the ledger held as true.

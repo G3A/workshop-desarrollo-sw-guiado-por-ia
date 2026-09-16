@@ -117,8 +117,9 @@ output, not a shortfall.
 
 - `docs/design-tokens.md` — sources, the token table, contextual overrides, findings, and "what was
   searched". UI found but no tokens → the file still ships, with a TODO and the search list.
-- `COMPONENTS.md` (project root, next to `AGENTS.md` and `REVIEW.md`) — the component table, or the
-  TODO and the search list.
+- `COMPONENTS.md` (project root, next to `AGENTS.md`) — the component table, or the
+  TODO and the search list. It stays with the project because it describes *that* project's UI;
+  `REVIEW.md` is the one that climbs to the repository root (`references/monorepo-roots.md`).
 - `docs/design.md` — keeps **only "UX principles"** (the one part discovery cannot read) and links
   to the other two. It does not repeat their sections: two copies drift apart.
 
