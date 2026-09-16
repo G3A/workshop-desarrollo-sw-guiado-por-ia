@@ -99,6 +99,24 @@ dotfiles repo and the three root files land there. This is a precondition, not a
 Carry the result into Phases 3, 4 and 6; report it in Phase 2. Per-file anchoring and the
 reasoning: **`references/monorepo-roots.md`**.
 
+**Then resolve the repository's GitHub slug and its integration branch** — the PR template's link to
+`REVIEW.md` needs both, and nothing else in this skill resolves them. Same two commands
+`instrument-github-repo` and `impact-metrics` already use:
+
+```
+gh auth status
+gh repo view --json nameWithOwner,defaultBranchRef
+```
+
+Take `nameWithOwner` as **one value**, never parsed out of a remote URL; take the integration branch
+from `AGENTS.md`/`CLAUDE.md`, **falling back** to `defaultBranchRef` — the order `impact-metrics`
+already uses. Unresolvable (no `gh`, no `origin`, not a GitHub remote) degrades the PR template's link
+to a `<!-- TODO -->`, never back to the relative path that was the bug.
+
+**`REVIEW.md`'s title is a different resolution**: the repository's own root-folder name, with no
+network and no `gh`. A repo with no usable remote still gets a correctly titled `REVIEW.md`. Why each
+of these, and the several-remotes case: **`references/monorepo-roots.md`**, "Cross-root links".
+
 ### 1b. Detect prior context → augment mode
 
 Switch to **augment mode** if any of these exist **at the project root**: `AGENTS.md`/`CLAUDE.md`, a
@@ -203,8 +221,10 @@ Do not proceed to Phase 3 until the interview is complete.
 
 ## Phase 3 — Draft
 
-For each doc, read `templates/<lang>/<doc>.md.template` (`<lang>` resolved above), substitute placeholders
-(`{{UPPER_SNAKE}}`, declared at the top of each template), write to the target path:
+For each doc, read `templates/<lang>/<doc>.md.template` (`<lang>` resolved above), substitute the
+placeholders **declared at the top of that template** — two styles coexist and both are real,
+`{{UPPER_SNAKE}}` in most docs and `<UPPER-CASE>` in `REVIEW.md`, the PR template and
+`EXPERIMENTS.md`, each in its own language — then write to the target path:
 
 Each path is anchored to one of Phase 1a's two roots — **the root of whoever reads the file**. They
 coincide unless the project is in a subfolder.
@@ -294,8 +314,12 @@ another project is a **merge**, with its own trigger, signature check and guards
 
 Then write `.github/pull_request_template.md` from
 `templates/<lang>/pull_request_template.md.template`, **also at the repository root** — GitHub only
-looks for it there, so in a subfolder it is dead paper. Its `../REVIEW.md` link needs no
-adjustment: relative to `.github/`, it resolves exactly when both files sit at that root. It is
+looks for it there, so in a subfolder it is dead paper. **Its link to `REVIEW.md` is an absolute
+URL** — `https://github.com/<slug>/blob/<integration-branch>/REVIEW.md`, from Phase 1a — because a
+link is anchored to the context where it is **rendered**, and this file is rendered in the body of
+every PR. A relative `../REVIEW.md` resolves correctly as a file in `.github/` and **404s in the PR
+body**, the only place anyone clicks it: GitHub copies the template verbatim and rewrites no paths,
+so the browser resolves it against the PR's own URL. It is
 deliberately **short and links to `REVIEW.md` instead of repeating it** — a second copy of the list
 drifts from the first within a few sprints. Its six boxes are the categories, not the fifteen
 items.
@@ -306,7 +330,10 @@ Three rules for this pair:
   paperwork: all six get ticked unread and the record starts lying. They leave a trace of what was
   reviewed; they do not guarantee it.
 - **An existing `REVIEW.md` or PR template is never replaced** — augment mode applies here too:
-  fill gaps, append a marked section, report what you left alone.
+  fill gaps, append a marked section, report what you left alone. The single exception is
+  `REVIEW.md`'s title line under `monorepo-roots.md`'s guards. Because a PR template is never
+  replaced, the branch its absolute URL names can be renamed later and no future run would fix it —
+  Phase 6 checks that branch still exists and reports it.
 - **Tailor, do not pad.** Add an item only when discovery justifies it (a migrations item if the
   repo has Flyway or Liquibase), and mark it as added. Fifteen items people read beat twenty-five
   they skim.
@@ -334,11 +361,19 @@ the ledger to `docs/claims-ledger.md`.
 2. Check every link in `AGENTS.md`, `docs/java.md` and, when generated, `docs/design.md`,
    `docs/design-tokens.md` and `COMPONENTS.md` resolves to a file that exists (use Read) — the last
    three link to each other across the root and `docs/`.
-   **Resolve each link from the directory of the file that contains it**, not from the working
-   directory — **this check already existed and still missed the bug**, because resolving
-   `../REVIEW.md` from the wrong starting point found a file no reader would ever load. Include the
-   PR template's link, and `AGENTS.md`'s own link to `REVIEW.md`, which climbs out of the project
-   (`../REVIEW.md`) when the roots differ.
+   **Resolve each link from the context where it is read**, not from the working directory — **this
+   check already existed and still missed the bug twice**, for two different reasons. For a link read
+   as a **file**, the context is the directory of the file that contains it: resolving `../REVIEW.md`
+   from the wrong starting point found a file no reader would ever load. That covers `AGENTS.md`'s own
+   link to `REVIEW.md`, which climbs out of the project (`../REVIEW.md`) when the roots differ.
+
+   **The PR template's link is not read as a file at all** — it is rendered in a PR body, so checking
+   it from `.github/` passes over a link that 404s for every reviewer. Check it **as a URL** instead:
+   it starts with `https://github.com/`, its slug and branch are the exact values Phase 1a resolved in
+   *this* run (not merely a plausible shape), and `REVIEW.md` exists at the repository root. Say in the
+   report that this is a string check, not a request — nothing here reaches GitHub. Two findings to
+   report rather than fix: a `<!-- TODO -->` left because the slug was unresolvable, and a template
+   that already existed whose URL names a branch `git rev-parse --verify <branch>` no longer finds.
 3. Remind the user, in the resolved language, to commit — suggest a commit message matching that
    language (e.g. `docs: bootstrap Java context pack for AI coding agents` in English,
    `docs: agrega el paquete de contexto Java para agentes de IA` in Spanish):
