@@ -13,6 +13,31 @@ version bump (verified 0.1.0 → 0.2.0). Updating on any machine is `update.ps1`
 the plugin root, which uninstalls and reinstalls (see the README, "Actualizar cuando sale una
 versión nueva", and `AGENTS.md`).
 
+## [unreleased]
+
+### Fixed
+
+- **`agent-context-java` no longer writes `REVIEW.md` where nothing reads it.** The skill said
+  "`REVIEW.md` (repo root)", and in a monorepo "root" is ambiguous: a real run over a project in a
+  subfolder left it at the *project* root, where neither reader loads it — the cloud Code Review
+  service only reads `REVIEW.md` at the repository root, and the local `/code-review` never reads
+  it at all (`code.claude.com/docs/en/code-review`, read 2026-09-16). The run reported "REVIEW.md
+  written" over an inert file. Phase 1a now resolves both roots with `git rev-parse --show-prefix`
+  — always with `-C <project-root>`, and behind an `--is-inside-work-tree` guard, since both
+  queries answer about the *current* directory and empty output alone cannot tell "no repository"
+  from "the project is the root". Empty means the project *is* the repository root, and a non-empty
+  value doubles as the relative prefix for cross-root links; comparing `--show-toplevel` as a
+  string would report "different" on every Windows repo. Phase 3 anchors each file to the root of
+  whoever reads it: `REVIEW.md`, the PR template and `EXPERIMENTS.md` to the repository root,
+  everything else to the project.
+  `templates/es|en/REVIEW.md.template` carry the preamble as a conditional block instead of the
+  model redrafting it per run, Phase 6's `git add` reaches the repository root with git's `:/`
+  pathspec while staying a project-directory command, and its link check now resolves each link
+  from the directory of the file that contains it — that check already existed and still missed
+  this bug. New
+  `references/monorepo-roots.md` holds the detail, the guards against writing into an unrelated
+  ancestor repository, and what to do with an orphan `REVIEW.md` from an earlier run (#121).
+
 ## [0.4.2] — 2026-09-15
 
 ### Fixed

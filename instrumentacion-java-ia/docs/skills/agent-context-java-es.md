@@ -51,31 +51,46 @@ argumento. Fuera de eso, trabaja sobre el repositorio en el que se ejecuta.
    delega a `AGENTS.md`. Además escribe **`REVIEW.md`** —los criterios de qué mirar en un diff— y
    una **plantilla de PR** corta que enlaza a él. Son archivos distintos a propósito: `AGENTS.md`
    son las reglas que el agente respeta *al generar*, `REVIEW.md` es qué mirar en un diff *ya
-   escrito*, y cada uno se carga en un sitio distinto (el revisor de PRs en la nube lee
-   `REVIEW.md`; el `/code-review` local lee el archivo guía).
+   escrito*, y cada uno se carga en un sitio distinto: el revisor de PRs en la nube lee `REVIEW.md`
+   **en la raíz del repositorio git y en ningún otro sitio**, mientras que el `/code-review` local
+   no lee `REVIEW.md` nunca y sigue `CLAUDE.md` en todos los niveles de la jerarquía. Por eso, si
+   el proyecto está en una subcarpeta, `REVIEW.md` y la plantilla de PR salen a la raíz del
+   repositorio aunque la skill la hayas corrido dentro de tu carpeta.
 5. **Validación de afirmaciones** — antes de terminar, revisa las afirmaciones importantes que
    escribió (versión del build tool, JDK objetivo, framework de persistencia, comandos, entidades
    clave) y confirma con el usuario las que tienen baja confianza, en vez de dejarlas sin verificar.
    El resultado queda registrado en `docs/claims-ledger.md`. Cada afirmación que confirma, corrige
    o invalida la busca también al revés en `AGENTS.md` y `docs/`, y corrige ahí la frase contraria:
    una fila del registro no se propaga sola a los documentos.
-6. **Verificación final** — imprime el árbol de archivos generados o modificados, confirma que
-   todos los enlaces dentro de `AGENTS.md` y `docs/java.md` apunten a archivos que realmente
-   existen, y recuerda al usuario cómo confirmar el trabajo con `git`.
+6. **Verificación final** — imprime el árbol de archivos generados o modificados —diciendo a qué
+   raíz fue cada uno cuando el proyecto está en una subcarpeta—, confirma que todos los enlaces
+   dentro de `AGENTS.md` y `docs/java.md` apunten a archivos que realmente existen, resolviéndolos
+   desde la carpeta del archivo que los contiene, y recuerda al usuario cómo confirmar el trabajo
+   con `git`.
 
 ## Qué archivos toca o crea
 
-- `AGENTS.md`, `CLAUDE.md` y `REVIEW.md` en la raíz del repositorio.
-- `.github/pull_request_template.md`, con las seis categorías como casillas y el enlace a
-  `REVIEW.md`. **Nunca se exige como check de CI**: un workflow que obligue a marcarlas convierte
+La skill distingue dos raíces: la **del proyecto** (donde está el `pom.xml` o el `build.gradle`) y
+la **del repositorio git**. Coinciden salvo que el proyecto viva en una subcarpeta de un monorepo,
+y entonces cada archivo se ancla a la raíz de **quien lo lee**.
+
+- `AGENTS.md` y `CLAUDE.md` en la raíz del proyecto: los lee el agente, que lee en todos los
+  niveles de la jerarquía.
+- `REVIEW.md` en la raíz del repositorio git, porque el servicio de Code Review solo lo lee ahí.
+- `.github/pull_request_template.md`, también en la raíz del repositorio git —GitHub no la busca en
+  una subcarpeta—, con las seis categorías como casillas y el enlace a
+  `REVIEW.md`. Se escribe **una sola vez por repositorio**, nunca una por proyecto.
+  **Nunca se exige como check de CI**: un workflow que obligue a marcarlas convierte
   el juicio humano en un trámite — se marcan las seis sin mirar y el registro empieza a mentir.
 - `docs/business.md`, `docs/architecture.md`, `docs/data-model.md`, `docs/infrastructure.md`,
   `docs/java.md`.
 - `docs/adrs/README.md`, `docs/adrs/adr-template.md` y de una a tres ADR semilla.
-- Opcionalmente `docs/target-user.md` y `EXPERIMENTS.md`, solo si el usuario lo pide.
+- Opcionalmente `docs/target-user.md`, y `EXPERIMENTS.md` en la raíz del repositorio git: el
+  acuerdo sobre qué puede fallar es del equipo, no de una carpeta, y dos en el mismo repositorio es
+  justo lo que hay que evitar. Solo si el usuario lo pide.
 - Opcionalmente la **intención visual** —`docs/design.md`, `docs/design-tokens.md` y
-  `COMPONENTS.md` en la raíz—, que solo se ofrece si el repositorio tiene interfaz y el usuario la
-  pide.
+  `COMPONENTS.md` en la raíz del proyecto—, que solo se ofrece si el repositorio tiene interfaz y
+  el usuario la pide.
 - `docs/claims-ledger.md`, con el registro de afirmaciones verificadas.
 
 No escribe código de aplicación, no instala dependencias y no ejecuta comandos destructivos: solo
@@ -90,8 +105,9 @@ una escala propuesta**.
 - **`docs/design-tokens.md`** registra cada token que el repositorio ya define: una fila por
   nombre y archivo de origen, una columna de valor por tema (claro, oscuro, `data-theme`…) y la
   ruta con número de línea.
-- **`COMPONENTS.md`**, en la raíz junto a `AGENTS.md` y `REVIEW.md` porque se lee antes de
-  escribir UI, registra los componentes que existen: fragmentos Thymeleaf, plantillas JTE,
+- **`COMPONENTS.md`**, en la raíz del proyecto junto a `AGENTS.md` porque se lee antes de
+  escribir UI —y se queda con el proyecto, a diferencia de `REVIEW.md`, porque describe la UI de
+  *ese* proyecto—, registra los componentes que existen: fragmentos Thymeleaf, plantillas JTE,
   componentes de Angular, React o Vue, historias de Storybook.
 - **`docs/design.md`** se queda solo con «Principios de UX», lo único que no se puede descubrir, y
   enlaza a los otros dos en vez de repetirlos.

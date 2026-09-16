@@ -32,6 +32,9 @@ fabricate the rationale.
   context: module graph, JDK target, DI, persistence, Modulith boundaries") and any pre-existing
   repo docs from Phase 1b. When visual intent was generated, `COMPONENTS.md` ("read before writing
   UI") and `docs/design-tokens.md` get a line each — appended to an existing list in augment mode.
+  `REVIEW.md` gets a line too, and its link climbs to the repository root when the project is a
+  subfolder (`../REVIEW.md` — one `../` per segment of Phase 1a's prefix), since `AGENTS.md` stays
+  with the project and `REVIEW.md` does not.
 - **"Commands":** the 3–6 commands a developer actually runs — wrapper over bare tool, `Makefile`
   over raw invocations, profile-activation flag if needed locally, unit/integration split
   (checklist §9).
