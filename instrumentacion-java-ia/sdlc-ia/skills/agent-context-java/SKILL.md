@@ -142,7 +142,9 @@ batched calls. Long-form answers don't fit it — ask those in plain chat.
    *the written agreement about what the team may try with the agent and what happens when it goes
    wrong — the form only; **you fill in the content**, and the skill will not answer it for you.*
 2. **Augment-mode confirmation** — only if Phase 1b found existing docs: list them, then
-   `Yes (augment only)` / `Overwrite matching docs` / `Cancel`.
+   `Yes (augment only)` / `Overwrite matching docs` / `Cancel`. "Overwrite" covers **the project's
+   own docs only** — never the repository-root `REVIEW.md`, PR template or `EXPERIMENTS.md`, which
+   may belong to a sibling project. Those have their own question (`references/monorepo-roots.md`).
 3. **Phase-1 ambiguity** — the one thing discovery couldn't settle: usually the persistence
    framework (JPA annotations + a Spring Data JDBC repository coexisting) or the build tool
    (`pom.xml` and `build.gradle` both present). Offer candidates **you actually read**.
