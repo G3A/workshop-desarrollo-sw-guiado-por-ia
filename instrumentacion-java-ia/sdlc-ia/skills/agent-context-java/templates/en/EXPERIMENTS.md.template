@@ -14,9 +14,15 @@ THE HARD RULE OF THIS TEMPLATE: THE SKILL DOES NOT ANSWER IT
 
 WHAT THE SKILL DOES DO WHEN GENERATING IT
   - Substitutes <PROJECT> and <INTEGRATION-BRANCH> with real repository values.
-  - Copies the "never an experiment" list from github-plan-build's escalation list, so the two
-    say the same thing, and marks it as a starting point.
-  - In augment mode it never rewrites an existing EXPERIMENTS.md: fill gaps and append.
+  - Section 2 already ships written below: do NOT copy it from anywhere. It is a DECLARED
+    SUBSET of the "Escalation" section of github-plan-build/SKILL.md — only the rows that are
+    boundaries of the permission. The three loop gates (ambiguous CI, non-converging loop,
+    product judgment) are left out on purpose, and the text says why. Copying the whole list
+    was the previous instruction, and it is what made a real run delete the authentication row
+    for not being in the escalation list.
+  - In augment mode it never rewrites an existing EXPERIMENTS.md: fill gaps and append. If
+    section 2 is ALREADY written, leave it alone: append a note below it saying which section
+    it was taken from and which rows were left out, and let the team decide.
   - Delete this header before writing the target file.
 
 IT IS NOT A CI CHECK
@@ -46,14 +52,27 @@ correct -->
 
 ## 2. What is never an experiment
 
-This list is what makes the permission safe to grant. **It is a starting point, taken from the
-delivery loop's escalation list** — the two should say the same thing, because once they diverge
-the agent stops where the agreement does not ask it to and continues where the agreement forbids it:
+This list is what makes the permission safe to grant. **It is a starting point, and a declared
+subset of the "Escalation" section of `github-plan-build/SKILL.md`**: it takes only the rows that
+are **boundaries of the permission**, not the ones that are gates of the delivery loop. The two
+lists answer different questions, and forcing them to be identical is what pulls the agent away
+from the agreement.
 
 - Production writes, deploys, and any destructive or irreversible action.
-- Real communications to customers.
-- Changes touching authentication, secrets, or people's data.
+- Real outreach to real recipients.
+- Working around a missing credential or permission instead of asking for it.
+- Changes touching authentication, secrets, or people's data. *(This one is not from the escalation
+  list: the delivery loop does not stop for them, it requires `/security-review` as a mandatory
+  gate and never proceeds on red. That leaves them **reviewed**, not permitted — if your team also
+  wants them outside the permission, say so in section 1.)*
 - <!-- TODO: whatever this team adds. Delete what does not apply, but say why. -->
+
+**What is deliberately NOT copied from the escalation list**, because these are loop gates and not
+boundaries of the permission: an ambiguous CI failure and a non-converging fix loop — both fire on
+the state of the pipeline, not on what is allowed to be attempted — and a product-judgment call
+with no source of truth, which is also **reversible**: what fails there is the plan, not
+production. That the agent does not decide product for you is agreed by writing section 1's scope
+well.
 
 ## 3. What happens when it goes wrong
 
