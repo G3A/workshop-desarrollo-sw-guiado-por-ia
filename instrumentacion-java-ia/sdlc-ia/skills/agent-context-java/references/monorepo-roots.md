@@ -122,6 +122,11 @@ The Phase 2a overwrite confirmation has the same trap: a user who picks "overwri
 about their own project's docs. Never read that answer as permission to overwrite a `REVIEW.md` or
 PR template that belongs to the repository — and possibly to another project.
 
+**One line is the exception**, and only one: `REVIEW.md`'s title, when it still names a project and
+the file has come to cover another. See "When a second Java project arrives" below for the trigger,
+the signature check that keeps this away from a file the team wrote, and why a title earns an
+exception that no item does.
+
 ### One PR template per repository, ever
 
 `REVIEW.md` items get scoped per project; the PR template does not. It has six boxes, one per
@@ -144,10 +149,50 @@ Two mechanisms, both already demonstrated in this monorepo's own `REVIEW.md`:
    from the same file: "*Respeta los límites de módulo que protege `ArquitecturaTest` en
    `base-conocimiento/`*". An item that applies to everything says nothing extra.
 
-**Pre-existing generic items are a finding.** When you append a project's items to a `REVIEW.md`
-written when there was only one project, the old items say things like "the version the `pom.xml`
-pins" — now ambiguous. Report them as needing scoping; do not rewrite them silently and do not
-leave the file half-scoped, which is worse than not scoping at all.
+**Pre-existing generic items are a finding**, and reporting one is not fixing it. When you append a
+project's items to a `REVIEW.md` written when there was only one project, the old items say things
+like "the version the `pom.xml` pins" — now ambiguous. Never rewrite them silently, and never leave
+the file half-scoped, which is worse than not scoping at all. What to do instead, with its trigger
+and its guards: **"When a second Java project arrives"**, below.
+
+## When a second Java project arrives
+
+The `REVIEW.md` at the repository root was written when there was one project. Everything here is
+about the **merge**, and none of it fires unless the trigger says so.
+
+**The trigger — all three at once:** Phase 1a's prefix is non-empty (this project is a subfolder),
+`REVIEW.md` already exists at the repository root, **and** its preamble does not name this run's
+project folder. Without the third condition, a second run over the *same* project — regenerating
+docs after a refactor — adds the scope line and claims two pieces where there is one.
+
+**The signature, checked before touching anything.** Treat the file as this skill's only if it
+carries the template's shape: the six numbered categories plus the closing "how this list evolves"
+section. If it does not, the file is the team's — report it and change nothing in it. The title
+repair below is the only line this skill ever rewrites, and rewriting a line of a file the team wrote
+by hand is exactly what the augment rule exists to prevent.
+
+**The title.** A `REVIEW.md` this skill wrote before the template started naming the repository is
+titled with a *project*. Rewrite that one line to the repository's name, and say so in the report: the
+single exception to "augment mode never rewrites". It earns the exception because a title is not team
+content — it is a label that is now false about a file covering more than it names. Nothing else is
+rewritten. A title that already names the repository is left alone, and so is one where project and
+repository share a name: there is nothing to change.
+
+**The old generic items.** Add the template's **second conditional preamble sentence**, once,
+declaring that items which do not name a folder were written for the folder the file already covered
+— and report the ambiguous items so a person scopes the ones that matter. That is one line instead of
+fifteen rewrites of the team's text. Two guards: check the sentence is not already there before
+adding it (three projects would otherwise leave three near-identical sentences), and keep it phrased
+as an assumption, because if anyone added items by hand the sentence covers those too without being
+true. The report says that, rather than letting the file assert it.
+
+**The organization does not change.** The folder goes inside the item's own text, as above; no
+per-project sections, and no prefix or tag. A second project does **not** bring its own list of
+fifteen — it adds only the items genuinely its own, for the reason `SKILL.md` already gives under
+"Tailor, do not pad". Per-project sections were considered and rejected: with three or four projects
+they read better, and they multiply a list whose whole value is that people reach the end of it. If
+the new project's items would push the file past ~15, report it so the team prunes, instead of
+growing the file in silence.
 
 ## Cross-root links
 

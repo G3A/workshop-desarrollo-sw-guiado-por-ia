@@ -165,6 +165,8 @@ batched calls. Long-form answers don't fit it — ask those in plain chat.
    `Yes (augment only)` / `Overwrite matching docs` / `Cancel`. "Overwrite" covers **the project's
    own docs only** — never the repository-root `REVIEW.md`, PR template or `EXPERIMENTS.md`, which
    may belong to a sibling project. Those have their own question (`references/monorepo-roots.md`).
+   The one line this skill rewrites without asking is `REVIEW.md`'s title, and only under the guards
+   in that file's "When a second Java project arrives".
 3. **Phase-1 ambiguity** — the one thing discovery couldn't settle: usually the persistence
    framework (JPA annotations + a Spring Data JDBC repository coexisting) or the build tool
    (`pom.xml` and `build.gradle` both present). Offer candidates **you actually read**.
@@ -280,10 +282,15 @@ fifteen items. **The six categories are the method's** (verification layer 4). *
 concrete items are this template's own wording, not a quotation** — say so when you report, and
 invite the team to change them.
 
+**The title names the repository, not the project** — the file sits at the repository root and may
+come to cover several projects, so the two-project case never arises instead of being repaired later.
+This name resolves with no network: it is the repository's root folder.
+
 In a subfolder, keep the template's conditional preamble block — fill in the folder names, don't
 redraft the sentence — and make each project-only item **name its folder inside its own text**, not
-with a prefix or tag; an item true everywhere says nothing extra. Generic items an earlier run left
-behind: **`references/monorepo-roots.md`**.
+with a prefix or tag; an item true everywhere says nothing extra. A `REVIEW.md` that already covers
+another project is a **merge**, with its own trigger, signature check and guards:
+**`references/monorepo-roots.md`**, "When a second Java project arrives".
 
 Then write `.github/pull_request_template.md` from
 `templates/<lang>/pull_request_template.md.template`, **also at the repository root** — GitHub only
@@ -373,7 +380,8 @@ the ledger to `docs/claims-ledger.md`.
   folder is not the repository root. Nobody reads them there, and the run would report success over
   a file that does nothing.
 - Do NOT overwrite existing docs without explicit user opt-in; enrich by filling TODOs or
-  appending clearly marked sections.
+  appending clearly marked sections. The one exception is `REVIEW.md`'s **title line** when the file
+  has come to cover a second project — `references/monorepo-roots.md` holds its guards.
 - Do NOT fabricate framework or dependency versions, providers, endpoint names, or schema you
   haven't read.
 - Do NOT answer `EXPERIMENTS.md` for the team. Its TODOs are the deliverable, not a shortfall.
