@@ -65,18 +65,38 @@ repositories. Write no files.
 
 The directory holding that build file is the **project root** — not always the **repository root**.
 In a monorepo the Java project lives in a subfolder, and a file written to the wrong root is read
-by nobody while the run still reports success. One command, in the project directory:
+by nobody while the run still reports success. Two commands, both with `-C <project-root>`:
 
 ```
-git rev-parse --show-prefix
+git -C <project-root> rev-parse --is-inside-work-tree
+git -C <project-root> rev-parse --show-prefix
 ```
 
-Empty → both roots are the same, nothing below changes. Non-empty (`base-conocimiento/`) → a
-subfolder, and that value is the relative prefix for cross-root links. **Never compare the paths as
-strings**: `--show-toplevel` returns forward slashes and differs from the working directory on
-every Windows repo, including when the project *is* the root.
+**`-C <project-root>` is not optional.** Both queries answer about the current directory, and your
+working directory is wherever the session started — often the repository root while Glob found the
+build file in a subfolder. Run bare from there, `--show-prefix` returns empty, you conclude "same
+root", and you write the project's `AGENTS.md` and `docs/` on top of the monorepo's own. That is
+this bug inverted.
 
-Carry it into Phases 3, 4 and 6; report it in Phase 2. Guards, per-file anchoring and the
+Read the two answers **in order**:
+
+1. `--is-inside-work-tree` not `true` → there is no repository; both roots collapse to the project
+   root, and Phase 6 drops its `git` suggestion. Check this **first**: outside a work tree
+   `--show-prefix` also prints nothing (it exits 128), so empty output alone cannot tell "no repo"
+   from "project is the root".
+2. Then `--show-prefix`: empty → both roots are the same, nothing below changes. Non-empty
+   (`base-conocimiento/`) → a subfolder, and that value is the relative prefix for cross-root
+   links. **Never compare the paths as strings**: `--show-toplevel` returns forward slashes and
+   differs from the working directory on every Windows repo, including when the project *is* the
+   root.
+
+**Before writing anything outside the project, confirm the repository actually owns it** —
+`git -C <project-root> ls-files --error-unmatch pom.xml` and
+`git -C <project-root> check-ignore -q .`. If the project is untracked or ignored, treat it as "no
+repository" and say why: otherwise a project under `C:\Users\<user>\projects\` inherits the user's
+dotfiles repo and the three root files land there. This is a precondition, not a footnote.
+
+Carry the result into Phases 3, 4 and 6; report it in Phase 2. Per-file anchoring and the
 reasoning: **`references/monorepo-roots.md`**.
 
 ### 1b. Detect prior context → augment mode
@@ -314,12 +334,17 @@ the ledger to `docs/claims-ledger.md`.
 3. Remind the user, in the resolved language, to commit — suggest a commit message matching that
    language (e.g. `docs: bootstrap Java context pack for AI coding agents` in English,
    `docs: agrega el paquete de contexto Java para agentes de IA` in Spanish):
-   `git add AGENTS.md CLAUDE.md docs/ :/REVIEW.md :/.github/` — plus `:/EXPERIMENTS.md` and
-   `COMPONENTS.md` when they were generated — then `git commit -m "<message>"` (two
+   `git add AGENTS.md CLAUDE.md docs/ :/REVIEW.md :/.github/pull_request_template.md` — plus
+   `:/EXPERIMENTS.md` and `COMPONENTS.md` when they were generated — then
+   `git commit -m "<message>"` (two
    commands, no `&&`, so it works in Windows PowerShell 5.1 too). `:/` is git's magic pathspec for
-   "from the repository root", so this runs from the project directory either way, with no `cd` to
-   undo; run from the repository root instead, `AGENTS.md` matches nothing and git stages **zero**
-   files. Remind them too to
+   "from the repository root", which is how one command reaches both roots with no `cd` to undo.
+   **Say that it must run in the project directory**, and say why: the first three paths are
+   relative, so from the repository root of a monorepo they quietly match that repo's *own*
+   `AGENTS.md`, `CLAUDE.md` and `docs/` — git exits 0, stages the wrong files and stages none of
+   what this run wrote. There is no error to warn them. Name the PR template file explicitly rather
+   than `:/.github/`, which would sweep in unrelated workflow or `CODEOWNERS` edits in progress.
+   Remind them too to
    fill `<!-- TODO -->` markers, review the ADRs, skim `docs/claims-ledger.md` for anything
    unverified; if quality gates were absent, consider Checkstyle/Spotless + an arch-linting test
    (ArchUnit, or `ApplicationModules.verify()` if modules exist); re-run
