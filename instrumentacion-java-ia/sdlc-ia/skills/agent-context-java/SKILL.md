@@ -14,7 +14,8 @@ management, DI, persistence, config & profiles, build/run/test, Spring Modulith 
 quality gates, web/API surface, packaging, CI).
 
 You MUST NOT write application code, install dependencies, or run destructive commands. Your only
-outputs are Markdown files at the repo root and under `docs/`.
+outputs are Markdown files at the project root, under `docs/`, and — for the three files an
+external reader loads — at the repository root. Phase 1a resolves which is which.
 
 ## Philosophy (hold these in mind throughout)
 
@@ -53,22 +54,49 @@ language.
 
 ## Phase 1 — Discover (silent)
 
-Do this without talking to the user. Use Glob, Grep, and Read.
+Do this without talking to the user. Use Glob, Grep, and Read, plus the read-only `git rev-parse`
+/ `git ls-files` / `git check-ignore` queries 1a needs.
 
-### 1a. Confirm this is a Java repo
+### 1a. Confirm this is a Java repo, and resolve the two roots
 
 Look for `pom.xml`, `build.gradle`, `build.gradle.kts`, `settings.gradle`(`.kts`), `mvnw`, or
 `gradlew`. If nothing matches, stop and tell the user this skill only applies to Java
 repositories. Write no files.
 
+The directory holding that build file is the **project root**. It is not always the **repository
+root**: in a monorepo the Java project may live in a subfolder, and a file written to the wrong one
+can be read by nobody while the run still reports success. Resolve it with one command, in the
+project directory:
+
+```
+git rev-parse --show-prefix
+```
+
+Empty → the two roots are the same and nothing below changes. Non-empty (e.g.
+`base-conocimiento/`) → the project is in a subfolder, and that value is also the relative prefix
+for cross-root links. **Never compare the two paths as strings** — `--show-toplevel` returns
+forward slashes and would differ from the working directory on every Windows repo, including when
+the project *is* the root.
+
+Carry the result into Phases 3, 4 and 6, and report it in Phase 2. The guards this needs (no
+repository, a project not tracked by the repository it sits in), which files go to which root, and
+why: **`references/monorepo-roots.md`**.
+
 ### 1b. Detect prior context → augment mode
 
-Switch to **augment mode** if any of these exist: `AGENTS.md`/`CLAUDE.md` at repo root, a
+Switch to **augment mode** if any of these exist **at the project root**: `AGENTS.md`/`CLAUDE.md`, a
 `docs/` with `.md` files, `ARCHITECTURE.md`, `ADR/`/`adrs/`/`decisions/`. Read what exists, report
 it in Phase 2, create only **missing** docs — never overwrite. A pre-existing `docs/` tree isn't
 necessarily yours (many repos ship their own architecture notes, DB dumps) — cross-link it from
 `docs/java.md` and AGENTS.md instead of editing it. If those docs are in one language, that
 overrides the output-language default — see "Output language" above.
+
+When the roots differ, also read `REVIEW.md`, `.github/pull_request_template.md` and
+`EXPERIMENTS.md` **at the repository root** — but only to decide "append, don't overwrite". They
+**never** switch augment mode on: otherwise a monorepo whose root holds `AGENTS.md` and `docs/`
+would put a brand-new Java subproject into augment mode and refuse to create its own `AGENTS.md`.
+A `REVIEW.md` found in the project folder is an **orphan** from an older run — nobody loads it;
+report it in Phase 6, never append to it.
 
 ### 1c. Deep Java discovery
 
