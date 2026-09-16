@@ -19,10 +19,15 @@ el permiso siga existiendo la semana después de la primera PR que salió mal.
 
 ## 2. Qué nunca es un experimento
 
-Esta lista es la que hace que el permiso se pueda dar sin miedo. **Es el punto de partida, y es un
-subconjunto declarado de la sección «Escalation» de `github-plan-build/SKILL.md`**: de ahí toma
-solo las filas que son **límites del permiso**, no las que son gates del ciclo de entrega. Las dos
-listas contestan preguntas distintas, así que no deben ser idénticas.
+Esta lista es la que hace que el permiso se pueda dar sin miedo. **Es el punto de partida, y su
+procedencia está declarada**: de la sección «Escalation» de `github-plan-build/SKILL.md` toma las
+filas que son **límites del permiso**, no las que son gates del ciclo de entrega. Las dos listas
+contestan preguntas distintas, así que no deben ser idénticas.
+
+> **Esta copia difiere de la plantilla a propósito.** La plantilla de `agent-context-java` trae una
+> cuarta fila propia —autenticación, secretos y datos de personas— que aquí todavía no está: la
+> corrida del 2026-09-15 la omitió, y re-añadirla es una decisión del equipo, no de quien corrige el
+> texto. El pendiente de abajo la tiene con el dato que falta para decidirla.
 
 - Escrituras en producción, despliegues y cualquier acción destructiva o irreversible.
 - Comunicaciones reales a destinatarios reales.

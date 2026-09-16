@@ -29,8 +29,9 @@ versión nueva", and `AGENTS.md`).
   — cited by file, since a second full copy lives in `references/build-loop-execute.md` — adds the
   missing-credential row, keeps the authentication row marked as covered by Step G's mandatory
   `/security-review` gate rather than by a stop (reviewed, not permitted), and names the three
-  gates it deliberately leaves out. Phase 3 no longer instructs anything about the list, removing
-  the one place the skill could drift from its own template, and augment mode now says what to do
+  gates it deliberately leaves out — neither a copy nor a strict subset, and the text says so.
+  Phase 3 now carries a prohibition instead of a build instruction, narrowing the surface where the
+  skill could drift from its own template, and augment mode now says what to do
   with an already-written section 2: leave it, append a provenance note. "Real communications to
   customers" becomes "real outreach to real recipients" (#138).
 - **`agent-context-java` no longer writes `REVIEW.md` where nothing reads it.** The skill said
