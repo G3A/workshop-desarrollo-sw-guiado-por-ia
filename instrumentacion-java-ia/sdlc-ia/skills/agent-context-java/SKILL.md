@@ -235,9 +235,10 @@ Modulith, no message broker) → **delete it**, don't pad with TODOs.
 **`EXPERIMENTS.md` is the one file where TODOs are the correct output, not a shortfall.** It holds
 the team's written agreement about what may fail and what happens when it does — a leadership
 decision the repository cannot contain. Everywhere else a TODO means discovery fell short; here it
-means **the answer is not in the repository and must not be invented**. Fill in only `<PROJECT>`
-and `<INTEGRATION-BRANCH>`: the "never an experiment" list ships written in the template, and
-rebuilding it from `github-plan-build`'s escalation list is what once deleted a row.
+means **the answer is not in the repository and must not be invented**. Fill in only the two
+placeholders the template declares in its header (the project and the integration branch, named in
+the template's own language): the "never an experiment" list ships written, and rebuilding it from
+`github-plan-build`'s escalation list is what once deleted a row.
 Leave every other slot open, and say in the report that you did so on purpose: a team's risk
 posture invented by a model is the exact hallucination this skill exists to prevent. **Augment mode never clobbers
 user content** — fill TODO slots or append a clearly marked subsection, leave the rest alone;

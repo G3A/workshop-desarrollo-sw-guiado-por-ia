@@ -15,12 +15,13 @@ LA REGLA DURA DE ESTA PLANTILLA: LA SKILL NO LA CONTESTA
 
 QUÉ SÍ HACE LA SKILL AL GENERARLO
   - Sustituye <PROYECTO> y <RAMA-DE-INTEGRACIÓN> con datos reales del repositorio.
-  - La sección 2 ya viene escrita abajo: NO la copies de ningún lado. Es un SUBCONJUNTO
-    DECLARADO de la sección "Escalation" de github-plan-build/SKILL.md — solo las filas que
-    son límites del permiso. Los tres gates del ciclo (CI ambigua, loop que no converge,
-    decisión de producto) quedan fuera a propósito, y el texto dice por qué. Copiar la lista
-    entera fue la instrucción anterior, y es lo que hizo que una corrida real borrara la fila
-    de autenticación por no estar en el escalamiento.
+  - La sección 2 ya viene escrita abajo: NO la copies de ningún lado. Son las filas de la
+    sección "Escalation" de github-plan-build/SKILL.md que son LÍMITES DEL PERMISO, MÁS UNA
+    FILA PROPIA que el escalamiento no tiene (autenticación, secretos y datos de personas).
+    Los tres gates del ciclo (CI ambigua, loop que no converge, decisión de producto) quedan
+    fuera a propósito, y el texto dice por qué. No es ni una copia ni un subconjunto estricto,
+    y decirlo importa: copiar la lista entera fue la instrucción anterior, y es lo que hizo
+    que una corrida real borrara justamente la fila propia por no estar en el escalamiento.
   - En modo aumentar NO reescribe un EXPERIMENTS.md existente: rellena huecos y anexa. Si la
     sección 2 YA está escrita, no la toques: anexa debajo una nota que diga de qué sección se
     tomó y qué filas quedaron fuera, y deja la decisión al equipo.
@@ -53,11 +54,12 @@ corregir -->
 
 ## 2. Qué nunca es un experimento
 
-Esta lista es la que hace que el permiso se pueda dar sin miedo. **Es el punto de partida, y es un
-subconjunto declarado de la sección «Escalation» de `github-plan-build/SKILL.md`**: de ahí toma
-solo las filas que son **límites del permiso**, no las que son gates del ciclo de entrega. Las dos
-listas contestan preguntas distintas, y forzarlas a ser idénticas es lo que separa al agente del
-acuerdo.
+Esta lista es la que hace que el permiso se pueda dar sin miedo. **Es el punto de partida, y su
+procedencia está declarada**: de la sección «Escalation» de `github-plan-build/SKILL.md` toma las
+filas que son **límites del permiso** —no las que son gates del ciclo de entrega— **y añade una
+propia**, la última, que el escalamiento no tiene. No es una copia ni un subconjunto estricto: las
+dos listas contestan preguntas distintas, y forzarlas a ser idénticas es lo que separa al agente
+del acuerdo.
 
 - Escrituras en producción, despliegues y cualquier acción destructiva o irreversible.
 - Comunicaciones reales a destinatarios reales.

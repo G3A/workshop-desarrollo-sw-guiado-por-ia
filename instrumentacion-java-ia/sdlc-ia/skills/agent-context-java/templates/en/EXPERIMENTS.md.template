@@ -14,12 +14,13 @@ THE HARD RULE OF THIS TEMPLATE: THE SKILL DOES NOT ANSWER IT
 
 WHAT THE SKILL DOES DO WHEN GENERATING IT
   - Substitutes <PROJECT> and <INTEGRATION-BRANCH> with real repository values.
-  - Section 2 already ships written below: do NOT copy it from anywhere. It is a DECLARED
-    SUBSET of the "Escalation" section of github-plan-build/SKILL.md — only the rows that are
-    boundaries of the permission. The three loop gates (ambiguous CI, non-converging loop,
-    product judgment) are left out on purpose, and the text says why. Copying the whole list
-    was the previous instruction, and it is what made a real run delete the authentication row
-    for not being in the escalation list.
+  - Section 2 already ships written below: do NOT copy it from anywhere. It is the rows of the
+    "Escalation" section of github-plan-build/SKILL.md that are BOUNDARIES OF THE PERMISSION,
+    PLUS ONE ROW OF ITS OWN that the escalation list does not have (authentication, secrets and
+    people's data). The three loop gates (ambiguous CI, non-converging loop, product judgment)
+    are left out on purpose, and the text says why. It is neither a copy nor a strict subset,
+    and saying so matters: copying the whole list was the previous instruction, and it is what
+    made a real run delete that very row for not being in the escalation list.
   - In augment mode it never rewrites an existing EXPERIMENTS.md: fill gaps and append. If
     section 2 is ALREADY written, leave it alone: append a note below it saying which section
     it was taken from and which rows were left out, and let the team decide.
@@ -52,11 +53,12 @@ correct -->
 
 ## 2. What is never an experiment
 
-This list is what makes the permission safe to grant. **It is a starting point, and a declared
-subset of the "Escalation" section of `github-plan-build/SKILL.md`**: it takes only the rows that
-are **boundaries of the permission**, not the ones that are gates of the delivery loop. The two
-lists answer different questions, and forcing them to be identical is what pulls the agent away
-from the agreement.
+This list is what makes the permission safe to grant. **It is a starting point, and its provenance
+is declared**: from the "Escalation" section of `github-plan-build/SKILL.md` it takes the rows that
+are **boundaries of the permission** — not the ones that are gates of the delivery loop — **and
+adds one of its own**, the last, which that list does not have. It is neither a copy nor a strict
+subset: the two lists answer different questions, and forcing them to be identical is what pulls
+the agent away from the agreement.
 
 - Production writes, deploys, and any destructive or irreversible action.
 - Real outreach to real recipients.
