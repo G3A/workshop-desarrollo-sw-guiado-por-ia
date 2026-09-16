@@ -19,15 +19,35 @@ el permiso siga existiendo la semana después de la primera PR que salió mal.
 
 ## 2. Qué nunca es un experimento
 
-Esta lista es la que hace que el permiso se pueda dar sin miedo. **Es el punto de partida, tomado
-de la lista de escalamiento de la skill `github-plan-build`** — conviene que las dos digan lo
-mismo, porque si se separan, el agente se detiene donde el acuerdo no lo pide y sigue donde el
-acuerdo lo prohíbe:
+Esta lista es la que hace que el permiso se pueda dar sin miedo. **Es el punto de partida, y su
+procedencia está declarada**: de la sección «Escalation» de `github-plan-build/SKILL.md` toma las
+filas que son **límites del permiso**, no las que son gates del ciclo de entrega. Las dos listas
+contestan preguntas distintas, así que no deben ser idénticas.
+
+> **Esta copia difiere de la plantilla a propósito.** La plantilla de `agent-context-java` trae una
+> cuarta fila propia —autenticación, secretos y datos de personas— que aquí todavía no está: la
+> corrida del 2026-09-15 la omitió, y re-añadirla es una decisión del equipo, no de quien corrige el
+> texto. El pendiente de abajo la tiene con el dato que falta para decidirla.
 
 - Escrituras en producción, despliegues y cualquier acción destructiva o irreversible.
 - Comunicaciones reales a destinatarios reales.
 - Rodear una credencial o un permiso que falta, en vez de pedirlo.
 - <!-- TODO: lo que este equipo agregue. Borra lo que no aplique, pero di por qué. -->
+
+**Lo que deliberadamente NO se copia del escalamiento**, porque son gates del ciclo: una falla de
+CI ambigua y un ciclo de arreglos que no converge —los dos se disparan por el estado del pipeline,
+no por lo que esté permitido intentar— y una decisión de producto sin fuente de verdad, que además
+es reversible: lo que falla ahí es el plan, no producción.
+
+<!-- TODO para el equipo: la plantilla de la skill trae además «cambios que tocan autenticación,
+     secretos o datos de personas». La corrida del 2026-09-15 la omitió al copiar el escalamiento,
+     donde no está. El ciclo de entrega no se detiene ante esos cambios: les exige /security-review
+     como gate obligatorio y no avanza en rojo — eso los deja revisados, no permitidos. Decide si
+     además quieres ponerlos fuera del permiso, y di por qué. -->
+
+<!-- Procedencia, para cuando alguien compare: las tres filas de arriba salen de la sección
+     «Escalation» de instrumentacion-java-ia/sdlc-ia/skills/github-plan-build/SKILL.md. Hay una
+     segunda copia íntegra de esa lista en references/build-loop-execute.md; son la misma. -->
 
 ## 3. Qué pasa cuando sale mal
 
