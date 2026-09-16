@@ -41,15 +41,25 @@ which never reads `REVIEW.md` anywhere.
 
 ## Detecting it
 
-One command, in the project directory:
+Every query below takes **`-C <project-root>`**. They all answer about the current directory, and
+the session's working directory is frequently *not* the project — Glob finds `pom.xml` in a
+subfolder while the shell sits at the repository root, and the Bash tool resets the directory
+between calls. Run bare, they describe the wrong place, and a subfolder project reads as "the
+project is the root" — this bug inverted.
+
+**Run the guard first, then the prefix.** Outside a work tree `--show-prefix` also prints nothing
+(exiting 128), so empty output on its own cannot distinguish "no repository" from "the project is
+the repository root".
 
 ```
-git rev-parse --show-prefix
+git -C <project-root> rev-parse --is-inside-work-tree
+git -C <project-root> rev-parse --show-prefix
 ```
 
-Empty output → the project **is** the repository root; everything below collapses and there is
-nothing special to do. Non-empty (`base-conocimiento/`) → the project is in a subfolder, **and that
-string is the prefix** you need for cross-root links and for scoping items.
+Not `true` from the first → no repository; both roots collapse to the project root (see guard 1
+below). Otherwise read the second: empty → the project **is** the repository root, nothing special
+to do. Non-empty (`base-conocimiento/`) → the project is in a subfolder, **and that string is the
+prefix** you need for cross-root links and for scoping items.
 
 **Do not compare paths as strings.** `git rev-parse --show-toplevel` returns `D:/path/...` with
 forward slashes, while the working directory is `D:\path\...` in PowerShell and `/d/path/...` in
@@ -59,13 +69,18 @@ and works the same in PowerShell 5.1, PowerShell 7 and bash.
 
 ### Three guards before writing anything outside the project
 
-1. `git rev-parse --is-inside-work-tree` — no repository at all (or a bare repo via `GIT_DIR`)
-   means both roots collapse to the project directory. Say so in the report, and add one line: if
-   a repository is later initialized *above* this folder, `REVIEW.md` is in the wrong place again.
-   Drop the `git add`/`git commit` suggestion in that case.
-2. `git ls-files --error-unmatch <project>/pom.xml` — is the project actually tracked by that
-   repository?
-3. `git check-ignore -q <project>` — is the project ignored by it?
+1. `git -C <project-root> rev-parse --is-inside-work-tree` — no repository at all (or a bare repo
+   via `GIT_DIR`) means both roots collapse to the project directory. Say so in the report, and add
+   one line: if a repository is later initialized *above* this folder, `REVIEW.md` is in the wrong
+   place again. Drop the `git add`/`git commit` suggestion in that case.
+2. `git -C <project-root> ls-files --error-unmatch pom.xml` — is the project actually tracked by
+   that repository?
+3. `git -C <project-root> check-ignore -q .` — is the project ignored by it?
+
+**The paths in guards 2 and 3 are relative to the project**, because `-C` already put git there.
+Writing `<project>/pom.xml` instead makes the guard fail with "did not match any file" in exactly
+the subfolder case it exists to validate, and the skill would wrongly conclude the project is not
+part of the repository.
 
 Guards 2 and 3 catch a real and common shape: the user runs the skill in
 `C:\Users\<user>\projects\myapp` while `C:\Users\<user>` is a dotfiles repository. Without them the
