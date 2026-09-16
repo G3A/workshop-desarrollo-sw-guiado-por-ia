@@ -23,21 +23,23 @@ Esta lista es la que hace que el permiso se pueda dar sin miedo. **Es el punto d
 procedencia está declarada**: de la sección «Escalation» de `github-plan-build/SKILL.md` toma las
 filas que son **límites del permiso** —no las que son gates del ciclo de entrega— **y añade una
 propia**, la última, que el escalamiento no tiene. No es una copia ni un subconjunto estricto: las
-dos listas contestan preguntas distintas, así que no deben ser idénticas.
+dos listas contestan preguntas distintas, y forzarlas a ser idénticas es lo que separa al agente del
+acuerdo.
 
 - Escrituras en producción, despliegues y cualquier acción destructiva o irreversible.
 - Comunicaciones reales a destinatarios reales.
 - Trabajar alrededor de una credencial o un permiso que falta, en vez de pedirlo.
 - Cambios que tocan autenticación, secretos o datos de personas. *(Este no sale del escalamiento:
   el ciclo de entrega no se detiene ante ellos, les exige `/security-review` como gate obligatorio,
-  y no avanza en rojo. Eso los deja **revisados**, no permitidos — si además quieres que estén fuera
-  del permiso, dilo en la sección 1.)*
+  y no avanza en rojo. Eso los deja **revisados**, no permitidos — si tu equipo además quiere que
+  estén fuera del permiso, dilo en la sección 1.)*
 - <!-- TODO: lo que este equipo agregue. Borra lo que no aplique, pero di por qué. -->
 
-**Lo que deliberadamente NO se copia del escalamiento**, porque son gates del ciclo: una falla de
-CI ambigua y un ciclo de arreglos que no converge —los dos se disparan por el estado del pipeline,
-no por lo que esté permitido intentar— y una decisión de producto sin fuente de verdad, que además
-es reversible: lo que falla ahí es el plan, no producción.
+**Lo que deliberadamente NO se copia del escalamiento**, porque son gates del ciclo y no límites del
+permiso: una falla de CI ambigua y un ciclo de arreglos que no converge —los dos se disparan por el
+estado del pipeline, no por lo que esté permitido intentar— y una decisión de producto sin fuente de
+verdad, que además **es reversible**: lo que falla ahí es el plan, no producción. Que el agente no
+decida producto por ti se acuerda escribiendo bien el alcance de la sección 1.
 
 <!-- Procedencia, para cuando alguien compare: las tres primeras filas salen de la sección
      «Escalation» de instrumentacion-java-ia/sdlc-ia/skills/github-plan-build/SKILL.md; hay una
