@@ -4,18 +4,19 @@ Generado originalmente por la skill `agent-context-java`. Registra las afirmacio
 de la documentación, su fuente en el repositorio y si fueron confirmadas por una persona. Vuelve a
 ejecutar la skill para regenerarlo.
 
-**Última verificación a mano: 2026-09-14** (issue #120), contra el código. La del 2026-08-31, después
-de la sincronización con `base-conocimiento-sandbox`, invalidó cinco afirmaciones de este registro;
-la de #120 invalidó una más y encontró cinco frases de los docs que contradecían filas vigentes. Lo
-que dejó de ser cierto se marca en vez de borrarse, porque saber qué dejó de valer vale tanto como
-saber qué vale.
+**Última verificación a mano: 2026-09-15** (issue #137), al volver a correr
+`/sdlc-ia:agent-context-java` en modo aumento: tres frases de los docs contradecían el código. La
+anterior fue la del 2026-09-14 (issue #120). La del 2026-08-31, después de la sincronización con
+`base-conocimiento-sandbox`, invalidó cinco afirmaciones de este registro; la de #120 invalidó una
+más y encontró cinco frases de los docs que contradecían filas vigentes. Lo que dejó de ser cierto
+se marca en vez de borrarse, porque saber qué dejó de valer vale tanto como saber qué vale.
 
 ## Vigentes
 
 | Afirmación | Fuente | Confianza | Estado |
 |---|---|---|---|
 | El proyecto apunta a JDK 25 sobre Spring Boot 4.1.0. | `pom.xml` (`<java.version>`) | alta | confirmada |
-| El JDK del `Dockerfile` coincide con el declarado en `pom.xml`: ambos 25. | `pom.xml` (`<java.version>25`), `Dockerfile` (`eclipse-temurin:25` en deps, build y runtime) | alta | confirmada |
+| El JDK del `Dockerfile` coincide con el declarado en `pom.xml`: ambos 25. | `pom.xml` (`<java.version>25`), `Dockerfile` (`eclipse-temurin:25` declarado en `deps` y `runtime`, heredado por `build` y `layers`) | alta | confirmada (2026-09-15: son cuatro etapas, no tres) |
 | La persistencia es `JdbcClient` a mano sobre Postgres, no JPA/Hibernate. | `pom.xml` (sin `data-jpa` ni `hibernate-core`), `recuperacion/package-info.java` | alta | confirmada |
 | Las migraciones de Flyway corren al arrancar la app (autoconfig de `spring-boot-flyway`). | `pom.xml` (`spring-boot-flyway`) | alta | confirmada |
 | `spring-boot-starter-actuator` expone `health`/`info`/`metrics`, sin acotar por perfil. | `application.yml` (`include: health,info,metrics`) | alta | confirmada → issue #5, TODO resuelto en `infrastructure.md` |
@@ -31,6 +32,9 @@ saber qué vale.
 | El reparto de la GPU se deriva de `nvidia-smi` (VRAM, Compute Capability, driver), no de constantes. | `Makefile` (`GPU_PLAN`), `make gpu-check` | alta | confirmada (2026-08-31) |
 | `docling-serve` no libera la VRAM entre conversiones y `GET /v1/clear/converters` no la recupera; solo reiniciar el proceso. | Medido: 2053 MiB antes y después del endpoint; sesión 27 de `investigacion-vram-y-modelo-llm.md` | alta | confirmada (2026-08-31) |
 | Hay 10 `compose.*.yml` de perfil de modelo; 7 tienen target `up-`/`down-`/`pull-`. | `ls compose.*.yml`, `grep "^up-" Makefile` | alta | confirmada (2026-08-31) |
+| `V1__esquema.sql` crea 6 tablas (`sources`, `documents`, `chunks`, `term_stats`, `ingest_jobs`, `query_log`); V2 a V5 crean una cada una y V6 no crea tablas: agrega `query_log_id` a `streams_en_curso`. | `src/main/resources/db/migration/` (`CREATE TABLE`) | alta | confirmada (2026-09-15) |
+| En producción los secretos salen del mismo archivo `.env` que lee Docker Compose, puesto a mano en el host; no hay gestor de secretos. | usuario | alta | confirmada (2026-09-15) |
+| `REVIEW.md` y la plantilla de PR viven en la raíz del monorepo: el servicio de Code Review solo lee `REVIEW.md` en la raíz del repositorio git, y GitHub la plantilla en `.github/` de la raíz. | <https://code.claude.com/docs/en/code-review> (sección REVIEW.md) | alta | confirmada (2026-09-15) |
 | El despliegue es Docker Compose en una VM/máquina propia y el paso a producción sigue siendo manual. | usuario | alta | matizada (2026-08-31): hay CI (build, test, lint, secretos en cada push/PR), pero **no** hay CD |
 
 ## Invalidadas por cambios posteriores
@@ -49,9 +53,9 @@ que las encuentre citadas en otro documento necesita saber que ya no valen.
 
 ## Docs que contradecían filas vigentes
 
-Encontradas en #120. El registro estaba bien; los docs no. Lección: una fila confirmada aquí no
-corrige sola la frase vieja de otro documento, así que al confirmar una fila hay que buscar la
-afirmación contraria en `docs/` y en `AGENTS.md`.
+Encontradas en #120 y en #137. El registro estaba bien; los docs no. Lección: una fila confirmada
+aquí no corrige sola la frase vieja de otro documento, así que al confirmar una fila hay que buscar
+la afirmación contraria en `docs/` y en `AGENTS.md`.
 
 | Frase del doc (ya corregida) | Contradecía |
 |---|---|
@@ -60,3 +64,6 @@ afirmación contraria en `docs/` y en `AGENTS.md`.
 | `java.md`: «no hay `.mcp.json` en `base-conocimiento/` todavía» | `.mcp.json` está en la raíz del monorepo desde la etapa F2. |
 | `java.md` y `architecture.md`: `compartido` = `Cita`, `Fragmento`, `Proyecto`, `Respuesta` | `compartido/Dominio.java`: 7 tipos, sin `Proyecto`. |
 | `java.md`: TODO «listar las clases `@ConfigurationProperties`» | Las 7 existían, registradas con `@ConfigurationPropertiesScan`. |
+| `data-model.md`: «no es un paso explícito de CI — no hay CI todavía» (2026-09-15) | La fila del CI. |
+| `architecture.md`: «Cuatro tablas más la cola (`V1__esquema.sql`)» (2026-09-15) | La fila de las migraciones: V1 crea 6 tablas; la frase omitía `term_stats`. |
+| `java.md`: `eclipse-temurin:25` «en las tres etapas (deps, build y runtime)» (2026-09-15) | El `Dockerfile` tiene cuatro: faltaba `layers`. El JDK era correcto. |
