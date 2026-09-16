@@ -12,10 +12,22 @@ WHY IT IS NOT A CI CHECK
   a trace of what was reviewed; they do not guarantee it.
 
 WHAT THE SKILL DOES WHEN GENERATING IT
-  - Substitute <INTEGRATION-BRANCH> with the branch the repository actually declares.
+  - Substitute <INTEGRATION-BRANCH> with the branch the repository actually declares, and
+    <GITHUB-REPOSITORY> with the remote's `owner/repo` (one already-combined value, so there
+    is no remote URL to parse — it arrives in three different shapes).
   - If a PR template already exists, do NOT replace it: append the review section and say so
     in the report.
   - Delete this header before writing the target file.
+
+WHY THE LINK TO REVIEW.md IS AN ABSOLUTE URL AND NOT `../REVIEW.md`
+  Because the only place anyone clicks that link is the RENDERED BODY of the PR, and there a
+  relative path 404s: GitHub copies this template verbatim and rewrites no paths, so the
+  browser resolves it against the PR's URL (/owner/repo/pull/123/../REVIEW.md). As a file in
+  .github/ the relative path does resolve — which is exactly what made the link check pass
+  over a broken link. A link is anchored to the context where it is RENDERED.
+  With no `gh`, no `origin` remote, or a remote that is not GitHub: do NOT invent the URL.
+  Leave the link with a <!-- TODO: absolute URL to REVIEW.md --> and say so in the Phase 6
+  report.
 -->
 
 ## What changes and why
@@ -31,8 +43,9 @@ Closes #
 
 ## Human review
 
-The full criteria, with their reasoning, are in [`REVIEW.md`](../REVIEW.md). Tick what you actually
-reviewed; a box ticked unread is worse than an empty one.
+The full criteria, with their reasoning, are in
+[`REVIEW.md`](https://github.com/<GITHUB-REPOSITORY>/blob/<INTEGRATION-BRANCH>/REVIEW.md). Tick what
+you actually reviewed; a box ticked unread is worse than an empty one.
 
 - [ ] **API hallucinations** — methods, signatures and config keys that exist in the pinned version
 - [ ] **Project fidelity** — solves the way this repo solves, without opening a second way to do the same thing
