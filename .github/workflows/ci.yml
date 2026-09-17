@@ -102,6 +102,11 @@ jobs:
         working-directory: .
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # En una PR el checkout deja HEAD sobre un merge commit efimero, asi que el sensor
+          # reportaria "en HEAD (<sha que nadie puede traer>)". El ADR promete que ese reporte
+          # sirve para reproducir un rojo: la rama y la punta real llegan desde aca.
+          ESPEJO_REF: ${{ github.head_ref || github.ref_name }}
+          ESPEJO_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: node scripts/verificar-espejo.mjs
 
       - name: Publish test results
