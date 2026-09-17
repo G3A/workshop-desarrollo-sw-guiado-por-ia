@@ -105,8 +105,9 @@ este issue—, con estas diferencias deliberadas:
   con el mensaje **por defecto** y el monorepo con el cuerpo de la PR; y el enlace a `REVIEW.md`,
   que es una URL absoluta al propio repositorio y por construcción nunca puede ser idéntica. La URL
   absoluta no es capricho: una ruta relativa **404** en el cuerpo renderizado de una PR, que es el
-  único sitio donde alguien hace clic en ese enlace. La plantilla que genera `agent-context-java`
-  todavía emite la forma relativa: es el issue #146;
+  único sitio donde alguien hace clic en ese enlace. Desde el issue #146 la plantilla que genera
+  `agent-context-java` ya emite la URL absoluta, así que volver a correr la skill sobre cualquiera de
+  los dos repos conserva esta divergencia en vez de reintroducir el enlace roto;
 - el `EXPERIMENTS.md` del sandbox cubre un solo proyecto y cita la skill por URL, no por ruta, y no
   lleva el comentario de procedencia que el del monorepo sí tiene.
 
