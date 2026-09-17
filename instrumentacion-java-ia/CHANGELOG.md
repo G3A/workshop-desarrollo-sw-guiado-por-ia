@@ -17,6 +17,60 @@ versión nueva", and `AGENTS.md`).
 
 ### Fixed
 
+- **`agent-context-java`'s PR template links `REVIEW.md` by absolute URL, and Phase 6 checks links
+  from where they are read.** The template emitted `[`REVIEW.md`](../REVIEW.md)`: correct for a file
+  in `.github/`, and a **404 in the only place anyone clicks it** — the rendered body of a PR, which
+  GitHub copies verbatim without rewriting relative paths, so the browser resolves it against the
+  PR's own URL (`/owner/repo/pull/123/../REVIEW.md`). Two written claims kept it alive, both saying
+  the link "needs no adjustment" because it resolves relative to `.github/`. It does, as a file; as a
+  PR body it does not, and `SKILL.md` and `references/monorepo-roots.md` said the wrong thing in
+  identical words. The templates now emit
+  `<repository-url>/blob/<integration-branch>/REVIEW.md`, and Phase 1a resolves both values with
+  `gh auth status`, `git remote get-url origin` and `gh repo view <that-url> --json
+  url,defaultBranchRef`. Two details that a first pass got wrong and `/code-review` caught: the URL of
+  `origin` is passed in **explicitly**, because bare `gh repo view` resolves the base repo from the
+  remote set and prefers `upstream` — on a fork, or in a repo with a mirror remote, it answers about
+  the other repository and the link points at a parallel repo's `REVIEW.md`. And the base is `url`,
+  **host included**, not `nameWithOwner` behind a written-out `https://github.com/`: `gh` works
+  against GitHub Enterprise too, where a hardcoded host is a 404 or someone else's repo with the same
+  slug. Passing the URL to `gh` is also what keeps "never parse a remote URL" true — SSH, HTTPS and
+  `.git`-suffixed shapes stop being three regexes written twice for PowerShell and bash.
+  Unresolvable (no `gh`, no `origin`, `gh` errors) degrades to a `<!-- TODO -->` and
+  a report line, never back to the relative path. This corrects what #121's own entry below got
+  wrong: "its link check now resolves each link from the directory of the file that contains it" is
+  the right rule for `AGENTS.md`'s link and the **wrong** one for the PR template's — Phase 6 now
+  checks that one as a URL, against the values this run resolved, and says it is a string check with
+  no network. Three outcomes are reported rather than fixed, since an existing PR template is never
+  replaced: an unresolvable URL left as a TODO; **a template from an older run still carrying the
+  relative link**, which is every repo instrumented before this change and not an edge case, reported
+  with the exact replacement line; and a template whose URL names a branch that no longer exists,
+  checked against the **remote** ref (`git ls-remote --exit-code --heads origin <branch>`) because a
+  shallow or `--single-branch` clone has no local `dev` and would report a rename that never happened.
+  The report also distinguishes "not merged yet" from "wrong path" with
+  `git cat-file -e origin/<branch>:REVIEW.md`: on the run that creates `REVIEW.md`, the link genuinely
+  404s until the file lands on the integration branch, and saying so beats implying otherwise (#146).
+- **`agent-context-java` knows what to do with `REVIEW.md` when a second Java project appears.**
+  #121 anchored the file to the repository root and scoped its items to one project's folder. With
+  two projects the second run produced a file worse than the one it found: the title still named the
+  first project (augment mode never rewrites), the fifteen generic items said things like "the
+  version the `pom.xml` pins" — which now points at nothing — leaving the file **half-scoped**, and
+  the "run it yourself" item kept the first project's command. `monorepo-roots.md` said to report the
+  old items as ambiguous, and reporting is not fixing. The template now titles with the
+  **repository**, not the project, so the case stops existing instead of being repaired later, and a
+  new section, "When a second Java project arrives", carries the merge: the trigger — the folder the
+  file already covers is not this run's project, deliberately **not** "this project is in a subfolder",
+  which would miss a first project in a subfolder and a second one at the repository root — a
+  signature check of
+  the six categories before the one line this skill ever rewrites — the title — so a `REVIEW.md` the
+  team wrote by hand is reported and left alone, and one conditional preamble sentence declaring the
+  old items' default scope instead of rewriting fifteen items of the team's text, with an
+  idempotency guard so a third project does not leave three near-identical sentences, phrased as an
+  assumption because items added by hand are covered by it without being true. The organization does
+  not change — the folder stays inside the item's own text and per-project sections were considered
+  and rejected — and items past ~15 are reported for pruning rather than appended in silence. The
+  exception to "augment mode never rewrites" is now declared in all three places that stated it
+  absolutely (#142).
+
 - **`EXPERIMENTS.md`'s "never an experiment" list is a declared subset, not a copy.** The template
   told the skill to copy `github-plan-build`'s escalation list "so the two say the same thing", and
   a real run followed it literally: it copied the escalation list and **deleted** "changes touching

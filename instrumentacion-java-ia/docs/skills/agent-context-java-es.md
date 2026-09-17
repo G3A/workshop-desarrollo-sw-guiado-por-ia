@@ -33,7 +33,12 @@ argumento. Fuera de eso, trabaja sobre el repositorio en el que se ejecuta.
    persistencia, configuración) y revisa el `README` y las entidades del dominio para tener
    material para las preguntas siguientes. Además decide si el repositorio tiene **interfaz**
    (plantillas, estáticos, un subproyecto frontend, controladores que devuelven vistas o una suite
-   de navegador) y, si la tiene, lee los tokens y componentes que ya existen.
+   de navegador) y, si la tiene, lee los tokens y componentes que ya existen. Resuelve también la
+   **URL web del repositorio** —con su host, preguntándole a `gh` por la URL de `origin`, no por el
+   repositorio «base», que en un fork es el ajeno— y la rama de integración: la que declare tu
+   `AGENTS.md`, y si no la declara, la rama por defecto. Eso es lo que la plantilla de PR necesita
+   para enlazar `REVIEW.md` por URL absoluta, y por eso funciona igual en GitHub Enterprise. Si no
+   hay remoto usable, deja un `TODO` en ese enlace y lo dice: no inventa la URL.
 2. **Entrevista** — hace alrededor de diez preguntas (menos en un repo bien documentado, más en
    uno legado y sin documentar), agrupadas en tandas: qué documentos opcionales generar, cómo
    proceder si ya hay documentación, ambigüedades que la lectura del código no resolvió, datos que
@@ -56,6 +61,14 @@ argumento. Fuera de eso, trabaja sobre el repositorio en el que se ejecuta.
    no lee `REVIEW.md` nunca y sigue `CLAUDE.md` en todos los niveles de la jerarquía. Por eso, si
    el proyecto está en una subcarpeta, `REVIEW.md` y la plantilla de PR salen a la raíz del
    repositorio aunque la skill la hayas corrido dentro de tu carpeta.
+
+   Dos detalles que se ven poco y cuestan caro cuando faltan. **El título de `REVIEW.md` nombra el
+   repositorio, no el proyecto**: el archivo vive en la raíz y puede llegar a cubrir varias piezas,
+   así que titularlo con el repositorio evita que la segunda corrida deje el nombre del primer
+   proyecto. Y **el enlace de la plantilla de PR es una URL absoluta**, no `../REVIEW.md`: como
+   archivo en `.github/` la ruta relativa resuelve bien, pero GitHub copia la plantilla tal cual al
+   cuerpo de la PR —el único sitio donde alguien hace clic en ese enlace— y ahí una ruta relativa
+   da 404.
 5. **Validación de afirmaciones** — antes de terminar, revisa las afirmaciones importantes que
    escribió (versión del build tool, JDK objetivo, framework de persistencia, comandos, entidades
    clave) y confirma con el usuario las que tienen baja confianza, en vez de dejarlas sin verificar.
@@ -64,9 +77,12 @@ argumento. Fuera de eso, trabaja sobre el repositorio en el que se ejecuta.
    una fila del registro no se propaga sola a los documentos.
 6. **Verificación final** — imprime el árbol de archivos generados o modificados —diciendo a qué
    raíz fue cada uno cuando el proyecto está en una subcarpeta—, confirma que todos los enlaces
-   dentro de `AGENTS.md` y `docs/java.md` apunten a archivos que realmente existen, resolviéndolos
-   desde la carpeta del archivo que los contiene, y recuerda al usuario cómo confirmar el trabajo
-   con `git`.
+   apunten a algo que realmente existe **desde el contexto donde cada enlace se lee**, y recuerda al
+   usuario cómo confirmar el trabajo con `git`. Los de `AGENTS.md` y `docs/java.md` se resuelven
+   desde la carpeta del archivo que los contiene, porque se leen como archivos; el de la plantilla
+   de PR se comprueba como URL, porque se lee en el cuerpo renderizado de una PR. Comprobar un
+   enlace desde donde vive, en vez de desde donde se usa, es la forma de los dos fallos que esta
+   verificación ya dejó pasar.
 
 ## Qué archivos toca o crea
 

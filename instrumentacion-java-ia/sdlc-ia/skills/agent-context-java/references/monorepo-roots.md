@@ -122,6 +122,11 @@ The Phase 2a overwrite confirmation has the same trap: a user who picks "overwri
 about their own project's docs. Never read that answer as permission to overwrite a `REVIEW.md` or
 PR template that belongs to the repository — and possibly to another project.
 
+**One line is the exception**, and only one: `REVIEW.md`'s title, when it still names a project and
+the file has come to cover another. See "When a second Java project arrives" below for the trigger,
+the signature check that keeps this away from a file the team wrote, and why a title earns an
+exception that no item does.
+
 ### One PR template per repository, ever
 
 `REVIEW.md` items get scoped per project; the PR template does not. It has six boxes, one per
@@ -144,22 +149,95 @@ Two mechanisms, both already demonstrated in this monorepo's own `REVIEW.md`:
    from the same file: "*Respeta los límites de módulo que protege `ArquitecturaTest` en
    `base-conocimiento/`*". An item that applies to everything says nothing extra.
 
-**Pre-existing generic items are a finding.** When you append a project's items to a `REVIEW.md`
-written when there was only one project, the old items say things like "the version the `pom.xml`
-pins" — now ambiguous. Report them as needing scoping; do not rewrite them silently and do not
-leave the file half-scoped, which is worse than not scoping at all.
+**Pre-existing generic items are a finding**, and reporting one is not fixing it. When you append a
+project's items to a `REVIEW.md` written when there was only one project, the old items say things
+like "the version the `pom.xml` pins" — now ambiguous. Never rewrite them silently, and never leave
+the file half-scoped, which is worse than not scoping at all. What to do instead, with its trigger
+and its guards: **"When a second Java project arrives"**, below.
+
+## When a second Java project arrives
+
+The `REVIEW.md` at the repository root was written when there was one project. Everything here is
+about the **merge**, and none of it fires unless the trigger says so.
+
+**The trigger, and it is not about where this project sits:** `REVIEW.md` already exists at the
+repository root, it carries the signature below, **and the folder it already covers is not this run's
+project**. That last condition is the whole test. A second run over the *same* project — regenerating
+docs after a refactor — fails it, and rightly: nothing changed about what the file covers.
+
+Do **not** make the trigger "this project is in a subfolder". The mirror case is real and this
+skill's own history produces it: the first project in a subfolder, the second one **at the repository
+root** (empty prefix). Gate on the prefix and the trigger never fires for it, leaving exactly the
+half-scoped file this section exists to prevent.
+
+**The signature, checked before touching anything.** Treat the file as this skill's only if it
+carries the template's shape: the six numbered categories plus the closing "how this list evolves"
+section. If it does not, the file is the team's — report it and change nothing in it. The title
+repair below is the only line this skill ever rewrites, and rewriting a line of a file the team wrote
+by hand is exactly what the augment rule exists to prevent.
+
+**The title.** A `REVIEW.md` this skill wrote before the template started naming the repository is
+titled with a *project*. Rewrite that one line to the repository's name, and say so in the report: the
+single exception to "augment mode never rewrites". It earns the exception because a title is not team
+content — it is a label that is now false about a file covering more than it names. Nothing else is
+rewritten. A title that already names the repository is left alone, and so is one where project and
+repository share a name: there is nothing to change.
+
+**The old generic items.** Add the template's **second conditional preamble sentence**, once,
+declaring that items which do not name a folder were written for the folder the file already covered
+— and report the ambiguous items so a person scopes the ones that matter. That is one line instead of
+fifteen rewrites of the team's text. Two guards: check the sentence is not already there before
+adding it (three projects would otherwise leave three near-identical sentences), and keep it phrased
+as an assumption, because if anyone added items by hand the sentence covers those too without being
+true. The report says that, rather than letting the file assert it.
+
+**The organization does not change.** The folder goes inside the item's own text, as above; no
+per-project sections, and no prefix or tag. A second project does **not** bring its own list of
+fifteen — it adds only the items genuinely its own, for the reason `SKILL.md` already gives under
+"Tailor, do not pad". Per-project sections were considered and rejected: with three or four projects
+they read better, and they multiply a list whose whole value is that people reach the end of it. If
+the new project's items would push the file past ~15, report it so the team prunes, instead of
+growing the file in silence.
 
 ## Cross-root links
 
 `AGENTS.md` lives in the project and lists every doc. Its link to `REVIEW.md` must climb out of the
 project: one `../` per segment of the `--show-prefix` value (`base-conocimiento/` → `../REVIEW.md`).
-The PR template's own `../REVIEW.md` needs no adjustment — it is relative to `.github/`, and with
-both files at the repository root it resolves as written.
+**The PR template is the exception, and it is not a path problem but a context one.** Its link to
+`REVIEW.md` must be an **absolute URL**, with both values from Phase 1a:
+`<repository-url>/blob/<integration-branch>/REVIEW.md`.
 
-**Verify every link from the directory of the file that contains it**, not from the working
-directory. This is not a hypothetical: the Phase 6 link check already existed and did not catch
-this bug, because resolving `../REVIEW.md` from the wrong starting point found a `REVIEW.md` that
-no reader would ever load.
+- **The base is `gh repo view`'s `url`, host included** — not `nameWithOwner` behind a written-out
+  `https://github.com/`. `gh` authenticates against GitHub Enterprise just as happily, and a
+  hardcoded host sends those teams to a public path that 404s, or to an unrelated repository that
+  happens to share the slug. Either way the link looks fine.
+- **Pin it to `origin` by passing `origin`'s URL to `gh repo view`.** Bare `gh repo view` resolves the
+  base repo from the remote set and prefers `upstream`: on a fork, or in a repo with a mirror remote
+  like this monorepo's, it answers about the *other* repository. Passing the URL in is also what keeps
+  "never parse the remote URL" true — `gh` parses it, so SSH, HTTPS and `.git`-suffixed shapes stop
+  being three regexes written twice because PowerShell and bash disagree.
+- **The integration branch before the default branch**, because a repo that integrates on `dev` and
+  releases to `main` is the common case, and the criteria a reviewer needs are the ones on the branch
+  the PR targets — not the ones last released.
+
+As a file in `.github/`, `../REVIEW.md` resolves perfectly; in the
+**rendered body of a PR**, which is the only place anyone clicks it, it 404s. GitHub copies the
+template verbatim into the PR body and rewrites no relative paths, so the browser resolves it against
+the PR's own URL (`/owner/repo/pull/123/../REVIEW.md`).
+
+**Verify every link from the context where it is read**, not from the working directory. Two contexts,
+two checks:
+
+| Link | Read as | Verified from |
+|---|---|---|
+| `AGENTS.md` → `REVIEW.md` | a file, by the agent | the directory of the file containing it |
+| PR template → `REVIEW.md` | a URL, in a rendered PR body | the string, against Phase 1a's values |
+
+This is not a hypothetical, and the Phase 6 check has now missed a bug for each reason: resolving
+`../REVIEW.md` from the wrong starting point found a `REVIEW.md` no reader would ever load, and
+resolving the PR template's link from `.github/` reported green over a link that 404s for every
+reviewer. Checking a link from where it happens to live, rather than from where it is used, is the
+shape of both failures.
 
 ## The orphan from an earlier run
 
