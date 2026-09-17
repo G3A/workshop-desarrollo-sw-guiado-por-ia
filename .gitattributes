@@ -1,0 +1,31 @@
+# Normalizacion de fin de linea para lo que vive en la RAIZ del monorepo.
+#
+# Las tres piezas ya tenian el suyo --base-conocimiento/, instrumentacion-java-ia/ y
+# playbook-sdlc-ia/--, y un .gitattributes de subdirectorio le gana a este para lo que cuelga de
+# el, asi que ninguna cambia de comportamiento. Lo que no tenia ninguno era la raiz: docs/,
+# scripts/, manuales/, .github/ y los .md de arriba se clonaban con CRLF en Windows.
+#
+# No es cosmetico. En #155 eso rompio el sensor del espejo: en una regex de JS el \r ES terminador
+# de linea, asi que `.` no lo matchea y un `$` al final del patron nunca cierra. Las 23 vinetas del
+# ADR salian "ilegibles" en la maquina de quien edita ese ADR mientras el runner Linux daba verde
+# --un sensor inutil justo donde ocurre el cambio--. Y deja los nueve scripts/agent-hooks/*.sh con
+# el CRLF que produce "bad interpreter: /bin/sh^M", el mismo fallo que el .gitattributes de
+# base-conocimiento/ documenta para mvnw y los .sh de esa pieza.
+#
+# Esto NO reescribe historia: los blobs ya estan en LF (verificado en #155 con `git cat-file`: 0 de
+# 104 archivos de texto de la raiz tienen CRLF guardado). Lo que fija es el arbol de TRABAJO, que
+# es donde `core.autocrlf=true` mete el CRLF al hacer checkout.
+* text=auto eol=lf
+
+# Explicitos porque su fallo es silencioso o confuso, no porque `text=auto` los detecte mal.
+*.sh   text eol=lf
+*.mjs  text eol=lf
+
+# Windows los quiere con CRLF: PowerShell 5.1 y cmd.exe son quisquillosos con los .ps1 y .bat.
+*.ps1  text eol=crlf
+*.bat  text eol=crlf
+
+# Binarios que hay hoy en la raiz. `text=auto` los detectaria por sus bytes NUL, pero declararlos
+# es lo que ya hacen las tres piezas y no depende de una heuristica.
+*.png  binary
+*.jpg  binary
