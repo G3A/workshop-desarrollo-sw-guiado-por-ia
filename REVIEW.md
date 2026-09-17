@@ -22,6 +22,12 @@ lista es solo para lo que exige criterio.
 - [ ] **Las opciones de configuración existen y hacen lo que el diff supone.** Una propiedad
       inventada no falla: se ignora en silencio, y el comportamiento por defecto se lleva la culpa
       meses después.
+- [ ] **Un comentario que afirma cómo se comporta la herramienta es una afirmación, no
+      documentación.** Orden de ejecución, valores por defecto, qué filtra cada campo: si el diff lo
+      asegura en prosa, la PR dice de dónde salió — la documentación oficial, o el experimento que
+      lo comprobó. En #144 un comentario aseguraba que lefthook corre los comandos en orden de
+      declaración; los corre alfabéticamente, así que el gate de un segundo quedaba detrás del de
+      dos minutos, haciendo exactamente lo contrario de lo que el comentario prometía.
 - [ ] **Ninguna dependencia nueva entró sin justificación.** Si el diff agrega una, la PR dice por
       qué no bastaba lo que ya había.
 
