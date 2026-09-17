@@ -74,6 +74,14 @@ git ls-tree -r origin/dev                                                       
 El `sed` no es adorno: sin él, el listado del monorepo prefija cada ruta con `base-conocimiento/` y
 la comparación marca como distintos el 100 % de los archivos.
 
+**El clon local puede estar atrasado.** Por eso la receta dice `origin/dev` y no `dev`, y por eso va
+precedida de un `git fetch`; para una pregunta puntual —«¿el sandbox tiene este archivo?»— es más
+directo preguntarle al remoto:
+`gh api repos/G3A/base-conocimiento-sandbox/contents/<ruta>?ref=dev`. Un `grep` sobre el árbol local
+responde por la copia que uno tiene, no por el repositorio: en #144 ese clon estaba 15 PR atrás y
+dio un falso negativo —«el sandbox no tiene este sensor»— que estuvo a punto de entrar a un plan
+como un hecho, y con él una divergencia que nadie habría anotado.
+
 ### Qué difiere a propósito
 
 **Difieren por contenido (9 archivos), y no deben sincronizarse:**
@@ -144,7 +152,7 @@ divergencia legítima, para que la próxima comparación de árboles no los lea 
   sesión que trabaje únicamente en el sandbox no lo ve. Se maneja con la fila del `claims-ledger`
   del sandbox, que sí apunta a la regla, y con que todo espejo se hace desde el monorepo. Además,
   esta lista envejece: hay que actualizarla en el mismo PR que cree o cierre una divergencia, y
-  nada lo verifica a máquina.
+  nada lo verifica a máquina — el sensor que lo haría está propuesto en #155.
 - **Qué haría reconsiderar**: que los dos repos dejen de mantenerse equivalentes —por ejemplo, si el
   sandbox se congela como material didáctico de una versión concreta— o que aparezca un sensor que
   compare los dos árboles en CI. Lo segundo es lo que convertiría esta lista en una regla
