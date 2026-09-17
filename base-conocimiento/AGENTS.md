@@ -43,11 +43,13 @@ prefiérelo a `./mvnw`/`docker compose` a mano: el `Makefile` resuelve perfiles 
   ([ADR-0003](docs/adrs/0003-no-embeber-texto-crudo.md)).
 - **`spring-boot-flyway` es un módulo aparte de `flyway-core`** en Spring Boot 4: si falta, la app
   arranca contra una base vacía sin correr ninguna migración.
-- **`lefthook.yml`, `.github/workflows/ci.yml`, `.claude/settings.json`, `.mcp.json` y
-  `scripts/verificar-enlaces.mjs` viven en la raíz del monorepo**, no aquí: lefthook, Actions y
-  Claude Code solo los buscan en la raíz del repositorio git, y el sensor de enlaces se mudó ahí en
-  #144 porque cubre los `.md` de todo el monorepo, no solo los de esta pieza. `make hooks` se corre
-  desde la raíz.
+- **`lefthook.yml`, `.github/workflows/ci.yml`, `.claude/settings.json`, `.mcp.json`,
+  `scripts/verificar-enlaces.mjs` y `scripts/verificar-espejo.mjs` viven en la raíz del monorepo**,
+  no aquí: lefthook, Actions y Claude Code solo los buscan en la raíz del repositorio git; el sensor
+  de enlaces se mudó ahí en #144 porque cubre los `.md` de todo el monorepo, no solo los de esta
+  pieza; y el del espejo (#155) compara esta carpeta entera contra
+  `base-conocimiento-sandbox`, así que necesita ver las dos raíces. `make hooks` se corre desde la
+  raíz.
 - **El `Makefile` fija su propio `SHELL` en Windows** (el `sh.exe` de Git for Windows): sin eso,
   `make` desde PowerShell cae a `cmd.exe`. Por lo mismo las recetas usan `sh ./mvnw`, no `./mvnw`:
   GNU Make para Windows ejecuta `./algo` sin pasar por el shell.
