@@ -12,6 +12,11 @@ contexto:
   del método NO cubre el plugin todavía.
 - `docs/adrs/` — decisiones que atraviesan el monorepo (ramas, liberaciones). Las de cada pieza
   viven en su carpeta.
+- `scripts/` — lo que es del repositorio entero y no de una pieza: los hooks del agente
+  (`agent-hooks/`, solo para Claude Code) y `verificar-enlaces.mjs`, el sensor que revisa los
+  enlaces de todos los `.md`. Los dos sensores del monorepo piden **node >= 18** en el PATH, y desde
+  #144 el de enlaces corre también en el pre-push, no solo en CI. El del playbook vive junto a lo
+  que verifica (`playbook-sdlc-ia/verificar-cobertura.mjs`).
 - `REVIEW.md` — qué mirar en un diff ya escrito (lo lee el servicio de Code Review; no repite las
   reglas de generación de los `AGENTS.md`). `EXPERIMENTS.md` — el acuerdo sobre qué puede fallar
   con el agente; sus pendientes los completa el equipo.
