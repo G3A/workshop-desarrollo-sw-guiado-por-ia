@@ -67,6 +67,7 @@ const MINIMO_ENTRADAS = 100;
 const ESPEJADO_SALVO_CABECERA = 'scripts/verificar-enlaces.mjs';
 
 const barras = ruta => ruta.split(path.sep).join('/');
+const dormir = ms => new Promise(resolver => setTimeout(resolver, ms));
 
 // Corta la corrida con un motivo escrito. No es una divergencia: es que el sensor no pudo trabajar.
 class Abortar extends Error {
@@ -133,8 +134,11 @@ function bloqueDelAdr(texto, nombre) {
 function entradasDeLista(bloque, nombre) {
   const entradas = [];
   for (const linea of bloque.split('\n')) {
-    if (!/^\s*-\s/.test(linea)) continue;
-    const m = linea.match(/^\s*-\s+`([^`]+)`\s+(?:—|--)\s+(\S.*)$/);
+    // Solo las vinetas de primer nivel son entradas. Una sub-vineta indentada bajo una razon es
+    // Markdown valido y no viola ninguna de las tres reglas de escritura del ADR: tratarla como
+    // entrada pondria el CI en rojo hablando del formato en vez de un problema real.
+    if (!/^-\s/.test(linea)) continue;
+    const m = linea.match(/^-\s+`([^`]+)`\s+(?:—|--)\s+(\S.*)$/);
     if (!m) {
       falla(`${ADR} (espejo:${nombre}): entrada ilegible -> ${linea.trim()}`);
       continue;
@@ -229,12 +233,19 @@ async function pedir(url) {
     let respuesta;
     try {
       respuesta = await fetch(url, { headers: cabeceras, signal: AbortSignal.timeout(20_000) });
+      // El cuerpo se lee DENTRO del try, y no con un `return respuesta.json()` afuera: un timeout
+      // que salta mientras baja el arbol, o un 200 que trae una pagina de mantenimiento en vez de
+      // JSON, tiene que caer en el reintento y en el mensaje de "no pudo ver el otro arbol". Si
+      // escapa de aca sale como una traza cruda, que es justo el caso para el que se escribio la
+      // decision 5 de la cabecera.
+      if (respuesta.ok) return await respuesta.json();
     } catch (error) {
       ultima = `no hubo respuesta (${error.name}: ${error.message})`;
+      await dormir(2000);
       continue;
     }
-    if (respuesta.ok) return respuesta.json();
     const restantes = respuesta.headers.get('x-ratelimit-remaining');
+    const reintentarEn = Number(respuesta.headers.get('retry-after'));
     // El cuerpo se descarta explicitamente: una respuesta sin leer deja el socket ocupado.
     await respuesta.body?.cancel();
     ultima = `HTTP ${respuesta.status}`;
@@ -247,6 +258,10 @@ async function pedir(url) {
     }
     // Solo un 5xx o un 429 merecen el segundo intento; un 404 va a dar 404 de nuevo.
     if (respuesta.status < 500 && respuesta.status !== 429) break;
+    // Con espera, y respetando Retry-After. Un reintento inmediato contra un limite secundario de
+    // GitHub vuelve a fallar milisegundos despues y encima consume cuota: no compra nada en el
+    // unico escenario --el rate limit-- para el que el workflow cablea el token.
+    await dormir(Math.min(reintentarEn > 0 ? reintentarEn : 3, 30) * 1000);
   }
   abortar(
     `No se pudo alcanzar ${SANDBOX}@${RAMA_SANDBOX}: ${ultima}`,
@@ -264,6 +279,9 @@ async function arbolSandbox() {
       'Ese endpoint no pagina: hay que recorrerlo nivel por nivel. Ver #155.',
     );
   }
+  if (!Array.isArray(json.tree)) {
+    abortar(`La API respondio 200 pero sin arbol para ${SANDBOX}@${RAMA_SANDBOX}.`);
+  }
   const arbol = new Map();
   for (const entrada of json.tree) {
     if (entrada.type !== 'blob') continue;
@@ -275,7 +293,16 @@ async function arbolSandbox() {
 
 async function contenidoSandbox(sha) {
   const json = await pedir(`https://api.github.com/repos/${SANDBOX}/git/blobs/${sha}`);
-  return Buffer.from(json.content, json.encoding === 'base64' ? 'base64' : 'utf8').toString('utf8');
+  // Un blob de mas de 1 MB vuelve con content vacio y encoding "none". Decodificarlo daria una
+  // cadena vacia, y el sensor terminaria culpando a la cabecera del archivo por no encontrar su
+  // primer `import` en vez de decir que no pudo bajar el blob.
+  if (json.encoding !== 'base64' || !json.content) {
+    abortar(
+      `El blob ${sha.slice(0, 8)} de ${SANDBOX} no vino en base64 (encoding: ${json.encoding}).`,
+      'La API no devuelve en linea los blobs de mas de 1 MB.',
+    );
+  }
+  return Buffer.from(json.content, 'base64').toString('utf8');
 }
 
 // --- Comparar --------------------------------------------------------------------------------
@@ -352,6 +379,16 @@ async function comparar() {
       continue;
     }
     explicadas.difieren.add(ruta);
+    // Estar en la lista explica una divergencia de CONTENIDO, que es lo unico que el ADR declara.
+    // Sin esta linea, un `chmod +x` sobre cualquiera de los 9 archivos listados pasaria en silencio
+    // --la entrada lo daria por explicado-- y la decision 1 de la cabecera quedaria en nada justo
+    // sobre los archivos que mas se tocan.
+    if (local.modo !== remoto.modo) {
+      falla(
+        `modo distinto: ${ruta} es ${local.modo} aca y ${remoto.modo} en el sandbox; el ADR solo` +
+          ' declara para este archivo una divergencia de contenido.',
+      );
+    }
   }
 
   for (const ruta of sandbox.keys()) {
@@ -403,8 +440,13 @@ async function comparar() {
     return inicio === -1 ? null : lineas.slice(inicio).join('\n');
   };
   const enlacesSandbox = sandbox.get(ESPEJADO_SALVO_CABECERA);
-  if (enlacesSandbox && raizMonorepo.has(ESPEJADO_SALVO_CABECERA)) {
-    const aca = cuerpoDe(fs.readFileSync(path.join(RAIZ, ESPEJADO_SALVO_CABECERA), 'utf8'));
+  const enlacesLocal = raizMonorepo.get(ESPEJADO_SALVO_CABECERA);
+  if (enlacesSandbox && enlacesLocal) {
+    // Del blob de HEAD (`cat-file`), no del arbol de trabajo: todo el resto de la comparacion mira
+    // el commit que el reporte anuncia, y leer el disco aca inventaria una divergencia que ese
+    // commit no tiene --o escondería una que si--. Se pasa el sha, no la ruta: `git show ref:ruta`
+    // lleva dos puntos, que MSYS reescribe como si fuera una lista de rutas de Windows.
+    const aca = cuerpoDe(git('cat-file', 'blob', enlacesLocal.sha));
     const alla = cuerpoDe(await contenidoSandbox(enlacesSandbox.sha));
     if (aca === null || alla === null) {
       falla(`${ESPEJADO_SALVO_CABECERA}: no se hallo el primer "import" para separar la cabecera.`);
@@ -416,8 +458,15 @@ async function comparar() {
     }
   }
 
-  const sha = git('rev-parse', 'HEAD').trim();
-  const ref = git('rev-parse', '--abbrev-ref', 'HEAD').trim();
+  // En un evento pull_request, actions/checkout deja HEAD desprendido sobre un merge commit
+  // efimero: `--abbrev-ref` devuelve literalmente "HEAD" y ese SHA no lo puede traer nadie despues.
+  // El ADR promete que este reporte sirve para reproducir un rojo, asi que en CI el nombre de la
+  // rama y el SHA de su punta llegan cableados desde el workflow.
+  const sha = process.env.ESPEJO_SHA || git('rev-parse', 'HEAD').trim();
+  const ref =
+    process.env.ESPEJO_REF ||
+    process.env.GITHUB_HEAD_REF ||
+    git('rev-parse', '--abbrev-ref', 'HEAD').trim();
   console.log(
     `Espejo: ${PREFIJO} en ${ref} (${sha.slice(0, 8)}), ${espejado.size} archivos` +
       ` <-> ${SANDBOX}@${RAMA_SANDBOX}, ${sandbox.size} archivos.`,
