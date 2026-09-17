@@ -2,7 +2,13 @@
 
 ## Estado
 
-Aceptado — 2026-09-16.
+**Reemplazado por [ADR-0003](0003-el-adr-como-fuente-de-datos-del-sensor-de-espejo.md)**, el
+2026-09-17. Aceptado el 2026-09-16.
+
+Su decisión —registrar la relación espejo y su lista de divergencias en un ADR de la raíz del
+monorepo— sigue vigente; el 0003 la hereda y agrega que la lista la lee un sensor del CI. El
+reemplazo es el que este mismo ADR anunció en «Qué haría reconsiderar». **Las listas de abajo son
+historia: las vigentes están en el 0003.**
 
 ## Contexto
 
