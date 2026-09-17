@@ -89,6 +89,26 @@ jobs:
         working-directory: .
         run: node playbook-sdlc-ia/verificar-cobertura.mjs
 
+      # Sensor del espejo con el sandbox (#155): una diferencia entre base-conocimiento/ y la raiz
+      # de G3A/base-conocimiento-sandbox que el ADR-0003 no explique falla aca. Hasta este issue la
+      # lista de divergencias se mantenia a mano y el propio ADR lo admitia. Corre en la raiz.
+      #
+      # El bloque `env:` NO es opcional, a diferencia de los dos sensores de arriba: este sale a la
+      # red, y en Actions secrets.GITHUB_TOKEN no esta en el entorno por si solo. Sin cablearlo el
+      # fetch sale anonimo -- 60 peticiones/hora por IP, desde IPs compartidas de runners --, o sea
+      # rojos intermitentes sin relacion con el repo. El sandbox es publico: el token es por cuota,
+      # no por permiso.
+      - name: Mirror with the sandbox is explained
+        working-directory: .
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # En una PR el checkout deja HEAD sobre un merge commit efimero, asi que el sensor
+          # reportaria "en HEAD (<sha que nadie puede traer>)". El ADR promete que ese reporte
+          # sirve para reproducir un rojo: la rama y la punta real llegan desde aca.
+          ESPEJO_REF: ${{ github.head_ref || github.ref_name }}
+          ESPEJO_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/verificar-espejo.mjs
+
       - name: Publish test results
         if: always()
         uses: actions/upload-artifact@v7
