@@ -74,9 +74,12 @@ jobs:
       - name: Run the same gates as local
         run: make ci
 
-      # Sensor de enlaces (#128): un enlace relativo o un ancla de la documentacion de
-      # base-conocimiento que no resuelve falla aca. En #120 aparecieron dos que nadie veia.
+      # Sensor de enlaces (#128, #144): un enlace o un ancla de CUALQUIER .md del monorepo que no
+      # resuelve falla aca. En #120 aparecieron dos anclas rotas que nadie veia. Mira la raiz del
+      # repositorio desde #144, porque hasta entonces no veia REVIEW.md ni la plantilla de PR, que
+      # es justo donde estaba el enlace roto de #121. Corre en la raiz, no en base-conocimiento/.
       - name: Docs links resolve
+        working-directory: .
         run: node scripts/verificar-enlaces.mjs
 
       # Sensor del playbook (#117): una caja que cambia de badge sin que cambien su dato B(), su

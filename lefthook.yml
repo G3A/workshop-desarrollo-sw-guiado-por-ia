@@ -20,6 +20,14 @@ pre-commit:
 
 pre-push:
   commands:
+    # Primero, y sin `root:`: el sensor cubre todo el monorepo y su ruta es relativa a la raiz del
+    # repositorio. Va antes que `make check` a proposito -- pre-push no es `parallel`, asi que los
+    # comandos corren en orden, y `make check` tarda mas de dos minutos: no tiene sentido esperarlo
+    # para enterarte de un enlace roto que se ve en un segundo. Hasta #144 este sensor solo corria
+    # en CI, o sea que la rotura se descubria despues del push.
+    enlaces:
+      run: node scripts/verificar-enlaces.mjs
+      fail_text: "Broken doc links. Fix them before pushing."
     base-conocimiento-check:
       root: "base-conocimiento/"
       run: make check
