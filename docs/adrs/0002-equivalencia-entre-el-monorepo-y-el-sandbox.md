@@ -108,9 +108,12 @@ Comprobarlos exige comparar contra la raíz del monorepo, no contra `base-conoci
 monorepo se mudó a la raíz, así que la receta lo lista como «solo en el sandbox» por la misma razón
 que a los tres anteriores. La simetría que vale recordar: en los **dos** repos el sensor está en
 `scripts/verificar-enlaces.mjs` respecto de su propia raíz, de modo que el mismo contenido sirve tal
-cual en ambos. **Pendiente al escribir esto:** el sandbox conserva la versión anterior, la que solo
-mira cuatro archivos fijos; el espejo va en su propio PR. Hasta que entre, los dos blobs difieren
-sin que sea una divergencia deliberada.
+cual en ambos. **Espejado con el PR #44 del sandbox:** los dos tienen el mismo cuerpo de script.
+Difieren solo en la cabecera de comentarios, y es deliberado — la del sandbox nombra los issues de
+este repositorio como espejo y no habla del plugin, que allá no existe —, así que es una divergencia
+de la misma clase que la de `docs/java.md`. Ojo con la trampa: como el archivo ya no está bajo
+`base-conocimiento/`, **la receta de comparación de arriba no lo alcanza**; comprobarlo es
+`git rev-parse dev:scripts/verificar-enlaces.mjs` en cada repo.
 
 **Los tres archivos de la raíz, desde #141:** `REVIEW.md`, `.github/pull_request_template.md` y
 `EXPERIMENTS.md` pasan a estar en los dos repos —en el sandbox con la PR #43, que es la que espeja
