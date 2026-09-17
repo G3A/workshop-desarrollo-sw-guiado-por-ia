@@ -80,9 +80,25 @@ for (const ruta of indice) {
 
 // De git@github.com:G3A/repo.git y de https://github.com/G3A/repo.git sale el mismo G3A/repo. Sirve
 // igual en el sandbox espejo, que tiene este archivo en la misma ruta y otro remoto.
-const remoto = git('remote', 'get-url', 'origin').trim();
-const propio = remoto.match(/github\.com[:/](.+?)(?:\.git)?\/?$/i);
-const PREFIJO_PROPIO = propio ? `https://github.com/${propio[1]}/blob/` : null;
+//
+// Opcional a proposito: una copia sin `origin` -- un `git init` local, o un clon cuyo remoto se
+// llame `upstream` -- se queda sin el chequeo de enlaces absolutos, no sin sensor. Abortar ahi
+// bloquearia todo `git push` por un error de git, no por un enlace roto.
+function gitOpcional(...args) {
+  try {
+    const opciones = { cwd: RAIZ, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] };
+    return execFileSync('git', args, opciones).trim();
+  } catch {
+    return null;
+  }
+}
+
+const remoto = gitOpcional('remote', 'get-url', 'origin');
+const propio = remoto && remoto.match(/github\.com[:/](.+?)(?:\.git)?\/?$/i);
+const REPO_PROPIO = propio ? propio[1].toLowerCase() : null;
+
+// blob/ y tree/ (un enlace a un directorio se escribe con tree/), con o sin www.
+const URL_PROPIA = /^https?:\/\/(?:www\.)?github\.com\/(.+?)\/(?:blob|tree)\/(.+)$/i;
 
 // Quita los bloques de codigo cercados y, salvo que se pida conservarlo, el codigo en linea, sin
 // tocar los saltos de linea para que los numeros de linea sigan valiendo: un [x](y) dentro de
@@ -182,9 +198,10 @@ for (const archivo of archivos) {
       if (/^[a-z][a-z0-9+.-]*:/i.test(destino)) {
         // http:, https:, mailto: de otros dominios no son asunto de este sensor; los del propio
         // repositorio si (#144).
-        if (!PREFIJO_PROPIO || !destino.startsWith(PREFIJO_PROPIO)) continue;
+        const propia = REPO_PROPIO && destino.match(URL_PROPIA);
+        if (!propia || propia[1].toLowerCase() !== REPO_PROPIO) continue;
         absolutos++;
-        const resto = destino.slice(PREFIJO_PROPIO.length);
+        const resto = propia[2];
         const corte = resto.indexOf('/');
         if (corte === -1) {
           fallas.push(`${donde}: ${destino} -> le falta la ruta despues de la rama`);
@@ -209,6 +226,14 @@ for (const archivo of archivos) {
       const [ruta, ancla] = partir(destino);
       if (!ruta) {
         revisarAncla(donde, destino, archivo, ancla, cacheAnclas);
+        continue;
+      }
+      // Un enlace que empieza por "/" no apunta a la raiz del repositorio: GitHub lo resuelve desde
+      // la raiz del SITIO, asi que [x](/docs/a.md) va a github.com/docs/a.md y da 404.
+      if (ruta.startsWith('/')) {
+        fallas.push(
+          `${donde}: ${destino} -> empieza por "/", que GitHub resuelve desde la raiz del sitio`,
+        );
         continue;
       }
       const objetivo = path.posix.normalize(path.posix.join(path.posix.dirname(archivo), ruta));

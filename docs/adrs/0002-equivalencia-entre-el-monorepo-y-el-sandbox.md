@@ -90,8 +90,9 @@ la comparación marca como distintos el 100 % de los archivos.
 `scripts/agent-hooks/*.sh`, —desde #141— `REVIEW.md`, `.github/pull_request_template.md` y
 `EXPERIMENTS.md`, y —desde #144— `scripts/verificar-enlaces.mjs`. En el monorepo sus equivalentes viven en la raíz del repositorio, una carpeta más
 arriba de `base-conocimiento/`, así que la comparación de árboles los ve como ausentes sin que falte
-nada. **Los tres últimos son el caso que más confunde**: existen en los dos repos, con el mismo
-contenido salvo lo que se dice abajo, y aun así la receta los lista como «solo en el sandbox».
+nada. **`REVIEW.md`, `.github/pull_request_template.md` y `EXPERIMENTS.md` son el caso que más
+confunde**: existen en los dos repos, con el mismo contenido salvo lo que se dice abajo, y aun así
+la receta los lista como «solo en el sandbox».
 Comprobarlos exige comparar contra la raíz del monorepo, no contra `base-conocimiento/`.
 
 **`scripts/verificar-enlaces.mjs`, desde #144:** hasta ese issue vivía en

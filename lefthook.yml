@@ -20,14 +20,20 @@ pre-commit:
 
 pre-push:
   commands:
-    # Primero, y sin `root:`: el sensor cubre todo el monorepo y su ruta es relativa a la raiz del
-    # repositorio. Va antes que `make check` a proposito -- pre-push no es `parallel`, asi que los
-    # comandos corren en orden, y `make check` tarda mas de dos minutos: no tiene sentido esperarlo
-    # para enterarte de un enlace roto que se ve en un segundo. Hasta #144 este sensor solo corria
-    # en CI, o sea que la rotura se descubria despues del push.
+    # Sin `root:`: el sensor cubre todo el monorepo y su ruta es relativa a la raiz del repositorio.
+    #
+    # `priority: 1` no es adorno y el orden de declaracion NO alcanza: lefthook ordena los comandos
+    # secuenciales ALFABETICAMENTE, asi que sin esto "base-conocimiento-check" correria primero por
+    # su nombre. Y ese `make check` tarda mas de dos minutos: no tiene sentido esperarlo para
+    # enterarte de un enlace roto que se ve en un segundo. Un comando sin `priority` corre al final.
+    # https://lefthook.dev/configuration/priority/
+    #
+    # Hasta #144 este sensor solo corria en CI, o sea que la rotura se descubria despues del push.
+    # Necesita node >= 18 en el PATH, que antes solo hacia falta en el runner.
     enlaces:
+      priority: 1
       run: node scripts/verificar-enlaces.mjs
-      fail_text: "Broken doc links. Fix them before pushing."
+      fail_text: "Broken doc links (or node missing from PATH). See scripts/verificar-enlaces.mjs."
     base-conocimiento-check:
       root: "base-conocimiento/"
       run: make check
