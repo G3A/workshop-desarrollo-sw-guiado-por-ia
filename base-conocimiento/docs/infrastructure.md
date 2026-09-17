@@ -63,8 +63,9 @@ TLS terminator). No está en el repo — es conocimiento operativo del equipo. -
 
 - **Herramienta:** GitHub Actions. `.github/workflows/ci.yml` vive en la **raíz del monorepo**, no
   en `base-conocimiento/` (Actions solo lee workflows ahí). El job corre con
-  `working-directory: base-conocimiento` por defecto, y los dos pasos que cubren el monorepo entero
-  —el sensor de enlaces y el del playbook— lo sobrescriben con `working-directory: .`.
+  `working-directory: base-conocimiento` por defecto, y los tres pasos que cubren el monorepo entero
+  —el sensor de enlaces, el del playbook y el del espejo con el sandbox— lo sobrescriben con
+  `working-directory: .`.
 - **Trigger:** toda PR, más cada push a `dev` y `main`. Un push a una rama sin PR no corre CI: ahí
   avisa el pre-push local (`make check`). Un segundo push al mismo ref cancela la corrida anterior.
   El job `check` no tiene `if`: un job saltado por un condicional cuenta como exitoso para un check
@@ -72,9 +73,11 @@ TLS terminator). No está en el repo — es conocimiento operativo del equipo. -
 - **Pasos (job `check`):** instala gitleaks 8.30.1 (con verificación de checksum) y JDK 25, corre
   `make ci` (lint, build, pruebas y escaneo de secretos), el sensor de enlaces de todo el monorepo
   —desde #144 también corre en el pre-push, antes que `make check`— y publica los reportes de
-  Surefire como artefacto. El mismo workflow verifica además el playbook;
-  el CHANGELOG del plugin lo verifica un workflow aparte, `liberacion.yml`, solo en las PR hacia
-  `main`.
+  Surefire como artefacto. El mismo workflow verifica además el playbook y, desde #155, el espejo
+  con `base-conocimiento-sandbox`: ese último es el único paso que **sale a la red**, así que lleva
+  `GITHUB_TOKEN` cableado en su `env:` —en Actions el secreto no está en el entorno por sí solo— y
+  no corre en el pre-push. El CHANGELOG del plugin lo verifica un workflow aparte, `liberacion.yml`,
+  solo en las PR hacia `main`.
 - **CD:** no hay. El camino a producción sigue siendo **manual**: `make up` a mano cuando hace falta.
 
 ## Agente de IA (hooks y MCP)
