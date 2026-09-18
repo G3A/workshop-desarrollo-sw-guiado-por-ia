@@ -149,7 +149,11 @@ en la lista de pendientes o no va en ninguna.
 
 - el `REVIEW.md` del sandbox no lleva el bloque condicional del preámbulo ni el prefijo
   `base-conocimiento/` en sus ítems, y no menciona el plugin ni `playbook-sdlc-ia/vendor/`, que allá
-  no existen;
+  no existen. Desde #162 se agrega una cuarta: los ejemplos de sus viñetas citan los issues de
+  **este** repositorio por URL absoluta, no por `#N`, porque allá un `#155` resolvería a su propio
+  issue 155, que es otra cosa. Es la misma solución que el `EXPERIMENTS.md` del sandbox ya usa para
+  citar la skill. Su sección «Qué no reportar» tampoco nombra el sensor del espejo, que solo corre
+  aquí;
 - la plantilla de PR difiere en dos puntos: su comentario final, porque el sandbox mergea por squash
   con el mensaje **por defecto** y el monorepo con el cuerpo de la PR; y el enlace a `REVIEW.md`,
   que es una URL absoluta al propio repositorio y por construcción nunca puede ser idéntica. La URL
@@ -161,10 +165,11 @@ en la lista de pendientes o no va en ninguna.
   lleva el comentario de procedencia que el del monorepo sí tiene.
 
 Los **cuatro límites del permiso** de su sección 2 son los mismos en los dos, palabra por palabra:
-son del equipo, no del repositorio.
+son del equipo, no del repositorio. Los criterios de `REVIEW.md` son de esa misma clase, y desde
+#162 el sensor también los compara — «Los criterios de `REVIEW.md`», más abajo.
 
-**`scripts/verificar-enlaces.mjs` es el único de esta lista con una afirmación de contenido**, y por
-eso es el único que el sensor compara byte a byte: los dos repos tienen **el mismo cuerpo de
+**`scripts/verificar-enlaces.mjs` es el único de esta lista que el sensor compara byte a byte**: los
+dos repos tienen **el mismo cuerpo de
 script** y difieren solo en la cabecera de comentarios —la del sandbox nombra los issues de este
 repositorio como espejo y no habla del plugin, que allá no existe—, así que es una divergencia de la
 misma clase que la de `docs/java.md`. Espejado con el PR #44 del sandbox. La comprobación es el
@@ -185,6 +190,29 @@ sandbox es el resultado deseado, no un error, y que la lista quede sin entradas 
 que sí es un error es que falte el marcador. La regla complementaria a la de arriba: ninguna entrada
 de aquí puede existir en la raíz del monorepo — si existe, no era un residuo.
 
+### Los criterios de `REVIEW.md`
+
+El cuerpo de `REVIEW.md` difiere a propósito —lo dice la lista de arriba—, pero sus **criterios** no
+son del repositorio: son del equipo, exactamente igual que los cuatro límites del permiso de
+`EXPERIMENTS.md`. «¿El comentario promete algo que el código no hace?» no depende de si el repo
+tiene un plugin. Hasta #162 nada lo comprobaba, y tres viñetas llevaban meses derivando.
+
+Lo que se compara, por cada **sección numerada** (`## N · …`): su encabezado y la **secuencia** de
+títulos en negrita de sus viñetas. Lo que queda libre: el cuerpo de cada viñeta —ahí viven
+`base-conocimiento/pom.xml` frente a `pom.xml`, y los ejemplos con su número de issue— y las
+secciones sin número.
+
+Los criterios que valen solo aquí —los que hablan del plugin, del visor o del playbook, que allá no
+existen— se declaran en esta lista y quedan fuera de la comparación:
+
+<!-- espejo:criterios-solo-en-el-monorepo -->
+<!-- /espejo:criterios-solo-en-el-monorepo -->
+
+Una entrada es el título en negrita tal como aparece en `REVIEW.md`, seguido de su razón tras un
+guion largo: `- **El título exacto** — por qué vale solo aquí`. Como `pendientes-de-limpieza`, esta
+lista puede estar vacía —hoy lo está— y eso no es una anomalía; lo que sí sería un error es que
+faltara el marcador.
+
 ### Qué hace el sensor con lo que encuentra
 
 `node scripts/verificar-espejo.mjs`, en el job `check` del CI. Las severidades son la parte que hace
@@ -198,6 +226,14 @@ vivible un gate acoplado a otro repositorio:
 | Una entrada de `solo-en-el-sandbox` no existe en la raíz del monorepo | **rojo** — está mal clasificada |
 | Una entrada de `pendientes-de-limpieza` sí existe en la raíz del monorepo | **rojo** — no era un residuo |
 | El cuerpo de `scripts/verificar-enlaces.mjs` difiere entre los dos repos | **rojo** |
+| Un criterio de `REVIEW.md` está aquí y falta en el sandbox | **rojo** — lo agregó este repositorio y su autor lo puede espejar |
+| Un criterio de `REVIEW.md` está en el sandbox y falta aquí | aviso |
+| Una sección numerada de `REVIEW.md` existe solo aquí / solo en el sandbox | **rojo** / aviso, por la misma razón |
+| El encabezado de una sección que existe en los dos difiere | **rojo** |
+| Los mismos criterios en distinto orden | aviso |
+| `REVIEW.md` falta en cualquiera de los dos repos | **rojo** — sin dos lados no hay comparación |
+| Menos de seis secciones numeradas, o una sección sin viñetas | **rojo**, abortando: es ceguera |
+| Un título en negrita repetido dentro de una sección | **rojo** |
 | Una entrada del ADR que ya no corresponde a ninguna diferencia real | aviso |
 | `pendientes-de-limpieza` encogiendo | aviso, uno por entrada que sobra |
 | `pendientes-de-limpieza` vacía | nada: es su estado final, no una anomalía |
@@ -220,6 +256,24 @@ tocó nada.
 - **`.gitattributes` se compara primero**: tiene `* text=auto eol=lf`, así que una divergencia suya
   cambiaría los blobs de familias enteras de archivos de golpe, y el sensor lo dice en vez de
   escupir decenas de líneas que esconden la causa.
+- **De `REVIEW.md` la garantía es de titular.** Se comparan los encabezados y los títulos en
+  negrita; el cuerpo de cada viñeta queda libre, y con él el ejemplo concreto que el criterio cita.
+  Dos repos pueden tener el mismo título con explicaciones distintas debajo, y esto no lo ve. Que el
+  ejemplo viaje es un acuerdo del equipo, no un gate — y decirlo importa, porque el defecto que este
+  ADR existe para evitar es justamente afirmar más de lo que la máquina comprueba.
+- **Las secciones sin número de `REVIEW.md`**: «Qué no reportar» y «Cómo evoluciona esta lista».
+  La primera difiere a propósito —allá no hay plugin, ni `vendor/`, ni este sensor— y la segunda
+  dice lo mismo en los dos, pero nada lo verifica.
+- **La plantilla `REVIEW.md.template` de `agent-context-java` es una tercera fuente, y no entra.**
+  Es el punto de partida de un repositorio nuevo, no un espejo de estos dos: hoy su sección 6 dice
+  `**Levántalo y úsalo**` sin punto final y su sección 4 no lleva la viñeta de Flyway. Consecuencia
+  práctica: volver a correr la skill sobre **uno solo** de los dos repos puede reintroducir la
+  redacción de la plantilla de ese lado y poner el sensor en rojo por un cambio que nadie escribió
+  a mano. Es la misma clase de aviso que el de #146 para la plantilla de PR, con el signo contrario.
+- **Un cambio de criterios hecho en el sandbox no se puede arreglar desde aquí.** Por eso esa
+  dirección solo avisa. Si lo que llega del sandbox es un criterio que el equipo quiere, se copia
+  aquí en su posición; si no lo quiere, se revierte allá. El desbloqueo nunca pasa por apagar la
+  comprobación.
 
 ## Consecuencias
 
@@ -233,6 +287,13 @@ tocó nada.
   de red se reporte con su propio motivo. Además, el ADR gana una restricción de formato: las tres
   listas son ahora datos, y quien las edite tiene que respetar una ruta literal por entrada. Sigue
   viviendo solo en el monorepo, así que una sesión que trabaje únicamente en el sandbox no lo ve.
+- **En contra, desde #162**: cada viñeta nueva del `REVIEW.md` de aquí pasa a ser trabajo
+  obligatorio en el sandbox, en el mismo PR o en uno inmediato, y son dos repositorios con dos
+  merges. Es el precio de que los criterios dejen de derivar, y se paga a sabiendas: las tres
+  viñetas que este issue encontró llevaban meses sin que nadie lo notara. El ADR gana además una
+  segunda restricción de formato, esta sobre `REVIEW.md`: el prefijo `base-conocimiento/` va
+  **fuera** de las negritas del título, porque dentro convierte una diferencia de forma en una
+  diferencia de criterio. Las secciones 1 y 2 ya lo hacían; la 4 era la excepción y se corrigió.
 - **Qué haría reconsiderar**: que los dos repos dejen de mantenerse equivalentes —por ejemplo, si el
   sandbox se congela como material didáctico de una versión concreta—, o que el acoplamiento del
   gate al otro repositorio resulte insoportable en la práctica y haya que fijar un commit del
@@ -241,5 +302,5 @@ tocó nada.
 
 **Referencias**: el [ADR-0002](0002-equivalencia-entre-el-monorepo-y-el-sandbox.md), al que
 reemplaza; `instrumentacion-java-ia/sdlc-ia/skills/agent-context-java/references/monorepo-roots.md`;
-el commit `ae096be` del sandbox (PR #41); los issues #141, #144 y #155;
+el commit `ae096be` del sandbox (PR #41); los issues #141, #144, #155 y #162;
 [`AGENTS.md`](../../AGENTS.md) de la raíz, sección «Ramas y pull requests».

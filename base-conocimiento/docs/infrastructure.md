@@ -74,7 +74,8 @@ TLS terminator). No está en el repo — es conocimiento operativo del equipo. -
   `make ci` (lint, build, pruebas y escaneo de secretos), el sensor de enlaces de todo el monorepo
   —desde #144 también corre en el pre-push, antes que `make check`— y publica los reportes de
   Surefire como artefacto. El mismo workflow verifica además el playbook y, desde #155, el espejo
-  con `base-conocimiento-sandbox`: ese último es el único paso que **sale a la red**, así que lleva
+  con `base-conocimiento-sandbox` —árboles y, desde #162, criterios de `REVIEW.md`—: ese último es
+  el único paso que **sale a la red**, así que lleva
   `GITHUB_TOKEN` cableado en su `env:` —en Actions el secreto no está en el entorno por sí solo— y
   no corre en el pre-push. El CHANGELOG del plugin lo verifica un workflow aparte, `liberacion.yml`,
   solo en las PR hacia `main`.
