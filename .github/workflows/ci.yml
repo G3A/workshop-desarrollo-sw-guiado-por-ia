@@ -82,6 +82,14 @@ jobs:
         working-directory: .
         run: node scripts/verificar-enlaces.mjs
 
+      # Sensor de ancho de linea (#165): una linea de prosa sobre 100 caracteres en un .md o un
+      # .mjs de los que este metodo mantiene falla aca. La convencion existia y la respetaba quien
+      # se acordaba: en la ronda de #162 se rompio cuatro veces, y la cuarta la cazo la revision de
+      # codigo con el PR ya abierto. Corre en la raiz, no en base-conocimiento/.
+      - name: Line width is respected
+        working-directory: .
+        run: node scripts/verificar-ancho.mjs
+
       # Sensor del playbook (#117): una caja que cambia de badge sin que cambien su dato B(), su
       # seccion y los contadores falla aca. Node ya viene en el runner; el script no tiene
       # dependencias. Corre en la raiz, no en base-conocimiento/.
