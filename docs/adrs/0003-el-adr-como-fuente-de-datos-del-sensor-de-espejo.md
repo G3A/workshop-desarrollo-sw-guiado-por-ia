@@ -195,6 +195,29 @@ sandbox es el resultado deseado, no un error, y que la lista quede sin entradas 
 que sí es un error es que falte el marcador. La regla complementaria a la de arriba: ninguna entrada
 de aquí puede existir en la raíz del monorepo — si existe, no era un residuo.
 
+### Los criterios de `REVIEW.md`
+
+El cuerpo de `REVIEW.md` difiere a propósito —lo dice la lista de arriba—, pero sus **criterios** no
+son del repositorio: son del equipo, exactamente igual que los cuatro límites del permiso de
+`EXPERIMENTS.md`. «¿El comentario promete algo que el código no hace?» no depende de si el repo
+tiene un plugin. Hasta #162 nada lo comprobaba, y tres viñetas llevaban meses derivando.
+
+Lo que se compara, por cada **sección numerada** (`## N · …`): su encabezado y la **secuencia** de
+títulos en negrita de sus viñetas. Lo que queda libre: el cuerpo de cada viñeta —ahí viven
+`base-conocimiento/pom.xml` frente a `pom.xml`, y los ejemplos con su número de issue— y las
+secciones sin número.
+
+Los criterios que valen solo aquí —los que hablan del plugin, del visor o del playbook, que allá no
+existen— se declaran en esta lista y quedan fuera de la comparación:
+
+<!-- espejo:criterios-solo-en-el-monorepo -->
+<!-- /espejo:criterios-solo-en-el-monorepo -->
+
+Una entrada es el título en negrita tal como aparece en `REVIEW.md`, seguido de su razón tras un
+guion largo: `- **El título exacto** — por qué vale solo aquí`. Como `pendientes-de-limpieza`, esta
+lista puede estar vacía —hoy lo está— y eso no es una anomalía; lo que sí sería un error es que
+faltara el marcador.
+
 ### Qué hace el sensor con lo que encuentra
 
 `node scripts/verificar-espejo.mjs`, en el job `check` del CI. Las severidades son la parte que hace
