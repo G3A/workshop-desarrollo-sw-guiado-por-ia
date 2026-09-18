@@ -187,10 +187,21 @@ function entradasDeTabla(bloque, nombre) {
 // La cuarta lista no guarda rutas, guarda TITULOS en negrita: criterios de REVIEW.md que valen solo
 // aca (los que hablan del plugin, del visor o del playbook, que alla no existen). Se escriben tal
 // como aparecen en REVIEW.md para poder copiarlos y pegarlos sin traducir nada.
+//
+// La entrada se UNE en una linea antes de buscar la negrita, igual que las vinetas de REVIEW.md y
+// por la misma razon: un titulo real llega a 93 caracteres, asi que la entrada completa pasa de 100
+// y hay que envolverla como se envuelve el resto del ADR. Sin unir, la primera entrada de verdad
+// que alguien escriba sale "ilegible" y la unica salida es una linea que rompe el formato del
+// archivo. Es la trampa que ya tenia cazada seccionesDeCriterios, y aca estaba sin cazar.
 function entradasDeCriterios(bloque, nombre) {
   const entradas = [];
+  const crudas = [];
   for (const linea of bloque.split('\n')) {
-    if (!/^-\s/.test(linea)) continue;
+    if (/^-\s/.test(linea)) crudas.push(linea);
+    else if (crudas.length && linea.trim()) crudas[crudas.length - 1] += ` ${linea.trim()}`;
+  }
+  for (const cruda of crudas) {
+    const linea = cruda.replace(/\s+/g, ' ').trim();
     const m = linea.match(/^-\s+\*\*(.+?)\*\*\s+(?:—|--)\s+(\S.*)$/);
     if (!m) {
       falla(`${ADR} (espejo:${nombre}): entrada ilegible -> ${linea.trim()}`);
@@ -271,7 +282,14 @@ function listasDelAdr() {
 // c. Solo las secciones numeradas. "Que no reportar" y "Como evoluciona esta lista" quedan fuera a
 //    proposito: el ADR ya declara que el REVIEW.md del sandbox no menciona el plugin ni
 //    playbook-sdlc-ia/vendor/, y eso vive justo en la primera.
+// Las anomalias de formato del lado del SANDBOX solo avisan, por la misma razon que la decision 8:
+// una vineta sin negrita o un titulo repetido alla no los puede arreglar nadie desde aca, y ponerlo
+// en rojo frenaria a la siguiente PR de este repositorio, que no toco nada. La ceguera --menos
+// secciones de las que hay, o una seccion vacia-- sigue abortando de los dos lados, y no es una
+// excepcion a la asimetria: es la misma clase que "no se pudo alcanzar el sandbox", el sensor no
+// pudo trabajar y decirlo vale mas que comparar contra un parseo roto.
 function seccionesDeCriterios(texto, donde) {
+  const anota = donde === 'sandbox' ? avisa : falla;
   // Las dos mismas normalizaciones que listasDelAdr, y por las mismas dos razones: el \r es
   // terminador de linea en una regex de JS, y los dos lados entran por caminos distintos --un blob
   // local y el base64 de la API--, asi que un acento en NFD daria dos titulos identicos a la vista
@@ -286,11 +304,11 @@ function seccionesDeCriterios(texto, donde) {
     const unida = vineta.join(' ').replace(/\s+/g, ' ').trim();
     const m = unida.match(/\*\*(.+?)\*\*/);
     if (!m) {
-      falla(`${CRITERIOS} (${donde}): vineta sin titulo en negrita -> "${unida.slice(0, 70)}"`);
+      anota(`${CRITERIOS} (${donde}): vineta sin titulo en negrita -> "${unida.slice(0, 70)}"`);
     } else {
       const titulo = m[1].trim();
       if (actual.titulos.includes(titulo)) {
-        falla(
+        anota(
           `${CRITERIOS} (${donde}): "${titulo}" esta dos veces en la seccion ${actual.numero}.`,
         );
       }
@@ -300,7 +318,10 @@ function seccionesDeCriterios(texto, donde) {
   };
 
   for (const linea of lineas) {
-    if (linea.startsWith('##')) {
+    // Solo un "##" exacto cierra la seccion. Con startsWith, un "###" dentro de una seccion
+    // numerada la truncaba: las vinetas que vinieran despues desaparecian de ese lado y la guarda
+    // de seccion vacia no saltaba, porque la seccion conservaba las de arriba.
+    if (/^##(?!#)/.test(linea)) {
       cerrar();
       actual = null;
       // Se aceptan el punto medio y el guion como separador: un separador tecleado distinto haria
@@ -309,7 +330,7 @@ function seccionesDeCriterios(texto, donde) {
       const enc = linea.match(/^##\s+(\d+)\s+(?:·|-)\s+(.+?)\s*$/);
       if (!enc) continue;
       if (secciones.has(enc[1])) {
-        falla(`${CRITERIOS} (${donde}): la seccion ${enc[1]} aparece dos veces.`);
+        anota(`${CRITERIOS} (${donde}): la seccion ${enc[1]} aparece dos veces.`);
       }
       actual = { numero: enc[1], encabezado: `${enc[1]} · ${enc[2].trim()}`, titulos: [] };
       secciones.set(enc[1], actual);
@@ -365,6 +386,10 @@ function compararCriterios(aqui, alla, soloAca, vistos) {
         `${CRITERIOS}: la seccion "${aca.encabezado}" existe aca y no en el sandbox;` +
           ' los criterios de las secciones numeradas son del equipo, no del repositorio.',
       );
+      // Sus titulos declarados quedan dados por vistos igual: sin esto, un criterio declarado como
+      // propio del monorepo dentro de una seccion que alla no existe salia ademas como entrada
+      // sobrante del ADR, un aviso que apunta al archivo equivocado encima del rojo verdadero.
+      for (const titulo of aca.titulos) if (soloAca.has(titulo)) vistos.add(titulo);
       continue;
     }
     if (!aca) {
@@ -383,7 +408,15 @@ function compararCriterios(aqui, alla, soloAca, vistos) {
     for (const titulo of aca.titulos) {
       if (soloAca.has(titulo)) {
         vistos.add(titulo);
-        continue;
+        // La exclusion solo vale mientras el criterio de verdad no este alla. Si esta, la
+        // declaracion envejecio --se espejo y nadie la borro del ADR-- y hay que decirlo: si no,
+        // ese titulo desaparecia de la secuencia esperada, los dos largos dejaban de coincidir y
+        // la comparacion de orden de esa seccion se apagaba en silencio para siempre.
+        if (!ya.titulos.includes(titulo)) continue;
+        avisa(
+          `${ADR} (espejo:criterios-solo-en-el-monorepo): "${titulo}" ya esta tambien en el` +
+            ' sandbox, asi que dejo de ser un criterio solo del monorepo.',
+        );
       }
       esperados.push(titulo);
     }

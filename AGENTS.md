@@ -19,10 +19,10 @@ contexto:
   ADR-0003 y, desde #162, también los criterios de los dos `REVIEW.md` por los títulos de sus
   secciones numeradas. Los tres sensores del monorepo piden **node >= 18** en el PATH; el del
   playbook vive junto a lo que verifica (`playbook-sdlc-ia/verificar-cobertura.mjs`). Dónde bloquea
-  cada uno difiere: el de enlaces corre en CI y, desde #144, también en el pre-push; el playbook solo
-  en CI; y el del espejo, **solo en CI porque sale a la red** —un hook que sale a la red bloquea
-  `git push` cuando falla el wifi—. A mano es `node scripts/verificar-espejo.mjs` desde la raíz;
-  sin `GITHUB_TOKEN` en el entorno usa la API anónima, que permite 60 peticiones por hora.
+  cada uno difiere: el de enlaces corre en CI y, desde #144, también en el pre-push; el del
+  playbook, solo en CI; y el del espejo, **solo en CI porque sale a la red** —un hook que sale a la
+  red bloquea `git push` cuando falla el wifi—. A mano es `node scripts/verificar-espejo.mjs` desde
+  la raíz; sin `GITHUB_TOKEN` en el entorno usa la API anónima, que permite 60 peticiones por hora.
 - `REVIEW.md` — qué mirar en un diff ya escrito (lo lee el servicio de Code Review; no repite las
   reglas de generación de los `AGENTS.md`). `EXPERIMENTS.md` — el acuerdo sobre qué puede fallar
   con el agente; sus pendientes los completa el equipo.
