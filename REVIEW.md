@@ -71,9 +71,9 @@ lista es solo para lo que exige criterio.
 - [ ] **Ningún `TODO`, supresión ni excepción nueva sin un motivo escrito al lado.** Una excepción
       sin comentario es deuda invisible — incluidas las entradas nuevas de
       `checkstyle-suppressions.xml` y `.gitleaksignore`.
-- [ ] *(Añadido: el repo usa Flyway.)* **Una migración nueva de `base-conocimiento/` funciona sobre
-      una base con datos**, no solo sobre la vacía de las pruebas: una columna `NOT NULL` nueva trae
-      valor por defecto o relleno, y un índice nuevo sobre `chunks` considera su tamaño real.
+- [ ] *(Añadido: el repo usa Flyway.)* **Una migración nueva funciona sobre una base con datos**,
+      en `base-conocimiento/`, no solo sobre la vacía de las pruebas: una columna `NOT NULL` nueva
+      trae valor por defecto o relleno, y un índice nuevo sobre `chunks` considera su tamaño real.
 
 ## 5 · Trade-offs
 
