@@ -199,7 +199,8 @@ vivible un gate acoplado a otro repositorio:
 | Una entrada de `pendientes-de-limpieza` sí existe en la raíz del monorepo | **rojo** — no era un residuo |
 | El cuerpo de `scripts/verificar-enlaces.mjs` difiere entre los dos repos | **rojo** |
 | Una entrada del ADR que ya no corresponde a ninguna diferencia real | aviso |
-| `pendientes-de-limpieza` encogiendo o vacía | aviso |
+| `pendientes-de-limpieza` encogiendo | aviso, uno por entrada que sobra |
+| `pendientes-de-limpieza` vacía | nada: es su estado final, no una anomalía |
 | La misma ruta dos veces dentro de una lista | **rojo** |
 | La misma ruta en `solo-en-el-sandbox` y en `pendientes-de-limpieza` | **rojo** |
 | No se pudo alcanzar el sandbox (red, rate limit, repo o rama inexistente) | **rojo**, con ese motivo escrito y distinguido de una divergencia |
