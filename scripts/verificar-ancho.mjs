@@ -164,7 +164,10 @@ function leer(ruta) {
 // `max` queda en 0 cuando ninguna linea excede, que es el estado deseado.
 function maximoDeProsa(ruta) {
   const crudo = leer(ruta);
-  if (crudo === null) return { max: 0, peor: 0 };
+  // null, no {max: 0}: un archivo que no se pudo leer NO es un archivo que ya no excede. Con 0 el
+  // sensor felicitaba por una mejora que nadie hizo y pedia sacar de HEREDADOS un archivo que
+  // simplemente no estaba en disco, encima del rojo verdadero.
+  if (crudo === null) return null;
   const lineas = crudo.replace(/\r\n/g, '\n').split('\n');
   // Frontmatter YAML, solo si el archivo empieza con el marcador. Hoy no exceptua ni una linea:
   // los `description:` de 1791 caracteres que motivaron la regla viven en los SKILL.md del plugin,
@@ -221,7 +224,10 @@ function verificar() {
   const vistos = new Set();
   let excedidos = 0;
   for (const ruta of archivos) {
-    const { max, peor } = maximoDeProsa(ruta);
+    const medida = maximoDeProsa(ruta);
+    // Si no se pudo leer, leer() ya lo reporto; no hay nada que comparar contra su techo.
+    if (medida === null) continue;
+    const { max, peor } = medida;
     const techo = HEREDADOS.get(ruta);
     if (techo === undefined) {
       if (!max) continue;
@@ -273,9 +279,11 @@ if (avisos.length) {
 }
 
 if (fallas.length) {
-  console.error(`\nLineas de prosa sobre el tope (${fallas.length}):`);
+  console.error(`\nFuera de regla (${fallas.length}):`);
   for (const f of fallas) console.error(`  - ${f}`);
-  console.error('\nEnvuelvelas, o si el archivo es de terceros agregalo a FUERA.');
+  console.error(
+    '\nEnvuelve la linea; si el archivo no es de los que este metodo mantiene, va a FUERA.',
+  );
   process.exitCode = 1;
 } else if (!process.exitCode) {
   console.log('\nNinguna linea de prosa pasa del tope, y ningun heredado empeoro.');
