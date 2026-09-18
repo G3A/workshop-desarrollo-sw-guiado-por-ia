@@ -178,16 +178,6 @@ del sandbox ya sacó. **Quedan anotados como pendientes de limpieza**, no como d
 para que la comparación de árboles no los lea como acordados:
 
 <!-- espejo:pendientes-de-limpieza -->
-
-- `scripts/error-api.txt` — volcado de una corrida de `make capturar-error`.
-- `scripts/kb-ollama-select-string.md` — salida de un diagnóstico de Ollama.
-- `scripts/ollama-ps.txt` — salida de un `ollama ps`.
-- `scripts/resultado-diagnostico.md` — salida de una corrida de diagnóstico.
-- `scripts/resultado-make-check` — salida de una corrida de `make check`.
-- `scripts/resultados-make-up.md` — salida de una corrida de `make up`.
-- `scripts/resultados-make-verificar.md` — salida de una corrida de `make verificar`.
-- `scripts/revisar.txt` — notas sueltas de una revisión.
-
 <!-- /espejo:pendientes-de-limpieza -->
 
 Esta lista **está pensada para vaciarse**, y el sensor lo trata así: que un residuo desaparezca del
