@@ -47,6 +47,12 @@ lista es solo para lo que exige criterio.
       el costo de todo cambio futuro.
 - [ ] **Respeta los límites de módulo** que protege `ArquitecturaTest` en `base-conocimiento/` — y
       si los cambia, lo hace explícito en la PR en vez de aflojar la regla.
+- [ ] **Una regla que el archivo ya resolvió en un camino está resuelta también en el
+      camino nuevo.** Cuando el diff agrega una segunda función que lee lo mismo —otro parser, otra
+      ruta de entrada, el otro lado de una comparación—, cada decisión que la primera documenta
+      como «no es de estilo» tiene que valer en la segunda. En #162 el parser de viñetas unía
+      las líneas envueltas y lo explicaba en un comentario; el de entradas del ADR, escrito en el
+      mismo PR, no lo hacía, y la primera entrada real habría salido «ilegible».
 
 ## 3 · Tests de la spec
 

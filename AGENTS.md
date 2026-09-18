@@ -75,7 +75,15 @@ contexto:
   mismo. Si una skill cierra un hueco, la caja del playbook cambia de `:::hueco` a `:::skill` y
   los contadores de cobertura del índice y de la fase se actualizan en el mismo PR.
 - **Comandos.** Los bloques del visor están en PowerShell 5.1 y 7; los comandos de las skills son
-  neutrales entre PowerShell y bash.
+  neutrales entre PowerShell y bash. Y un script de un solo uso cuyo **texto** lleve backticks o
+  `$` va a un archivo y se corre con `node archivo.mjs`: dentro de `node -e "…"` en bash los
+  backticks se ejecutan como sustitución de comandos y corrompen el archivo sin avisar. Pasó cinco
+  veces entre #162 y #165, siempre escribiendo Markdown con rutas o comandos entre backticks.
+- **Sembrar un sensor reescribe el árbol.** `REVIEW.md` §3 exige un rojo por cada camino de fallo,
+  y el arnés que los siembra revierte con `git checkout`. Se hace con `git status --porcelain`
+  vacío y el sensor ya commiteado: si no está versionado, lo que la siembra ensució termina dentro
+  del commit; si lo está, ese `git checkout` se lleva puesto lo que estabas escribiendo. En #165
+  mordió de las dos formas, en ese orden.
 - **Versión del plugin.** La PR de liberación `dev` → `main` sube la versión de `plugin.json` y
   fecha su entrada del CHANGELOG; las PR a `dev` registran lo suyo bajo la entrada «unreleased».
   La actualización en cualquier equipo es `instrumentacion-java-ia/update.ps1` o `update.sh`.
