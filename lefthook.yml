@@ -20,18 +20,26 @@ pre-commit:
 
 pre-push:
   commands:
-    # Sin `root:`: el sensor cubre todo el monorepo y su ruta es relativa a la raiz del repositorio.
+    # Los dos sensores de aca van sin `root:`: cubren todo el monorepo y sus rutas son relativas a
+    # la raiz del repositorio. Los dos son locales y de un segundo, por eso corren tambien en el
+    # pre-push; el del espejo no, porque sale a la red y un hook que sale a la red bloquea el push
+    # cuando falla el wifi.
     #
-    # `priority: 1` no es adorno y el orden de declaracion NO alcanza: lefthook ordena los comandos
-    # secuenciales ALFABETICAMENTE, asi que sin esto "base-conocimiento-check" correria primero por
-    # su nombre. Y ese `make check` tarda mas de dos minutos: no tiene sentido esperarlo para
-    # enterarte de un enlace roto que se ve en un segundo. Un comando sin `priority` corre al final.
+    # Las `priority` no son adorno y el orden de declaracion NO alcanza: lefthook ordena los
+    # comandos secuenciales ALFABETICAMENTE. Da la casualidad de que "ancho" y "base-conocimiento-
+    # check" ya quedarian en ese orden, pero "enlaces" no: sin su priority correria DESPUES del
+    # `make check`, que tarda mas de dos minutos, y no tiene sentido esperarlo para enterarte de un
+    # enlace roto que se ve en un segundo. Un comando sin `priority` corre al final.
     # https://lefthook.dev/configuration/priority/
     #
-    # Hasta #144 este sensor solo corria en CI, o sea que la rotura se descubria despues del push.
-    # Necesita node >= 18 en el PATH, que antes solo hacia falta en el runner.
-    enlaces:
+    # Hasta #144 el de enlaces solo corria en CI, o sea que la rotura se descubria despues del
+    # push. Los dos necesitan node >= 18 en el PATH, que antes solo hacia falta en el runner.
+    ancho:
       priority: 1
+      run: node scripts/verificar-ancho.mjs
+      fail_text: "A prose line is over 100 chars. See scripts/verificar-ancho.mjs."
+    enlaces:
+      priority: 2
       run: node scripts/verificar-enlaces.mjs
       fail_text: "Broken doc links (or node missing from PATH). See scripts/verificar-enlaces.mjs."
     base-conocimiento-check:
