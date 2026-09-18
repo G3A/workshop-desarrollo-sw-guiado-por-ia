@@ -349,9 +349,9 @@ function seccionesDeCriterios(texto, donde) {
 
 // La severidad es ASIMETRICA, y es la misma razon de la decision 4 de la cabecera: lo que merece
 // frenar una PR es la diferencia que ESTA PR causo. Un criterio que esta aca y falta alla lo agrego
-// alguien de este repositorio y su autor lo puede espejar --rojo--; uno que esta alla y falta aca lo
-// agrego alguien del sandbox, y bloquear por eso castigaria a la siguiente PR de aca, que no toco
-// nada --aviso--. La excepcion es el encabezado de una seccion que existe en los dos: ahi no falta
+// alguien de este repositorio y su autor lo puede espejar --rojo--. Uno que esta alla y falta aca
+// lo agrego alguien del sandbox, y bloquear por eso castigaria a la siguiente PR de aca, que no
+// toco nada --aviso--. La excepcion es el encabezado de una seccion que existe en los dos: no falta
 // ningun criterio y no hay direccion que inferir, pero dejarlo en aviso vaciaria la mitad de lo que
 // esta comprobacion promete, asi que es rojo y se arregla igualando el encabezado.
 function compararCriterios(aqui, alla, soloAca, vistos) {
@@ -398,10 +398,14 @@ function compararCriterios(aqui, alla, soloAca, vistos) {
       avisa(`${CRITERIOS} seccion ${numero}: "${titulo}" esta en el sandbox y falta aca.`);
       faltan = true;
     }
-    // Solo cuando no falta ninguno: si faltan, el orden todavia no se puede comparar y decirlo
-    // seria ruido encima del hallazgo real. Con los mismos titulos en distinto orden las dos listas
-    // se leen distinto aunque digan lo mismo, y comparar conjuntos en vez de secuencias no lo ve.
-    if (faltan) continue;
+    // Solo cuando no falta ninguno Y las dos secuencias miden lo mismo. Si faltan, el orden todavia
+    // no se puede comparar y decirlo seria ruido encima del hallazgo real; y un titulo repetido de
+    // un solo lado deja las dos listas con los mismos titulos y distinto largo, que es un problema
+    // de duplicado --ya reportado al parsear-- y no de orden. Lo destapo la siembra del duplicado:
+    // la lectura no lo vio y habria salido un aviso espurio encima del rojo verdadero. Con los
+    // mismos titulos en distinto orden las dos listas se leen distinto aunque digan lo mismo, y
+    // comparar conjuntos en vez de secuencias no lo ve.
+    if (faltan || esperados.length !== ya.titulos.length) continue;
     if (JSON.stringify(esperados) === JSON.stringify(ya.titulos)) continue;
     avisa(`${CRITERIOS} seccion ${numero}: los mismos criterios estan en distinto orden.`);
   }
