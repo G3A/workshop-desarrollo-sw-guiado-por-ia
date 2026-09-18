@@ -72,7 +72,7 @@ const FUERA = [
 
 // Archivos que ya excedian cuando este sensor nacio, con el maximo que tenian ese dia. Congelados:
 // pueden mejorar --y entonces el sensor pide bajar el numero-- pero no empeorar. Medido en la punta
-// de dev del 2026-09-18, con las cuatro excepciones estructurales ya aplicadas.
+// de dev del 2026-09-18, con las tres excepciones estructurales ya aplicadas.
 const HEREDADOS = new Map([
   ['base-conocimiento/docs/adrs/README.md', 228],
   ['base-conocimiento/AGENTS.md', 224],
@@ -128,29 +128,48 @@ function git(...args) {
   }
 }
 
-// Una linea es inevitablemente larga cuando UN SOLO TOKEN, con su sangria, ya no cabe: una URL o
-// una ruta larga no se pueden envolver, envolverlas las rompe. Se comprueba en vez de declararse,
-// para que no haya una quinta lista que mantener.
+// Una linea es inevitablemente larga cuando UN SOLO TOKEN ya no cabe: una URL o una ruta larga no
+// se pueden envolver, envolverlas las rompe. Se comprueba en vez de declararse, para que no haya
+// una lista mas que mantener.
 //
-// La condicion es sobre el TOKEN, no sobre el resto de la linea. El primer intento preguntaba si
-// la linea cabria al quitarle su token mas largo, y eso es cierto para casi cualquier linea de 101
-// a 107 caracteres escrita con palabras normales: exceptuaba justo las que apenas se pasan, que
-// son las que mas aparecen. Lo destapo sembrar prosa acentuada de 101 caracteres y verla pasar.
+// Esta funcion se equivoco DOS veces, en direcciones opuestas, y las dos quedan escritas porque el
+// punto medio no es obvio. Primero preguntaba solo si la linea cabria al quitarle su token mas
+// largo: eso es cierto para casi cualquier linea de 101 a 107 caracteres con palabras normales, o
+// sea que exceptuaba justo las que apenas se pasan, que son las que mas aparecen; lo destapo
+// sembrar prosa acentuada de 101 caracteres y verla pasar. Despues preguntaba solo si el token no
+// cabia, y entonces una vineta con una URL larga seguida de doscientos caracteres de prosa
+// perfectamente envolvible quedaba exceptuada entera; lo cazo la revision de codigo.
 function inquebrantable(linea) {
-  const tokens = linea.trim().split(/\s+/);
-  if (!tokens.length) return false;
-  const sangria = [...linea].length - [...linea.trimStart()].length;
-  const largo = Math.max(...tokens.map(t => [...t].length));
-  return sangria + largo > TOPE;
+  const ancho = [...linea].length;
+  const sangria = ancho - [...linea.trimStart()].length;
+  const largo = Math.max(...linea.trim().split(/\s+/).map(t => [...t].length));
+  // Las dos mitades: el token con su sangria no cabe --envolver no lo salva-- Y el resto de la
+  // linea si cabe --el token es la causa, no una excusa--.
+  return sangria + largo > TOPE && ancho - largo <= TOPE;
+}
+
+// Un archivo que el repositorio lista puede no estar en disco: rastreado y borrado con `rm` en vez
+// de `git rm`, o un sparse-checkout. Se reporta, no se ignora en silencio ni se muere con una
+// traza que tapa todo lo demas. Misma decision que verificar-enlaces.mjs, y por lo mismo.
+function leer(ruta) {
+  try {
+    return fs.readFileSync(path.join(RAIZ, ruta), 'utf8');
+  } catch (error) {
+    falla(`${ruta}: el repositorio lo lista pero no se pudo leer (${error.code}).`);
+    return null;
+  }
 }
 
 // El maximo de PROSA del archivo: el ancho de la linea mas larga que no cae en ninguna excepcion.
-// Devuelve 0 cuando ninguna linea excede, que es el estado deseado.
+// `max` queda en 0 cuando ninguna linea excede, que es el estado deseado.
 function maximoDeProsa(ruta) {
-  const lineas = fs.readFileSync(path.join(RAIZ, ruta), 'utf8').replace(/\r\n/g, '\n').split('\n');
-  // Frontmatter YAML, solo si el archivo empieza con el marcador. El `description:` de cada
-  // SKILL.md es una linea por construccion --llega a 1791 caracteres-- y envolverla cambiaria el
-  // formato que Claude Code lee.
+  const crudo = leer(ruta);
+  if (crudo === null) return { max: 0, peor: 0 };
+  const lineas = crudo.replace(/\r\n/g, '\n').split('\n');
+  // Frontmatter YAML, solo si el archivo empieza con el marcador. Hoy no exceptua ni una linea:
+  // los `description:` de 1791 caracteres que motivaron la regla viven en los SKILL.md del plugin,
+  // que FUERA ya deja fuera enteros. Se deja escrita igual porque el dia que un .md con
+  // frontmatter entre al alcance, su cabecera no se puede envolver.
   const finFrontmatter = lineas[0] === '---' ? lineas.indexOf('---', 1) : -1;
   let max = 0;
   let peor = 0;
@@ -180,7 +199,13 @@ function verificar() {
     );
   }
 
-  const archivos = git('ls-files', '-z', '*.md', '*.mjs')
+  // `--cached --others --exclude-standard`: lo rastreado Y lo nuevo sin `git add`, saltando lo que
+  // .gitignore excluye. Misma decision que verificar-enlaces.mjs, y aca pesa mas todavia: el lazo
+  // que este sensor existe para cerrar es medir un documento MIENTRAS se escribe, y un .md recien
+  // creado no esta en el indice. Sin esto el sensor salia en verde sobre el archivo que uno acaba
+  // de romper.
+  const banderas = ['--cached', '--others', '--exclude-standard'];
+  const archivos = git('ls-files', '-z', ...banderas, '*.md', '*.mjs')
     .split('\0')
     .filter(Boolean)
     .map(r => r.normalize('NFC'))
