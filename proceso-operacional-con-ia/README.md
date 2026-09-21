@@ -79,8 +79,9 @@ son todos los nodos del diagrama. Quedan fuera dos cosas, y por razones distinta
 
 Un caso no entra en ninguna de las dos: cuando las ramas de un gateway son **la misma etapa
 resuelta de dos maneras** y no se rejuntan en un tercer nodo contable. Ahí van como **un solo
-casillero con varias opciones**, hecho con cualquiera de ellas. Hoy pasa una vez: `b1` y `bi`, las
-dos salidas de «¿ya existe `AGENTS.md`?» — se corre una u otra, nunca las dos.
+casillero con varias opciones**, hecho con cualquiera de ellas. Hoy pasa una vez, en las dos salidas
+de «¿Existe archivo de contexto?» (`G2`): «Generar contexto del repo» (`b1`) y «Completar solo el
+andamiaje» (`bi`) corren el mismo comando y se hace una u otra, nunca las dos.
 
 Si agregas una rama a un gateway, mira a dónde desemboca antes de tocar `CANON`: si vuelve a un
 paso contado, déjala fuera; si es una alternativa que no se rejunta, súmala como opción del

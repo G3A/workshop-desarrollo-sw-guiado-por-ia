@@ -465,9 +465,10 @@ python -m http.server</pre>
     var CANON = {
       F: ["f0","fd1","fd2","fd3"],
       A: ["a1","a2"],
-      // b1 y bi son las dos ramas de G2 («¿ya existe AGENTS.md?») y las dos desembocan en b2: se
-      // corre una U OTRA, nunca las dos. Contar solo b1 dejaba «Proyecto» clavado en 8/9 para
-      // siempre en todo repo que ya tuviera contexto —el caso incremental, el más común—, y
+      // «Generar contexto del repo» (b1) y «Completar solo el andamiaje» (bi) son las dos salidas
+      // de «¿Existe archivo de contexto?» (G2), corren el MISMO comando y las dos desembocan en
+      // b2: se hace una U OTRA, nunca las dos. Contar solo b1 dejaba «Proyecto» clavado en 8/9
+      // para siempre en todo repo que ya tuviera contexto —el caso incremental, el más común—, y
       // contar las dos por separado habría pedido 10 pasos de los que solo 9 son alcanzables.
       B: [{ pregunta: "G2", opciones: ["b1","bi"] },"b2","b3","b4","b5","pz","pz2","pj","ds"],
       C: ["r1","bo1","c1","bo2","c4a","c2","c3","c4b","c4c","p1","cr","mg","cd1","c5","rl","cs"]
