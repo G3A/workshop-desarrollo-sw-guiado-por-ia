@@ -66,3 +66,23 @@ paso operativo**, con comandos copiables. Si una fase cambia en uno, cambia en e
 El progreso se guarda en el `localStorage` del navegador, separado por repositorio y por issue
 activo — nada se envía a ningún servidor. La exportación de bitácora (Markdown/JSON) tampoco
 incluye secretos: solo los valores de perfil que tú mismo/a completaste (organización, ruta local).
+
+### Qué cuentan las pastillas de progreso
+
+Las cuatro pastillas —Fundamentos, Máquina, Proyecto, Ciclo— cuentan los pasos de `CANON`, que no
+son todos los nodos del diagrama. Quedan fuera dos cosas, y por razones distintas:
+
+- **Los gateways.** Una pregunta no es un paso.
+- **Las ramas que son un desvío**, porque vuelven a un nodo que sí cuenta y contarlas sería contar
+  dos veces la misma etapa: `v0`/`vw` vuelven a `c3`, `c4p` a `c2`, `pf` a `p1`, `ac` a `cr`, `df` a
+  `cd1`, `bt` a `GT2` y `bi2` a `bo1`.
+
+Un caso no entra en ninguna de las dos: cuando las ramas de un gateway son **la misma etapa
+resuelta de dos maneras** y no se rejuntan en un tercer nodo contable. Ahí van como **un solo
+casillero con varias opciones**, hecho con cualquiera de ellas. Hoy pasa una vez: `b1` y `bi`, las
+dos salidas de «¿ya existe `AGENTS.md`?» — se corre una u otra, nunca las dos.
+
+Si agregas una rama a un gateway, mira a dónde desemboca antes de tocar `CANON`: si vuelve a un
+paso contado, déjala fuera; si es una alternativa que no se rejunta, súmala como opción del
+casillero, no como paso nuevo. Un paso que nadie puede completar deja su pastilla clavada para
+siempre.
