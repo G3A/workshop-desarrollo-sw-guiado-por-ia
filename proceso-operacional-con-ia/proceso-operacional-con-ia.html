@@ -33,6 +33,24 @@
       --l5: #c23b8e; /* GitHub PR & Rulesets */
       --l6: #1a9350; /* GitHub Actions */
 
+      /* Las 7 fases del método del taller, las mismas del playbook-sdlc-ia, más el
+         puente «antes del primer issue», que no es una fase sino un tramo opcional.
+         Eje independiente del carril: el carril dice DÓNDE pasa el paso, la fase
+         dice A QUÉ PARTE DEL MÉTODO pertenece.
+         Cada fase va como par fondo/tinta, y son EXACTAMENTE los mismos valores que el
+         .bpmn pinta en cada figura (bioc:fill y bioc:stroke). Por eso no cambian con el
+         tema: el badge de la leyenda tiene que poder emparejarse a ojo con la caja del
+         diagrama, y el diagrama se pinta desde el archivo, no desde estas variables.
+         Si cambias un color acá, cámbialo también en el .bpmn y en FASE_CHIP. */
+      --f0: #f2c14e; --f0i: #4a3200; /* Fundamentos */
+      --f1: #c9b3ff; --f1i: #2a1060; /* Cultura de IA */
+      --f2: #7fdcd6; --f2i: #04322f; /* Preparación del terreno */
+      --fp: #c3c8d1; --fpi: #23272e; /* Antes del primer issue (puente) */
+      --f3: #8fa8ff; --f3i: #0d1a4d; /* Ciclo por feature */
+      --f4: #7fe0ac; --f4i: #063820; /* Retroalimentación */
+      --f5: #f088c0; --f5i: #4d0f30; /* Métricas y reporte */
+      --f6: #ff9c8c; --f6i: #5a1109; /* Adopción por etapas */
+
       --radius: 8px; --radius-sm: 5px;
       --shadow: 0 1px 2px rgba(20,20,15,.06), 0 8px 24px -12px rgba(20,20,15,.18);
     }
@@ -116,16 +134,21 @@
     .badge.idempotent { color: var(--ok); border-color: var(--ok); }
     .badge.guarded { color: var(--warn); border-color: var(--warn); }
     .badge.destructive { color: var(--danger); border-color: var(--danger); }
-    .badge.mad-0 { color: #a5590a; border-color: #a5590a; background: color-mix(in srgb, #a5590a 10%, transparent); }
-    .badge.mad-1 { color: var(--ok); border-color: var(--ok); background: color-mix(in srgb, var(--ok) 10%, transparent); }
-    .badge.mad-2 { color: var(--l1); border-color: var(--l1); background: color-mix(in srgb, var(--l1) 10%, transparent); }
-    .badge.mad-3 { color: var(--l5); border-color: var(--l5); background: color-mix(in srgb, var(--l5) 10%, transparent); }
-    .badge.mad-transversal { color: var(--muted); border-color: var(--line); }
+    /* Fase del método: el badge se pinta con el MISMO par fondo/tinta que la caja del
+       diagrama, para que emparejar leyenda y diagrama sea mirar, no recordar. */
+    .badge.fase-0 { background: var(--f0); color: var(--f0i); border-color: var(--f0i); }
+    .badge.fase-1 { background: var(--f1); color: var(--f1i); border-color: var(--f1i); }
+    .badge.fase-2 { background: var(--f2); color: var(--f2i); border-color: var(--f2i); }
+    .badge.fase-puente { background: var(--fp); color: var(--fpi); border-color: var(--fpi); }
+    .badge.fase-3 { background: var(--f3); color: var(--f3i); border-color: var(--f3i); }
+    .badge.fase-4 { background: var(--f4); color: var(--f4i); border-color: var(--f4i); }
+    .badge.fase-5 { background: var(--f5); color: var(--f5i); border-color: var(--f5i); }
+    .badge.fase-6 { background: var(--f6); color: var(--f6i); border-color: var(--f6i); }
     /* Tipo de instrumentación: azul = determinista, naranja = no determinista (mismos colores que
        las etiquetas del manual de feedback). Un nodo puede llevar los dos a la vez (a2). */
     .badge.tipo-determinista { color: var(--accent); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
     .badge.tipo-noDeterminista { color: var(--warn); border-color: var(--warn); background: color-mix(in srgb, var(--warn) 10%, transparent); }
-    .badge.mad-none { color: var(--muted); border-color: var(--line); border-style: dashed; }
+    .badge.fase-none { color: var(--muted); border-color: var(--line); border-style: dashed; }
     /* Tablas de instrumentación (panel del nodo y leyenda): scroll propio, nunca el body. */
     .inst-wrap { overflow-x: auto; margin: 10px 0; }
     .inst-table { width: 100%; border-collapse: collapse; font-size: 12px; }
@@ -208,6 +231,8 @@
       font-style: italic; font-size: 13px; line-height: 1.45; }
     blockquote.deming cite { display: block; margin-top: 5px; font-style: normal; font-size: 11px; color: var(--muted); }
     .about-credit { color: var(--muted); font-size: 11px; line-height: 1.5; margin-top: 16px; }
+    .about-gracias { margin: 4px 0 14px; padding: 11px 13px; border-radius: var(--radius); border: 1px solid var(--line);
+      background: var(--card); font-size: 12.5px; line-height: 1.55; }
 
     .legend-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
     .legend-row { display: flex; gap: 10px; align-items: flex-start; padding: 9px 0; border-top: 1px solid var(--line); font-size: 12.5px; }
@@ -218,7 +243,7 @@
     .pill { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
     .pill.full { color: var(--ok); border-color: var(--ok); background: color-mix(in srgb, var(--ok) 10%, transparent); }
 
-    /* Tooltip al pasar el mouse por un paso del diagrama: resumen rápido de madurez,
+    /* Tooltip al pasar el mouse por un paso del diagrama: resumen rápido de fase,
        clase y semántica sin tener que hacer clic y abrir el panel completo.
        pointer-events:none para que nunca robe el clic al elemento de abajo. */
     #hover-tip { position: fixed; z-index: 500; pointer-events: none; max-width: 260px;
@@ -245,8 +270,8 @@
        línea o carril de fondo. Mismo criterio acá, con la paleta propia del proceso. */
     .ov-status { font-size: 14px; font-weight: 800; line-height: 1; pointer-events: none;
       text-shadow: 0 0 3px var(--paper), 0 0 3px var(--paper), 0 1px 1px var(--paper); }
-    .ov-mad { font-size: 9px; font-weight: 800; line-height: 1; padding: 2px 4px; border-radius: 4px;
-      cursor: default; pointer-events: none; box-shadow: 0 1px 2px rgba(0,0,0,.25); }
+    .ov-fase { font-size: 9px; font-weight: 800; line-height: 1; padding: 2px 4px; border-radius: 4px;
+      color: #fff; cursor: default; pointer-events: none; box-shadow: 0 1px 2px rgba(0,0,0,.25); }
 
     /* Foco de navegación: el nodo que estás viendo palpita; el siguiente paso sugerido
        (solo cuando hay una única salida, nunca en un gateway con varias ramas) queda
@@ -379,6 +404,35 @@ python -m http.server</pre>
     var CLASE_LABEL = { T: "Comando de terminal", S: "Skill del agente", manual: "Manual" };
     var TIPO_LABEL = { determinista: "Instrumentación determinista", noDeterminista: "Instrumentación no determinista" };
     var TIPO_CORTO = { determinista: "determinista", noDeterminista: "no determinista" };
+
+    // ---- fases del método ------------------------------------------------
+    // Las 7 fases del taller (las mismas del playbook-sdlc-ia) más el puente opcional
+    // «antes del primer issue», que el playbook dibuja entre el terreno listo y la
+    // primera funcionalidad y que por eso no lleva número. El orden de acá es el orden
+    // del método, no el alfabético: la leyenda y el recorrido lo respetan.
+    var FASES_ORDEN = ["0", "1", "2", "puente", "3", "4", "5", "6"];
+    // Chip del diagrama. El color de la fase ya lo lleva la CAJA: cada figura del .bpmn está
+    // pintada con el par fondo/tinta de su fase (bioc:fill y bioc:stroke, que en bpmn-js es a la
+    // vez el borde y la tinta de la etiqueta). Si el chip repitiera ese mismo pastel se volvería
+    // invisible encima, así que va al revés: la tinta oscura de la fase como fondo y texto blanco.
+    // Así se lee tanto sobre la caja como sobre el lienzo, que es donde cae en los rombos.
+    // Cualquier cambio de paleta acá tiene que repetirse en el .bpmn, y al revés.
+    var FASE_CHIP = {
+      "0": { sigla: "F0", fondo: "#4a3200" },
+      "1": { sigla: "F1", fondo: "#2a1060" },
+      "2": { sigla: "F2", fondo: "#04322f" },
+      puente: { sigla: "···", fondo: "#23272e" },
+      "3": { sigla: "F3", fondo: "#0d1a4d" },
+      "4": { sigla: "F4", fondo: "#063820" },
+      "5": { sigla: "F5", fondo: "#4d0f30" },
+      "6": { sigla: "F6", fondo: "#5a1109" },
+    };
+    // "Fase 2 · Preparación del terreno" — y sin número para el puente, que no es una fase.
+    function faseTexto(clave, conNombre) {
+      var nombre = (catalog.meta.fases || {})[clave] || "";
+      if (clave === "puente") return conNombre && nombre ? "Puente · " + nombre : "Puente";
+      return "Fase " + clave + (conNombre && nombre ? " · " + nombre : "");
+    }
     // Un nodo declara su tipo con `tipoInstrumentacion` (uno solo) o lo deriva de su tabla
     // `instrumentacion` (una fila por pieza, puede mezclar los dos tipos, como a2).
     function tiposDeNodo(node) {
@@ -503,16 +557,14 @@ python -m http.server</pre>
     }
 
     // ---- tooltip al pasar el mouse -----------------------------------
-    // Resumen corto (madurez, clase, semántica) sin abrir el panel completo. Reutiliza
+    // Resumen corto (fase, clase, semántica) sin abrir el panel completo. Reutiliza
     // el mismo filtro que element.click: solo pasos reales, no carriles/pool/anotaciones.
     function hoverTipContent(element) {
       var id = element.businessObject.id, node = contenido(id), name = element.businessObject.name || id;
       var out = '<div class="ht-name">' + esc(name) + "</div>";
-      if (node.madurez) {
-        var mtxt = node.madurez === "transversal"
-          ? "Transversal" + (node.madurezSub ? " · " + node.madurezSub : "")
-          : "Fase " + node.madurez + " · " + (catalog.meta.madurez[node.madurez] || "");
-        out += '<div class="ht-row"><span class="badge mad-' + esc(node.madurez) + '">' + esc(mtxt) + "</span></div>";
+      if (node.fase) {
+        out += '<div class="ht-row"><span class="badge fase-' + esc(node.fase) + '">' +
+          esc(faseTexto(node.fase, true)) + "</span></div>";
       }
       if (tiposDeNodo(node).length) out += '<div class="ht-row">' + tipoBadges(node, true) + "</div>";
       if (node.clase) {
@@ -537,7 +589,7 @@ python -m http.server</pre>
       var bo = element && element.businessObject;
       if (!bo || !(PART[bo.id] || (catalog.eventos && catalog.eventos[bo.id]))) return;
       var node = contenido(bo.id);
-      if (!node.madurez && !node.clase && !node.semantica && !tiposDeNodo(node).length) return;
+      if (!node.fase && !node.clase && !node.semantica && !tiposDeNodo(node).length) return;
       var tip = $("#hover-tip");
       tip.innerHTML = hoverTipContent(element);
       tip.classList.remove("hidden");
@@ -571,11 +623,10 @@ python -m http.server</pre>
       if (lane) badges.appendChild(el('<span class="badge lane" style="--lc:var(--' + laneKey + ')">corre en: ' + esc(lane) + "</span>"));
       if (node.actor) badges.appendChild(el('<span class="badge actor">actor: ' + esc(node.actor) + "</span>"));
       if (node.semantica) badges.appendChild(el('<span class="badge ' + esc(node.semantica) + '">' + esc(node.semantica) + "</span>"));
-      if (node.madurez) {
-        var mtxt = node.madurez === "transversal" ? "Transversal" + (node.madurezSub ? " · " + node.madurezSub : "") : "Fase " + node.madurez;
-        badges.appendChild(el('<span class="badge mad-' + esc(node.madurez) + '">' + esc(mtxt) + "</span>"));
-      } else if (node.madurezNota) {
-        badges.appendChild(el('<span class="badge mad-none" title="' + esc(node.madurezNota) + '">Sin fase de madurez</span>'));
+      if (node.fase) {
+        badges.appendChild(el('<span class="badge fase-' + esc(node.fase) + '">' + esc(faseTexto(node.fase, false)) + "</span>"));
+      } else if (node.faseNota) {
+        badges.appendChild(el('<span class="badge fase-none" title="' + esc(node.faseNota) + '">Sin fase del método</span>'));
       }
       tiposDeNodo(node).forEach(function (t) {
         badges.appendChild(el('<span class="badge tipo-' + esc(t) + '">' + esc(TIPO_LABEL[t] || t) + "</span>"));
@@ -595,7 +646,7 @@ python -m http.server</pre>
 
       if (node.guiaPasos) panel.appendChild(el('<div class="howto">' + node.guiaPasos + "</div>"));
       if (node.instrumentacion) renderInstrumentacion(panel, node);
-      if (node.madurezNota) panel.appendChild(el('<p class="req"><b>Fase de madurez:</b> ' + esc(node.madurezNota) + "</p>"));
+      if (node.faseNota) panel.appendChild(el('<p class="req"><b>Sobre la fase:</b> ' + esc(node.faseNota) + "</p>"));
 
       if (node.checklist) { renderChecklist(panel, id, node); }
       else if (node.esGateway && node.clase !== "T") { renderRamas(panel, element, node); renderManual(panel, id, node); }
@@ -765,6 +816,10 @@ python -m http.server</pre>
       elementRegistry.forEach(function (element) {
         var bo = element.businessObject;
         if (!bo || !bo.id) return;
+        // Las etiquetas externas (gateways y eventos las llevan) son un elemento aparte con el
+        // MISMO businessObject que su figura: sin esto, el chip y el glifo se dibujaban dos veces,
+        // y la copia de la etiqueta caía encima del texto del rombo.
+        if (element.labelTarget) return;
         var esNodoDelProceso = !!PART[bo.id] || !!(catalog.eventos && catalog.eventos[bo.id]);
         if (!esNodoDelProceso) return;
         var node = contenido(bo.id);
@@ -778,13 +833,12 @@ python -m http.server</pre>
           overlays.add(element, { position: glyphPos,
             html: '<div class="ov-status" style="color:' + glyphColor + ';">' + glyph + "</div>" });
         }
-        if (node.madurez) {
-          var mtxt = node.madurez === "transversal" ? "T" : ("F" + node.madurez);
-          var fill = { "0": "#f2c14e", "1": "#4fd18f", "2": "#8fa8ff", "3": "#f088c0", transversal: "#5b6472" }[node.madurez];
-          var ink = { "0": "#4a3200", "1": "#063820", "2": "#0d1a4d", "3": "#4d0f30", transversal: "#f1f2f5" }[node.madurez];
+        if (node.fase && FASE_CHIP[node.fase]) {
+          var chip = FASE_CHIP[node.fase];
           var chipPos = small ? { top: midY - 7, left: -6 } : { top: -8, left: -6 };
           overlays.add(element, { position: chipPos,
-            html: '<div class="ov-mad" style="background:' + fill + ";color:" + ink + ';" title="' + esc(mtxt) + '">' + esc(mtxt) + "</div>" });
+            html: '<div class="ov-fase" style="background:' + chip.fondo +
+              ';" title="' + esc(faseTexto(node.fase, true)) + '">' + esc(chip.sigla) + "</div>" });
         }
       });
     }
@@ -1040,21 +1094,22 @@ python -m http.server</pre>
       Object.keys(catalog.meta.semantica).forEach(function (k) {
         panel.appendChild(el('<div class="legend-row"><b style="width:90px;flex:0 0 auto;">' + esc(k) + "</b><span>" + esc(catalog.meta.semantica[k]) + "</span></div>"));
       });
-      panel.appendChild(el('<div class="eyebrow">Pirámide de madurez</div>'));
+      panel.appendChild(el('<div class="eyebrow">Fases del método</div>'));
+      if (catalog.meta.fasesFuente) panel.appendChild(el('<p style="margin:0 0 4px;font-size:12.5px;">' + catalog.meta.fasesFuente + "</p>"));
       // Ojo: el() solo devuelve el PRIMER elemento del HTML que se le pasa (firstElementChild) —
       // todo lo que va después del cierre del primer tag se pierde en silencio. Por eso el badge
       // y sus párrafos de descripción van dentro de un único div envolvente, no como hermanos.
-      ["0", "1", "2", "3"].forEach(function (k) {
-        var resumen = (catalog.meta.madurezResumen || {})[k];
-        panel.appendChild(el('<div class="legend-row" style="display:block;"><span class="badge mad-' + k + '">Fase ' + k + " · " + esc(catalog.meta.madurez[k]) + '</span>' +
+      FASES_ORDEN.forEach(function (k) {
+        var resumen = (catalog.meta.fasesResumen || {})[k];
+        var detalle = (catalog.meta.fasesDetalle || {})[k] || "";
+        panel.appendChild(el('<div class="legend-row" style="display:block;"><span class="badge fase-' + k + '">' + esc(faseTexto(k, true)) + "</span>" +
           (resumen ? '<p class="mono" style="margin:6px 0 0;color:var(--muted);font-size:11px;letter-spacing:.02em;">' + esc(resumen) + "</p>" : "") +
-          '<p style="margin:6px 0 0;color:var(--muted);font-size:12px;">' + catalog.meta.madurezDetalle[k] + "</p></div>"));
+          '<p style="margin:6px 0 0;color:var(--muted);font-size:12px;">' + detalle + "</p></div>"));
       });
-      panel.appendChild(el('<div class="legend-row" style="display:block;"><span class="badge mad-transversal">Transversal</span><p style="margin:6px 0 0;color:var(--muted);font-size:12px;">' + esc(catalog.meta.madurezTransversal) + "</p></div>"));
       renderLegendInstrumentacion(panel);
     }
 
-    // Tres capítulos aparte de la pirámide: el catálogo de mecanismos con su tipo, la evidencia
+    // Tres capítulos aparte de las fases: el catálogo de mecanismos con su tipo, la evidencia
     // oficial que sostiene la clasificación, y las dos excepciones que la matizan. Los textos
     // de comandos.json traen <code> a propósito, así que van sin escapar (igual que porque y
     // guiaPasos); solo las citas literales y las URLs se escapan.
@@ -1113,14 +1168,14 @@ python -m http.server</pre>
         panel.innerHTML = '<div class="empty">Elige un paso del diagrama para ver el detalle.</div>';
         leaveCurrentNode(); currentNodeId = null; applyMarkers();
       };
+      panel.appendChild(el('<div class="eyebrow" style="margin-top:14px;">Agradecimiento</div>'));
+      panel.appendChild(el('<p class="about-gracias">Este proceso no se inventó acá: ordena en cajas y comandos lo que <b>Manuel Zapata</b> y <b>David Lopera</b> enseñaron a lo largo del taller. Gracias a los dos por el conocimiento transmitido y, sobre todo, por el empeño de armar el curso, probarlo y sostenerlo sesión tras sesión — lo que acá se ve como un diagrama terminado fue antes muchas horas suyas de preparación. Lo que sigue es nuestra lectura de ese material: los aciertos se apoyan en lo que ellos enseñaron, y los errores y las simplificaciones de esta versión son nuestros.</p>'));
       panel.appendChild(el('<p class="about-lead">Este proceso completo es un ciclo de mejora continua: Planear, Hacer, Verificar, Actuar (PDCA), el marco que popularizó <b>W. Edwards Deming</b>. El bloque C —tomar un issue, planificarlo, implementarlo, verificarlo, mergearlo, aprender de él— se repite una y otra vez, y cada vuelta parte un poco más arriba que la anterior.</p>'));
       panel.appendChild(el('<figure class="about"><img src="img/pdca-cycle.png" alt="Diagrama del ciclo PDCA" /><figcaption><b>El ciclo PDCA.</b> Planear, Hacer, Verificar, Actuar — y volver a planear con lo aprendido.</figcaption></figure>'));
       panel.appendChild(el('<figure class="about"><img src="img/deming-portrait.jpg" alt="Retrato de W. Edwards Deming" /><figcaption><b>W. Edwards Deming</b> (1900–1993), estadístico e ingeniero. Fuente: Wikimedia Commons, dominio público.</figcaption></figure>'));
       panel.appendChild(el('<blockquote class="deming">"No basta con hacer lo mejor que uno pueda; primero hay que saber qué hacer, y entonces hacer lo mejor que uno pueda."<cite>— W. Edwards Deming</cite></blockquote>'));
       panel.appendChild(el('<figure class="about"><img src="img/deming-tokyo.jpg" alt="Deming enseñando en Tokio" /><figcaption><b>Deming enseñando control estadístico de calidad en Japón, década de 1950.</b> Fuente: Wikimedia Commons, dominio público.</figcaption></figure>'));
-      panel.appendChild(el('<div class="eyebrow">Pirámide de madurez</div>'));
-      panel.appendChild(el('<p class="about-credit">Las 4 fases de madurez que colorean este diagrama (Fundamentos de colaboración, Instrumentación determinista, Instrumentación no determinista, Auto-planeación y sistemas de conocimiento) vienen de <a href="https://es.linkedin.com/posts/soymanuelzapata_diagnosticamos-una-f%C3%A1brica-de-software-para-activity-7474891594635132928-8ypT" target="_blank" rel="noopener">una publicación de Manuel Zapata (Arkandia) en LinkedIn</a>: "la mayoría de equipos no falla en la cima, falla en la base".</p>'));
-      panel.appendChild(el('<p class="about-credit"><b>Una corrección deliberada sobre esa fuente:</b> ' + esc(catalog.meta.madurezCorreccion || "") + "</p>"));
+      panel.appendChild(el('<p class="about-credit">Las <b>7 fases</b> que colorean este diagrama son las del método del taller, las mismas del <code>playbook-sdlc-ia</code> de este repositorio. Los dos son el mismo mapa visto de dos lados: el playbook dice, caja por caja, quién ejecuta cada paso hoy; este visor da el paso a paso operativo con comandos copiables. El detalle de cada fase está en <b>Leyenda</b>.</p>'));
       panel.appendChild(el('<p class="about-credit">Este visor es software genérico: el motor (diagrama + panel + progreso local) no depende de ninguna organización en particular — solo el contenido de <code>comandos.json</code> describe este proceso puntual. Siéntete libre de adaptarlo al tuyo.</p>'));
     }
     $("#btn-about").onclick = renderAbout;

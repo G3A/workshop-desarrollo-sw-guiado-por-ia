@@ -23,6 +23,36 @@ python -m http.server
 
 y abre la URL que te indique en el navegador.
 
+## Las 7 fases del método
+
+**Cada caja del diagrama está pintada con el color de su fase** — las mismas siete del
+[`playbook-sdlc-ia`](../playbook-sdlc-ia/) — y lleva además un chip oscuro con su sigla, para que
+la fase se lea aunque dos colores se parezcan. La leyenda usa exactamente el mismo color que la
+caja, así que emparejar las dos es mirar, no recordar:
+
+| Chip | Color | Fase | Qué agrupa |
+|---|---|---|---|
+| `F0` | ámbar | Fundamentos | Instalar y conectar el agente, permisos, gestos base, modelos y costos. |
+| `F1` | violeta | Cultura de IA | Las 4 prácticas de equipo y el permiso escrito para experimentar y fallar. |
+| `F2` | turquesa | Preparación del terreno | Contexto, sensores deterministas, el juez de CI, hooks y MCP. |
+| `···` | gris | Antes del primer issue | El puente opcional: deuda triada y pruebas sobre código heredado. |
+| `F3` | azul | Ciclo por feature | Spec, plan, implementación, verificación en 4 capas y merge. |
+| `F4` | verde | Retroalimentación | La lección de la vuelta, enrutada a donde pertenece. |
+| `F5` | magenta | Métricas y reporte | Cerrar el sprint deja el dato con fecha que las métricas leen. |
+| `F6` | coral | Adopción por etapas | Solo el cierre cae acá: el ciclo por issue no amplía el alcance. |
+
+El color de la caja y el del carril son **dos ejes distintos**: la banda de fondo dice *dónde*
+pasa el paso (tu máquina, el agente, Actions…) y el relleno de la caja dice *a qué parte del
+método* pertenece. Los colores viven en tres sitios que tienen que coincidir: `bioc:fill` y
+`bioc:stroke` de cada figura del `.bpmn`, las variables `--f0…--f6` del visor, y `FASE_CHIP`.
+
+«Antes del primer issue» no lleva número porque no es una fase: es el tramo que el playbook dibuja
+entre el terreno listo y la primera funcionalidad, y solo corre si el repositorio lo necesita.
+
+Este visor y el playbook son el mismo mapa visto de dos lados: el playbook dice, caja por caja,
+**quién ejecuta cada paso hoy** (una skill, tú a mano, o nadie todavía); este visor da el **paso a
+paso operativo**, con comandos copiables. Si una fase cambia en uno, cambia en el otro.
+
 ## Qué hay acá
 
 - `proceso-operacional-con-ia.html` — el visor (bpmn-js + panel de detalle por paso).
