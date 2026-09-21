@@ -467,118 +467,118 @@
       <bpmndi:BPMNShape id="Lane_dev_di" bpmnElement="Lane_dev" isHorizontal="true" bioc:fill="#ECEFFC" bioc:stroke="#3e5fdd">
         <dc:Bounds x="190" y="80" width="9588" height="300" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="start1_di" bpmnElement="start1">
+      <bpmndi:BPMNShape id="start1_di" bpmnElement="start1" bioc:fill="#f2c14e" bioc:stroke="#4a3200">
         <dc:Bounds x="282" y="212" width="36" height="36" />
         <bpmndi:BPMNLabel>
           <dc:Bounds x="268" y="256" width="65" height="28" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="f0_di" bpmnElement="f0" bioc:fill="#f2c14e" bioc:stroke="#4a3200">
+      <bpmndi:BPMNShape id="f0_di" bpmnElement="f0" bioc:fill="#c9b3ff" bioc:stroke="#2a1060">
         <dc:Bounds x="420" y="195" width="160" height="70" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="fd1_di" bpmnElement="fd1" bioc:fill="#5b6472" bioc:stroke="#f1f2f5">
+      <bpmndi:BPMNShape id="fd1_di" bpmnElement="fd1" bioc:fill="#f2c14e" bioc:stroke="#4a3200">
         <dc:Bounds x="620" y="195" width="160" height="70" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="fd2_di" bpmnElement="fd2" bioc:fill="#5b6472" bioc:stroke="#f1f2f5">
+      <bpmndi:BPMNShape id="fd2_di" bpmnElement="fd2" bioc:fill="#f2c14e" bioc:stroke="#4a3200">
         <dc:Bounds x="820" y="490" width="160" height="70" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="fd3_di" bpmnElement="fd3" bioc:fill="#5b6472" bioc:stroke="#f1f2f5">
+      <bpmndi:BPMNShape id="fd3_di" bpmnElement="fd3" bioc:fill="#f2c14e" bioc:stroke="#4a3200">
         <dc:Bounds x="1020" y="490" width="160" height="70" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="a1_di" bpmnElement="a1" bioc:fill="#5b6472" bioc:stroke="#f1f2f5">
+      <bpmndi:BPMNShape id="a1_di" bpmnElement="a1" bioc:fill="#f2c14e" bioc:stroke="#4a3200">
         <dc:Bounds x="1220" y="195" width="160" height="70" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="a2_di" bpmnElement="a2">
+      <bpmndi:BPMNShape id="a2_di" bpmnElement="a2" bioc:fill="#7fdcd6" bioc:stroke="#04322f">
         <dc:Bounds x="1420" y="490" width="160" height="70" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="G1_di" bpmnElement="G1" isMarkerVisible="true" bioc:fill="#5b6472" bioc:stroke="#f1f2f5">
+      <bpmndi:BPMNShape id="G1_di" bpmnElement="G1" isMarkerVisible="true" bioc:fill="#f2c14e" bioc:stroke="#4a3200">
         <dc:Bounds x="1675" y="205" width="50" height="50" />
         <bpmndi:BPMNLabel>
           <dc:Bounds x="1664" y="169" width="72" height="28" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="G2_di" bpmnElement="G2" isMarkerVisible="true" bioc:fill="#8fa8ff" bioc:stroke="#0d1a4d">
+      <bpmndi:BPMNShape id="G2_di" bpmnElement="G2" isMarkerVisible="true" bioc:fill="#7fdcd6" bioc:stroke="#04322f">
         <dc:Bounds x="1875" y="205" width="50" height="50" />
         <bpmndi:BPMNLabel>
           <dc:Bounds x="1851" y="169" width="98" height="28" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="b1_di" bpmnElement="b1" bioc:fill="#8fa8ff" bioc:stroke="#0d1a4d">
+      <bpmndi:BPMNShape id="b1_di" bpmnElement="b1" bioc:fill="#7fdcd6" bioc:stroke="#04322f">
         <dc:Bounds x="2020" y="490" width="160" height="70" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="bi_di" bpmnElement="bi" bioc:fill="#8fa8ff" bioc:stroke="#0d1a4d">
+      <bpmndi:BPMNShape id="bi_di" bpmnElement="bi" bioc:fill="#7fdcd6" bioc:stroke="#04322f">
         <dc:Bounds x="2020" y="645" width="160" height="70" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="b2_di" bpmnElement="b2" bioc:fill="#8fa8ff" bioc:stroke="#0d1a4d">
+      <bpmndi:BPMNShape id="b2_di" bpmnElement="b2" bioc:fill="#7fdcd6" bioc:stroke="#04322f">
         <dc:Bounds x="2220" y="195" width="160" height="70" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="pz_di" bpmnElement="pz" bioc:fill="#4fd18f" bioc:stroke="#063820">
+      <bpmndi:BPMNShape id="pz_di" bpmnElement="pz" bioc:fill="#7fdcd6" bioc:stroke="#04322f">
         <dc:Bounds x="2420" y="1185" width="160" height="70" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="pz2_di" bpmnElement="pz2" bioc:fill="#4fd18f" bioc:stroke="#063820">
+      <bpmndi:BPMNShape id="pz2_di" bpmnElement="pz2" bioc:fill="#7fdcd6" bioc:stroke="#04322f">
         <dc:Bounds x="2620" y="1185" width="160" height="70" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="pj_di" bpmnElement="pj" bioc:fill="#4fd18f" bioc:stroke="#063820">
+      <bpmndi:BPMNShape id="pj_di" bpmnElement="pj" bioc:fill="#8fa8ff" bioc:stroke="#0d1a4d">
         <dc:Bounds x="2620" y="825" width="160" height="70" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="b3_di" bpmnElement="b3" bioc:fill="#4fd18f" bioc:stroke="#063820">
+      <bpmndi:BPMNShape id="b3_di" bpmnElement="b3" bioc:fill="#7fdcd6" bioc:stroke="#04322f">
         <dc:Bounds x="2820" y="195" width="160" height="70" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="b4_di" bpmnElement="b4" bioc:fill="#4fd18f" bioc:stroke="#063820">
+      <bpmndi:BPMNShape id="b4_di" bpmnElement="b4" bioc:fill="#7fdcd6" bioc:stroke="#04322f">
         <dc:Bounds x="3020" y="195" width="160" height="70" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="b5_di" bpmnElement="b5" bioc:fill="#4fd18f" bioc:stroke="#063820">
+      <bpmndi:BPMNShape id="b5_di" bpmnElement="b5" bioc:fill="#7fdcd6" bioc:stroke="#04322f">
         <dc:Bounds x="3220" y="195" width="160" height="70" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="ds_di" bpmnElement="ds" bioc:fill="#8fa8ff" bioc:stroke="#0d1a4d">
+      <bpmndi:BPMNShape id="ds_di" bpmnElement="ds" bioc:fill="#c3c8d1" bioc:stroke="#23272e">
         <dc:Bounds x="3620" y="490" width="160" height="70" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="GT_di" bpmnElement="GT" isMarkerVisible="true" bioc:fill="#4fd18f" bioc:stroke="#063820">
+      <bpmndi:BPMNShape id="GT_di" bpmnElement="GT" isMarkerVisible="true" bioc:fill="#c3c8d1" bioc:stroke="#23272e">
         <dc:Bounds x="3875" y="205" width="50" height="50" />
         <bpmndi:BPMNLabel>
           <dc:Bounds x="3869" y="160" width="64" height="40" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="bt_di" bpmnElement="bt" bioc:fill="#4fd18f" bioc:stroke="#063820">
+      <bpmndi:BPMNShape id="bt_di" bpmnElement="bt" bioc:fill="#c3c8d1" bioc:stroke="#23272e">
         <dc:Bounds x="4020" y="490" width="160" height="70" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="GT2_di" bpmnElement="GT2" isMarkerVisible="true" bioc:fill="#4fd18f" bioc:stroke="#063820">
+      <bpmndi:BPMNShape id="GT2_di" bpmnElement="GT2" isMarkerVisible="true" bioc:fill="#c3c8d1" bioc:stroke="#23272e">
         <dc:Bounds x="4275" y="205" width="50" height="50" />
         <bpmndi:BPMNLabel>
           <dc:Bounds x="4261" y="155" width="78" height="42" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="bi2_di" bpmnElement="bi2" bioc:fill="#4fd18f" bioc:stroke="#063820">
+      <bpmndi:BPMNShape id="bi2_di" bpmnElement="bi2" bioc:fill="#c3c8d1" bioc:stroke="#23272e">
         <dc:Bounds x="4420" y="825" width="160" height="70" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="GR_di" bpmnElement="GR" isMarkerVisible="true" bioc:fill="#f088c0" bioc:stroke="#4d0f30">
+      <bpmndi:BPMNShape id="GR_di" bpmnElement="GR" isMarkerVisible="true" bioc:fill="#8fa8ff" bioc:stroke="#0d1a4d">
       <dc:Bounds x="4675" y="205" width="50" height="50" />
       <bpmndi:BPMNLabel>
         <dc:Bounds x="4661" y="155" width="78" height="42" />
       </bpmndi:BPMNLabel>
     </bpmndi:BPMNShape>
-    <bpmndi:BPMNShape id="r1_di" bpmnElement="r1" bioc:fill="#f088c0" bioc:stroke="#4d0f30">
+    <bpmndi:BPMNShape id="r1_di" bpmnElement="r1" bioc:fill="#8fa8ff" bioc:stroke="#0d1a4d">
       <dc:Bounds x="4820" y="490" width="160" height="70" />
     </bpmndi:BPMNShape>
-    <bpmndi:BPMNShape id="bo1_di" bpmnElement="bo1" bioc:fill="#f088c0" bioc:stroke="#4d0f30">
+    <bpmndi:BPMNShape id="bo1_di" bpmnElement="bo1" bioc:fill="#8fa8ff" bioc:stroke="#0d1a4d">
         <dc:Bounds x="5020" y="825" width="160" height="70" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="c1_di" bpmnElement="c1" bioc:fill="#f088c0" bioc:stroke="#4d0f30">
+      <bpmndi:BPMNShape id="c1_di" bpmnElement="c1" bioc:fill="#8fa8ff" bioc:stroke="#0d1a4d">
         <dc:Bounds x="5220" y="490" width="160" height="70" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="bo2_di" bpmnElement="bo2" bioc:fill="#f088c0" bioc:stroke="#4d0f30">
+      <bpmndi:BPMNShape id="bo2_di" bpmnElement="bo2" bioc:fill="#8fa8ff" bioc:stroke="#0d1a4d">
         <dc:Bounds x="5420" y="825" width="160" height="70" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="G3_di" bpmnElement="G3" isMarkerVisible="true" bioc:fill="#f088c0" bioc:stroke="#4d0f30">
+      <bpmndi:BPMNShape id="G3_di" bpmnElement="G3" isMarkerVisible="true" bioc:fill="#8fa8ff" bioc:stroke="#0d1a4d">
         <dc:Bounds x="5675" y="205" width="50" height="50" />
         <bpmndi:BPMNLabel>
           <dc:Bounds x="5179.5" y="236" width="81" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="c4a_di" bpmnElement="c4a" bioc:fill="#f088c0" bioc:stroke="#4d0f30">
+      <bpmndi:BPMNShape id="c4a_di" bpmnElement="c4a" bioc:fill="#8fa8ff" bioc:stroke="#0d1a4d">
         <dc:Bounds x="5820" y="195" width="160" height="70" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="c2_di" bpmnElement="c2" bioc:fill="#f088c0" bioc:stroke="#4d0f30">
+      <bpmndi:BPMNShape id="c2_di" bpmnElement="c2" bioc:fill="#8fa8ff" bioc:stroke="#0d1a4d">
         <dc:Bounds x="6020" y="490" width="160" height="70" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="GUI_di" bpmnElement="GUI" isMarkerVisible="true" bioc:fill="#8fa8ff" bioc:stroke="#0d1a4d">
@@ -596,76 +596,76 @@
       <bpmndi:BPMNShape id="c3_di" bpmnElement="c3" bioc:fill="#8fa8ff" bioc:stroke="#0d1a4d">
         <dc:Bounds x="6820" y="195" width="160" height="70" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="G4_di" bpmnElement="G4" isMarkerVisible="true" bioc:fill="#f088c0" bioc:stroke="#4d0f30">
+      <bpmndi:BPMNShape id="G4_di" bpmnElement="G4" isMarkerVisible="true" bioc:fill="#8fa8ff" bioc:stroke="#0d1a4d">
         <dc:Bounds x="7075" y="205" width="50" height="50" />
         <bpmndi:BPMNLabel>
           <dc:Bounds x="7055" y="169" width="91" height="28" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="c4p_di" bpmnElement="c4p" bioc:fill="#f088c0" bioc:stroke="#4d0f30">
+      <bpmndi:BPMNShape id="c4p_di" bpmnElement="c4p" bioc:fill="#8fa8ff" bioc:stroke="#0d1a4d">
         <dc:Bounds x="7020" y="490" width="160" height="70" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="c4b_di" bpmnElement="c4b" bioc:fill="#f088c0" bioc:stroke="#4d0f30">
+      <bpmndi:BPMNShape id="c4b_di" bpmnElement="c4b" bioc:fill="#8fa8ff" bioc:stroke="#0d1a4d">
         <dc:Bounds x="7220" y="195" width="160" height="70" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="c4c_di" bpmnElement="c4c" bioc:fill="#f088c0" bioc:stroke="#4d0f30">
+      <bpmndi:BPMNShape id="c4c_di" bpmnElement="c4c" bioc:fill="#8fa8ff" bioc:stroke="#0d1a4d">
         <dc:Bounds x="7420" y="195" width="160" height="70" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="p1_di" bpmnElement="p1" bioc:fill="#f088c0" bioc:stroke="#4d0f30">
+      <bpmndi:BPMNShape id="p1_di" bpmnElement="p1" bioc:fill="#8fa8ff" bioc:stroke="#0d1a4d">
         <dc:Bounds x="7620" y="1005" width="160" height="70" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="G5_di" bpmnElement="G5" isMarkerVisible="true" bioc:fill="#f088c0" bioc:stroke="#4d0f30">
+      <bpmndi:BPMNShape id="G5_di" bpmnElement="G5" isMarkerVisible="true" bioc:fill="#8fa8ff" bioc:stroke="#0d1a4d">
         <dc:Bounds x="7875" y="1195" width="50" height="50" />
         <bpmndi:BPMNLabel>
           <dc:Bounds x="7858" y="1253" width="85" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="pf_di" bpmnElement="pf" bioc:fill="#f088c0" bioc:stroke="#4d0f30">
+      <bpmndi:BPMNShape id="pf_di" bpmnElement="pf" bioc:fill="#8fa8ff" bioc:stroke="#0d1a4d">
         <dc:Bounds x="7820" y="490" width="160" height="70" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="cr_di" bpmnElement="cr" bioc:fill="#f088c0" bioc:stroke="#4d0f30">
+      <bpmndi:BPMNShape id="cr_di" bpmnElement="cr" bioc:fill="#8fa8ff" bioc:stroke="#0d1a4d">
         <dc:Bounds x="8020" y="1005" width="160" height="70" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="G6_di" bpmnElement="G6" isMarkerVisible="true" bioc:fill="#f088c0" bioc:stroke="#4d0f30">
+      <bpmndi:BPMNShape id="G6_di" bpmnElement="G6" isMarkerVisible="true" bioc:fill="#8fa8ff" bioc:stroke="#0d1a4d">
         <dc:Bounds x="8275" y="1015" width="50" height="50" />
         <bpmndi:BPMNLabel>
           <dc:Bounds x="8301" y="973" width="78" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="ac_di" bpmnElement="ac" bioc:fill="#f088c0" bioc:stroke="#4d0f30">
+      <bpmndi:BPMNShape id="ac_di" bpmnElement="ac" bioc:fill="#8fa8ff" bioc:stroke="#0d1a4d">
         <dc:Bounds x="8220" y="195" width="160" height="70" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="mg_di" bpmnElement="mg" bioc:fill="#f088c0" bioc:stroke="#4d0f30">
+      <bpmndi:BPMNShape id="mg_di" bpmnElement="mg" bioc:fill="#8fa8ff" bioc:stroke="#0d1a4d">
         <dc:Bounds x="8420" y="1005" width="160" height="70" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="cd1_di" bpmnElement="cd1" bioc:fill="#f088c0" bioc:stroke="#4d0f30">
+      <bpmndi:BPMNShape id="cd1_di" bpmnElement="cd1" bioc:fill="#8fa8ff" bioc:stroke="#0d1a4d">
         <dc:Bounds x="8620" y="1185" width="160" height="70" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="G8_di" bpmnElement="G8" isMarkerVisible="true" bioc:fill="#f088c0" bioc:stroke="#4d0f30">
+      <bpmndi:BPMNShape id="G8_di" bpmnElement="G8" isMarkerVisible="true" bioc:fill="#8fa8ff" bioc:stroke="#0d1a4d">
         <dc:Bounds x="8875" y="1195" width="50" height="50" />
         <bpmndi:BPMNLabel>
           <dc:Bounds x="8858" y="1253" width="85" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="df_di" bpmnElement="df" bioc:fill="#f088c0" bioc:stroke="#4d0f30">
+      <bpmndi:BPMNShape id="df_di" bpmnElement="df" bioc:fill="#8fa8ff" bioc:stroke="#0d1a4d">
         <dc:Bounds x="8820" y="490" width="160" height="70" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="c5_di" bpmnElement="c5" bioc:fill="#f088c0" bioc:stroke="#4d0f30">
+      <bpmndi:BPMNShape id="c5_di" bpmnElement="c5" bioc:fill="#7fe0ac" bioc:stroke="#063820">
         <dc:Bounds x="9020" y="490" width="160" height="70" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="G7_di" bpmnElement="G7" isMarkerVisible="true" bioc:fill="#f088c0" bioc:stroke="#4d0f30">
+      <bpmndi:BPMNShape id="G7_di" bpmnElement="G7" isMarkerVisible="true" bioc:fill="#8fa8ff" bioc:stroke="#0d1a4d">
         <dc:Bounds x="9275" y="835" width="50" height="50" />
         <bpmndi:BPMNLabel>
           <dc:Bounds x="9259" y="894.5" width="81" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="rl_di" bpmnElement="rl" bioc:fill="#f088c0" bioc:stroke="#4d0f30">
+      <bpmndi:BPMNShape id="rl_di" bpmnElement="rl" bioc:fill="#8fa8ff" bioc:stroke="#0d1a4d">
         <dc:Bounds x="9360" y="1005" width="160" height="70" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="cs_di" bpmnElement="cs" bioc:fill="#f088c0" bioc:stroke="#4d0f30">
         <dc:Bounds x="9560" y="825" width="160" height="70" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="end_ok_di" bpmnElement="end_ok">
+      <bpmndi:BPMNShape id="end_ok_di" bpmnElement="end_ok" bioc:fill="#ff9c8c" bioc:stroke="#5a1109">
         <dc:Bounds x="9482" y="212" width="36" height="36" />
         <bpmndi:BPMNLabel>
           <dc:Bounds x="9465" y="188" width="70" height="14" />
