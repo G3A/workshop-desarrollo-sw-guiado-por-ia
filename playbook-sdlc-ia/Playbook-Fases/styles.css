@@ -15,6 +15,7 @@ body{
 .brand{ font-size:11px; font-weight:800; letter-spacing:.22em; text-transform:uppercase; color:var(--amber); }
 h1{ font-family:'Fraunces',Georgia,serif; font-weight:600; font-size:34px; margin:6px 0 4px; color:#FFFCF6; letter-spacing:-.01em; line-height:1.08; }
 .lead{ color:var(--muted); font-size:16px; margin:0; max-width:60ch; }
+.lead.grupo{ font-size:14px; margin:10px 0 0; max-width:none; }  /* bajada de un grupo de secciones */
 .rule{ width:72px; height:5px; background:linear-gradient(90deg,var(--amber),var(--amber-deep)); border-radius:4px; margin:16px 0 24px; box-shadow:0 0 20px rgba(255,177,43,.4); }
 
 .back{ display:inline-block; margin:0 0 14px; font-size:13px; color:var(--teal); text-decoration:none; }
@@ -38,9 +39,14 @@ section ul{ margin:.45em 0; padding-left:1.2em; color:var(--muted); font-size:14
 section li{ margin:.28em 0; }
 .muted{ color:var(--muted); }
 
-/* Tipo de instrumentación · mismos colores que el diagrama: azul determinístico, violeta no
-   determinístico. El tipo lo lleva la sección, no el grupo que la contiene, porque hooks y MCP
-   mezclan los dos y hay dos excepciones que rompen la intuición. */
+/* Tipo de instrumentación · azul determinista, violeta no determinista.
+   El tipo lo lleva la SECCIÓN y no el grupo que la contiene, por dos razones: hooks y MCP mezclan
+   los dos tipos, y en modo foco (body.focus, más abajo) el encabezado del grupo no se ve, así que
+   una caja abierta desde el diagrama quedaría sin decir de qué tipo es.
+   Ojo con el borde izquierdo: en este playbook lo gana la clase de COBERTURA —section.skill y
+   compañía, definidas más abajo y por eso con prioridad— para que el borde diga lo mismo que el
+   color del diagrama. El tipo se lee en la pastilla .tipo. Las reglas de acá abajo siguen
+   aplicando en las secciones sin clase de cobertura, como la tarjeta RD de la referencia. */
 section.det{ border-left:4px solid #5B8CFF; }
 section.nodet{ border-left:4px solid #B388FF; }
 .tipo{ display:inline-block; font-size:10.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; border-radius:999px; padding:2px 9px; margin-bottom:8px; margin-left:6px; }
@@ -101,6 +107,7 @@ footer{ margin-top:42px; color:var(--muted); font-size:12px; border-top:1px soli
 body.focus section{ display:none; }
 body.focus section.active{ display:block; }
 body.focus .wrap > h2{ display:none; }      /* oculta encabezados de grupo (Contexto, etc.) */
+body.focus .wrap > p.grupo{ display:none; } /* y la bajada del grupo, que si no sale sobre una caja de otro */
 .focusbar{ display:none; align-items:center; gap:10px; margin:6px 0 2px; font-size:13px; color:var(--muted); flex-wrap:wrap; }
 body.focus .focusbar{ display:flex; }
 .focusbar button{ background:rgba(255,255,255,.04); border:1px solid var(--line); color:var(--amber-soft); border-radius:8px; padding:6px 11px; font-family:inherit; font-size:12px; cursor:pointer; }
