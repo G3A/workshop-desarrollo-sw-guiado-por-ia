@@ -109,6 +109,31 @@ versión nueva", and `AGENTS.md`).
   `references/monorepo-roots.md` holds the detail, the guards against writing into an unrelated
   ancestor repository, and what to do with an orphan `REVIEW.md` from an earlier run (#121).
 
+### Changed
+
+- **`debt-triage` triages in plan mode and closes on a gate, the way
+  `/generar-pruebas-en-code-legacy` does.** Four things the sibling command already had and this
+  skill did not. It ran with no approval checkpoint at all: "propose a minimal fix" and "write the
+  fix" sat in the same phase, so a run could reach a verdict and apply it in one breath — the exact
+  shape of the auto-fix this skill exists to refuse. Phases 1 to 3 now run inside `EnterPlanMode`
+  (reading the analyzer's report, or running its own report target, writes nothing versionable),
+  and two `STOP`s replace the two places where the body merely *suggested* pausing: one at the
+  grouped list, so the user can scope the run before any budget is spent, and one at the full
+  triage plan, after which `ExitPlanMode` writes the approved rows and nothing else. A finding
+  struck from the plan is reported as un-actioned rather than quietly suppressed. The body also
+  contradicted itself on the test net — Philosophy said an untested finding is "safer left as a
+  filed issue", Phase 4 said to fix it anyway and "say so explicitly" — which is the same
+  body-versus-detail contradiction the command fixed for its own coverage gate; it resolves toward
+  the checkpoint: the missing net is a mark on the plan and the user decides, not the skill. Phase
+  5 becomes an explicit gate/informative split (six gate rows — every finding verdicted, every
+  suppression's reason inline, every fix read at its call site and present in the approved plan, no
+  untested fix unnamed in it, nothing committed — against counts and severity mix as the only
+  informative part), with a failed row sending the run back to Phase 3 instead of being reported as
+  triaged with a caveat. Frontmatter gains `model: opus`, the first skill in the plugin to pin one:
+  judgement over someone else's code is not where to economize. And, as in the command, Windows
+  runs are told to activate `windows-powershell` before the first non-trivial shell command. The
+  process viewer's `ds` node and `docs/skills/debt-triage-es.md` say the same.
+
 ## [0.4.2] — 2026-09-15
 
 ### Fixed
