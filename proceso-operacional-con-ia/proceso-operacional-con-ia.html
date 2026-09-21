@@ -454,12 +454,31 @@ python -m http.server</pre>
       GR:"C", r1:"C", bo1:"C", c1:"C", bo2:"C", G3:"C", c4a:"C", c2:"C", GUI:"C", v0:"C", vw:"C", c3:"C", G4:"C", c4p:"C",
       c4b:"C", c4c:"C", p1:"C", G5:"C", pf:"C", cr:"C", G6:"C", ac:"C", mg:"C", cd1:"C", G8:"C", df:"C", c5:"C", G7:"C", rl:"C", cs:"C"
     };
+    // Los pasos que cuentan para el progreso. Quedan fuera los gateways —una pregunta no es un
+    // paso— y las ramas que son un desvío: v0/vw, c4p, pf, ac, df, bt y bi2 vuelven todas a un
+    // nodo que SÍ cuenta (c3, c4b, cr, mg, c5, GT2, bo1), así que contarlas sería contar dos
+    // veces la misma etapa.
+    //
+    // Un elemento puede ser un id, o un GRUPO DE ALTERNATIVAS {pregunta, opciones}: las ramas de
+    // un gateway que son la misma etapa resuelta de dos maneras y que no se rejuntan en un tercer
+    // nodo contable. Cuenta como UN casillero, hecho con cualquiera de sus opciones.
     var CANON = {
       F: ["f0","fd1","fd2","fd3"],
       A: ["a1","a2"],
-      B: ["b1","b2","b3","b4","b5","pz","pz2","pj","ds"],
+      // b1 y bi son las dos ramas de G2 («¿ya existe AGENTS.md?») y las dos desembocan en b2: se
+      // corre una U OTRA, nunca las dos. Contar solo b1 dejaba «Proyecto» clavado en 8/9 para
+      // siempre en todo repo que ya tuviera contexto —el caso incremental, el más común—, y
+      // contar las dos por separado habría pedido 10 pasos de los que solo 9 son alcanzables.
+      B: [{ pregunta: "G2", opciones: ["b1","bi"] },"b2","b3","b4","b5","pz","pz2","pj","ds"],
       C: ["r1","bo1","c1","bo2","c4a","c2","c3","c4b","c4c","p1","cr","mg","cd1","c5","rl","cs"]
     };
+    function pasoOpciones(paso) { return paso.opciones || [paso]; }
+    function pasoHecho(paso) { return pasoOpciones(paso).some(nodeDone); }
+    // A dónde apunta «siguiente» con el paso pendiente: en un grupo de alternativas, al gateway
+    // que las decide — el paso siguiente real es responder esa pregunta, no adivinar la rama.
+    function pasoPendienteId(paso) { return paso.pregunta || pasoOpciones(paso)[0]; }
+    // Para la bitácora: el id que de verdad se recorrió, o el pendiente si todavía no se recorrió.
+    function pasoId(paso) { return pasoOpciones(paso).filter(nodeDone)[0] || pasoPendienteId(paso); }
     var PART_LABEL = { F: "Fundamentos", A: "Máquina", B: "Proyecto", C: "Ciclo" };
 
     var catalog = null, viewer = null, overlays = null, canvas = null, elementRegistry = null;
@@ -876,7 +895,7 @@ python -m http.server</pre>
     function refreshProgress() {
       var wrap = $("#progress-pills"); wrap.innerHTML = "";
       Object.keys(CANON).forEach(function (part) {
-        var total = CANON[part].length, done = CANON[part].filter(function (id) { return nodeDone(id); }).length;
+        var total = CANON[part].length, done = CANON[part].filter(pasoHecho).length;
         wrap.appendChild(el('<span class="pill' + (done === total ? " full" : "") + '">' + PART_LABEL[part] + " " + done + "/" + total + "</span>"));
       });
     }
@@ -965,7 +984,7 @@ python -m http.server</pre>
     // ---- siguiente / reiniciar -------------------------------------------
     function firstPendiente() {
       var order = CANON.F.concat(CANON.A, CANON.B, CANON.C);
-      for (var i = 0; i < order.length; i++) if (!nodeDone(order[i])) return order[i];
+      for (var i = 0; i < order.length; i++) if (!pasoHecho(order[i])) return pasoPendienteId(order[i]);
       return null;
     }
     function outgoingFlows(id) {
@@ -1057,7 +1076,7 @@ python -m http.server</pre>
     function bitacoraData() {
       var estado = getEstado(), out = { generado: "cliente", proyecto: projectScope(), partes: {} };
       Object.keys(CANON).forEach(function (part) {
-        out.partes[part] = CANON[part].map(function (id) { return { id: id, hecho: nodeDone(id) }; });
+        out.partes[part] = CANON[part].map(function (paso) { return { id: pasoId(paso), hecho: pasoHecho(paso) }; });
       });
       return out;
     }
