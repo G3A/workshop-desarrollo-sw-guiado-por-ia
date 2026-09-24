@@ -18,6 +18,21 @@ pre-commit:
       run: sh ./mvnw -q spotless:check
       fail_text: "Style: run `make -C base-conocimiento format` and re-stage."
 
+# Todo commit declara si lo asistio una IA (#192): `Asistido-por-IA: <modelo>` o `Sin-IA:`. El pie
+# es de donde sale el porcentaje de PRs asistidas que reporta impact-metrics, y hasta este issue
+# era una convencion escrita que nadie verificaba. Se exige declarar, no decir que si.
+#
+# `{1}` es la ruta del archivo del mensaje, que git le pasa al hook commit-msg. Los merges y
+# rebases se saltan por lo mismo que en pre-commit: repiten mensajes que ya pasaron.
+commit-msg:
+  skip:
+    - merge
+    - rebase
+  commands:
+    pie-ia:
+      run: node scripts/verificar-pie-ia.mjs --mensaje {1}
+      fail_text: "The commit must declare `Asistido-por-IA: <model>` or `Sin-IA:`."
+
 pre-push:
   commands:
     # Los dos sensores de aca van sin `root:`: cubren todo el monorepo y sus rutas son relativas a
