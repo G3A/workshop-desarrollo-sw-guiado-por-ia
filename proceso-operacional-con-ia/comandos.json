@@ -138,6 +138,40 @@
       },
       "fase": "1"
     },
+    "gv": {
+      "clase": "manual",
+      "semantica": "guarded",
+      "requires": "Fundamentos de colaboración confirmados (f0).",
+      "porque": "Todo lo que este recorrido instrumenta protege al repositorio <b>de lo que entra</b>: la guarda de secretos, el escaneo de gitleaks, el SCA, el SAST. Nada de eso dice una palabra sobre <b>lo que sale</b>. Y un agente de código lee archivos y los manda a un modelo que no corre en tu máquina: esa es la decisión que hay que tomar antes de instalarlo, no después de la primera sesión. Va acá por lo mismo que «Fundamentos de colaboración» va primero: no es un paso que resuelvas solo/a, es una conversación con tu equipo — y la respuesta no depende de qué herramienta elijas sino <b>de con qué cuenta inicies sesión</b>.",
+      "checklist": {
+        "titulo": "Qué sale hacia el modelo",
+        "nota": "Marca cada una cuando tu equipo la haya decidido y esté escrita. Cuatro respuestas, no cuatro tareas.",
+        "items": [
+          {
+            "id": "repos",
+            "label": "Qué repositorios pueden usarse con el agente",
+            "hint": "Y cuáles no. Un piloto chico no es lo mismo que el repositorio con los datos del cliente adentro."
+          },
+          {
+            "id": "retencion",
+            "label": "Qué hace el proveedor con lo que se le envía",
+            "hint": "Cuánto lo guarda y si entrena con eso. Depende del plan y de la cuenta con la que inicias sesión, no de la herramienta. Prender la telemetría de costo cambia esta respuesta."
+          },
+          {
+            "id": "datos",
+            "label": "Qué datos reales viven en el árbol de trabajo",
+            "hint": "Fixtures, volcados de base y logs con datos de producción son lo que sale sin que nadie lo note, porque no parecen código."
+          },
+          {
+            "id": "autor",
+            "label": "Quién lo autorizó y cuándo se revisa",
+            "hint": "Un acuerdo sin nombre y sin fecha es un rumor: a los tres meses nadie sabe si sigue vigente."
+          }
+        ]
+      },
+      "guiaPasos": "<p>Las cuatro casillas son decisiones, no tareas: ninguna se resuelve leyendo el repositorio, y por eso ninguna skill las contesta. Lo que sí puedes hacer desde acá es <b>dejarlas escritas</b>, que es lo único que hace que el acuerdo siga existiendo la semana después de la primera duda.</p><p class=\"tip\">Dónde se escribe: la <b>sección 6 de <code>EXPERIMENTS.md</code></b>, «Qué puede salir hacia el modelo». Va en ese archivo y no en uno nuevo porque ahí ya vive el resto del acuerdo del equipo, con su tabla de <i>quién lo dio, cuándo y cuándo se revisa</i> — y dos archivos con dos fechas de revisión es la forma más rápida de que una de las dos envejezca sin que nadie lo note. <code>/sdlc-ia:agent-context-java</code> ofrece generar <code>EXPERIMENTS.md</code> con esa sección ya puesta, en TODO: <b>la skill no la contesta</b>, igual que con el resto del archivo.</p><p>Si tu organización ya tiene una política escrita sobre esto, este paso es confirmarla y enlazarla, no reescribirla. Lo que no vale es dejarla implícita: «se asume resuelto» es exactamente como se ve un acuerdo que nadie tomó.</p>",
+      "fase": "0"
+    },
     "fd1": {
       "clase": "manual",
       "semantica": "idempotent",
@@ -159,7 +193,7 @@
       "semantica": "idempotent",
       "requires": "Gestos base dominados (fd2).",
       "porque": "El agente no \"sabe\" tu proyecto por arte de magia: todo lo que puede ver cabe en una ventana de contexto finita, y esa ventana cuesta tokens (y plata, o cuota). Entender esto evita dos errores opuestos: pedirle demasiado en una sola sesión, o desconfiar de más de lo necesario.",
-      "guiaPasos": "<ul><li><b>Contexto</b>: el agente solo ve lo que tú le muestras — archivos abiertos, mencionados, o los que el propio agente decide leer. No es telepatía.</li><li><b>Ventana de tokens</b>: hay un límite de cuánto texto cabe en una conversación. Sesiones muy largas se <i>compactan</i> (se resumen) para seguir cabiendo — pierdes detalle a cambio de seguir andando.</li><li><b>Elegir el modelo según la tarea</b>: un modelo grande y lento para diseño/arquitectura, uno chico y rápido para tareas mecánicas y repetitivas. No siempre el modelo más caro es la mejor elección.</li></ul>",
+      "guiaPasos": "<ul><li><b>Contexto</b>: el agente solo ve lo que tú le muestras — archivos abiertos, mencionados, o los que el propio agente decide leer. No es telepatía.</li><li><b>Ventana de tokens</b>: hay un límite de cuánto texto cabe en una conversación. Sesiones muy largas se <i>compactan</i> (se resumen) para seguir cabiendo — pierdes detalle a cambio de seguir andando.</li><li><b>Elegir el modelo según la tarea</b>: un modelo grande y lento para diseño/arquitectura, uno chico y rápido para tareas mecánicas y repetitivas. No siempre el modelo más caro es la mejor elección.</li><li><b>Privacidad</b>: la otra mitad de este paso, y la que se olvida. Qué pasa con el código que el agente envía —cuánto se guarda, si entrena— <b>depende de con qué cuenta iniciaste sesión</b>, no de qué herramienta usas: el mismo agente responde distinto según el plan. Y prender la telemetría de costo cambia esa respuesta, así que las dos mitades no son independientes. Quién decide esto y dónde queda escrito es <b>«Acordar qué sale hacia el modelo»</b> (gv), antes de instalar; acá solo hace falta entender por qué la pregunta existe.</li></ul>",
       "fase": "0"
     },
     "a1": {
