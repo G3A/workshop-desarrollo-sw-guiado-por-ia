@@ -19,12 +19,15 @@ contexto:
   ADR-0003 y, desde #162, también los criterios de los dos `REVIEW.md` por los títulos de sus
   secciones numeradas. Desde #165 está además `verificar-ancho.mjs`, que falla cuando una línea de
   prosa de un `.md` o un `.mjs` de los que este método mantiene pasa de 100 caracteres; su alcance
-  y sus 25 archivos heredados están escritos en el propio script. Los cuatro sensores del monorepo
-  piden **node >= 18** en el PATH; el del playbook vive junto a lo que verifica
-  (`playbook-sdlc-ia/verificar-cobertura.mjs`). Dónde bloquea cada uno difiere: los de enlaces y de
-  ancho corren en CI y también en el pre-push, porque son locales y de un segundo; el del playbook,
-  solo en CI; y el del espejo, **solo en CI porque sale a la red** —un hook que sale a la red
-  bloquea `git push` cuando falla el wifi—. A mano es `node scripts/verificar-espejo.mjs` desde la
+  y sus 25 archivos heredados están escritos en el propio script. Desde #193 está
+  `verificar-pasos-skill.mjs`, que falla cuando el visor cita un paso de una skill —«el paso G de
+  la skill», «su Fase 5»— que esa skill ya no tiene; las letras viven en sus `references/`, no en
+  el `SKILL.md`. Los cinco sensores del monorepo piden **node >= 18** en el PATH; el del playbook
+  vive junto a lo que verifica (`playbook-sdlc-ia/verificar-cobertura.mjs`). Dónde bloquea cada uno
+  difiere: los de enlaces, ancho y pasos de skill corren en CI y también en el pre-push, porque son
+  locales y de un segundo; el del playbook, solo en CI; y el del espejo, **solo en CI porque sale a
+  la red** —un hook que sale a la red bloquea `git push` cuando falla el wifi—. A mano es
+  `node scripts/verificar-espejo.mjs` desde la
   raíz; sin `GITHUB_TOKEN` en el entorno usa la API anónima, que permite 60 peticiones por hora.
 - `REVIEW.md` — qué mirar en un diff ya escrito (lo lee el servicio de Code Review; no repite las
   reglas de generación de los `AGENTS.md`). `EXPERIMENTS.md` — el acuerdo sobre qué puede fallar
