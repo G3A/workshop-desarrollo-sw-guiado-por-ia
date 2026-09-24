@@ -42,6 +42,10 @@ pre-push:
       priority: 2
       run: node scripts/verificar-enlaces.mjs
       fail_text: "Broken doc links (or node missing from PATH). See scripts/verificar-enlaces.mjs."
+    pasos-skill:
+      priority: 3
+      run: node scripts/verificar-pasos-skill.mjs
+      fail_text: "The viewer cites a skill step that no longer exists. See scripts/verificar-pasos-skill.mjs."
     base-conocimiento-check:
       root: "base-conocimiento/"
       run: make check

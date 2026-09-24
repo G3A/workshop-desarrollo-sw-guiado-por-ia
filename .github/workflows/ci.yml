@@ -90,6 +90,13 @@ jobs:
         working-directory: .
         run: node scripts/verificar-ancho.mjs
 
+      # Sensor de citas a pasos de skill (#193): el visor explica lo que una skill hace por dentro
+      # citando sus pasos («el paso G de la skill», «su Fase 5»), y una cita que la skill ya no
+      # tiene falla aca. Las letras viven en references/, no en el SKILL.md. Corre en la raiz.
+      - name: Viewer step citations match the skills
+        working-directory: .
+        run: node scripts/verificar-pasos-skill.mjs
+
       # Sensor del playbook (#117): una caja que cambia de badge sin que cambien su dato B(), su
       # seccion y los contadores falla aca. Node ya viene en el runner; el script no tiene
       # dependencias. Corre en la raiz, no en base-conocimiento/.
