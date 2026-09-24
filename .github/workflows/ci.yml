@@ -90,6 +90,22 @@ jobs:
         working-directory: .
         run: node scripts/verificar-ancho.mjs
 
+      # Sensor del pie de asistencia (#192): todo commit declara `Asistido-por-IA: <modelo>` o
+      # `Sin-IA:`, que es de donde sale el porcentaje de PRs asistidas de impact-metrics. Corre
+      # tambien como hook commit-msg; este paso existe porque el hook local lo salta `LEFTHOOK=0`
+      # sin dejar rastro, y un dato que sostiene una metrica no puede depender de eso.
+      #
+      # En una PR el rango son sus commits (base..HEAD, con fetch-depth 0 mas arriba); en un push a
+      # dev o main, el commit que llego. Los merges quedan fuera: no los escribe una persona.
+      - name: Every commit declares whether AI assisted it
+        working-directory: .
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          if [ -n "${BASE_SHA:-}" ]; then RANGO="$BASE_SHA..HEAD"; else RANGO="HEAD~1..HEAD"; fi
+          node scripts/verificar-pie-ia.mjs --rango "$RANGO"
+
       # Sensor de citas a pasos de skill (#193): el visor explica lo que una skill hace por dentro
       # citando sus pasos («el paso G de la skill», «su Fase 5»), y una cita que la skill ya no
       # tiene falla aca. Las letras viven en references/, no en el SKILL.md. Corre en la raiz.
