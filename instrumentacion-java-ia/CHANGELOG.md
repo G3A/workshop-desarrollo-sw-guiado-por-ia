@@ -15,6 +15,43 @@ versión nueva", and `AGENTS.md`).
 
 ## [unreleased]
 
+### Changed
+
+- **`legacy-test-harness` goes from 6 phases with no checkpoint to 8 phases with three STOPs.** It
+  was the thinnest skill in the plugin (4.9 KB against 28 KB for the largest) and the only one that
+  wrote into the user's tree with no approval checkpoint — on a legacy repository, which is exactly
+  where least is known about what is about to be touched. Phases 1 to 5 now run inside
+  `EnterPlanMode`, and the STOPs sit where the user has something to decide: the seam map, the
+  layer selection, the full plan. Six holes closed. **A preflight phase** verifies the ground
+  actually runs before any layer is planned — the runtime the build demands (pinned *before*
+  compiling, since a `pom.xml` with 2.x plugins doesn't build under a current JDK), a compilable
+  baseline, the existing suite **and its baseline of failures**, a container runtime, and whether
+  the dependency feed resolves the test dependencies the layers will ask for; each block marks its
+  layer in the Phase 4 menu as blocked by environment, proposed as an issue rather than promised.
+  **An exhaustive census** of actors carrying business logic replaces "the target modules": without
+  a denominator a run can report success having covered 7% of the repository, and each actor now
+  ends in one of five closed states (`covered`, `excluded`, `pending-seam`, `blocked`, `pending`)
+  in an ADR appendix that makes the run resumable. **Three seam states** (🟢/🟡/🔴) replace the
+  binary cuttable/not-cuttable, with the warning that a collaborator in an **injected field is 🟢,
+  not 🟡** — it's populated by reflection with production untouched, and calling it a seam is the
+  one mistake that leaves whole layers of a DI-based legacy codebase untested. That warning lives
+  in the body, not a reference, because it is the part that prevents the damage. **Every proposed
+  seam now carries a characterization net**: a golden master pinning what the code does today, bugs
+  included, temporary by design (pin → cut the seam → write the real tests → delete it). **A tranche
+  is agreed** past roughly 30 🟢 actors, with the gate measured against it — and with no explicit
+  tranche the yardstick stays the full census, so forgetting to agree one cannot silently shrink
+  what is checked. **Writing happens in batches** of 3 to 5 actors, where "the batch is green" means
+  zero *new* failures against the preflight baseline, with a two-retry budget per actor and parallel
+  subagents only in isolated worktrees. And **the reality gate** no longer just checks that a
+  production import exists: it checks that the import **resolves** to a file under the production
+  source root, because with the root-by-type layout `unit/` and `testutil/` share the root package
+  with production and a skeleton importing only `testutil.FakeX` sailed past a prefix grep. It adds
+  the transitive exception for the contract-test trio, a 14-criterion table, census coverage as a
+  threshold, a second run in random order, and mutation testing as an informative audit; the kill
+  check the skill already had is kept. `SKILL.md` lands at 9,480 B with a 596 B `description`
+  (budgets 10,240 and 700) and the six references between 3,948 and 7,565 B, so this does not become
+  a fifth oversized `SKILL.md` on top of the four #143 already tracks.
+
 ### Fixed
 
 - **`agent-context-java`'s PR template links `REVIEW.md` by absolute URL, and Phase 6 checks links
