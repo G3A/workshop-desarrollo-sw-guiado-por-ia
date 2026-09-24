@@ -64,6 +64,7 @@
         <bpmn:flowNodeRef>cs</bpmn:flowNodeRef>
       </bpmn:lane>
       <bpmn:lane id="Lane_repo" name="GitHub — Pull Requests &#38; Rulesets">
+        <bpmn:flowNodeRef>pz3</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>p1</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>cr</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>G6</bpmn:flowNodeRef>
@@ -152,9 +153,14 @@
       <bpmn:incoming>e17</bpmn:incoming>
       <bpmn:outgoing>e18</bpmn:outgoing>
     </bpmn:task>
+    <bpmn:task id="pz3" name="Escribir el Ruleset que bloquea">
+      <bpmn:documentation>El Ruleset es lo que convierte el workflow en juez: sin él los checks reportan y el merge pasa igual. Va después de la primera corrida porque la regla exige el nombre real del check, y ese nombre solo existe cuando una corrida terminó.</bpmn:documentation>
+      <bpmn:incoming>e18</bpmn:incoming>
+      <bpmn:outgoing>e64</bpmn:outgoing>
+    </bpmn:task>
     <bpmn:task id="pj" name="Crear Project y milestone del sprint">
       <bpmn:documentation>Una vez por repositorio: el Project v2 donde vive el estado de cada issue y el milestone que representa el sprint. Solo se crean si no existen.</bpmn:documentation>
-      <bpmn:incoming>e18</bpmn:incoming>
+      <bpmn:incoming>e64</bpmn:incoming>
       <bpmn:outgoing>e61</bpmn:outgoing>
     </bpmn:task>
     <bpmn:task id="b3" name="Verificar que llegó el arnés">
@@ -388,7 +394,8 @@
     <bpmn:sequenceFlow id="e13" sourceRef="bi" targetRef="b2" />
     <bpmn:sequenceFlow id="e14" sourceRef="b2" targetRef="pz" />
     <bpmn:sequenceFlow id="e17" sourceRef="pz" targetRef="pz2" />
-    <bpmn:sequenceFlow id="e18" sourceRef="pz2" targetRef="pj" />
+    <bpmn:sequenceFlow id="e18" sourceRef="pz2" targetRef="pz3" />
+    <bpmn:sequenceFlow id="e64" sourceRef="pz3" targetRef="pj" />
     <bpmn:sequenceFlow id="e61" sourceRef="pj" targetRef="b3" />
     <bpmn:sequenceFlow id="e15" sourceRef="b3" targetRef="b4" />
     <bpmn:sequenceFlow id="e16" sourceRef="b4" targetRef="b5" />
@@ -517,6 +524,9 @@
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="pz2_di" bpmnElement="pz2" bioc:fill="#7fdcd6" bioc:stroke="#04322f">
         <dc:Bounds x="2620" y="1185" width="160" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="pz3_di" bpmnElement="pz3" bioc:fill="#7fdcd6" bioc:stroke="#04322f">
+        <dc:Bounds x="2620" y="1005" width="160" height="70" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="pj_di" bpmnElement="pj" bioc:fill="#8fa8ff" bioc:stroke="#0d1a4d">
         <dc:Bounds x="2620" y="825" width="160" height="70" />
@@ -759,6 +769,10 @@
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="e18_di" bpmnElement="e18">
         <di:waypoint x="2700" y="1185" />
+        <di:waypoint x="2700" y="1075" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e64_di" bpmnElement="e64">
+        <di:waypoint x="2700" y="1005" />
         <di:waypoint x="2700" y="895" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="e61_di" bpmnElement="e61">
