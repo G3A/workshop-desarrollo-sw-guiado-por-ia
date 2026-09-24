@@ -17,6 +17,14 @@ versión nueva", and `AGENTS.md`).
 
 ### Changed
 
+- **`agent-context-java`'s `EXPERIMENTS.md` templates gain a sixth section, "what may leave toward
+  the model".** The agreement covered what may fail; it said nothing about what leaves the
+  repository — the question every security review opens with. Four slots, all TODO like the rest of
+  the file: repositories allowed, provider retention, real data living in the tree, and the
+  organization policy to link instead of rewriting. Who granted it and when it is reviewed stays in
+  section 4, deliberately: one agreement, one review date, not two. The skill does not answer the
+  new section either — a team's data posture invented by a model is the same hallucination the rest
+  of this file exists to prevent. Both languages.
 - **`legacy-test-harness` goes from 6 phases with no checkpoint to 8 phases with three STOPs.** It
   was the thinnest skill in the plugin (4.9 KB against 28 KB for the largest) and the only one that
   wrote into the user's tree with no approval checkpoint — on a legacy repository, which is exactly

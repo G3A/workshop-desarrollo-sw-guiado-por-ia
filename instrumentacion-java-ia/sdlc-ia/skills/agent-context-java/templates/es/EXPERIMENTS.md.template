@@ -113,6 +113,23 @@ el costo del intento y no cobró nada.
 - Qué se hace con lo que se repite: promoverlo a `AGENTS.md`, a `REVIEW.md`, a un ADR, o —lo que
   más rinde— convertirlo en un sensor, para que deje de depender de que alguien se acuerde.
 
+## 6. Qué puede salir hacia el modelo
+
+Las cinco secciones de arriba acuerdan **qué puede fallar**. Esta acuerda **qué puede salir**: un
+agente de código lee archivos y los envía a un modelo que no corre en esta máquina. Es una decisión
+del equipo, no un efecto de la herramienta — y la respuesta depende de **con qué cuenta se inició
+sesión**, no de qué agente se use. Prender la telemetría de costo la cambia.
+
+| | |
+|---|---|
+| **Repositorios permitidos** | <!-- TODO: cuáles sí y cuáles no. "Todos" es la respuesta que no sirve. --> |
+| **Retención del proveedor** | <!-- TODO: cuánto guarda lo enviado y si entrena con eso, según el plan contratado. --> |
+| **Datos reales en el árbol** | <!-- TODO: fixtures, volcados de base y logs de producción. Es lo que sale sin que nadie lo note, porque no parece código. --> |
+| **Política de la organización** | <!-- TODO: si ya existe una, enlázala acá en vez de reescribirla. --> |
+
+Quién lo autorizó y cuándo se revisa **es la tabla de la sección 4**: el mismo acuerdo y la misma
+fecha, no dos.
+
 ---
 
 ## Lo que este archivo no es
