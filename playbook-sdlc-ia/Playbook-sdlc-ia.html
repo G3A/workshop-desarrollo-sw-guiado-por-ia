@@ -267,7 +267,7 @@ G1 -->|Sí| DT0
 subgraph PB["Antes del primer issue — solo si el repo lo necesita"]
   direction TB
   DT0["Triaja la deuda que un analizador ya reportó<br/>SKILL · debt-triage"]:::skill
-  LT0["Haz crecer pruebas reales sobre código en producción<br/>5 capas, costuras al estilo Feathers<br/>SKILL · legacy-test-harness"]:::skill
+  LT0["Haz crecer pruebas reales sobre código en producción<br/>censo de actores, costuras al estilo Feathers, 5 capas<br/>SKILL · legacy-test-harness"]:::skill
   DT0-->LT0
 end
 LT0 --> RQ
@@ -553,7 +553,7 @@ style P6 fill:#0b0f15,stroke:#6b2018,color:#FF9C8C
     G1:L("¿Terreno listo?",P.f2,"G1"),
     // Puente
     DT0:B("Triaje de deuda","skill","debt-triage lee el código de cada hallazgo abierto y le pone veredicto: real, falso positivo o riesgo aceptado. Nunca instala un sensor nuevo ni aplica un auto-fix a ciegas.",P.f2,"DT0"),
-    LT0:B("Arnés de pruebas legacy","skill","legacy-test-harness mapea costuras al estilo Feathers y hace crecer pruebas reales en 5 capas. Nunca edita código de producción.",P.f2,"LT0"),
+    LT0:B("Arnés de pruebas legacy","skill","legacy-test-harness censa los actores y mapea costuras al estilo Feathers antes de escribir, y hace crecer pruebas reales en 5 capas. Corre en modo plan, con tres paradas. Nunca edita código de producción.",P.f2,"LT0"),
     // Fase 3
     RQ:B("Requisito a spec","skill","requirement-to-spec-java corre antes de que exista el issue. Nunca escribe código, nunca abre PR, nunca toca git.",P.f3,"RQ"),
     S1:B("Toma el issue","skill","github-plan-build lee el issue y su discusión con gh. Armar el sprint con milestones es tuyo, visor pj.",P.f3,"S1"),
