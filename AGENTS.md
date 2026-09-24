@@ -22,7 +22,10 @@ contexto:
   y sus 25 archivos heredados están escritos en el propio script. Desde #193 está
   `verificar-pasos-skill.mjs`, que falla cuando el visor cita un paso de una skill —«el paso G de
   la skill», «su Fase 5»— que esa skill ya no tiene; las letras viven en sus `references/`, no en
-  el `SKILL.md`. Los cinco sensores del monorepo piden **node >= 18** en el PATH; el del playbook
+  el `SKILL.md`. Desde #192 está `verificar-pie-ia.mjs`, que exige que cada commit declare
+  `Asistido-por-IA: <modelo>` o `Sin-IA:`; corre en dos lados con la misma regla, como hook
+  `commit-msg` sobre el mensaje y en CI sobre los commits de la PR. Los seis sensores del monorepo
+  piden **node >= 18** en el PATH; el del playbook
   vive junto a lo que verifica (`playbook-sdlc-ia/verificar-cobertura.mjs`). Dónde bloquea cada uno
   difiere: los de enlaces, ancho y pasos de skill corren en CI y también en el pre-push, porque son
   locales y de un segundo; el del playbook, solo en CI; y el del espejo, **solo en CI porque sale a
@@ -67,8 +70,13 @@ contexto:
 ## Commits
 
 - Un commit por paso en verde, con `Refs #N`; el que completa el último paso lleva `Closes #N`.
-- Todo commit asistido por IA termina con el trailer `Asistido-por-IA: <modelo>` en su propio
-  párrafo, separado del `Closes` por una línea en blanco.
+- **Todo commit declara si lo asistió una IA**, en su propio párrafo y separado del `Closes` por
+  una línea en blanco: `Asistido-por-IA: <modelo>` o, cuando no la hubo, `Sin-IA:`. Se exige
+  declarar, no decir que sí: un gate que solo acepta una respuesta enseña a marcarla sin leer, y
+  entonces el 100 % tampoco significa nada. Desde #192 lo verifican el hook `commit-msg` y un paso
+  del CI —el local se salta con `LEFTHOOK=0`, y el dato sostiene el porcentaje de PRs asistidas que
+  reporta `impact-metrics`, así que no puede depender de eso—. Quedan fuera los merges y los
+  `fixup!`/`squash!`.
 
 ## Reglas duras
 
