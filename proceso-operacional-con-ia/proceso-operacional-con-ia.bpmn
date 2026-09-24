@@ -70,6 +70,7 @@
         <bpmn:flowNodeRef>G6</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>mg</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>rl</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>mt</bpmn:flowNodeRef>
       </bpmn:lane>
       <bpmn:lane id="Lane_actions" name="GitHub Actions (CI/CD)">
         <bpmn:flowNodeRef>pz</bpmn:flowNodeRef>
@@ -370,9 +371,14 @@
       <bpmn:incoming>e59</bpmn:incoming>
       <bpmn:outgoing>e62</bpmn:outgoing>
     </bpmn:task>
+    <bpmn:task id="mt" name="Medir el impacto del período">
+      <bpmn:documentation>Mide del historial del propio repositorio el porcentaje de PRs asistidas por IA y el lead time, suma el agregado de la encuesta si lo hay, escribe el reporte y abre su PR. No envía nada: eso lo decide una persona.</bpmn:documentation>
+      <bpmn:incoming>e62</bpmn:incoming>
+      <bpmn:outgoing>e65</bpmn:outgoing>
+    </bpmn:task>
     <bpmn:task id="cs" name="Cerrar el sprint">
       <bpmn:documentation>Cierra el milestone del sprint, confirma el tablero del Project y deja la retrospectiva de equipo; el próximo sprint arranca creando el milestone siguiente.</bpmn:documentation>
-      <bpmn:incoming>e62</bpmn:incoming>
+      <bpmn:incoming>e65</bpmn:incoming>
       <bpmn:outgoing>e63</bpmn:outgoing>
     </bpmn:task>
     <bpmn:endEvent id="end_ok" name="Sprint cerrado">
@@ -444,7 +450,8 @@
     <bpmn:sequenceFlow id="e57" sourceRef="c5" targetRef="G7" />
     <bpmn:sequenceFlow id="e58" name="Sí" sourceRef="G7" targetRef="bo1" />
     <bpmn:sequenceFlow id="e59" name="No" sourceRef="G7" targetRef="rl" />
-    <bpmn:sequenceFlow id="e62" sourceRef="rl" targetRef="cs" />
+    <bpmn:sequenceFlow id="e62" sourceRef="rl" targetRef="mt" />
+    <bpmn:sequenceFlow id="e65" sourceRef="mt" targetRef="cs" />
     <bpmn:sequenceFlow id="e63" sourceRef="cs" targetRef="end_ok" />
     <bpmn:textAnnotation id="Anno_1">
       <bpmn:text>Todo el proceso es un ciclo PDCA (Deming): el Bloque C vuelve acá por cada issue y sale solo si «¿Quedan issues del sprint?» responde «No».</bpmn:text>
@@ -671,6 +678,9 @@
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="rl_di" bpmnElement="rl" bioc:fill="#8fa8ff" bioc:stroke="#0d1a4d">
         <dc:Bounds x="9360" y="1005" width="160" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="mt_di" bpmnElement="mt" bioc:fill="#f088c0" bioc:stroke="#4d0f30">
+        <dc:Bounds x="9560" y="1005" width="160" height="70" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="cs_di" bpmnElement="cs" bioc:fill="#f088c0" bioc:stroke="#4d0f30">
         <dc:Bounds x="9560" y="825" width="160" height="70" />
@@ -1072,7 +1082,10 @@
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="e62_di" bpmnElement="e62">
         <di:waypoint x="9520" y="1040" />
-        <di:waypoint x="9640" y="1040" />
+        <di:waypoint x="9560" y="1040" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e65_di" bpmnElement="e65">
+        <di:waypoint x="9640" y="1005" />
         <di:waypoint x="9640" y="895" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="e63_di" bpmnElement="e63">
