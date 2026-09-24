@@ -114,6 +114,23 @@ paid for the attempt and collected nothing.
 - What happens to what repeats: promote it to `AGENTS.md`, to `REVIEW.md`, to an ADR, or — the one
   that pays most — turn it into a sensor, so it stops depending on someone remembering.
 
+## 6. What may leave toward the model
+
+The five sections above agree on **what may fail**. This one agrees on **what may leave**: a coding
+agent reads files and sends them to a model that does not run on this machine. That is a team
+decision, not an effect of the tool — and the answer depends on **which account you signed in
+with**, not on which agent you use. Turning cost telemetry on changes it.
+
+| | |
+|---|---|
+| **Repositories allowed** | <!-- TODO: which ones, and which not. "All of them" is the answer that helps nobody. --> |
+| **Provider retention** | <!-- TODO: how long what you send is kept, and whether it trains, on the plan you actually have. --> |
+| **Real data in the tree** | <!-- TODO: fixtures, database dumps and production logs. This is what leaves unnoticed, because it does not look like code. --> |
+| **Organization policy** | <!-- TODO: if one already exists, link it here instead of rewriting it. --> |
+
+Who granted this and when it gets reviewed **is the table in section 4**: the same agreement and
+the same date, not two.
+
 ---
 
 ## What this file is not
