@@ -1,35 +1,78 @@
 # Seam mapping — Feathers' lens, per stack
 
-A seam is a place where you can alter behavior without editing the line itself. Walk the target
-module looking for these, in order of how cheap they are to cut from a test:
+A seam is a place where you can alter behavior without editing the line itself. Walk each actor of
+the census, look at every I/O boundary it touches, and classify that boundary into one of three
+states.
 
-1. **Constructor/setter injection already present** — cuttable for free: pass a test double.
-2. **An interface or abstract class between the caller and the real dependency** — cuttable: hand
-   the test a fake implementation.
-3. **A concrete class instantiated with `new` inside the method under test** — usually requires a
-   production edit (extract the construction to an injectable point) *unless* the language offers a
-   reflection-based seam (below).
-4. **A static method call or a singleton** — same as (3): needs either a production edit or a
-   reflection-based seam.
+## 🟢 fakeable today
 
-## Reflection-based seams (cuttable without a production edit)
+The collaborator arrives through a seam the test can use **right now, with no production edit**:
+
+1. **Constructor or setter injection already present** — free: pass a test double.
+2. **An interface or abstract class between the caller and the real dependency** — hand the test a
+   fake implementation.
+3. **A collaborator sitting in an injected field** (`@Autowired`, `@EJB`, `@Inject`,
+   `@PersistenceContext` on the field, and the equivalents in other stacks) — the field is
+   populated **by reflection from the test**, with production untouched.
+
+⚠️ **Classifying field injection as 🟡 is the mistake that leaves whole layers without real tests.**
+Do not make it. The constructor seam can still be *proposed* as an improvement, but it is not a
+prerequisite for generating the test, and treating it as one blocks every actor in a typical
+dependency-injected legacy codebase.
+
+## 🟡 needs a seam
+
+`new` called directly inside the method under test, a static call, a service-locator or JNDI lookup,
+a singleton. Reachable only by changing production — **unless** the language offers a reflection
+seam (table below). Record the recommended Feathers technique **as a proposal**, and do not apply
+it.
+
+## 🔴 irreducible
+
+Behavior that can't be reproduced in a test at all: a call into unreproducible native code, a
+dependency on wall-clock real-time ordering, an external system with no substitute. Recommend
+revisiting the port boundary itself, and record it as `blocked` with the diagnosis.
+
+## Reflection seams — cuttable without a production edit
+
+These move a boundary from 🟡 to 🟢. Check for one before concluding a seam needs an edit.
 
 | Stack | Technique |
 |---|---|
-| Java | Field injection via `Field.setAccessible(true)` + `field.set(target, testDouble)` to replace a private collaborator the constructor never exposed. Static/singleton calls: `PowerMock`-style bytecode mocking, or wrap the call inside a test-only subclass that overrides the one method that reaches the static call. |
-| Spring | Override a bean in a `@TestConfiguration`, or replace it post-construction via `ReflectionTestUtils.setField`. |
-| Angular / AngularJS | `TestBed.overrideProvider` (Angular) or `$provide.value` (AngularJS) — DI seams the framework already gives you; rarely needs reflection. |
-| Node / TypeScript | Module-level mocking (`jest.mock`, `proxyquire`) replaces a required/imported module without touching the source file. |
-| Python | `unittest.mock.patch` targets any attribute, including module-level singletons and classmethods, without a production edit. |
+| Java | `Field.setAccessible(true)` + `field.set(target, double)` to replace a private collaborator the constructor never exposed. Static and singleton calls: a test-only subclass overriding the one method that reaches the static call. |
+| Spring | Override the bean in a `@TestConfiguration`, or replace it post-construction with `ReflectionTestUtils.setField`. |
+| Angular / AngularJS | `TestBed.overrideProvider` (Angular) or `$provide.value` (AngularJS) — DI seams the framework already gives you; reflection is rarely needed. |
+| Node / TypeScript | Module-level mocking (`jest.mock`, `vi.mock`, `proxyquire`) replaces an imported module without touching the source file. |
+| Python | `unittest.mock.patch` targets any attribute, including module-level singletons and classmethods. |
+| Go | Only if the dependency is already an interface field — Go has no reflection seam for a concrete call. Usually a genuine 🟡. |
 
-## When no reflection-based seam exists
+## Every proposed seam carries its net
 
-If the only way to cut the seam is genuinely editing production code (e.g. a language with no
-reflection and no DI container already in place), do not make the edit. Record:
+A seam proposed without a characterization test is a blind refactor handed to whoever picks up the
+issue. For each 🟡 and 🔴, record its **characterization test**: the observable boundary reachable
+**today**, without the seam, through which current behavior can be pinned.
 
-- The exact location (file:line) and what the seam would need (e.g. "extract the `HttpClient`
-  construction in `OrderService` to a constructor parameter").
-- Why no reflection/DI-based alternative applies here.
+- **Find the reachable boundary** — a public method that wraps the logic, an existing endpoint, a
+  CLI entry point. If one exists, generate the characterization test in Phase 6.
+- **Pick the technique** — golden master (record current outputs to a fixture and assert against
+  them) for wide or ugly output; a table of cases for narrow behavior.
+- **Pin what IS, not what should be — bugs included.** A characterization test is a refactor net,
+  not a specification. If current behavior is wrong, the test asserts the wrong value and says so in
+  a comment. Correcting it here silently turns the net into a second change nobody approved.
+- **If no boundary is reachable**, the characterization can't be generated. Then it is *specified*
+  in the proposed issue — which boundary to pin and with what technique — as that issue's **first
+  acceptance criterion**.
 
-This becomes one line in Phase 6's report, filed as a candidate issue — not an edit made in passing
-while "just adding a test".
+Characterization tests are **temporary**. The sequence the issue follows is: pin → apply the seam →
+write real collaboration tests → delete the golden master. They do not count toward census coverage.
+
+## When no seam exists without a production edit
+
+Do not make the edit. Record, for the Phase 8 report:
+
+- The exact location (`file:line`) and what the seam would need — "extract the `HttpClient`
+  construction in `OrderService` to a constructor parameter".
+- Why no reflection or DI alternative applies here.
+- Its characterization net: generated, or specified as the issue's first acceptance criterion.
+
+That becomes one candidate issue — not an edit made in passing while "just adding a test".
