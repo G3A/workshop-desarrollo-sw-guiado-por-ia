@@ -38,7 +38,7 @@ caja, así que emparejar las dos es mirar, no recordar:
 | `···` | gris | Antes del primer issue | El puente opcional: deuda triada y pruebas sobre código heredado. |
 | `F3` | azul | Ciclo por feature | Spec, plan, implementación, verificación en 4 capas y merge. |
 | `F4` | verde | Retroalimentación | La lección de la vuelta, enrutada a donde pertenece. |
-| `F5` | magenta | Métricas y reporte | Cerrar el sprint deja el dato con fecha que las métricas leen. |
+| `F5` | magenta | Métricas y reporte | Medir el período del historial, y cerrar el sprint con fecha. |
 | `F6` | coral | Adopción por etapas | Solo el cierre cae acá: el ciclo por issue no amplía el alcance. |
 
 El color de la caja y el del carril son **dos ejes distintos**: la banda de fondo dice *dónde*
