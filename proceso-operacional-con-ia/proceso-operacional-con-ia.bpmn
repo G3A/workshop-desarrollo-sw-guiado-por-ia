@@ -16,6 +16,7 @@
       <bpmn:lane id="Lane_dev" name="Tu máquina (terminal + editor)">
         <bpmn:flowNodeRef>start1</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>f0</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>gv</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>fd1</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>a1</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>G1</bpmn:flowNodeRef>
@@ -90,9 +91,14 @@
       <bpmn:incoming>e01</bpmn:incoming>
       <bpmn:outgoing>e02</bpmn:outgoing>
     </bpmn:task>
+    <bpmn:task id="gv" name="Acordar qué sale hacia el modelo">
+      <bpmn:documentation>Antes de instalar nada: qué repositorios pueden usarse con el agente, qué hace el proveedor con lo que se le envía, qué datos reales viven en el árbol, y quién lo autorizó. Es una decisión del equipo, no una tarea; queda escrita porque un acuerdo que no está escrito dura hasta la primera duda.</bpmn:documentation>
+      <bpmn:incoming>e02</bpmn:incoming>
+      <bpmn:outgoing>e66</bpmn:outgoing>
+    </bpmn:task>
     <bpmn:task id="fd1" name="Instalar el agente de IA">
       <bpmn:documentation>Instala el agente de código con IA (CLI o extensión) en el entorno local.</bpmn:documentation>
-      <bpmn:incoming>e02</bpmn:incoming>
+      <bpmn:incoming>e66</bpmn:incoming>
       <bpmn:outgoing>e03</bpmn:outgoing>
     </bpmn:task>
     <bpmn:task id="fd2" name="Dominar los 4 gestos base">
@@ -386,7 +392,8 @@
       <bpmn:incoming>e63</bpmn:incoming>
     </bpmn:endEvent>
     <bpmn:sequenceFlow id="e01" sourceRef="start1" targetRef="f0" />
-    <bpmn:sequenceFlow id="e02" sourceRef="f0" targetRef="fd1" />
+    <bpmn:sequenceFlow id="e02" sourceRef="f0" targetRef="gv" />
+    <bpmn:sequenceFlow id="e66" sourceRef="gv" targetRef="fd1" />
     <bpmn:sequenceFlow id="e03" sourceRef="fd1" targetRef="fd2" />
     <bpmn:sequenceFlow id="e04" sourceRef="fd2" targetRef="fd3" />
     <bpmn:sequenceFlow id="e05" sourceRef="fd3" targetRef="a1" />
@@ -489,6 +496,9 @@
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="f0_di" bpmnElement="f0" bioc:fill="#c9b3ff" bioc:stroke="#2a1060">
         <dc:Bounds x="420" y="195" width="160" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="gv_di" bpmnElement="gv" bioc:fill="#f2c14e" bioc:stroke="#4a3200">
+        <dc:Bounds x="420" y="290" width="160" height="70" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="fd1_di" bpmnElement="fd1" bioc:fill="#f2c14e" bioc:stroke="#4a3200">
         <dc:Bounds x="620" y="195" width="160" height="70" />
@@ -699,7 +709,13 @@
         <di:waypoint x="420" y="230" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="e02_di" bpmnElement="e02">
-        <di:waypoint x="580" y="230" />
+        <di:waypoint x="500" y="265" />
+        <di:waypoint x="500" y="290" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e66_di" bpmnElement="e66">
+        <di:waypoint x="580" y="325" />
+        <di:waypoint x="600" y="325" />
+        <di:waypoint x="600" y="230" />
         <di:waypoint x="620" y="230" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="e03_di" bpmnElement="e03">
