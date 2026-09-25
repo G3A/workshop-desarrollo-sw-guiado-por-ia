@@ -126,9 +126,11 @@ gh pr merge <N> --merge --admin
   `plugin.json` en `main` dice la versión nueva, y los issues del `Closes` quedan `CLOSED`.
 - **Borra la rama de la liberación:** `git push origin --delete chore/release-<versión>` y
   `git branch -D chore/release-<versión>`.
-- **En cada equipo:** `claude plugin install` no refresca un plugin ya instalado. Para tomar la
-  versión nueva, corre el script de actualización desde `instrumentacion-java-ia/`, en un clon que
-  esté en `main`:
+- **En cada equipo:** el plugin carga en su lugar desde el clon, así que lo que corre es lo que
+  ese clon tiene en disco. Para tomar la versión nueva, corre el script de actualización desde
+  `instrumentacion-java-ia/`, en un clon que esté en `main`: trae la versión, la re-registra para
+  que `claude plugin list` la muestre y verifica que la CLI cargue desde esa carpeta. Aplica en la
+  próxima sesión o con `/reload-plugins`.
 
   ```powershell
   .\update.ps1        # Windows PowerShell 5.1 o PowerShell 7
