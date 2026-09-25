@@ -91,8 +91,10 @@ lista es solo para lo que exige criterio.
 ## 6 · Corre el cambio tú mismo
 
 - [ ] **Levántalo y úsalo.** En `base-conocimiento/`: `make up`, y `make ingest` si el cambio toca
-      ingesta o retrieval. En una skill del plugin: `update.ps1` o `update.sh` y una sesión nueva
-      de Claude Code, porque la sesión abierta sigue con la copia vieja. Es el ítem que más se
+      ingesta o retrieval. En una skill del plugin: la rama del cambio en el clon registrado como
+      marketplace (el plugin carga en su lugar desde ahí, no desde un worktree) y una sesión nueva
+      de Claude Code o `/reload-plugins`, porque la sesión abierta sigue con lo que leyó al
+      arrancar. Es el ítem que más se
       salta y el que más atrapa: CI en verde solo dice que las pruebas que existen pasan.
 
 ## Qué no reportar
