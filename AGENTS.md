@@ -19,7 +19,10 @@ contexto:
   ADR-0003 y, desde #162, también los criterios de los dos `REVIEW.md` por los títulos de sus
   secciones numeradas. Desde #165 está además `verificar-ancho.mjs`, que falla cuando una línea de
   prosa de un `.md` o un `.mjs` de los que este método mantiene pasa de 100 caracteres; su alcance
-  y sus 25 archivos heredados están escritos en el propio script. Desde #193 está
+  y sus 25 archivos heredados están escritos en el propio script. Desde #202 mide además el
+  **presupuesto de líneas de este archivo**: `AGENTS.md` se carga entero en cada sesión, y la
+  retrospectiva de cada vuelta le agrega reglas sin que nada quite. Con tope, agregar una regla es
+  decidir cuál sale. Desde #193 está
   `verificar-pasos-skill.mjs`, que falla cuando el visor cita un paso de una skill —«el paso G de
   la skill», «su Fase 5»— que esa skill ya no tiene; las letras viven en sus `references/`, no en
   el `SKILL.md`. Desde #192 está `verificar-pie-ia.mjs`, que exige que cada commit declare
