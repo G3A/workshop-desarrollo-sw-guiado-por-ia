@@ -308,7 +308,16 @@ subgraph P3["FASE 3 · Ciclo por feature — por cada funcionalidad"]
   VL4 --> GV{"¿Aprueba la verificación?"}:::dec
   GV -->|No · hay cambios| I1
   GV -->|Sí| M1["Merge, con el PR marcado como asistido por IA<br/>trailer Asistido-por-IA en cada commit y en el cuerpo<br/>SKILL · github-plan-build lo escribe; el merge lo corres tú"]:::skill
-  M1 --> MF{"¿Quedan más issues del sprint?"}:::dec
+  M1 --> EG1
+  subgraph P3E["Entrega a staging — por cada merge"]
+    direction TB
+    EG1["Despliegue automático tras el merge<br/>A MANO · visor cd1; ninguna skill despliega"]:::mano
+    EG2["Arreglar hacia adelante, o volver atrás<br/>A MANO · visor df; el proceso enseña el criterio, no el comando"]:::mano
+    EG1 --> GES{"¿El despliegue quedó en verde?"}:::dec
+    GES -->|No| EG2
+    EG2 --> EG1
+  end
+  GES -->|Sí| MF{"¿Quedan más issues del sprint?"}:::dec
   MF -->|Sí| S1
 end
 MF -->|No, por ahora| R1
@@ -321,7 +330,19 @@ subgraph P4["FASE 4 · Retroalimentación · evolución constante"]
   R3["Memoria entre sesiones<br/>FUERA · el plugin declara que no la tiene"]:::fuera
   R1-->R2-->R3
 end
-R3 --> K1
+R3 --> EP1
+
+%% ====== ENTREGA A PRODUCCIÓN · pasos de la Fase 3, una vez por liberación ======
+subgraph P3P["Entrega a producción — una vez por liberación"]
+  direction TB
+  EP1["Libera dev a main<br/>A MANO · visor rl; el porqué, ADR-0001"]:::mano
+  EP2["Despliega con aprobación registrada<br/>A MANO · Environment con revisores; el comando es del equipo, ADR-0004"]:::mano
+  EP3["Vuelve a la versión anterior, y ensáyalo antes<br/>A MANO · el método exige que exista y esté ensayada, no el mecanismo"]:::mano
+  EP1 --> EP2 --> GPX{"¿Producción en verde?"}:::dec
+  GPX -->|No| EP3
+  EP3 --> EP2
+end
+GPX -->|Sí| K1
 
 %% ============ FASE 5 · MÉTRICAS Y REPORTE ============
 subgraph P5["FASE 5 · Métricas y reporte a liderazgo"]
@@ -574,6 +595,11 @@ style P6 fill:#0b0f15,stroke:#6b2018,color:#FF9C8C
     M1:B("Merge y marcado","skill","El trailer Asistido-por-IA va en cada commit y en el cuerpo de la PR, así el texto sobrevive al squash. Su condición de trailer no: GitHub reescribe el mensaje al mergear, así que se lee con --grep anclado y no con el lector de trailers de git. El merge lo corres tú.",P.f3,"M1"),
     MF:L("¿Más issues?",P.f3,"MF"),
     // Fase 4
+    EG1:B("Despliegue automático tras el merge","mano","Visor cd1. Ninguna skill del plugin despliega: instrument-project-java instala el workflow de CI, no el de entrega. Que exista un despliegue automático a un entorno de prueba es del equipo.",P.f3,"EG1"),
+    EG2:B("Arreglar hacia adelante, o volver atrás","mano","Visor df. Revertir es más seguro y pierde el trabajo; arreglar hacia adelante es más rápido y exige confianza en el arreglo. El proceso enseña cuándo cada uno; el comando depende de dónde despliegues.",P.f3,"EG2"),
+    EP1:B("Libera dev a main","mano","Visor rl. Liberar es una decisión, no un efecto del trabajo en dev: se ejecuta en dos PR seguidas, y el porqué de esa forma —con la alternativa descartada— está en el ADR-0001.",P.f3,"EP1"),
+    EP2:B("Despliega con aprobación registrada","mano","Visor cd2. El ADR-0004 fija qué exige el método —que lo dispare la liberación, y que la aprobación quede con nombre y hora en un Environment con revisores— y qué no prescribe: la herramienta. Ninguna skill puede cubrirlo mientras el comando sea del equipo.",P.f3,"EP2"),
+    EP3:B("Vuelve a la versión anterior","mano","Visor rb. Lo que el método exige es que el camino exista y esté ensayado: un rollback que nadie ejecutó nunca es una promesa. El mecanismo —volver por el proveedor, o revertir en git y liberar— lo elige el equipo, con el criterio que el visor enseña.",P.f3,"EP3"),
     R1:B("Guarda la lección","mano","Visor c5: sin este paso, cada vuelta del ciclo aprende lo mismo que la anterior.",P.f4,"R1"),
     R2:B("Enruta la lección","skill","Paso K de github-plan-build, al cerrar la vuelta. Regla a AGENTS.md, criterio a REVIEW.md, porqué a un ADR, comprobable a un sensor, y lo que aún no es regla a docs/lecciones.md con fecha. Propone destino y texto; aplicarlo es tuyo.",P.f4,"R2"),
     R3:B("Memoria entre sesiones","fuera","El README del plugin lo declara: lo único que un ciclo nuevo recuerda del anterior es lo que quedó escrito en AGENTS.md.",P.f4,"R3"),
