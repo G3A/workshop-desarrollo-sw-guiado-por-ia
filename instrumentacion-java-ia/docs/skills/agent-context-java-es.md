@@ -33,7 +33,12 @@ argumento. Fuera de eso, trabaja sobre el repositorio en el que se ejecuta.
    persistencia, configuración) y revisa el `README` y las entidades del dominio para tener
    material para las preguntas siguientes. Además decide si el repositorio tiene **interfaz**
    (plantillas, estáticos, un subproyecto frontend, controladores que devuelven vistas o una suite
-   de navegador) y, si la tiene, lee los tokens y componentes que ya existen.
+   de navegador) y, si la tiene, lee los tokens y componentes que ya existen. Resuelve también la
+   **URL web del repositorio** —con su host, preguntándole a `gh` por la URL de `origin`, no por el
+   repositorio «base», que en un fork es el ajeno— y la rama de integración: la que declare tu
+   `AGENTS.md`, y si no la declara, la rama por defecto. Eso es lo que la plantilla de PR necesita
+   para enlazar `REVIEW.md` por URL absoluta, y por eso funciona igual en GitHub Enterprise. Si no
+   hay remoto usable, deja un `TODO` en ese enlace y lo dice: no inventa la URL.
 2. **Entrevista** — hace alrededor de diez preguntas (menos en un repo bien documentado, más en
    uno legado y sin documentar), agrupadas en tandas: qué documentos opcionales generar, cómo
    proceder si ya hay documentación, ambigüedades que la lectura del código no resolvió, datos que
@@ -51,31 +56,57 @@ argumento. Fuera de eso, trabaja sobre el repositorio en el que se ejecuta.
    delega a `AGENTS.md`. Además escribe **`REVIEW.md`** —los criterios de qué mirar en un diff— y
    una **plantilla de PR** corta que enlaza a él. Son archivos distintos a propósito: `AGENTS.md`
    son las reglas que el agente respeta *al generar*, `REVIEW.md` es qué mirar en un diff *ya
-   escrito*, y cada uno se carga en un sitio distinto (el revisor de PRs en la nube lee
-   `REVIEW.md`; el `/code-review` local lee el archivo guía).
+   escrito*, y cada uno se carga en un sitio distinto: el revisor de PRs en la nube lee `REVIEW.md`
+   **en la raíz del repositorio git y en ningún otro sitio**, mientras que el `/code-review` local
+   no lee `REVIEW.md` nunca y sigue `CLAUDE.md` en todos los niveles de la jerarquía. Por eso, si
+   el proyecto está en una subcarpeta, `REVIEW.md` y la plantilla de PR salen a la raíz del
+   repositorio aunque la skill la hayas corrido dentro de tu carpeta.
+
+   Dos detalles que se ven poco y cuestan caro cuando faltan. **El título de `REVIEW.md` nombra el
+   repositorio, no el proyecto**: el archivo vive en la raíz y puede llegar a cubrir varias piezas,
+   así que titularlo con el repositorio evita que la segunda corrida deje el nombre del primer
+   proyecto. Y **el enlace de la plantilla de PR es una URL absoluta**, no `../REVIEW.md`: como
+   archivo en `.github/` la ruta relativa resuelve bien, pero GitHub copia la plantilla tal cual al
+   cuerpo de la PR —el único sitio donde alguien hace clic en ese enlace— y ahí una ruta relativa
+   da 404.
 5. **Validación de afirmaciones** — antes de terminar, revisa las afirmaciones importantes que
    escribió (versión del build tool, JDK objetivo, framework de persistencia, comandos, entidades
    clave) y confirma con el usuario las que tienen baja confianza, en vez de dejarlas sin verificar.
    El resultado queda registrado en `docs/claims-ledger.md`. Cada afirmación que confirma, corrige
    o invalida la busca también al revés en `AGENTS.md` y `docs/`, y corrige ahí la frase contraria:
    una fila del registro no se propaga sola a los documentos.
-6. **Verificación final** — imprime el árbol de archivos generados o modificados, confirma que
-   todos los enlaces dentro de `AGENTS.md` y `docs/java.md` apunten a archivos que realmente
-   existen, y recuerda al usuario cómo confirmar el trabajo con `git`.
+6. **Verificación final** — imprime el árbol de archivos generados o modificados —diciendo a qué
+   raíz fue cada uno cuando el proyecto está en una subcarpeta—, confirma que todos los enlaces
+   apunten a algo que realmente existe **desde el contexto donde cada enlace se lee**, y recuerda al
+   usuario cómo confirmar el trabajo con `git`. Los de `AGENTS.md` y `docs/java.md` se resuelven
+   desde la carpeta del archivo que los contiene, porque se leen como archivos; el de la plantilla
+   de PR se comprueba como URL, porque se lee en el cuerpo renderizado de una PR. Comprobar un
+   enlace desde donde vive, en vez de desde donde se usa, es la forma de los dos fallos que esta
+   verificación ya dejó pasar.
 
 ## Qué archivos toca o crea
 
-- `AGENTS.md`, `CLAUDE.md` y `REVIEW.md` en la raíz del repositorio.
-- `.github/pull_request_template.md`, con las seis categorías como casillas y el enlace a
-  `REVIEW.md`. **Nunca se exige como check de CI**: un workflow que obligue a marcarlas convierte
+La skill distingue dos raíces: la **del proyecto** (donde está el `pom.xml` o el `build.gradle`) y
+la **del repositorio git**. Coinciden salvo que el proyecto viva en una subcarpeta de un monorepo,
+y entonces cada archivo se ancla a la raíz de **quien lo lee**.
+
+- `AGENTS.md` y `CLAUDE.md` en la raíz del proyecto: los lee el agente, que lee en todos los
+  niveles de la jerarquía.
+- `REVIEW.md` en la raíz del repositorio git, porque el servicio de Code Review solo lo lee ahí.
+- `.github/pull_request_template.md`, también en la raíz del repositorio git —GitHub no la busca en
+  una subcarpeta—, con las seis categorías como casillas y el enlace a
+  `REVIEW.md`. Se escribe **una sola vez por repositorio**, nunca una por proyecto.
+  **Nunca se exige como check de CI**: un workflow que obligue a marcarlas convierte
   el juicio humano en un trámite — se marcan las seis sin mirar y el registro empieza a mentir.
 - `docs/business.md`, `docs/architecture.md`, `docs/data-model.md`, `docs/infrastructure.md`,
   `docs/java.md`.
 - `docs/adrs/README.md`, `docs/adrs/adr-template.md` y de una a tres ADR semilla.
-- Opcionalmente `docs/target-user.md` y `EXPERIMENTS.md`, solo si el usuario lo pide.
+- Opcionalmente `docs/target-user.md`, y `EXPERIMENTS.md` en la raíz del repositorio git: el
+  acuerdo sobre qué puede fallar es del equipo, no de una carpeta, y dos en el mismo repositorio es
+  justo lo que hay que evitar. Solo si el usuario lo pide.
 - Opcionalmente la **intención visual** —`docs/design.md`, `docs/design-tokens.md` y
-  `COMPONENTS.md` en la raíz—, que solo se ofrece si el repositorio tiene interfaz y el usuario la
-  pide.
+  `COMPONENTS.md` en la raíz del proyecto—, que solo se ofrece si el repositorio tiene interfaz y
+  el usuario la pide.
 - `docs/claims-ledger.md`, con el registro de afirmaciones verificadas.
 
 No escribe código de aplicación, no instala dependencias y no ejecuta comandos destructivos: solo
@@ -90,8 +121,9 @@ una escala propuesta**.
 - **`docs/design-tokens.md`** registra cada token que el repositorio ya define: una fila por
   nombre y archivo de origen, una columna de valor por tema (claro, oscuro, `data-theme`…) y la
   ruta con número de línea.
-- **`COMPONENTS.md`**, en la raíz junto a `AGENTS.md` y `REVIEW.md` porque se lee antes de
-  escribir UI, registra los componentes que existen: fragmentos Thymeleaf, plantillas JTE,
+- **`COMPONENTS.md`**, en la raíz del proyecto junto a `AGENTS.md` porque se lee antes de
+  escribir UI —y se queda con el proyecto, a diferencia de `REVIEW.md`, porque describe la UI de
+  *ese* proyecto—, registra los componentes que existen: fragmentos Thymeleaf, plantillas JTE,
   componentes de Angular, React o Vue, historias de Storybook.
 - **`docs/design.md`** se queda solo con «Principios de UX», lo único que no se puede descubrir, y
   enlaza a los otros dos en vez de repetirlos.
@@ -153,10 +185,18 @@ demás documentos un `TODO` significa que el descubrimiento no alcanzó; aquí s
 respuesta no está en el repositorio y no debe inventarse**. Inventarle a un equipo su postura de
 riesgo es exactamente la alucinación contra la que esta skill está escrita.
 
-La skill solo rellena el nombre del proyecto, la rama de integración, y la lista de «qué nunca es
-un experimento» —copiada de la lista de escalamiento de `github-plan-build`, para que las dos digan
-lo mismo y marcada como punto de partida—. Todo lo demás queda abierto, y el reporte dice que fue
-a propósito.
+La skill solo rellena el nombre del proyecto y la rama de integración. La lista de «qué nunca es un
+experimento» ya viene escrita en la plantilla, como **subconjunto declarado** de la sección
+«Escalation» de `github-plan-build`: toma de ahí las filas que son **límites del permiso**
+—producción, destinatarios reales, rodear una credencial que falta— y deja fuera, a propósito y
+diciéndolo, las que son **gates del ciclo**: una falla de CI ambigua, un ciclo de arreglos que no
+converge y una decisión de producto sin fuente de verdad, que además es reversible.
+
+Las dos listas contestan preguntas distintas, así que no deben ser idénticas. Pedir que se copiaran
+fue justo lo que hizo que una corrida real borrara «cambios que tocan autenticación, secretos o
+datos de personas» por no estar en el escalamiento; esa fila se queda, marcada como lo que es: el
+ciclo de entrega no se detiene ante ella, le exige `/security-review` como gate obligatorio y no
+avanza en rojo. Todo lo demás queda abierto, y el reporte dice que fue a propósito.
 
 ### La cláusula que decide si el acuerdo es real
 

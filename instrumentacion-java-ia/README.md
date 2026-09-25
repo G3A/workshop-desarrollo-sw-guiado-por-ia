@@ -31,7 +31,7 @@ repositorio. Decir sin más que "hoy solo cubre .NET" ya no describe el plugin c
 | [`github-plan-build`](docs/skills/github-plan-build-es.md) | El ciclo completo: toma un issue de GitHub, arma un plan, lo implementa test-first, abre una PR verificada y propone dónde va la lección de la vuelta. |
 | [`impact-metrics`](docs/skills/impact-metrics-es.md) | Mide qué cambió con la entrega asistida por IA y escribe el reporte a liderazgo. Dos métricas de las cuatro, porque solo dos tienen una definición que nadie discute; las otras se reportan como faltantes con su motivo. Genera y abre la PR — nunca envía nada. |
 | [`debt-triage`](docs/skills/debt-triage-es.md) | Triaja con criterio los hallazgos que un analizador estático ya reportó (Sonar, CodeQL, Checkstyle...) — nunca instala un sensor nuevo ni aplica un auto-fix a ciegas. |
-| [`legacy-test-harness`](docs/skills/legacy-test-harness-es.md) | Acondiciona un repo legacy y hace crecer pruebas reales en 5 capas sobre código que ya está en producción, mapeando costuras al estilo Feathers antes de tocar nada. |
+| [`legacy-test-harness`](docs/skills/legacy-test-harness-es.md) | Acondiciona un repo legacy y hace crecer pruebas reales en 5 capas sobre código que ya está en producción. Censa los actores y mapea costuras al estilo Feathers antes de tocar nada; corre en modo plan y no escribe hasta tu aprobación. |
 
 ## Alcance deliberado
 

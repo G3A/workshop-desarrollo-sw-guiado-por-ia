@@ -1,6 +1,7 @@
 ---
 name: legacy-test-harness
-description: Condition a legacy repository of any stack/architecture and grow real, maintainable tests across five layers — unit/collaboration, contract, acceptance, performance, security — targeting code that already ships in production, never a self-contained walking-skeleton. Maps seams first, Feathers-style; a seam that would require a production edit is proposed as a separate issue for the user to file, never applied inline. Stack-agnostic. Invoke with `/sdlc-ia:legacy-test-harness [path] [layer,...]`.
+description: Condition a legacy repository of any stack/architecture and grow real, maintainable tests across five layers — unit/collaboration, contract, acceptance, performance, security — targeting code that already ships in production, never a self-contained walking-skeleton. Censuses the actors and maps seams first, Feathers-style; a seam that would require a production edit is proposed as a separate issue for the user to file, never applied inline. Runs in plan mode and writes nothing until you approve. Stack-agnostic. Invoke with `/sdlc-ia:legacy-test-harness [path] [layer,...]`.
+model: opus
 disable-model-invocation: true
 argument-hint: "[path] [layer,...]"
 ---
@@ -17,69 +18,151 @@ throughout:
 2. **Zero production changes without approval.** Seams are *proposed*, never applied. A seam that
    can only be cut by editing production code becomes a filed issue, not a silent edit.
 
+⚠️ **Mandatory — first steps:**
+
+1. Call `EnterPlanMode`. Phases 1 to 5 run inside it: nothing versionable is written while the
+   ground is diagnosed and the plan is agreed. Diagnostics that leave build output (`mvn compile`,
+   `npm ci`, running the existing suite) **do** run there — `target/` and `node_modules/` are not
+   versionable.
+2. Do not leave plan mode and do not write a single test until the user approves the Phase 5 plan
+   explicitly (Phase 6).
+3. The default policy is **zero production changes**. Every seam is proposed; none is applied
+   without approval.
+4. On Windows, activate the `windows-powershell` skill — if the session offers it — before the
+   first non-trivial shell command. Every command this skill runs has to work the same in
+   PowerShell 5.1, PowerShell 7 and bash.
+
 ## Philosophy
 
 - **Map before you touch.** A seam map built without running anything is cheap to be wrong about; a
   production edit is not.
+- **A census, not a sample.** "The relevant actors" is how a run reports success having covered 7%
+  of the repository. Enumerate all of them; deciding one needs no tests is a recorded exclusion,
+  not an actor you never looked at.
 - **One tranche at a time.** Legacy repos are large by definition — generating every layer across
-  the whole repo in one pass produces a diff nobody can review. Scope to a module or a handful of
-  classes per run.
+  the whole repo in one pass produces a diff nobody can review.
+- **Every proposed seam carries its net.** A seam proposed without a characterization test pinning
+  current behavior is a blind refactor handed to whoever picks up the issue.
 - **A layer generated is a layer proven.** Every test this skill writes must run, and must fail if
-  the production code it targets is reverted — the reality gate in Phase 5 is not optional.
-- **Progressive disclosure by layer.** Load `references/test-layers.md`'s section for a layer only
-  once that layer is in scope for this run.
+  the production code it targets is reverted — the reality gate in Phase 7 is not optional.
+- **Progressive disclosure.** Load a reference when its phase arrives, and within `test-layers.md`
+  only the section for a layer in scope for this run.
 - **Never commit.** Leave the batch for the user to review, same as every other skill in this
   plugin.
+
+## References
+
+Read on demand, at the phase named — `references/` next to this file.
+
+| Phase | File |
+|---|---|
+| 2 | `preflight.md` |
+| 3 | `seam-mapping.md` · `census-and-tranche.md` |
+| 4 | `test-layers.md` |
+| 5 and 6 | `deliverable-and-writing.md` |
+| 7 | `reality-gate.md` |
 
 ## Phase 1 — Fingerprint
 
 Detect the stack(s), build tool, and any test directory/framework already in use (JUnit,
-Jest/Jasmine/Karma, pytest, ...). If a real test strategy already exists, this is an
-**incremental** run — extend it, don't replace it.
+Vitest/Jest/Karma, pytest, ...). There may be several in one monorepo — treat each.
 
-## Phase 2 — Map the seams
+Pick the test framework **per stack**, defaulting to the current major of the stack's standard one,
+and keep the repo's own standard instead wherever a **live** suite already uses another. Check that
+the test runner's version can actually discover the framework's version — an old Surefire silently
+running zero JUnit tests is a false green that survives all the way to the gate.
 
-Walk the target module(s) with Feathers' seam-finding lens (constructor injection points, static
-calls, singletons, `new` inside the method under test) — technique and per-stack patterns in
-`references/seam-mapping.md`. Classify each seam:
+If a real test strategy already exists, this is an **incremental** run: read the census appendix of
+the previous run's ADR to know what is already covered, refresh it against current code, and
+generate only what is missing. Never duplicate tests, never regenerate what is already green.
 
-- **Cuttable from the test** — reflection, a test subclass, a wrapper the test owns. Use it.
-- **Requires a production edit** — do NOT edit. Record it for Phase 6 with the one-line reason a
-  test can't reach it otherwise.
+## Phase 2 — Preflight: does the ground run?
 
-## Phase 3 — Scope the tranche
+Still diagnosis. Verify the terrain **executes** before planning anything on top of it: the runtime
+the build demands, a compilable baseline, the existing suite and its baseline of failures, a
+container runtime, and whether the dependency feed resolves the test dependencies the layers will
+need. → `preflight.md`
 
-Present the seam map and ask, via `AskUserQuestion`, which layer(s) to generate this run and which
-module/class subset. Never default to "all five layers, whole repo" — confirm scope explicitly.
+The result **conditions the Phase 4 menu**: a layer whose prerequisite failed is offered already
+marked blocked, with its cause. It is proposed, not promised.
 
-## Phase 4 — Generate, per layer
+## Phase 3 — Census the actors, map the seams
 
-For each chosen layer, follow its section in `references/test-layers.md` — what a real
-(non-scaffold) test looks like for that layer, the default framework per stack, and the layer's own
-gate. Do not touch production code; where Phase 2 found a seam that needs it, generate the test
-around the seam as proposed instead (e.g. via reflection).
+Build the **exhaustive, numbered census** of actors carrying business logic, and for each one
+enumerate its I/O boundaries and classify them 🟢 fakeable today / 🟡 needs a seam / 🔴 irreducible.
+Record the characterization net for every 🟡 and 🔴, and the two-speed split for the stack.
+→ `seam-mapping.md`, `census-and-tranche.md`
 
-## Phase 5 — Reality gate
+⚠️ **A collaborator in an injected field is 🟢, not 🟡** — the test populates it by reflection, with
+production untouched. Classifying field injection as needing a seam is the single mistake that
+leaves whole layers of a dependency-injected legacy codebase without real tests.
 
-Before reporting a layer as generated, confirm — per `references/reality-gate.md` — that every new
-test targets a class/function under the stack's production source root (not a test-only double),
-fails when the production behavior it targets is reverted, and runs green otherwise. A test that
-passes unconditionally, or never imports production code, is scaffolding — it does not count.
+🚫 **STOP — present the map to the user** (the boundary table with its colors, the proposed seams,
+the two-speed split) before going on. This is the heart of "least impact": the user sees exactly
+what would have to be touched, and approves.
 
-## Phase 6 — Report and close
+## Phase 4 — Scope the tranche and choose the layers
 
-Report, per layer generated: files added, what they test, and the reality-gate result. Report,
-separately, every seam found that requires a production edit — as a candidate issue title plus a
-one-line reason. Do not open the issue yourself unless asked; that decision belongs to the user (or
-to `github-plan-build`, if this run feeds one). Hand the user the exact command so filing costs one
-paste: `gh issue create --title "Costura: <what>" --label deuda-tecnica` — the title prefix and
-label are the convention this monorepo's process viewer (`proceso-operacional-con-ia`, node `bi2`)
-already uses, so the backlog stays searchable by one label.
+Offer the five layers, with the environment-blocked ones already marked and their cause. Agree a
+**tranche** if the census exceeds roughly 30 🟢 actors — and agree, in the same breath, that the
+Phase 7 gate measures against the tranche. Warn about the dependencies between layers.
+→ `test-layers.md`, `census-and-tranche.md`
+
+Never default to "all five layers, whole repo". Ask with `AskUserQuestion`.
+
+🚫 **STOP — wait for the user's selection.**
+
+## Phase 5 — Consolidate the deliverable (still in plan mode)
+
+Prepare, without writing: the test-strategy ADR (with the census and the inventory of doubles as
+appendices), the root-by-type layout, the real tests per layer with their floors, the
+characterization nets, the list of seams to approve, and the pipeline gates.
+→ `deliverable-and-writing.md`
+
+## Phase 6 — Approval and writing
+
+🚫 **STOP — write nothing until the user explicitly approves the Phase 5 plan.**
+
+Only after a yes: `ExitPlanMode`, then write **only** in test paths, pipeline config and the build
+file's test surface — never production. Generate in **batches** of 3 to 5 actors, each batch
+compiled and run before the next, with a per-actor retry budget of two retries before the actor is
+marked blocked. ⚠️ Parallel subagents **only** with isolated worktrees.
+→ `deliverable-and-writing.md`
+
+## Phase 7 — Reality gate — mandatory
+
+Validate that what was written tests **real code**. A self-contained skeleton always compiles and
+always passes: that is the false green this phase exists to catch. Run the fast suite twice (the
+second in random order), classify every generated file real or skeleton, apply the criteria table,
+measure census coverage, and — if the stack allows it cheaply — audit with mutation testing.
+→ `reality-gate.md`
+
+If the gate fails, go back to Phase 5 for the deficient layer. Do not close, and do not report that
+layer as generated.
+
+## Phase 8 — Report and close
+
+Report: the repo and stack, the preflight result, the census (covered / excluded / pending-seam /
+blocked / pending, against the agreed yardstick), the tranche, the seam map, the layers generated,
+**partial** or blocked, the Phase 7 result, where the ADR landed, and the pipeline gates with the
+result of their first run.
+
+Report, separately, every seam that requires a production edit — a candidate issue title plus the
+one-line reason, and whether its characterization net was generated or specified. Do not open the
+issue yourself unless asked; that decision belongs to the user (or to `github-plan-build`, if this
+run feeds one). Hand over the exact command so filing costs one paste:
+`gh issue create --title "Costura: <what>" --label deuda-tecnica` — the title prefix and label are
+the convention this monorepo's process viewer (`proceso-operacional-con-ia`, node `bi2`) already
+uses, so the backlog stays searchable by one label.
+
+End with "Zero production changes" and the suggested next step.
 
 ## Rules
 
+- Do NOT skip plan mode, or write anything before the Phase 6 approval.
 - Do NOT generate a test that doesn't exercise real production code.
 - Do NOT edit production code to cut a seam — propose it, file it, stop.
-- Do NOT generate all five layers across a whole repo in a single run — scope the tranche first.
-- Do NOT report a layer as done before the reality gate (Phase 5) confirms it.
+- Do NOT sample the census, or measure the gate against anything but the agreed yardstick.
+- Do NOT propose a seam without its characterization net.
+- Do NOT report a layer as done before the reality gate (Phase 7) confirms it.
 - Do NOT commit.

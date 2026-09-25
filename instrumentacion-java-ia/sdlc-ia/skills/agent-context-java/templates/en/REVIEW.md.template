@@ -15,17 +15,50 @@ WHERE THE ITEMS COME FROM
   quotation of any source. Change them as your team learns.
 
 WHAT THE SKILL DOES WHEN GENERATING IT
-  - Substitute <PROJECT>, <RUN-COMMAND> and <INTEGRATION-BRANCH> with real values.
+  - Substitute <REPOSITORY>, <RUN-COMMAND>, <PROJECT-FOLDER> and <PIECES> with real values.
+    <REPOSITORY> is the name of the REPOSITORY, not of the project: this file lives at the
+    repository root and may come to cover several projects, so titling it with the
+    repository makes the two-project case cease to exist. It resolves always and without
+    the network — it is the name of the git repository's root folder — unlike the PR
+    template's link, which does need the remote.
+  - This file ALWAYS goes to the git repository root: it is the only place the Code Review
+    service reads it. It has THREE conditional blocks and each resolves differently — there
+    is no single rule for all of them:
+      1. "ONLY IF THE PROJECT IS NOT AT THE ROOT" (the preamble): in a subfolder, substitute
+         <PROJECT-FOLDER> and <PIECES>; if the project IS the root, delete the WHOLE block.
+      2. "SUBFOLDER ONLY: THE FOLDER GOES INSIDE THE ITEM" (category 6): if the project IS the
+         root, **do not delete the item** — it is the only one in its category, and deleting it
+         takes the whole category with it. Delete just the fragment " in `<PROJECT-FOLDER>`".
+      3. "ONLY IF THE FILE ALREADY COVERED ANOTHER PROJECT": never written on a first run.
+         Substitute <FOLDER-ALREADY-COVERED> only when it genuinely applies, and only once.
   - Add items the discovery justifies (a migrations item only if the repo has Flyway or
     Liquibase, say), marked as added.
-  - In augment mode, never rewrite an existing REVIEW.md: fill gaps and append.
+  - In augment mode, never rewrite an existing REVIEW.md: fill gaps and append. One single
+    exception, and only if the file carries this template's signature: the title line, when
+    it still names one project and the file already covers another. With which guards and
+    when: references/monorepo-roots.md, "When a second Java project arrives".
   - Delete this header before writing the target file.
 -->
 
-# REVIEW.md — what to look at in a <PROJECT> diff
+# REVIEW.md — what to look at in a <REPOSITORY> diff
 
 These criteria apply to **every diff**, whether a person or a model wrote it. They matter more when
 a model wrote it, because the code reads plausible even when it is wrong.
+
+<!-- ONLY IF THE PROJECT IS NOT AT THE ROOT — delete the whole block if the project IS the root -->
+It lives at the repository root because the Code Review service only reads `REVIEW.md` there; it
+applies to <PIECES>. Items that only hold for `<PROJECT-FOLDER>` say so.
+<!-- END OF CONDITIONAL BLOCK -->
+
+<!-- ONLY IF THE FILE ALREADY COVERED ANOTHER PROJECT — written ONCE and never repeated; before
+     adding it, check it is not already there. It is an assumption, not a fact: if someone added
+     items by hand, the sentence covers those too without being true, which is why the report names
+     it as something to verify. references/monorepo-roots.md, "When a second Java project
+     arrives". -->
+Items that do not name a folder were written when this file covered only
+`<FOLDER-ALREADY-COVERED>`: read them as written for that piece, and check them before applying
+them to another.
+<!-- END OF CONDITIONAL BLOCK -->
 
 Anything a machine can check **is not here** — that is a sensor (linter, test, hook, CI). If an
 item on this list can be automated, promote it to a sensor and delete it from here. This list is
@@ -76,8 +109,13 @@ only for what needs judgement.
 
 ## 6 · Run the change yourself
 
-- [ ] **Start it and use it** (`<RUN-COMMAND>`). The most skipped item and the one that catches
-      most: green CI only says the tests that exist pass.
+<!-- SUBFOLDER ONLY: THE FOLDER GOES INSIDE THE ITEM. The command names its folder, like any other
+     scoped item. If the project IS the root, do NOT delete the item — it is the only one in this
+     category — delete just " in `<PROJECT-FOLDER>`". With a second project this item is not
+     rewritten either: a sibling bullet is appended with the other piece's command, and each one
+     names its own. -->
+- [ ] **Start it and use it** in `<PROJECT-FOLDER>` (`<RUN-COMMAND>`). The most skipped item and
+      the one that catches most: green CI only says the tests that exist pass.
 
 ---
 

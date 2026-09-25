@@ -1,38 +1,4 @@
-<!--
-PLANTILLA — EXPERIMENTS.md · el acuerdo escrito de permiso para experimentar
-
-QUÉ CUBRE ESTA PLANTILLA Y QUÉ NO
-  NO cubre el permiso. Dar permiso para experimentar y fallar es una decisión de liderazgo,
-  y va a seguir siéndolo. Lo que cubre es EL ACUERDO ESCRITO QUE RESULTA DE DARLO.
-  Sin nada escrito, el permiso dura hasta la primera PR que salió mal.
-
-LA REGLA DURA DE ESTA PLANTILLA: LA SKILL NO LA CONTESTA
-  Casi todo este archivo sale con marcadores de pendiente, y ESO ES LA SALIDA CORRECTA.
-  En los demás documentos un TODO significa que el descubrimiento no alcanzó; aquí significa
-  que la respuesta NO ESTÁ EN EL REPOSITORIO Y NO DEBE INVENTARSE. Inventarle a un equipo su
-  postura de riesgo es exactamente la alucinación contra la que esta skill está escrita.
-  No "mejores" esto haciendo que se autocompleten.
-
-QUÉ SÍ HACE LA SKILL AL GENERARLO
-  - Sustituye <PROYECTO> y <RAMA-DE-INTEGRACIÓN> con datos reales del repositorio.
-  - La sección 2 ya viene escrita abajo: NO la copies de ningún lado. Son las filas de la
-    sección "Escalation" de github-plan-build/SKILL.md que son LÍMITES DEL PERMISO, MÁS UNA
-    FILA PROPIA que el escalamiento no tiene (autenticación, secretos y datos de personas).
-    Los tres gates del ciclo (CI ambigua, loop que no converge, decisión de producto) quedan
-    fuera a propósito, y el texto dice por qué. No es ni una copia ni un subconjunto estricto,
-    y decirlo importa: copiar la lista entera fue la instrucción anterior, y es lo que hizo
-    que una corrida real borrara justamente la fila propia por no estar en el escalamiento.
-  - En modo aumentar NO reescribe un EXPERIMENTS.md existente: rellena huecos y anexa. Si la
-    sección 2 YA está escrita, no la toques: anexa debajo una nota que diga de qué sección se
-    tomó y qué filas quedaron fuera, y deja la decisión al equipo.
-  - Borra este encabezado antes de escribir el archivo destino.
-
-NO ES UN CHECK DE CI
-  Mismo criterio que las casillas de la plantilla de PR: convertir un acuerdo en trámite hace
-  que se firme sin leer y que el registro empiece a mentir.
--->
-
-# EXPERIMENTS.md — qué puede fallar en <PROYECTO>, y qué pasa cuando falla
+# EXPERIMENTS.md — qué puede fallar en workshop-desarrollo-sw-guiado-por-ia, y qué pasa cuando falla
 
 Este archivo existe porque **un equipo que solo puede usar el agente cuando está seguro de que va
 a salir bien no aprende a usarlo: aprende a esconder cuándo lo usó.**
@@ -49,8 +15,7 @@ el permiso siga existiendo la semana después de la primera PR que salió mal.
 
 **Alcance acordado:** <!-- TODO -->
 
-**Dónde:** ramas de trabajo que integran contra `<RAMA-DE-INTEGRACIÓN>`. <!-- TODO: confirmar o
-corregir -->
+**Dónde:** ramas de trabajo que integran contra `dev`. <!-- TODO: confirmar o corregir -->
 
 ## 2. Qué nunca es un experimento
 
@@ -58,8 +23,8 @@ Esta lista es la que hace que el permiso se pueda dar sin miedo. **Es el punto d
 procedencia está declarada**: de la sección «Escalation» de `github-plan-build/SKILL.md` toma las
 filas que son **límites del permiso** —no las que son gates del ciclo de entrega— **y añade una
 propia**, la última, que el escalamiento no tiene. No es una copia ni un subconjunto estricto: las
-dos listas contestan preguntas distintas, y forzarlas a ser idénticas es lo que separa al agente
-del acuerdo.
+dos listas contestan preguntas distintas, y forzarlas a ser idénticas es lo que separa al agente del
+acuerdo.
 
 - Escrituras en producción, despliegues y cualquier acción destructiva o irreversible.
 - Comunicaciones reales a destinatarios reales.
@@ -70,11 +35,17 @@ del acuerdo.
   estén fuera del permiso, dilo en la sección 1.)*
 - <!-- TODO: lo que este equipo agregue. Borra lo que no aplique, pero di por qué. -->
 
-**Lo que deliberadamente NO se copia del escalamiento**, porque son gates del ciclo y no límites
-del permiso: una falla de CI ambigua y un ciclo de arreglos que no converge —los dos se disparan
-por el estado del pipeline, no por lo que esté permitido intentar— y una decisión de producto sin
-fuente de verdad, que además **es reversible**: lo que falla ahí es el plan, no producción. Que el
-agente no decida producto por ti se acuerda escribiendo bien el alcance de la sección 1.
+**Lo que deliberadamente NO se copia del escalamiento**, porque son gates del ciclo y no límites del
+permiso: una falla de CI ambigua y un ciclo de arreglos que no converge —los dos se disparan por el
+estado del pipeline, no por lo que esté permitido intentar— y una decisión de producto sin fuente de
+verdad, que además **es reversible**: lo que falla ahí es el plan, no producción. Que el agente no
+decida producto por ti se acuerda escribiendo bien el alcance de la sección 1.
+
+<!-- Procedencia, para cuando alguien compare: las tres primeras filas salen de la sección
+     «Escalation» de instrumentacion-java-ia/sdlc-ia/skills/github-plan-build/SKILL.md; hay una
+     segunda copia íntegra de esa lista en references/build-loop-execute.md, y son la misma. La
+     cuarta es propia de la plantilla de agent-context-java: la corrida del 2026-09-15 la omitió al
+     copiar el escalamiento, y se re-añadió al decidirlo en el issue #141 (2026-09-16). -->
 
 ## 3. Qué pasa cuando sale mal
 
@@ -137,5 +108,5 @@ fecha, no dos.
 - **No es un permiso ilimitado.** La sección 2 es tan parte del acuerdo como la 1.
 - **No es un escudo.** Que algo estuviera permitido no vuelve bueno el resultado; vuelve seguro
   contarlo.
-- **No es un trámite.** Nadie firma nada acá, y no hay un check de CI que lo exija. Un acuerdo que
+- **No es un trámite.** Nadie firma nada aquí, y no hay un check de CI que lo exija. Un acuerdo que
   se convierte en casilla se marca sin leer.

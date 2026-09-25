@@ -74,10 +74,51 @@ jobs:
       - name: Run the same gates as local
         run: make ci
 
-      # Sensor de enlaces (#128): un enlace relativo o un ancla de la documentacion de
-      # base-conocimiento que no resuelve falla aca. En #120 aparecieron dos que nadie veia.
+      # Sensor de enlaces (#128, #144): un enlace o un ancla de CUALQUIER .md del monorepo que no
+      # resuelve falla aca. En #120 aparecieron dos anclas rotas que nadie veia. Mira la raiz del
+      # repositorio desde #144, porque hasta entonces no veia REVIEW.md ni la plantilla de PR, que
+      # es justo donde estaba el enlace roto de #121. Corre en la raiz, no en base-conocimiento/.
       - name: Docs links resolve
+        working-directory: .
         run: node scripts/verificar-enlaces.mjs
+
+      # Sensor de ancho de linea (#165): una linea de prosa sobre 100 caracteres en un .md o un
+      # .mjs de los que este metodo mantiene falla aca. La convencion existia y la respetaba quien
+      # se acordaba: en la ronda de #162 se rompio cuatro veces, y la cuarta la cazo la revision de
+      # codigo con el PR ya abierto. Corre en la raiz, no en base-conocimiento/.
+      - name: Line width is respected
+        working-directory: .
+        run: node scripts/verificar-ancho.mjs
+
+      # Sensor del pie de asistencia (#192): todo commit declara `Asistido-por-IA: <modelo>` o
+      # `Sin-IA:`, que es de donde sale el porcentaje de PRs asistidas de impact-metrics. Corre
+      # tambien como hook commit-msg; este paso existe porque el hook local lo salta `LEFTHOOK=0`
+      # sin dejar rastro, y un dato que sostiene una metrica no puede depender de eso.
+      #
+      # En una PR el rango son sus commits (base..HEAD, con fetch-depth 0 mas arriba); en un push a
+      # dev o main, el commit que llego. Los merges quedan fuera: no los escribe una persona.
+      - name: Every commit declares whether AI assisted it
+        working-directory: .
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          if [ -n "${BASE_SHA:-}" ]; then RANGO="$BASE_SHA..HEAD"; else RANGO="HEAD~1..HEAD"; fi
+          node scripts/verificar-pie-ia.mjs --rango "$RANGO"
+
+      # Sensor de citas a pasos de skill (#193): el visor explica lo que una skill hace por dentro
+      # citando sus pasos («el paso G de la skill», «su Fase 5»), y una cita que la skill ya no
+      # tiene falla aca. Las letras viven en references/, no en el SKILL.md. Corre en la raiz.
+      - name: Viewer step citations match the skills
+        working-directory: .
+        run: node scripts/verificar-pasos-skill.mjs
+
+      # Sensor visor <-> playbook (#203): cada codigo y cada titulo que el playbook cita del visor
+      # tiene que seguir existiendo, y las skills nombradas tienen que ser las mismas de los dos
+      # lados. Era la unica de las tres relaciones de la regla dura sin sensor. Corre en la raiz.
+      - name: The playbook still describes the viewer it cites
+        working-directory: .
+        run: node scripts/verificar-visor-playbook.mjs
 
       # Sensor del playbook (#117): una caja que cambia de badge sin que cambien su dato B(), su
       # seccion y los contadores falla aca. Node ya viene en el runner; el script no tiene
@@ -85,6 +126,26 @@ jobs:
       - name: Playbook coverage is consistent
         working-directory: .
         run: node playbook-sdlc-ia/verificar-cobertura.mjs
+
+      # Sensor del espejo con el sandbox (#155): una diferencia entre base-conocimiento/ y la raiz
+      # de G3A/base-conocimiento-sandbox que el ADR-0003 no explique falla aca. Hasta este issue la
+      # lista de divergencias se mantenia a mano y el propio ADR lo admitia. Corre en la raiz.
+      #
+      # El bloque `env:` NO es opcional, a diferencia de los dos sensores de arriba: este sale a la
+      # red, y en Actions secrets.GITHUB_TOKEN no esta en el entorno por si solo. Sin cablearlo el
+      # fetch sale anonimo -- 60 peticiones/hora por IP, desde IPs compartidas de runners --, o sea
+      # rojos intermitentes sin relacion con el repo. El sandbox es publico: el token es por cuota,
+      # no por permiso.
+      - name: Mirror with the sandbox is explained
+        working-directory: .
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # En una PR el checkout deja HEAD sobre un merge commit efimero, asi que el sensor
+          # reportaria "en HEAD (<sha que nadie puede traer>)". El ADR promete que ese reporte
+          # sirve para reproducir un rojo: la rama y la punta real llegan desde aca.
+          ESPEJO_REF: ${{ github.head_ref || github.ref_name }}
+          ESPEJO_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/verificar-espejo.mjs
 
       - name: Publish test results
         if: always()

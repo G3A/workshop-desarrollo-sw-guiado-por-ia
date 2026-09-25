@@ -15,17 +15,49 @@ DE DÓNDE SALEN LOS ÍTEMS
   cita literal de ninguna fuente. Cámbialos cuando tu equipo aprenda algo nuevo.
 
 QUÉ HACE LA SKILL AL GENERARLO
-  - Sustituye <PROYECTO>, <COMANDO-DE-ARRANQUE> y <RAMA-DE-INTEGRACIÓN> con datos reales.
+  - Sustituye <REPOSITORIO>, <COMANDO-DE-ARRANQUE>, <CARPETA-DEL-PROYECTO> y <PIEZAS> con
+    datos reales. <REPOSITORIO> es el nombre del REPOSITORIO, no el del proyecto: este
+    archivo vive en la raíz del repositorio y puede llegar a cubrir varios proyectos, así
+    que titularlo con el repositorio hace que el caso de dos proyectos no exista. Se
+    resuelve siempre y sin red — es el nombre de la carpeta raíz del repositorio git —, a
+    diferencia del enlace de la plantilla de PR, que sí necesita el remoto.
+  - Este archivo va SIEMPRE en la raíz del repositorio git: es el único sitio donde el
+    servicio de Code Review lo lee. Tiene TRES bloques condicionales y cada uno se resuelve
+    distinto — no hay una sola regla para todos:
+      1. "SOLO SI EL PROYECTO NO ESTÁ EN LA RAÍZ" (el preámbulo): en subcarpeta, sustituye
+         <CARPETA-DEL-PROYECTO> y <PIEZAS>; si el proyecto ES la raíz, borra el bloque ENTERO.
+      2. "SOLO EN SUBCARPETA: LA CARPETA VA DENTRO DEL ÍTEM" (categoría 6): si el proyecto ES
+         la raíz **NO borres el ítem** — es el único de su categoría, y borrarlo se lleva la
+         categoría entera. Borra solo el trozo " en `<CARPETA-DEL-PROYECTO>`".
+      3. "SOLO SI EL ARCHIVO YA CUBRÍA OTRO PROYECTO": no se escribe en una primera corrida.
+         Sustituye <CARPETA-YA-CUBIERTA> solo cuando de verdad aplica, y una sola vez.
   - Añade los ítems específicos que el descubrimiento justifique (por ejemplo, un ítem de
     migraciones solo si el repo tiene Flyway o Liquibase), marcándolos como añadidos.
-  - En modo aumentar NO reescribe un REVIEW.md existente: rellena huecos y anexa.
+  - En modo aumentar NO reescribe un REVIEW.md existente: rellena huecos y anexa. Una sola
+    excepción, y solo si el archivo lleva la firma de esta plantilla: la línea del título,
+    cuando todavía nombra un proyecto y el archivo ya cubre otro. Con qué guardas y cuándo:
+    references/monorepo-roots.md, "When a second Java project arrives".
   - Borra este encabezado antes de escribir el archivo destino.
 -->
 
-# REVIEW.md — qué mirar en un diff de <PROYECTO>
+# REVIEW.md — qué mirar en un diff de <REPOSITORIO>
 
 Estos criterios se aplican a **todo diff**, lo haya escrito una persona o un modelo. Pesan más
 cuando lo escribió un modelo, porque el código sale plausible incluso cuando está mal.
+
+<!-- SOLO SI EL PROYECTO NO ESTÁ EN LA RAÍZ — bórralo entero si el proyecto ES la raíz -->
+Vive en la raíz del repositorio porque el servicio de Code Review solo lee `REVIEW.md` ahí; aplica
+a <PIEZAS>. Los ítems que solo valen para `<CARPETA-DEL-PROYECTO>` lo dicen.
+<!-- FIN DEL BLOQUE CONDICIONAL -->
+
+<!-- SOLO SI EL ARCHIVO YA CUBRÍA OTRO PROYECTO — se escribe UNA vez y nunca se repite; antes de
+     añadirlo, comprueba que no esté ya. Es un supuesto, no un hecho: si alguien añadió ítems a
+     mano, la frase también los cubre sin que sea verdad, y por eso el reporte la nombra como algo
+     a verificar. references/monorepo-roots.md, "When a second Java project arrives". -->
+Los ítems que no nombran una carpeta se escribieron cuando el archivo cubría solo
+`<CARPETA-YA-CUBIERTA>`: dalos por escritos para esa pieza, y verifícalos antes de aplicarlos a
+otra.
+<!-- FIN DEL BLOQUE CONDICIONAL -->
 
 Lo que una máquina puede comprobar **no está aquí**: eso son sensores (linters, pruebas, hooks,
 CI). Si un ítem de esta lista se puede automatizar, súbelo a un sensor y bórralo de aquí. Esta
@@ -78,8 +110,13 @@ lista es solo para lo que exige criterio.
 
 ## 6 · Corre el cambio tú mismo
 
-- [ ] **Levántalo y úsalo** (`<COMANDO-DE-ARRANQUE>`). Es el ítem que más se salta y el que más
-      atrapa: CI en verde solo dice que las pruebas que existen pasan.
+<!-- SOLO EN SUBCARPETA: LA CARPETA VA DENTRO DEL ÍTEM. El comando nombra su carpeta, como cualquier
+     otro ítem acotado. Si el proyecto ES la raíz, NO borres el ítem —es el único de esta categoría—:
+     borra solo " en `<CARPETA-DEL-PROYECTO>`". Con un segundo proyecto este ítem tampoco se
+     reescribe: se anexa una viñeta hermana con el comando de la otra pieza, y cada una nombra la
+     suya. -->
+- [ ] **Levántalo y úsalo** en `<CARPETA-DEL-PROYECTO>` (`<COMANDO-DE-ARRANQUE>`). Es el ítem que
+      más se salta y el que más atrapa: CI en verde solo dice que las pruebas que existen pasan.
 
 ---
 

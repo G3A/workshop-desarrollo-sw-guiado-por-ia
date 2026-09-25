@@ -18,8 +18,8 @@ Las migraciones posteriores suman `docling_tareas_en_curso` (V2), `vault_archivo
 - **Herramienta:** Flyway (`flyway-core` + `flyway-database-postgresql`; el autoconfig lo trae el
   módulo aparte `spring-boot-flyway` — sin él la app arranca contra una base vacía sin protestar).
 - **Ubicación:** `src/main/resources/db/migration/` (`V1__esquema.sql` … `V6__streams_en_curso_query_log_id.sql`).
-- **Flujo:** corre al arrancar la app (autoconfig de Spring Boot), no es un paso explícito de CI —
-  no hay CI todavía (ver [infraestructura](infrastructure.md)).
+- **Flujo:** corre al arrancar la app (autoconfig de Spring Boot), no es un paso explícito del
+  CI (ver [infraestructura](infrastructure.md#cicd)).
 
 ## Diagrama entidad-relación
 

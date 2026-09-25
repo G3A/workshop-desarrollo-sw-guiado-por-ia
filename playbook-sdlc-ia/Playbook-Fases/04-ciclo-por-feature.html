@@ -30,7 +30,7 @@
   <div class="cobertura">
     <span class="k-skill"><b>12</b> · skill</span>
     <span class="k-parcial"><b>1</b> · parcial</span>
-    <span class="k-mano"><b>2</b> · a mano</span>
+    <span class="k-mano"><b>7</b> · a mano</span>
   </div>
 
   <h2 class="muted" style="font-family:'Fraunces',serif;margin-top:30px">Especificación</h2>
@@ -42,7 +42,7 @@
     <p>Dos cosas que la hacen distinta de pedirle un resumen al agente. <strong>Cita, no categoriza</strong>: cuando un cambio deja documentación desactualizada nombra el archivo y la línea — «puede que algunos docs necesiten actualizarse» no es un hallazgo. Y <strong>nunca inventa</strong>: un adjunto que no se pudo abrir se reporta como no leído.</p>
     <p>El destino siempre se pregunta: un issue de GitHub con un sub-issue nativo por tarea, o <code>docs/specs/&lt;slug&gt;/spec.md</code> más <code>tasks.md</code>. Si es GitHub, también pregunta a qué milestone —el sprint— con «ninguno, queda en el backlog» como primera opción, porque meter un issue en un sprint es una decisión de planificación tuya.</p>
     <div class="hint"><b>La frontera es lo que la hace segura de correr temprano.</b> Nunca escribe código, nunca abre PR, nunca toca git. Se puede correr sobre un documento que todavía nadie aprobó.</div>
-    <div class="fuente"><b>Fuente:</b> <code>requirement-to-spec-java/SKILL.md</code>, fases 1 a 6; visor, nodo <code>r1</code>.</div>
+    <div class="fuente"><b>Fuente:</b> <code>requirement-to-spec-java/SKILL.md</code>, fases 1 a 6; visor, nodo «Convertir requisito en spec y tareas» (<code>r1</code>).</div>
   </section>
 
   <section id="S1" class="skill">
@@ -50,8 +50,8 @@
     <h2>Toma el issue del sprint</h2>
     <p><code>/sdlc-ia:github-plan-build &lt;número o URL&gt;</code>. Lo primero que hace es traer el issue <strong>completo</strong> —título, cuerpo, comentarios, etiquetas— porque muchas veces los requisitos reales están negociados en los comentarios, no en el cuerpo original.</p>
     <p>Como GitHub no tiene campo de estado nativo, detecta si el repositorio marca «en progreso» con <strong>etiquetas</strong> o con <strong>GitHub Projects v2</strong>. Si encuentra los dos, pregunta una sola vez cuál es la fuente de verdad en vez de escribir en ambos; si no encuentra ninguno, salta esos pasos y lo deja anotado, para que «se saltó» no se confunda con «se olvidó».</p>
-    <div class="hint"><b>Armar el sprint es tuyo.</b> Sin milestones y sin tablero, «tomar issue del sprint» no tiene dónde mirar. El visor lo cubre en el nodo <code>pj</code>.</div>
-    <div class="fuente"><b>Fuente:</b> <code>github-plan-build/SKILL.md</code>, fases 1 y 2; visor, nodos <code>pj</code> y <code>bo1</code>.</div>
+    <div class="hint"><b>Armar el sprint es tuyo.</b> Sin milestones y sin tablero, «tomar issue del sprint» no tiene dónde mirar. El visor lo cubre en el nodo «Crear Project y milestone del sprint».</div>
+    <div class="fuente"><b>Fuente:</b> <code>github-plan-build/SKILL.md</code>, fases 1 y 2; visor, nodos «Crear Project y milestone del sprint» (<code>pj</code>) y «Tomar issue del sprint» (<code>bo1</code>).</div>
   </section>
 
   <section id="S2" class="skill">
@@ -60,7 +60,7 @@
     <p>Pasos B a D del ciclo de construcción: <strong>preguntar</strong> lo que el issue dejó abierto en materia de diseño con opciones concretas, <strong>explorar</strong> el repositorio (con subagentes en paralelo si el cambio toca varias áreas), y <strong>redactar un plan</strong> paso a paso cuyo primer paso siempre es una prueba que falla.</p>
     <p>Después, el plan pasa por una <strong>revisión adversarial desde tres ángulos</strong> —convenciones del repositorio, corrección y alcance— antes de escribir una sola línea de código.</p>
     <p>Antes de nada, la fase 3 prepara git: resuelve la rama de integración que declare <code>AGENTS.md</code> (en este monorepo, <code>dev</code>), la sincroniza, confirma que el árbol está limpio y crea <code>&lt;prefijo&gt;/&lt;número&gt;-&lt;slug&gt;</code> con el prefijo que el repositorio ya usa.</p>
-    <div class="fuente"><b>Fuente:</b> <code>github-plan-build/references/build-loop.md</code>, pasos A a D; visor, nodo <code>c1</code>.</div>
+    <div class="fuente"><b>Fuente:</b> <code>github-plan-build/references/build-loop.md</code>, pasos A a D; visor, nodo «Planificar el issue» (<code>c1</code>).</div>
   </section>
 
   <section id="S3" class="mano">
@@ -68,9 +68,9 @@
     <h2>Aprueba el plan</h2>
     <p>El punto de aprobación es <strong>condicional</strong>: la skill solo entra en modo plan si el cambio es grande, toca un contrato público, un esquema de datos o permisos, o si la revisión adversarial dejó algo sin resolver. Si el cambio es chico y reversible, sigue directo.</p>
     <p>Una vez aprobado, publica el plan como comentario en el issue —pasos, decisiones, supuestos y lo que queda fuera— para que el equipo lo lea sin abrir una sesión del agente.</p>
-    <p>Aprobar sigue siendo decisión tuya, y el visor insiste en por qué: «el plan lo escribió el agente, pero la responsabilidad de que tenga sentido es de quien lo aprueba». Su nodo <code>G3</code> tiene <strong>tres salidas, no dos</strong>: seguir, ajustar, o descartar.</p>
+    <p>Aprobar sigue siendo decisión tuya, y el visor insiste en por qué: «el plan lo escribió el agente, pero la responsabilidad de que tenga sentido es de quien lo aprueba». Su nodo «¿Aprobación del plan?» tiene <strong>tres salidas, no dos</strong>: seguir, ajustar, o descartar.</p>
     <div class="hint"><b>Si quieres el checkpoint siempre</b>, pídelo explícitamente. Si quieres uno más, <code>confirm-push</code> agrega una pausa entre el commit y el push, y te deja los comandos exactos si eliges detenerte ahí.</div>
-    <div class="fuente"><b>Fuente:</b> <code>github-plan-build</code>, paso E; visor, nodos <code>bo2</code> y <code>G3</code>.</div>
+    <div class="fuente"><b>Fuente:</b> <code>github-plan-build</code>, paso E; visor, nodos «Revisar tareas generadas» (<code>bo2</code>) y «¿Aprobación del plan?» (<code>G3</code>).</div>
   </section>
 
   <section id="S4" class="skill">
@@ -87,7 +87,7 @@
     <h2>Implementa con test primero</h2>
     <p>Paso F: en pasos pequeños, corriendo el gate acotado después de cada uno y haciendo <strong>un commit por paso en verde</strong> con <code>Refs #&lt;n&gt;</code>. El commit que completa el último paso lleva <code>Closes #&lt;n&gt;</code>.</p>
     <p>La skill no asume ninguna arquitectura: no revisa ni recomienda Clean Architecture, hexagonal ni MVC. El plan sigue lo que el repositorio ya hace.</p>
-    <div class="fuente"><b>Fuente:</b> <code>github-plan-build/references/build-loop-execute.md</code>, paso F; visor, nodo <code>c2</code>.</div>
+    <div class="fuente"><b>Fuente:</b> <code>github-plan-build/references/build-loop-execute.md</code>, paso F; visor, nodo «Ejecutar tareas, 1 commit c/u» (<code>c2</code>).</div>
   </section>
 
   <section id="I2" class="skill">
@@ -110,14 +110,14 @@
     <span class="tag">UI</span>
     <h2>¿La tarea tiene interfaz?</h2>
     <p>Si no, salta directo a la verificación en 4 capas. Si sí, hay dos pasos más, y los dos están mal cubiertos: es la rama más débil de esta fase.</p>
-    <p>El visor lo dice sin rodeos en su nodo <code>GUI</code>: «un test automatizado puede confirmar que un componente renderiza — no puede confirmar que se ve bien».</p>
+    <p>El visor lo dice sin rodeos en su nodo «¿Necesita verificación visual?»: «un test automatizado puede confirmar que un componente renderiza — no puede confirmar que se ve bien».</p>
   </section>
 
   <section id="V0" class="mano">
     <span class="tag">V0</span><span class="badge mano">A mano</span>
     <h2>Vista previa efímera por PR</h2>
     <p>Verificar contra una URL real y compartible es más confiable, y más fácil de mostrarle a alguien, que correrlo solo en tu máquina. El mecanismo exacto depende del stack: la idea es que cada PR con cambios visuales tenga su propia URL descartable.</p>
-    <div class="fuente"><b>Fuente:</b> visor, nodo <code>v0</code>.</div>
+    <div class="fuente"><b>Fuente:</b> visor, nodo «Levantar vista previa efímera» (<code>v0</code>).</div>
   </section>
 
   <section id="VW" class="skill">
@@ -137,18 +137,20 @@
     <div class="hint"><b>Playwright MCP lee estructura, no capturas</b>, y eso va en la pregunta porque cambia la respuesta: el agente recibe el árbol de accesibilidad, más barato y mucho más fiable para hacer clic en lo correcto — pero «¿se <i>ve</i> bien?» necesita pedir una captura explícita. Un equipo que espera que note una regresión visual por su cuenta se va a llevar una sorpresa, y conviene que la tenga antes de elegir.</div>
     <div class="hint"><b>Lo que registrar el servidor NO compra, y lo dice el proveedor.</b> La documentación de Playwright MCP llama a <code>--allowed-origins</code> y a la protección de acceso a archivos <b>«defensas de conveniencia para atrapar accesos no intencionales, no una frontera de seguridad»</b> —no impiden redirecciones y se pueden sortear— y dice que la aislación real exige <b>permisos del lado del cliente</b>. Es <a href="00-referencia-e-inicio.html#RD">el eje de este playbook</a> dicho por el fabricante sobre su propio producto: <b>MCP solo agrega capacidad; <a href="03-preparacion-del-terreno.html#DMP">los hooks y <code>permissions</code></a> son lo único que la quita.</b> Un servidor de navegador es justamente el caso que vuelve obligatorias esas reglas, no un adorno.</div>
     <div class="hint"><b>Y un segundo riesgo que no es de red.</b> Un MCP de navegador mete <b>contenido de páginas web en el contexto del modelo</b>: texto de una página que ahora convive con tus instrucciones, que es la superficie clásica de inyección de prompts. La skill mantiene el radio chico —<code>--isolated</code> para que el perfil no herede sesiones ya iniciadas, orígenes acotados a los del propio sistema— y reporta que la exposición restante es real. Es el mismo criterio con el que <a href="03-preparacion-del-terreno.html#N5N">las anotaciones de MCP</a> se tratan como pistas y no como hechos.</div>
-    <div class="hint"><b>Poder mirar no es saber contra qué comparar — y ahora hay contra qué.</b> Los <em>design tokens</em> y el <code>COMPONENTS.md</code> de la caja <a href="03-preparacion-del-terreno.html#X4"><code>X4</code></a> le dan al agente una referencia escrita, leída del propio repositorio: qué colores y temas define, qué componentes ya existen. Esta caja pone la capacidad de mirar; <code>X4</code>, la referencia. El criterio de si «se ve bien» sigue siendo humano.</div>
-    <div class="hint"><b>La parte humana sigue siendo humana, y a propósito.</b> El visor la cubre en su nodo <code>vw</code>: es la parte del proceso donde «se ve bien» todavía no tiene una forma barata de automatizarse del todo.</div>
+    <div class="hint"><b>Poder mirar no es saber contra qué comparar — y ahora hay contra qué.</b> Los <em>design tokens</em> y el <code>COMPONENTS.md</code> de la caja <a href="03-preparacion-del-terreno.html#X4">Intención visual</a> le dan al agente una referencia escrita, leída del propio repositorio: qué colores y temas define, qué componentes ya existen. Esta caja pone la capacidad de mirar; «Intención visual», la referencia. El criterio de si «se ve bien» sigue siendo humano.</div>
+    <div class="hint"><b>La parte humana sigue siendo humana, y a propósito.</b> El visor la cubre en su nodo «Verificar visualmente»: es la parte del proceso donde «se ve bien» todavía no tiene una forma barata de automatizarse del todo.</div>
     <div class="fuente"><b>Fuente:</b> <code>instrument-agent-java/references/mcp-servers.md</code>; documentación oficial de Playwright MCP y de Chrome DevTools MCP, consultada el <b>2026-09-12</b>.</div>
   </section>
 
   <h2 class="muted" style="font-family:'Fraunces',serif;margin-top:30px">Verificación en 4 capas</h2>
 
+  <p class="lead grupo">Acá se cobra lo que se instaló en la Fase 2, y el <a href="00-referencia-e-inicio.html#RD">eje</a> explica por qué las capas no pesan lo mismo. Las capas <b>1 y 2 son deterministas</b>: dispara un evento fijo —el commit, la PR— y decide un código de salida, así que pueden bloquear. La <b>3 está partida</b>, y es la única que lo está: las dependencias y el análisis del código propio son sensores, pero la revisión por modelo sobre el diff es <a href="03-preparacion-del-terreno.html#N6">no determinista</a> y por eso aporta señal y nunca veredicto. La <b>4 no es ninguna de las dos</b>: es juicio humano, y por eso sus casillas tampoco son un check de CI.</p>
+
   <section id="VL1" class="skill">
     <span class="tag">VL1</span><span class="badge skill">Skill</span>
     <h2>1 · Local</h2>
     <p>El agente rompe lo obvio antes de subir: los hooks de pre-commit, los linters y los tests que <code>instrument-project-java</code> dejó instalados corren en tu máquina, no en el pipeline. Rápido, pero corto de alcance — por eso hay tres capas más.</p>
-    <div class="fuente"><b>Fuente:</b> <code>github-plan-build</code>, paso F; visor, nodo <code>c3</code>.</div>
+    <div class="fuente"><b>Fuente:</b> <code>github-plan-build</code>, paso F; visor, nodo «Verificación en 4 capas» (<code>c3</code>).</div>
   </section>
 
   <section id="VL2" class="skill">
@@ -156,8 +158,8 @@
     <h2>2 · CI, el juez</h2>
     <p>Abrir la PR es lo que dispara el juez. La skill la abre enlazando el issue con el token de cierre (<code>Closes #&lt;n&gt;</code>), y después <strong>vigila la corrida hasta que quede verde</strong> y atiende los comentarios de revisión uno por uno.</p>
     <p>Tiene un límite explícito para no quedarse dando vueltas: escala a una persona si un fallo de CI es ambiguo (no se sabe si es intermitente o real) o si un ciclo de arreglos no converge después de tres intentos sobre el mismo job.</p>
-    <div class="hint"><b>Esta capa depende de la caja <code>DCJ</code> de la Fase 2.</b> Si el Ruleset no exige el check, el «juez» opina pero no bloquea.</div>
-    <div class="fuente"><b>Fuente:</b> <code>github-plan-build</code>, pasos H e I; visor, nodos <code>p1</code> y <code>G5</code>.</div>
+    <div class="hint"><b>Esta capa depende de la caja «El juez» de la Fase 2.</b> Si el Ruleset no exige el check, el «juez» opina pero no bloquea.</div>
+    <div class="fuente"><b>Fuente:</b> <code>github-plan-build</code>, pasos H e I; visor, nodos «Abrir Pull Request» (<code>p1</code>) y «¿CI en verde?» (<code>G5</code>).</div>
   </section>
 
   <section id="VL3" class="parcial">
@@ -184,14 +186,14 @@
     <div class="hint"><b>De dónde sale cada mitad, dicho sin adornos.</b> Las <b>seis categorías son del método</b>. Los <b>quince ítems concretos los redacta la plantilla de la skill</b>: son la forma accionable que se les da, no una cita de ninguna fuente — y la skill lo dice así al reportar, invitando al equipo a cambiarlos.</div>
     <div class="hint"><b>Las casillas no son un check de CI, a propósito.</b> Exigirlas convierte el juicio humano en trámite: se marcan las seis sin mirar y el registro empieza a mentir. Dejan rastro de qué se revisó; no lo garantizan.</div>
     <div class="hint"><b>La lista evoluciona en los dos sentidos.</b> Lo que dices a mano por tercera vez en una revisión es un criterio que falta en <code>REVIEW.md</code>. Y al revés: un criterio que una máquina pueda comprobar deja de ser texto y se vuelve sensor — si sigue siendo prosa, es trabajo manual que alguien repite en cada PR.</div>
-    <div class="fuente"><b>Fuente:</b> <code>agent-context-java/SKILL.md</code>, fase 4; <code>templates/es/REVIEW.md.template</code>; visor, nodo <code>cr</code> para el porqué de la capa.</div>
+    <div class="fuente"><b>Fuente:</b> <code>agent-context-java/SKILL.md</code>, fase 4; <code>templates/es/REVIEW.md.template</code>; visor, nodo «Revisión de código (agente + CODEOWNERS)» (<code>cr</code>) para el porqué de la capa.</div>
   </section>
 
   <section id="GV" class="dec">
     <span class="tag">GV</span>
     <h2>¿Aprueba la verificación?</h2>
     <p>Este gate es sobre <strong>criterios de aceptación</strong>, no sobre si el código compila — eso ya lo respondió la capa 2. Si no aprueba, se replantea <em>solo la tarea que falló</em>, no el issue entero: es más barato y deja el resto del trabajo en pie.</p>
-    <div class="fuente"><b>Fuente:</b> visor, nodos <code>G4</code> y <code>c4p</code>.</div>
+    <div class="fuente"><b>Fuente:</b> visor, nodos «¿Criterios de aceptación OK?» (<code>G4</code>) y «Replanear la tarea fallida» (<code>c4p</code>).</div>
   </section>
 
   <section id="M1" class="skill goal">
@@ -205,16 +207,72 @@
     <div class="hint"><b>Y el patrón va anclado.</b> Un <code>--grep=Asistido-por-IA</code> suelto también cuenta los commits que apenas <i>mencionan</i> el marcador en prosa — uno que documente este mismo comportamiento entraría como PR asistida e inflaría <a href="06-metricas-y-reporte.html#K1">la métrica de la Fase 5</a>.</div>
     <div class="hint"><b>El merge lo corres tú.</b> La skill nunca hace merge, nunca activa auto-merge y nunca despliega. Es el Ruleset el que habilita o bloquea el botón.</div>
     <div class="hint"><b>Y es la cláusula que vuelve real <a href="02-cultura.html#C2">el acuerdo de permiso</a>:</b> el marcador de una PR que salió mal <b>se queda</b>. Si desaparece de los intentos fallidos, la métrica mide solo los éxitos.</div>
-    <div class="fuente"><b>Fuente:</b> <code>github-plan-build</code>, paso G; <code>AGENTS.md</code> del monorepo; visor, nodos <code>mg</code> y <code>G6</code>.</div>
+    <div class="fuente"><b>Fuente:</b> <code>github-plan-build</code>, paso G; <code>AGENTS.md</code> del monorepo; visor, nodos «Merge (Rulesets exige checks)» (<code>mg</code>) y «¿PR aprobada?» (<code>G6</code>).</div>
   </section>
 
   <section id="MF" class="dec">
     <span class="tag">MF</span>
     <h2>¿Quedan más issues del sprint?</h2>
     <p>Si sí, vuelve a tomar uno. Si no, sigue a la retroalimentación — que es el paso que hace que la vuelta 20 sea más fluida que la vuelta 1, y el que más se salta cuando el sprint viene apretado.</p>
-    <div class="fuente"><b>Fuente:</b> visor, nodo <code>G7</code>, el cierre del ciclo PDCA.</div>
+    <div class="fuente"><b>Fuente:</b> visor, nodo «¿Quedan issues del sprint?» (<code>G7</code>), el cierre del ciclo PDCA.</div>
   </section>
 
+  <h2 class="muted" style="font-family:'Fraunces',serif;margin-top:30px">Entrega</h2>
+
+  <section id="EG1" class="mano">
+    <span class="tag">EG1</span><span class="badge mano">A mano</span>
+    <h2>Despliegue automático tras el merge</h2>
+    <p>Desplegar después de cada merge, en vez de acumular cambios para un despliegue grande, es lo que mantiene el entorno de prueba cerca de lo que hay en la rama de integración.</p>
+    <p><strong>Ninguna skill del plugin despliega.</strong> <code>instrument-project-java</code> instala el workflow de CI —el que juzga—, no el de entrega. Que exista un despliegue automático, y a dónde, es del equipo.</p>
+    <div class="fuente"><b>Fuente:</b> visor, nodo «CD automático a staging» (<code>cd1</code>).</div>
+  </section>
+
+  <section id="GES" class="dec">
+    <span class="tag">GES</span>
+    <h2>¿El despliegue quedó en verde?</h2>
+    <p>Un despliegue que falla en silencio es peor que no tener despliegue automático. Se pregunta por el <strong>commit del merge</strong>, no por la rama: con dos merges cerca, el último run puede ser de otra persona.</p>
+    <div class="fuente"><b>Fuente:</b> visor, nodo «¿CD en verde?» (<code>G8</code>).</div>
+  </section>
+
+  <section id="EG2" class="mano">
+    <span class="tag">EG2</span><span class="badge mano">A mano</span>
+    <h2>Arreglar hacia adelante, o volver atrás</h2>
+    <p>Revertir es más seguro y pierde el trabajo; arreglar hacia adelante es más rápido y exige confianza en que el arreglo es correcto. No hay una respuesta única: depende de qué tan grave sea lo que se rompió.</p>
+    <p>El proceso enseña <strong>cuándo cada uno</strong>. El comando depende de dónde despliegues, y por eso no está escrito acá.</p>
+    <div class="fuente"><b>Fuente:</b> visor, nodo «Arreglar hacia adelante» (<code>df</code>).</div>
+  </section>
+
+  <section id="EP1" class="mano">
+    <span class="tag">EP1</span><span class="badge mano">A mano</span>
+    <h2>Libera dev a main</h2>
+    <p><strong>Liberar es una decisión, no un efecto del trabajo diario.</strong> La toma quien libera, cuando la rama de integración está en verde, y se ejecuta en dos PR seguidas: la que sube la versión y fecha el CHANGELOG, y la de liberación.</p>
+    <p>El porqué de esa forma, con la alternativa descartada y qué haría reconsiderarla, está en <code>docs/adrs/0001-liberar-con-chore-release-a-dev.md</code>.</p>
+    <div class="fuente"><b>Fuente:</b> visor, nodo «Liberar dev a main» (<code>rl</code>).</div>
+  </section>
+
+  <section id="EP2" class="mano">
+    <span class="tag">EP2</span><span class="badge mano">A mano</span>
+    <h2>Despliega a producción con aprobación registrada</h2>
+    <p>El paso más caro del ciclo, y el que hasta el #197 no estaba dibujado en ninguna pieza. El <code>ADR-0004</code> fija <strong>qué exige el método</strong>: que lo dispare la liberación —no una persona que se acuerda—, y que la aprobación quede con nombre y hora, en un <strong>Environment con revisores requeridos</strong>.</p>
+    <p><strong>Y qué no prescribe: la herramienta.</strong> El paso de despliegue es un hueco a propósito, porque quien siga este método puede desplegar en un PaaS, en Kubernetes o en un servidor propio. Mientras el comando sea del equipo, ninguna skill puede cubrir esta caja.</p>
+    <div class="fuente"><b>Fuente:</b> visor, nodo «Desplegar a producción» (<code>cd2</code>), y <code>docs/adrs/0004-el-metodo-exige-el-despliegue-y-no-la-herramienta.md</code>.</div>
+  </section>
+
+  <section id="GPX" class="dec">
+    <span class="tag">GPX</span>
+    <h2>¿Producción en verde?</h2>
+    <p>Se mira el despliegue <strong>de esa liberación</strong>, por su SHA. Qué significa «verde» lo define el equipo: un healthcheck, una prueba de humo contra la URL real, una métrica que vuelve a su nivel. Y la lista vacía no es verde ni rojo: puede ser que la corrida siga esperando la aprobación.</p>
+    <div class="fuente"><b>Fuente:</b> visor, nodo «¿Producción en verde?» (<code>G9</code>).</div>
+  </section>
+
+  <section id="EP3" class="mano">
+    <span class="tag">EP3</span><span class="badge mano">A mano</span>
+    <h2>Vuelve a la versión anterior</h2>
+    <p>Dos familias, y el proceso enseña <strong>cuándo</strong>, no <strong>cómo</strong>: volver por el mecanismo del proveedor cuando el sistema está inutilizable —son minutos—, o revertir en git y liberar cuando el daño es acotado —cuesta una liberación entera y deja la historia coherente—.</p>
+    <p>Con la regla que las ata: si vuelves por el mecanismo del proveedor, <strong>la rama estable queda describiendo algo que ya no corre</strong>. Revertir el código deja de ser urgente, pero no deja de ser obligatorio.</p>
+    <p><strong>Y que esté ensayado.</strong> Un camino de vuelta que nadie ejecutó nunca es una promesa, no un camino — la misma exigencia con la que el método pide ver disparar cada hook en vez de comprobar que el archivo existe.</p>
+    <div class="fuente"><b>Fuente:</b> visor, nodo «Volver a la versión anterior» (<code>rb</code>).</div>
+  </section>
   <footer>Plugin <code>sdlc-ia</code> · monorepo <code>workshop-desarrollo-sw-guiado-por-ia</code></footer>
 </div>
 <script src="nav.js"></script>

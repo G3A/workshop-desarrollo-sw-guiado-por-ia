@@ -26,8 +26,35 @@ navegador basado en Chromium.
 | **Hueco** | Nadie la cubre acá: ni skill, ni visor, ni manual. |
 | **Fuera de alcance** | Frontera declarada del plugin, no un olvido: Azure DevOps, memoria semántica entre sesiones, agentes especialistas por stack — y una derivada de la segunda, los hooks `type: mcp_tool`. |
 
-Cobertura al momento de escribir esto: **43 skill · 2 parcial · 14 a mano · 9 hueco · 3 fuera de
-alcance**, sobre 71 cajas con badge.
+Cobertura al momento de escribir esto: **43 skill · 2 parcial · 19 a mano · 9 hueco · 3 fuera de
+alcance**, sobre 76 cajas con badge.
+
+## El segundo eje: determinista o no determinista
+
+El badge dice **quién ejecuta** la caja. Hay un segundo eje, independiente, que dice **qué tipo de
+instrumentación es**: un control es *determinista* solo si el disparo y la decisión quedan los dos
+fuera del razonamiento del modelo, y basta que una de las dos dependa del modelo para que sea *no
+determinista*. El eje entero está escrito en la caja **«El eje de la instrumentación»**, en la
+página de referencia.
+
+Los dos ejes conviven en la misma caja del diagrama, cada uno en su canal: el **relleno** dice
+quién ejecuta y el **contorno** de qué tipo es, azul determinista y violeta no determinista. Tienen
+que ir separados porque el azul de determinista y el de *a mano* son el mismo color, y porque se
+cruzan de verdad: `DHH` y `NHP` son los dos **huecos**, así que salen del mismo rojo, y sin embargo
+son de tipos opuestos.
+
+El contorno lo llevan **solo las cajas de hooks y MCP**, que es el único grupo que mezcla los dos
+tipos; en los otros dos lo dice el título del grupo, y un contorno más sería ruido sin información.
+
+En las páginas de fase el tipo va en **cada sección**, con una pastilla del mismo color, y las del
+grupo de hooks y MCP cierran con una línea **«quién dispara / quién decide»**. Ahí sí lo llevan
+todas, y no el encabezado del grupo, por una razón concreta: al llegar desde el diagrama la página
+entra en modo foco y el encabezado no se ve.
+
+Dos cajas rompen la intuición de «hooks determinista, MCP no determinista» y están marcadas como
+excepción: `DMH`, un hook `type: mcp_tool`, es determinista aunque llame a un servidor MCP porque
+el modelo no eligió llamarlo; y `NHP`, un hook `type: prompt`, es no determinista aunque sea un
+hook porque la decisión sale de inferencia.
 
 ## Cómo se usa el diagrama
 
@@ -43,6 +70,19 @@ alcance**, sobre 71 cajas con badge.
 
 En las páginas de fase, «← Volver al diagrama» cierra esa pestaña, porque el diagrama quedó
 abierto en la original.
+
+**Los códigos de dos o tres letras** — `RD`, `DCJ`, `N5T`, `X4` — son el identificador de cada
+caja, no siglas que signifiquen algo. Son el mismo en el diagrama y en la pastilla gris de la
+esquina de su sección, y existen solo para saltar entre los dos: si una sección te habla de `DMP`,
+esa es la caja que tienes que buscar en el diagrama, y al revés.
+
+**No intentes decodificarlos.** La primera letra suele recordar el grupo —`X` contexto, `D` y `N`
+las dos instrumentaciones de la Fase 2, `S` especificación, `V` verificación, `K` métricas, `E`
+etapas— pero no es un sistema: `R` está usada a la vez para la referencia (`RD`), para el
+requisito de la Fase 3 (`RQ`) y para la retroalimentación de la Fase 4 (`R1`, `R2`, `R3`).
+
+Por eso, **en prosa se nombra la caja por su título** y el código se deja para la pastilla. Un
+código suelto no le dice nada a quien llega de nuevo, que es justo lo que pasó con `RD`.
 
 > **Si personalizaste enlaces alguna vez en este navegador**, lo guardado gana sobre lo que trae
 > el archivo. Para comprobarlo, abre la consola con el diagrama abierto y ejecuta

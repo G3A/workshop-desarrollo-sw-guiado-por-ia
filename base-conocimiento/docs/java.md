@@ -33,7 +33,8 @@ antes de tocar un módulo:
 - **JDK 25** (`<java.version>25</java.version>`), LTS — Spring Boot 4.1 lo soporta plenamente
   (su línea base es 17).
 - Sin mismatch entre el JDK declarado y el del contenedor: el `Dockerfile` usa
-  `eclipse-temurin:25` en las tres etapas (deps, build y runtime). Antes de la sincronización con
+  `eclipse-temurin:25` en sus cuatro etapas: `deps` y `runtime` lo declaran (`-jdk` y `-jre`), y
+  `build` y `layers` lo heredan de `deps`. Antes de la sincronización con
   `base-conocimiento-sandbox` el `pom` compilaba a 21 dentro de una imagen 25; ya no.
 
 ## Dependencias y BOMs
@@ -128,7 +129,8 @@ el mismo ciclo y falla el build si se cruza una frontera de módulo.
 | SonarQube | Ausente |
 | Compilador | **Presente y bloquea** — `-Xlint:all -Werror` en `maven-compiler-plugin`: cualquier warning rompe el build |
 | Secretos (gitleaks) | **Solo en CI** — `make ci` suma `secrets`; el `lefthook.yml` del monorepo no lo corre en pre-commit |
-| Enlaces de la documentación | **Presente y bloquea en CI** — `node scripts/verificar-enlaces.mjs`: un enlace relativo o un ancla de `AGENTS.md`, `COMPONENTS.md`, `README.md` o `docs/` que no resuelve falla el job (#128) |
+| Enlaces de la documentación | **Presente y bloquea en CI y en pre-push** — `node scripts/verificar-enlaces.mjs` desde la **raíz del monorepo**, no desde aquí: un enlace o un ancla de cualquier `.md` del repositorio que no resuelve falla el job, y también los enlaces absolutos al propio repositorio (#128, #144) |
+| Espejo con el sandbox | **Presente y bloquea, solo en CI** — `node scripts/verificar-espejo.mjs` desde la **raíz del monorepo**: compara esta carpeta contra la raíz de `base-conocimiento-sandbox` por hashes de blob y falla si aparece una diferencia que las listas del `docs/adrs/0003-*.md` de la raíz no expliquen (#155); desde #162 compara además los criterios de los dos `REVIEW.md` por los títulos de sus secciones numeradas. Sale a la red, así que no corre en pre-push |
 | CI (`.github/workflows`) | **Presente** — `ci.yml` en la raíz del monorepo (Actions solo lee workflows ahí), `working-directory: base-conocimiento`, corre `make ci` en cada push/PR con JDK 25; detalle en [infrastructure.md](infrastructure.md#cicd) |
 
 Spotless usa `google-java-format` (2 espacios) sin `ratchetFrom`: el formato es uniforme en el
