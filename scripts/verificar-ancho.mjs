@@ -101,6 +101,19 @@ const HEREDADOS = new Map([
   ['base-conocimiento/docs/infrastructure.md', 101],
 ]);
 
+// Presupuesto de tamano de los archivos que se cargan ENTEROS en cada sesion del agente (#202).
+// El ancho de linea de arriba es legibilidad; esto es costo: la retrospectiva de cada vuelta enruta
+// reglas nuevas a AGENTS.md y ninguna las quita, asi que el archivo que gobierna al agente crece
+// solo y encarece cada conversacion -- lo contrario de lo que el propio metodo ensena sobre la
+// ventana de contexto. Con un tope, agregar una regla es una DECISION -- que sale para que entre
+// esto -- en vez de un efecto.
+//
+// El numero no es sagrado y subirlo es legitimo: lo que no es legitimo es subirlo sin mirar, que es
+// exactamente lo que pasa cuando no hay numero. Al tocarlo, que sea en su propio commit.
+const PRESUPUESTO = new Map([
+  ['AGENTS.md', 130],
+]);
+
 const barras = ruta => ruta.split(path.sep).join('/');
 
 // Corta la corrida con un motivo escrito. No es una linea larga: es que el sensor no pudo trabajar.
@@ -259,9 +272,32 @@ function verificar() {
     avisa(`HEREDADOS: "${ruta}" ya no existe o no se mide; su entrada sobra.`);
   }
 
+  // Presupuesto de tamano: se mide en lineas y no en caracteres porque lo que cuesta en la ventana
+  // de contexto es el archivo entero, no su linea mas larga.
+  for (const [ruta, tope] of PRESUPUESTO) {
+    if (!archivos.includes(ruta)) {
+      avisa(`PRESUPUESTO: "${ruta}" ya no existe o no se mide; su entrada sobra.`);
+      continue;
+    }
+    const contenido = leer(ruta);
+    if (contenido === null) continue;
+    // Se descuenta el salto final para contar como `wc -l`: un archivo de 104 lineas terminado en
+    // salto no son 105. Y CRLF no cambia la cuenta, que es el mismo cuidado que #155 pedia.
+    const partes = contenido.split(/\r?\n/);
+    const lineas = partes[partes.length - 1] === '' ? partes.length - 1 : partes.length;
+    if (lineas > tope) {
+      excedidos += 1;
+      falla(
+        `${ruta} tiene ${lineas} lineas y su presupuesto es ${tope}.` +
+          ' Saca una regla para que entre la nueva, o sube el tope a proposito y en su commit.',
+      );
+    }
+  }
+
   console.log(
     `Ancho: ${archivos.length} archivos .md y .mjs medidos contra un tope de ${TOPE} caracteres` +
-      ` -- ${HEREDADOS.size} heredados congelados, ${excedidos} fuera de regla.`,
+      ` -- ${HEREDADOS.size} heredados congelados, ${excedidos} fuera de regla.` +
+      ` Presupuesto de tamano: ${PRESUPUESTO.size} archivo(s).`,
   );
 }
 
