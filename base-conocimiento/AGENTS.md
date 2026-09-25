@@ -14,6 +14,7 @@ cambio estructural.
 - [Decisiones (ADRs)](docs/adrs/) — 13, desde la tabla única de embeddings hasta el módulo `acciones` independiente del RAG.
 - [Plan del proyecto](docs/plans/plan-base-conocimiento.md) · [investigación VRAM/LLM](docs/investigacion-vram-y-modelo-llm.md) · [bot de Teams](docs/teams/registro-azure-bot.md).
 - [Registro de afirmaciones](docs/claims-ledger.md) — qué afirma cada doc, su fuente y si sigue vigente.
+- [`REVIEW.md`](../REVIEW.md) · [`EXPERIMENTS.md`](../EXPERIMENTS.md) — en la raíz del monorepo, no aquí: qué mirar en un diff ya escrito (lo lee el servicio de Code Review) y el acuerdo sobre qué puede fallar con el agente.
 
 ## Comandos
 
@@ -42,9 +43,13 @@ prefiérelo a `./mvnw`/`docker compose` a mano: el `Makefile` resuelve perfiles 
   ([ADR-0003](docs/adrs/0003-no-embeber-texto-crudo.md)).
 - **`spring-boot-flyway` es un módulo aparte de `flyway-core`** en Spring Boot 4: si falta, la app
   arranca contra una base vacía sin correr ninguna migración.
-- **`lefthook.yml`, `.github/workflows/ci.yml`, `.claude/settings.json` y `.mcp.json` viven en la
-  raíz del monorepo**, no aquí: lefthook, Actions y Claude Code solo los buscan en la raíz del
-  repositorio git. `make hooks` se corre desde la raíz.
+- **`lefthook.yml`, `.github/workflows/ci.yml`, `.claude/settings.json`, `.mcp.json`,
+  `scripts/verificar-enlaces.mjs` y `scripts/verificar-espejo.mjs` viven en la raíz del monorepo**,
+  no aquí: lefthook, Actions y Claude Code solo los buscan en la raíz del repositorio git; el sensor
+  de enlaces se mudó ahí en #144 porque cubre los `.md` de todo el monorepo, no solo los de esta
+  pieza; y el del espejo (#155) compara esta carpeta entera contra
+  `base-conocimiento-sandbox` —y, desde #162, los criterios del `REVIEW.md` de cada raíz—, así que
+  necesita ver las dos raíces. `make hooks` se corre desde la raíz.
 - **El `Makefile` fija su propio `SHELL` en Windows** (el `sh.exe` de Git for Windows): sin eso,
   `make` desde PowerShell cae a `cmd.exe`. Por lo mismo las recetas usan `sh ./mvnw`, no `./mvnw`:
   GNU Make para Windows ejecuta `./algo` sin pasar por el shell.

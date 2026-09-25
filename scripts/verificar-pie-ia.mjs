@@ -1,0 +1,115 @@
+// Sensor del pie de asistencia, desde la raiz del repo:
+//   node scripts/verificar-pie-ia.mjs --mensaje <archivo>
+//   node scripts/verificar-pie-ia.mjs --rango <A..B>
+//
+// Todo commit declara si lo asistio una IA o no. Dos formas validas, y ninguna mas:
+//
+//     Asistido-por-IA: <modelo>
+//     Sin-IA:
+//
+// Por que existe: la primera metrica de `impact-metrics` -- el porcentaje de PRs asistidas -- se
+// cuenta con `git rev-list --grep="^Asistido-por-IA: "` sobre la rama de integracion. Hasta #192 el
+// pie era una convencion escrita en AGENTS.md y nada lo verificaba: en dev lo traian 64 de 150
+// commits de primer padre. El modo de fallo es silencioso y miente hacia abajo -- un pie olvidado
+// no se distingue de un commit que de verdad no uso IA --, asi que la metrica baja sola y sigue
+// pareciendo un dato.
+//
+// Cuatro decisiones que no son de estilo:
+//
+// 1. Se exige DECLARAR, no decir que si. `Sin-IA:` es una respuesta tan valida como la otra. Un
+//    gate que solo acepta una respuesta ensena a escribirla sin pensar, y entonces el 100% tampoco
+//    significa nada.
+// 2. El patron va anclado al principio de linea, igual que el de impact-metrics. Sin el ancla, un
+//    commit que solo HABLA del pie (como los de este issue) contaria como asistido.
+// 3. Los merges y los fixup!/squash! quedan fuera: el primero no lo escribe una persona, y el
+//    segundo se funde en el commit que si declara.
+// 4. Un solo script para los dos lados. En local corre como hook commit-msg sobre el archivo del
+//    mensaje; en CI, sobre el rango de commits de la PR. La regla se escribe una vez: si el hook y
+//    el CI divergen, el rojo aparece recien al abrir la PR, que es justo lo que este sensor evita.
+//
+// El escape hatch `LEFTHOOK=0` sigue existiendo para el hook local, a proposito -- un gate sin
+// salida termina desinstalado, no saltado --, y por eso el paso de CI no es opcional: es el que
+// sostiene el dato cuando alguien usa la salida.
+//
+// Sin dependencias: corre con cualquier node >= 18, en Windows y en el runner de CI.
+import fs from 'node:fs';
+import { execFileSync } from 'node:child_process';
+
+const CON_IA = /^Asistido-por-IA: \S/m;
+const SIN_IA = /^Sin-IA:/m;
+const EXENTO = /^(Merge |fixup!|squash!|amend!)/;
+// El separador de registros de `git log --format`: se construye, no se escribe literal, para
+// que el archivo no lleve un byte NUL adentro y git lo lea como binario en vez de como codigo.
+const NUL = String.fromCharCode(0);
+
+const ayuda = 'Uso: node scripts/verificar-pie-ia.mjs --mensaje <archivo> | --rango <A..B>';
+
+function declara(mensaje) {
+  return CON_IA.test(mensaje) || SIN_IA.test(mensaje);
+}
+
+function explicar(donde) {
+  console.error(`\n${donde} no declara si lo asistio una IA.\n`);
+  console.error('  Termina el mensaje con UNA de estas dos lineas, en su propio parrafo:\n');
+  console.error('    Asistido-por-IA: <modelo>   (por ejemplo, claude-opus-5)');
+  console.error('    Sin-IA:\n');
+  console.error('  El porcentaje de PRs asistidas sale de ese pie: sin el, la metrica cuenta');
+  console.error('  el commit como no asistido y nadie se entera.');
+}
+
+const args = process.argv.slice(2);
+const modo = args[0];
+const valor = args[1];
+
+if (modo === '--mensaje') {
+  if (!valor) { console.error(ayuda); process.exit(1); }
+  if (!fs.existsSync(valor)) {
+    console.error(`No encuentro el archivo del mensaje: ${valor}`);
+    process.exit(1);
+  }
+  const mensaje = fs.readFileSync(valor, 'utf8');
+  // Las lineas de comentario las borra git despues del hook; aca estorban para leer el pie.
+  const limpio = mensaje.split(/\r?\n/).filter((l) => !l.startsWith('#')).join('\n');
+  if (EXENTO.test(limpio.trim()) || !limpio.trim()) process.exit(0);
+  if (!declara(limpio)) { explicar('Este commit'); process.exit(1); }
+  console.log('Pie de asistencia: declarado.');
+  process.exit(0);
+}
+
+if (modo === '--rango') {
+  if (!valor) { console.error(ayuda); process.exit(1); }
+  let salida;
+  try {
+    salida = execFileSync(
+      'git',
+      ['log', '--no-merges', '--format=%H%x00%B%x00%x00', valor],
+      // El fatal de git se traga a proposito: el mensaje util es el de abajo, que dice que mirar.
+      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }
+    );
+  } catch {
+    console.error(`No puedo leer el rango ${valor}. ¿Esta el historial completo en el clon?`);
+    process.exit(1);
+  }
+  const commits = salida
+    .split(NUL + NUL)
+    .map((bloque) => bloque.replace(/^\n/, ''))
+    .filter((bloque) => bloque.includes(NUL))
+    .map((bloque) => {
+      const [sha, mensaje] = bloque.split(NUL);
+      return { sha: sha.trim(), mensaje };
+    });
+
+  const mudos = commits.filter((c) => !EXENTO.test(c.mensaje.trim()) && !declara(c.mensaje));
+  if (mudos.length) {
+    for (const c of mudos) {
+      const titulo = c.mensaje.trim().split('\n')[0].slice(0, 60);
+      explicar(`El commit ${c.sha.slice(0, 8)} («${titulo}»)`);
+    }
+    process.exit(1);
+  }
+  console.log(`Pie de asistencia: ${commits.length} commit(s) en ${valor}, todos declaran.`);
+  process.exit(0);
+}
+
+console.error(ayuda);
+process.exit(1);

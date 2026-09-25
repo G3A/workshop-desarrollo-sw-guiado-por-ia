@@ -1,10 +1,11 @@
 # AGENTS.md — workshop-desarrollo-sw-guiado-por-ia
 
-Monorepo del taller de desarrollo de software guiado por IA. Tres piezas, cada una con su propio
+Monorepo del taller de desarrollo de software guiado por IA. Cuatro piezas, cada una con su propio
 contexto:
 
 - `base-conocimiento/` — la aplicación Java/Spring del taller. Tiene su `AGENTS.md`.
-- `instrumentacion-java-ia/` — el plugin `sdlc-ia` de Claude Code (ocho skills). Tiene su `AGENTS.md`.
+- `instrumentacion-java-ia/` — el plugin `sdlc-ia` de Claude Code (nueve skills). Tiene su
+  `AGENTS.md`.
 - `proceso-operacional-con-ia/` — el visor BPMN del proceso, que enseña con comandos lo que las
   skills ejecutan.
 - `playbook-sdlc-ia/` — el diagrama de las 7 fases del método con un badge de cobertura por caja
@@ -12,6 +13,35 @@ contexto:
   del método NO cubre el plugin todavía.
 - `docs/adrs/` — decisiones que atraviesan el monorepo (ramas, liberaciones). Las de cada pieza
   viven en su carpeta.
+- `scripts/` — lo que es del repositorio entero y no de una pieza: los hooks del agente
+  (`agent-hooks/`, solo para Claude Code), `verificar-enlaces.mjs`, el sensor que revisa los
+  enlaces de todos los `.md`, y desde #155 `verificar-espejo.mjs`, el que compara
+  `base-conocimiento/` con `base-conocimiento-sandbox` por hashes de blob contra las listas del
+  ADR-0003 y, desde #162, también los criterios de los dos `REVIEW.md` por los títulos de sus
+  secciones numeradas. Desde #165 está además `verificar-ancho.mjs`, que falla cuando una línea de
+  prosa de un `.md` o un `.mjs` de los que este método mantiene pasa de 100 caracteres; su alcance
+  y sus 25 archivos heredados están escritos en el propio script. Desde #202 mide además el
+  **presupuesto de líneas de este archivo**: `AGENTS.md` se carga entero en cada sesión, y la
+  retrospectiva de cada vuelta le agrega reglas sin que nada quite. Con tope, agregar una regla es
+  decidir cuál sale. Desde #193 está
+  `verificar-pasos-skill.mjs`, que falla cuando el visor cita un paso de una skill —«el paso G de
+  la skill», «su Fase 5»— que esa skill ya no tiene; las letras viven en sus `references/`, no en
+  el `SKILL.md`. Desde #203 está `verificar-visor-playbook.mjs`, que cierra la tercera relación de
+  la regla dura: cada código y cada título que el playbook cita del visor tiene que seguir
+  existiendo, y las skills nombradas deben ser las mismas de los dos lados. Desde #192 está
+  `verificar-pie-ia.mjs`, que exige que cada commit declare
+  `Asistido-por-IA: <modelo>` o `Sin-IA:`; corre en dos lados con la misma regla, como hook
+  `commit-msg` sobre el mensaje y en CI sobre los commits de la PR. Los siete sensores piden
+  **node >= 18** en el PATH; el del playbook vive junto a lo que verifica
+  (`playbook-sdlc-ia/verificar-cobertura.mjs`). Dónde bloquea cada uno difiere: los de enlaces,
+  ancho, pasos de skill, visor-playbook y pie de IA corren en CI y también en local, porque son de
+  un segundo y no salen a la red; el del playbook, solo en CI; y el del espejo, **solo en CI porque
+  sí sale** —un hook que sale a la red bloquea `git push` cuando falla el wifi—. A mano es
+  `node scripts/verificar-espejo.mjs` desde la raíz; sin `GITHUB_TOKEN` usa la API anónima, que
+  permite 60 peticiones por hora.
+- `REVIEW.md` — qué mirar en un diff ya escrito (lo lee el servicio de Code Review; no repite las
+  reglas de generación de los `AGENTS.md`). `EXPERIMENTS.md` — el acuerdo sobre qué puede fallar
+  con el agente; sus pendientes los completa el equipo.
 
 ## Ramas y pull requests
 
@@ -47,8 +77,13 @@ contexto:
 ## Commits
 
 - Un commit por paso en verde, con `Refs #N`; el que completa el último paso lleva `Closes #N`.
-- Todo commit asistido por IA termina con el trailer `Asistido-por-IA: <modelo>` en su propio
-  párrafo, separado del `Closes` por una línea en blanco.
+- **Todo commit declara si lo asistió una IA**, en su propio párrafo y separado del `Closes` por
+  una línea en blanco: `Asistido-por-IA: <modelo>` o, cuando no la hubo, `Sin-IA:`. Se exige
+  declarar, no decir que sí: un gate que solo acepta una respuesta enseña a marcarla sin leer, y
+  entonces el 100 % tampoco significa nada. Desde #192 lo verifican el hook `commit-msg` y un paso
+  del CI —el local se salta con `LEFTHOOK=0`, y el dato sostiene el porcentaje de PRs asistidas que
+  reporta `impact-metrics`, así que no puede depender de eso—. Quedan fuera los merges y los
+  `fixup!`/`squash!`.
 
 ## Reglas duras
 
@@ -58,7 +93,15 @@ contexto:
   mismo. Si una skill cierra un hueco, la caja del playbook cambia de `:::hueco` a `:::skill` y
   los contadores de cobertura del índice y de la fase se actualizan en el mismo PR.
 - **Comandos.** Los bloques del visor están en PowerShell 5.1 y 7; los comandos de las skills son
-  neutrales entre PowerShell y bash.
+  neutrales entre PowerShell y bash. Y un script de un solo uso cuyo **texto** lleve backticks o
+  `$` va a un archivo y se corre con `node archivo.mjs`: dentro de `node -e "…"` en bash los
+  backticks se ejecutan como sustitución de comandos y corrompen el archivo sin avisar. Pasó cinco
+  veces entre #162 y #165, siempre escribiendo Markdown con rutas o comandos entre backticks.
+- **Sembrar un sensor reescribe el árbol.** `REVIEW.md` §3 exige un rojo por cada camino de fallo,
+  y el arnés que los siembra revierte con `git checkout`. Se hace con `git status --porcelain`
+  vacío y el sensor ya commiteado: si no está versionado, lo que la siembra ensució termina dentro
+  del commit; si lo está, ese `git checkout` se lleva puesto lo que estabas escribiendo. En #165
+  mordió de las dos formas, en ese orden.
 - **Versión del plugin.** La PR de liberación `dev` → `main` sube la versión de `plugin.json` y
   fecha su entrada del CHANGELOG; las PR a `dev` registran lo suyo bajo la entrada «unreleased».
   La actualización en cualquier equipo es `instrumentacion-java-ia/update.ps1` o `update.sh`.

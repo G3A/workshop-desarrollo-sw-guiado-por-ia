@@ -121,6 +121,10 @@
   .sw.mano{ background:#0c1626; border-color:var(--c-mano); }
   .sw.hueco{ background:#2b100c; border-color:var(--c-hueco); }
   .sw.fuera{ background:#12161c; border-color:var(--c-fuera); }
+  /* Tipo de instrumentacion: sin relleno y con el contorno grueso, igual que en el diagrama, para
+     que no se confundan con los de cobertura — el azul de det y el de "a mano" son el mismo. */
+  .sw.tdet{ background:transparent; border-width:3px; border-color:#5B8CFF; }
+  .sw.tnodet{ background:transparent; border-width:3px; border-color:#B388FF; }
   .sw.dec{ background:#3a2a08; border-color:#FFB12B; border-radius:2px; width:12px; height:12px; transform:rotate(45deg); margin:2px 1px 0; }
   .legend .lgsep{ margin-top:11px; padding-top:9px; border-top:1px solid var(--line); }
   .legend b{ color:#FFFCF6; font-weight:600; }
@@ -193,7 +197,7 @@ C3 --> X1
 %% ============ FASE 2 · PREPARACIÓN DEL TERRENO ============
 subgraph P2["FASE 2 · Preparación del terreno — donde el plugin hace casi todo su trabajo"]
   direction TB
-  subgraph P2A["Contexto"]
+  subgraph P2A["Contexto · UNA corrida de agent-context-java escribe las cuatro"]
     direction TB
     X1["Contexto de negocio<br/>business.md · target-user.md<br/>SKILL · agent-context-java"]:::skill
     X2["Arquitectura y el porqué<br/>architecture.md + ADRs<br/>SKILL · agent-context-java"]:::skill
@@ -201,7 +205,7 @@ subgraph P2["FASE 2 · Preparación del terreno — donde el plugin hace casi to
     X4["Intención visual, si hay UI<br/>design.md · design-tokens.md · COMPONENTS.md<br/>SKILL · agent-context-java"]:::skill
     X1-->X2-->X3-->X4
   end
-  subgraph P2B["Instrumentación determinista · sensores de código y el juez de CI"]
+  subgraph P2B["Instrumentación determinista · sensores de código y el juez de CI<br/>UNA corrida de instrument-project-java instala sus 13 controles: cada caja es un control, no una corrida<br/>el juez es aparte, de instrument-github-repo"]
     direction TB
     D1["Lint estático<br/>SKILL · Checkstyle + SpotBugs, control 11"]:::skill
     DF["Formato · Spotless<br/>SKILL · instrument-project-java"]:::skill
@@ -219,7 +223,7 @@ subgraph P2["FASE 2 · Preparación del terreno — donde el plugin hace casi to
     D1-->DF-->DB-->DT-->DU-->DI-->DA-->DM-->DS-->DQ-->DCI-->DCJ
     DCI-.->DCA
   end
-  subgraph P2C["Instrumentación no determinista · guía escrita y capacidades"]
+  subgraph P2C["Instrumentación no determinista · guía escrita y capacidades<br/>las dos primeras salen de la MISMA corrida de agent-context-java que el contexto"]
     direction TB
     N1["Archivo guía<br/>AGENTS.md, con CLAUDE.md que lo importa<br/>SKILL · agent-context-java"]:::skill
     N2["Criterios de revisión · REVIEW.md<br/>SKILL · agent-context-java, con plantilla de PR"]:::skill
@@ -229,7 +233,7 @@ subgraph P2["FASE 2 · Preparación del terreno — donde el plugin hace casi to
   end
   subgraph P2D["Hooks y MCP · cada caja dice quién dispara y quién decide"]
     direction LR
-    subgraph P2D1["Hooks · los seis tipos"]
+    subgraph P2D1["Hooks · los seis tipos<br/>los dos cubiertos no son corridas nuevas: lefthook lo dejó instrument-project-java, los 8 del agente instrument-agent-java"]
       direction TB
       DH["Hook de Git · lefthook<br/>pre-commit y pre-push<br/>SKILL · instrument-project-java"]:::skill
       DAH["Hook de comando del agente · type command<br/>los 8 del catálogo<br/>SKILL · instrument-agent-java"]:::skill
@@ -239,7 +243,7 @@ subgraph P2["FASE 2 · Preparación del terreno — donde el plugin hace casi to
       NHA["Hook de agente · type agent<br/>HUECO"]:::hueco
       DH-->DAH-->DHH-->DMH-->NHP-->NHA
     end
-    subgraph P2D2["MCP · una caja por primitiva del protocolo"]
+    subgraph P2D2["MCP · una caja por primitiva del protocolo<br/>lo cubierto sale de UNA corrida de instrument-agent-java"]
       direction TB
       N5T["Herramienta MCP · tools<br/>GitHub · Context7 · DBHub, con versión fijada<br/>SKILL · instrument-agent-java"]:::skill
       N5R["Recurso MCP · resources<br/>HUECO"]:::hueco
@@ -263,7 +267,7 @@ G1 -->|Sí| DT0
 subgraph PB["Antes del primer issue — solo si el repo lo necesita"]
   direction TB
   DT0["Triaja la deuda que un analizador ya reportó<br/>SKILL · debt-triage"]:::skill
-  LT0["Haz crecer pruebas reales sobre código en producción<br/>5 capas, costuras al estilo Feathers<br/>SKILL · legacy-test-harness"]:::skill
+  LT0["Haz crecer pruebas reales sobre código en producción<br/>censo de actores, costuras al estilo Feathers, 5 capas<br/>SKILL · legacy-test-harness"]:::skill
   DT0-->LT0
 end
 LT0 --> RQ
@@ -304,7 +308,16 @@ subgraph P3["FASE 3 · Ciclo por feature — por cada funcionalidad"]
   VL4 --> GV{"¿Aprueba la verificación?"}:::dec
   GV -->|No · hay cambios| I1
   GV -->|Sí| M1["Merge, con el PR marcado como asistido por IA<br/>trailer Asistido-por-IA en cada commit y en el cuerpo<br/>SKILL · github-plan-build lo escribe; el merge lo corres tú"]:::skill
-  M1 --> MF{"¿Quedan más issues del sprint?"}:::dec
+  M1 --> EG1
+  subgraph P3E["Entrega a staging — por cada merge"]
+    direction TB
+    EG1["Despliegue automático tras el merge<br/>A MANO · visor cd1; ninguna skill despliega"]:::mano
+    EG2["Arreglar hacia adelante, o volver atrás<br/>A MANO · visor df; el proceso enseña el criterio, no el comando"]:::mano
+    EG1 --> GES{"¿El despliegue quedó en verde?"}:::dec
+    GES -->|No| EG2
+    EG2 --> EG1
+  end
+  GES -->|Sí| MF{"¿Quedan más issues del sprint?"}:::dec
   MF -->|Sí| S1
 end
 MF -->|No, por ahora| R1
@@ -317,7 +330,19 @@ subgraph P4["FASE 4 · Retroalimentación · evolución constante"]
   R3["Memoria entre sesiones<br/>FUERA · el plugin declara que no la tiene"]:::fuera
   R1-->R2-->R3
 end
-R3 --> K1
+R3 --> EP1
+
+%% ====== ENTREGA A PRODUCCIÓN · pasos de la Fase 3, una vez por liberación ======
+subgraph P3P["Entrega a producción — una vez por liberación"]
+  direction TB
+  EP1["Libera dev a main<br/>A MANO · visor rl; el porqué, ADR-0001"]:::mano
+  EP2["Despliega con aprobación registrada<br/>A MANO · Environment con revisores; el comando es del equipo, ADR-0004"]:::mano
+  EP3["Vuelve a la versión anterior, y ensáyalo antes<br/>A MANO · el método exige que exista y esté ensayada, no el mecanismo"]:::mano
+  EP1 --> EP2 --> GPX{"¿Producción en verde?"}:::dec
+  GPX -->|No| EP3
+  EP3 --> EP2
+end
+GPX -->|Sí| K1
 
 %% ============ FASE 5 · MÉTRICAS Y REPORTE ============
 subgraph P5["FASE 5 · Métricas y reporte a liderazgo"]
@@ -352,6 +377,16 @@ classDef mano fill:#0c1626,stroke:#5B8CFF,stroke-width:1.5px,color:#DCE7FF;
 classDef hueco fill:#2b100c,stroke:#FF6B57,stroke-width:1.5px,color:#FFD9D2;
 classDef fuera fill:#12161c,stroke:#6B7686,stroke-width:1.5px,color:#CBD2DC;
 
+%% Tipo de instrumentacion · segundo eje, en el CONTORNO para no pelearse con el relleno, que dice
+%% cobertura. Van declarados despues que las clases de cobertura a proposito: Mermaid emite un
+%% classDef por clase CSS con la misma especificidad, asi que gana el ultimo y el stroke es de aca.
+%% Solo se pintan las cajas del grupo P2D, donde el subgrafo NO dice el tipo porque mezcla los dos;
+%% en P2B y P2C lo dice el titulo del grupo y un contorno mas seria ruido sin informacion.
+classDef tdet stroke:#5B8CFF,stroke-width:3.5px;
+classDef tnodet stroke:#B388FF,stroke-width:3.5px;
+class DH,DAH,DHH,DMH,DMP tdet;
+class NHP,NHA,N5T,N5R,N5P,N5N tnodet;
+
 style REF fill:#090d13,stroke:#1f5a54,color:#34E0CC
 style P0 fill:#0b0f15,stroke:#3a4250,color:#FFD587
 style P1 fill:#0b0f15,stroke:#3a4250,color:#FFD587
@@ -376,6 +411,7 @@ style P6 fill:#0b0f15,stroke:#6b2018,color:#FF9C8C
 
 <div class="legendnote">
   Cada caja lleva el badge de quién la ejecuta hoy. El diagrama es el mapa del método y, a la vez, el backlog de cobertura del plugin: cada caja roja es trabajo que todavía no tiene issue.
+  <br><b>Una caja es una capacidad, no una corrida.</b> Cuando varias cajas nombran la misma skill, es <b>una sola corrida</b> la que las instala todas: <code>instrument-project-java</code> se corre una vez y deja sus 13 controles, no uno por caja. El título de cada grupo dice cuántas corridas hacen falta ahí.
 </div>
 
 <div class="legend">
@@ -387,6 +423,10 @@ style P6 fill:#0b0f15,stroke:#6b2018,color:#FF9C8C
   <div class="lgrow"><span class="sw fuera"></span><span><b>FUERA</b> · frontera declarada del plugin, no un olvido</span></div>
   <div class="lgtitle lgsep">Forma de la caja</div>
   <div class="lgrow"><span class="sw dec"></span><span>Decisión · rombo</span></div>
+  <div class="lgtitle lgsep">Tipo de instrumentación · el contorno</div>
+  <div class="lgrow"><span class="sw tdet"></span><span><b>DETERMINISTA</b> · el disparo y la decisión quedan los dos fuera del modelo</span></div>
+  <div class="lgrow"><span class="sw tnodet"></span><span><b>NO DETERMINISTA</b> · basta que una de las dos dependa del modelo</span></div>
+  <div class="lgrow"><span style="color:var(--muted);font-size:11.5px">El <b style="color:#FFFCF6">relleno</b> dice quién ejecuta; el <b style="color:#FFFCF6">contorno</b>, de qué tipo es. Solo lo llevan las cajas de <b style="color:#FFFCF6">hooks y MCP</b>, el único grupo que mezcla los dos tipos — en los otros dos lo dice el título del grupo. El eje entero está escrito en la caja <b style="color:#FFFCF6">«El eje de la instrumentación»</b>, en la banda <b style="color:#FFFCF6">REFERENCIA</b> de arriba del todo, y cada sección lo repite con su pastilla y su línea «quién dispara / quién decide».</span></div>
 </div>
 
 <div id="nodeTip"></div>
@@ -478,7 +518,7 @@ style P6 fill:#0b0f15,stroke:#6b2018,color:#FF9C8C
   var LINKS = {
     // Inicio y referencia
     START:L("Empiezas aquí",P.ref,"START"),
-    B0:B("Selecciona el repositorio","mano","Brownfield, Java con Maven. El visor lo chequea en sus nodos f0 y G1 antes de dejarte seguir.",P.ref,"B0"),
+    B0:B("Selecciona el repositorio","mano","Brownfield, Java con Maven. El visor lo chequea en sus nodos «Fundamentos de colaboración» y «¿Chequeo de salud OK?» antes de dejarte seguir.",P.ref,"B0"),
     IP:B("Instala el plugin","skill","update.ps1 en PowerShell 5.1 o 7, update.sh en bash. Desinstala e instala, porque claude plugin install nunca refresca un plugin ya instalado.",P.ref,"IP"),
     RS:L("Las 8 skills",P.ref,"RS"), RB:L("Los 5 badges",P.ref,"RB"),
     RD:B("El eje de la instrumentación","","Determinista solo si el disparo Y la decisión quedan fuera del modelo. Basta que una dependa del modelo para que sea no determinista.",P.ref,"RD"),
@@ -515,7 +555,7 @@ style P6 fill:#0b0f15,stroke:#6b2018,color:#FF9C8C
     DCA:B("Azure DevOps","fuera","Frontera declarada en el README del plugin: escribe GitHub Actions y GitHub Issues; otra plataforma se reporta fuera de alcance, no se adapta a mano.",P.f2,"DCA"),
     // Fase 2 · no deterministas
     N1:B("Archivo guía","skill","AGENTS.md como índice de menos de 80 líneas, y CLAUDE.md como una sola línea que lo importa.",P.f2,"N1"),
-    N2:B("REVIEW.md","skill","Lo genera agent-context-java junto al archivo guía, con una plantilla de PR que enlaza a él. Sigue siendo un archivo distinto de AGENTS.md a propósito: el revisor de PRs en la nube carga REVIEW.md y la revisión local carga el archivo guía.",P.f2,"N2"),
+    N2:B("REVIEW.md","skill","Lo genera agent-context-java con una plantilla de PR que enlaza a él, y los dos van a la raíz del repositorio git — no junto al archivo guía, que se queda con el proyecto cuando este vive en una subcarpeta. Sigue siendo un archivo distinto de AGENTS.md a propósito: el revisor de PRs en la nube carga REVIEW.md, y solo desde esa raíz.",P.f2,"N2"),
     N4:B("Skills y subagentes propios","hueco","El plugin es un conjunto de skills, pero ninguna de ellas crea skills ni subagentes en el repo del usuario.",P.f2,"N4"),
     N6:B("Code review por IA","skill","En tu máquina la corre github-plan-build antes de abrir la PR; en el pipeline la instala instrument-project-java como un job más. Nunca se exige como check obligatorio: un revisor no determinista con veto bloquea PRs correctas, y el equipo aprende a pedir bypass.",P.f2,"N6"),
     // Fase 2 · hooks
@@ -534,7 +574,7 @@ style P6 fill:#0b0f15,stroke:#6b2018,color:#FF9C8C
     G1:L("¿Terreno listo?",P.f2,"G1"),
     // Puente
     DT0:B("Triaje de deuda","skill","debt-triage lee el código de cada hallazgo abierto y le pone veredicto: real, falso positivo o riesgo aceptado. Nunca instala un sensor nuevo ni aplica un auto-fix a ciegas.",P.f2,"DT0"),
-    LT0:B("Arnés de pruebas legacy","skill","legacy-test-harness mapea costuras al estilo Feathers y hace crecer pruebas reales en 5 capas. Nunca edita código de producción.",P.f2,"LT0"),
+    LT0:B("Arnés de pruebas legacy","skill","legacy-test-harness censa los actores y mapea costuras al estilo Feathers antes de escribir, y hace crecer pruebas reales en 5 capas. Corre en modo plan, con tres paradas. Nunca edita código de producción.",P.f2,"LT0"),
     // Fase 3
     RQ:B("Requisito a spec","skill","requirement-to-spec-java corre antes de que exista el issue. Nunca escribe código, nunca abre PR, nunca toca git.",P.f3,"RQ"),
     S1:B("Toma el issue","skill","github-plan-build lee el issue y su discusión con gh. Armar el sprint con milestones es tuyo, visor pj.",P.f3,"S1"),
@@ -555,6 +595,11 @@ style P6 fill:#0b0f15,stroke:#6b2018,color:#FF9C8C
     M1:B("Merge y marcado","skill","El trailer Asistido-por-IA va en cada commit y en el cuerpo de la PR, así el texto sobrevive al squash. Su condición de trailer no: GitHub reescribe el mensaje al mergear, así que se lee con --grep anclado y no con el lector de trailers de git. El merge lo corres tú.",P.f3,"M1"),
     MF:L("¿Más issues?",P.f3,"MF"),
     // Fase 4
+    EG1:B("Despliegue automático tras el merge","mano","Visor cd1. Ninguna skill del plugin despliega: instrument-project-java instala el workflow de CI, no el de entrega. Que exista un despliegue automático a un entorno de prueba es del equipo.",P.f3,"EG1"),
+    EG2:B("Arreglar hacia adelante, o volver atrás","mano","Visor df. Revertir es más seguro y pierde el trabajo; arreglar hacia adelante es más rápido y exige confianza en el arreglo. El proceso enseña cuándo cada uno; el comando depende de dónde despliegues.",P.f3,"EG2"),
+    EP1:B("Libera dev a main","mano","Visor rl. Liberar es una decisión, no un efecto del trabajo en dev: se ejecuta en dos PR seguidas, y el porqué de esa forma —con la alternativa descartada— está en el ADR-0001.",P.f3,"EP1"),
+    EP2:B("Despliega con aprobación registrada","mano","Visor cd2. El ADR-0004 fija qué exige el método —que lo dispare la liberación, y que la aprobación quede con nombre y hora en un Environment con revisores— y qué no prescribe: la herramienta. Ninguna skill puede cubrirlo mientras el comando sea del equipo.",P.f3,"EP2"),
+    EP3:B("Vuelve a la versión anterior","mano","Visor rb. Lo que el método exige es que el camino exista y esté ensayado: un rollback que nadie ejecutó nunca es una promesa. El mecanismo —volver por el proveedor, o revertir en git y liberar— lo elige el equipo, con el criterio que el visor enseña.",P.f3,"EP3"),
     R1:B("Guarda la lección","mano","Visor c5: sin este paso, cada vuelta del ciclo aprende lo mismo que la anterior.",P.f4,"R1"),
     R2:B("Enruta la lección","skill","Paso K de github-plan-build, al cerrar la vuelta. Regla a AGENTS.md, criterio a REVIEW.md, porqué a un ADR, comprobable a un sensor, y lo que aún no es regla a docs/lecciones.md con fecha. Propone destino y texto; aplicarlo es tuyo.",P.f4,"R2"),
     R3:B("Memoria entre sesiones","fuera","El README del plugin lo declara: lo único que un ciclo nuevo recuerda del anterior es lo que quedó escrito en AGENTS.md.",P.f4,"R3"),
@@ -569,7 +614,7 @@ style P6 fill:#0b0f15,stroke:#6b2018,color:#FF9C8C
     E1:B("Etapa 1 · Piloto individual","mano","Criterio: archivo guía mínimo viable y la línea base medida. La línea base es el criterio que no se puede corregir hacia atrás — mídela antes de sumar a la segunda persona.",P.f6,"E1"),
     E2:B("Etapa 2 · Escuadra","mano","Criterio: revisión asistida activa, acuerdo escrito de marcado de PRs, y que el retrabajo no haya subido. El marcado ya está resuelto técnicamente; lo que pide el criterio es el acuerdo.",P.f6,"E2"),
     E3:B("Etapa 3 · Equipo completo","mano","Criterio: el retrabajo no subió tras la expansión y hay un dato cuantitativo presentable a liderazgo. Era el criterio bloqueado hasta que existió impact-metrics.",P.f6,"E3"),
-    E4:B("Etapa 4 · Organización","mano","Política interna, presupuesto, costo de tokens y métricas DORA. No hay etapa siguiente. Lo que pide nace en la caja F6 de la Fase 0: la última fase depende de algo de la primera.",P.f6,"E4"),
+    E4:B("Etapa 4 · Organización","mano","Política interna, presupuesto, costo de tokens y métricas DORA. No hay etapa siguiente. Lo que pide nace en la caja «Costos y privacidad» de la Fase 0: la última fase depende de algo de la primera.",P.f6,"E4"),
     FIN:L("La cobertura evoluciona",P.f6,"FIN")
   };
 

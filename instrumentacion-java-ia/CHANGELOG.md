@@ -13,6 +13,172 @@ version bump (verified 0.1.0 → 0.2.0). Updating on any machine is `update.ps1`
 the plugin root, which uninstalls and reinstalls (see the README, "Actualizar cuando sale una
 versión nueva", and `AGENTS.md`).
 
+## [0.4.3] — 2026-09-25
+
+### Changed
+
+- **`agent-context-java`'s `EXPERIMENTS.md` templates gain a sixth section, "what may leave toward
+  the model".** The agreement covered what may fail; it said nothing about what leaves the
+  repository — the question every security review opens with. Four slots, all TODO like the rest of
+  the file: repositories allowed, provider retention, real data living in the tree, and the
+  organization policy to link instead of rewriting. Who granted it and when it is reviewed stays in
+  section 4, deliberately: one agreement, one review date, not two. The skill does not answer the
+  new section either — a team's data posture invented by a model is the same hallucination the rest
+  of this file exists to prevent. Both languages.
+- **`legacy-test-harness` goes from 6 phases with no checkpoint to 8 phases with three STOPs.** It
+  was the thinnest skill in the plugin (4.9 KB against 28 KB for the largest) and the only one that
+  wrote into the user's tree with no approval checkpoint — on a legacy repository, which is exactly
+  where least is known about what is about to be touched. Phases 1 to 5 now run inside
+  `EnterPlanMode`, and the STOPs sit where the user has something to decide: the seam map, the
+  layer selection, the full plan. Six holes closed. **A preflight phase** verifies the ground
+  actually runs before any layer is planned — the runtime the build demands (pinned *before*
+  compiling, since a `pom.xml` with 2.x plugins doesn't build under a current JDK), a compilable
+  baseline, the existing suite **and its baseline of failures**, a container runtime, and whether
+  the dependency feed resolves the test dependencies the layers will ask for; each block marks its
+  layer in the Phase 4 menu as blocked by environment, proposed as an issue rather than promised.
+  **An exhaustive census** of actors carrying business logic replaces "the target modules": without
+  a denominator a run can report success having covered 7% of the repository, and each actor now
+  ends in one of five closed states (`covered`, `excluded`, `pending-seam`, `blocked`, `pending`)
+  in an ADR appendix that makes the run resumable. **Three seam states** (🟢/🟡/🔴) replace the
+  binary cuttable/not-cuttable, with the warning that a collaborator in an **injected field is 🟢,
+  not 🟡** — it's populated by reflection with production untouched, and calling it a seam is the
+  one mistake that leaves whole layers of a DI-based legacy codebase untested. That warning lives
+  in the body, not a reference, because it is the part that prevents the damage. **Every proposed
+  seam now carries a characterization net**: a golden master pinning what the code does today, bugs
+  included, temporary by design (pin → cut the seam → write the real tests → delete it). **A tranche
+  is agreed** past roughly 30 🟢 actors, with the gate measured against it — and with no explicit
+  tranche the yardstick stays the full census, so forgetting to agree one cannot silently shrink
+  what is checked. **Writing happens in batches** of 3 to 5 actors, where "the batch is green" means
+  zero *new* failures against the preflight baseline, with a two-retry budget per actor and parallel
+  subagents only in isolated worktrees. And **the reality gate** no longer just checks that a
+  production import exists: it checks that the import **resolves** to a file under the production
+  source root, because with the root-by-type layout `unit/` and `testutil/` share the root package
+  with production and a skeleton importing only `testutil.FakeX` sailed past a prefix grep. It adds
+  the transitive exception for the contract-test trio, a 14-criterion table, census coverage as a
+  threshold, a second run in random order, and mutation testing as an informative audit; the kill
+  check the skill already had is kept. `SKILL.md` lands at 9,480 B with a 596 B `description`
+  (budgets 10,240 and 700) and the six references between 3,948 and 7,565 B, so this does not become
+  a fifth oversized `SKILL.md` on top of the four #143 already tracks.
+
+### Fixed
+
+- **`agent-context-java`'s PR template links `REVIEW.md` by absolute URL, and Phase 6 checks links
+  from where they are read.** The template emitted `[`REVIEW.md`](../REVIEW.md)`: correct for a file
+  in `.github/`, and a **404 in the only place anyone clicks it** — the rendered body of a PR, which
+  GitHub copies verbatim without rewriting relative paths, so the browser resolves it against the
+  PR's own URL (`/owner/repo/pull/123/../REVIEW.md`). Two written claims kept it alive, both saying
+  the link "needs no adjustment" because it resolves relative to `.github/`. It does, as a file; as a
+  PR body it does not, and `SKILL.md` and `references/monorepo-roots.md` said the wrong thing in
+  identical words. The templates now emit
+  `<repository-url>/blob/<integration-branch>/REVIEW.md`, and Phase 1a resolves both values with
+  `gh auth status`, `git remote get-url origin` and `gh repo view <that-url> --json
+  url,defaultBranchRef`. Two details that a first pass got wrong and `/code-review` caught: the URL of
+  `origin` is passed in **explicitly**, because bare `gh repo view` resolves the base repo from the
+  remote set and prefers `upstream` — on a fork, or in a repo with a mirror remote, it answers about
+  the other repository and the link points at a parallel repo's `REVIEW.md`. And the base is `url`,
+  **host included**, not `nameWithOwner` behind a written-out `https://github.com/`: `gh` works
+  against GitHub Enterprise too, where a hardcoded host is a 404 or someone else's repo with the same
+  slug. Passing the URL to `gh` is also what keeps "never parse a remote URL" true — SSH, HTTPS and
+  `.git`-suffixed shapes stop being three regexes written twice for PowerShell and bash.
+  Unresolvable (no `gh`, no `origin`, `gh` errors) degrades to a `<!-- TODO -->` and
+  a report line, never back to the relative path. This corrects what #121's own entry below got
+  wrong: "its link check now resolves each link from the directory of the file that contains it" is
+  the right rule for `AGENTS.md`'s link and the **wrong** one for the PR template's — Phase 6 now
+  checks that one as a URL, against the values this run resolved, and says it is a string check with
+  no network. Three outcomes are reported rather than fixed, since an existing PR template is never
+  replaced: an unresolvable URL left as a TODO; **a template from an older run still carrying the
+  relative link**, which is every repo instrumented before this change and not an edge case, reported
+  with the exact replacement line; and a template whose URL names a branch that no longer exists,
+  checked against the **remote** ref (`git ls-remote --exit-code --heads origin <branch>`) because a
+  shallow or `--single-branch` clone has no local `dev` and would report a rename that never happened.
+  The report also distinguishes "not merged yet" from "wrong path" with
+  `git cat-file -e origin/<branch>:REVIEW.md`: on the run that creates `REVIEW.md`, the link genuinely
+  404s until the file lands on the integration branch, and saying so beats implying otherwise (#146).
+- **`agent-context-java` knows what to do with `REVIEW.md` when a second Java project appears.**
+  #121 anchored the file to the repository root and scoped its items to one project's folder. With
+  two projects the second run produced a file worse than the one it found: the title still named the
+  first project (augment mode never rewrites), the fifteen generic items said things like "the
+  version the `pom.xml` pins" — which now points at nothing — leaving the file **half-scoped**, and
+  the "run it yourself" item kept the first project's command. `monorepo-roots.md` said to report the
+  old items as ambiguous, and reporting is not fixing. The template now titles with the
+  **repository**, not the project, so the case stops existing instead of being repaired later, and a
+  new section, "When a second Java project arrives", carries the merge: the trigger — the folder the
+  file already covers is not this run's project, deliberately **not** "this project is in a subfolder",
+  which would miss a first project in a subfolder and a second one at the repository root — a
+  signature check of
+  the six categories before the one line this skill ever rewrites — the title — so a `REVIEW.md` the
+  team wrote by hand is reported and left alone, and one conditional preamble sentence declaring the
+  old items' default scope instead of rewriting fifteen items of the team's text, with an
+  idempotency guard so a third project does not leave three near-identical sentences, phrased as an
+  assumption because items added by hand are covered by it without being true. The organization does
+  not change — the folder stays inside the item's own text and per-project sections were considered
+  and rejected — and items past ~15 are reported for pruning rather than appended in silence. The
+  exception to "augment mode never rewrites" is now declared in all three places that stated it
+  absolutely (#142).
+
+- **`EXPERIMENTS.md`'s "never an experiment" list is a declared subset, not a copy.** The template
+  told the skill to copy `github-plan-build`'s escalation list "so the two say the same thing", and
+  a real run followed it literally: it copied the escalation list and **deleted** "changes touching
+  authentication, secrets, or people's data" for not being there. The two lists never said the same
+  thing because they answer different questions — the escalation list mixes **boundaries of the
+  permission** (production writes, real outreach, working around a missing credential) with **gates
+  of the delivery loop** (an ambiguous CI failure, a non-converging loop, a product-judgment call,
+  which is reversible and whose trigger only exists inside the loop). Section 2 now ships written
+  in the template as a declared subset of the *Escalation* section of `github-plan-build/SKILL.md`
+  — cited by file, since a second full copy lives in `references/build-loop-execute.md` — adds the
+  missing-credential row, keeps the authentication row marked as covered by Step G's mandatory
+  `/security-review` gate rather than by a stop (reviewed, not permitted), and names the three
+  gates it deliberately leaves out — neither a copy nor a strict subset, and the text says so.
+  Phase 3 now carries a prohibition instead of a build instruction, narrowing the surface where the
+  skill could drift from its own template, and augment mode now says what to do
+  with an already-written section 2: leave it, append a provenance note. "Real communications to
+  customers" becomes "real outreach to real recipients" (#138).
+- **`agent-context-java` no longer writes `REVIEW.md` where nothing reads it.** The skill said
+  "`REVIEW.md` (repo root)", and in a monorepo "root" is ambiguous: a real run over a project in a
+  subfolder left it at the *project* root, where neither reader loads it — the cloud Code Review
+  service only reads `REVIEW.md` at the repository root, and the local `/code-review` never reads
+  it at all (`code.claude.com/docs/en/code-review`, read 2026-09-16). The run reported "REVIEW.md
+  written" over an inert file. Phase 1a now resolves both roots with `git rev-parse --show-prefix`
+  — always with `-C <project-root>`, and behind an `--is-inside-work-tree` guard, since both
+  queries answer about the *current* directory and empty output alone cannot tell "no repository"
+  from "the project is the root". Empty means the project *is* the repository root, and a non-empty
+  value doubles as the relative prefix for cross-root links; comparing `--show-toplevel` as a
+  string would report "different" on every Windows repo. Phase 3 anchors each file to the root of
+  whoever reads it: `REVIEW.md`, the PR template and `EXPERIMENTS.md` to the repository root,
+  everything else to the project.
+  `templates/es|en/REVIEW.md.template` carry the preamble as a conditional block instead of the
+  model redrafting it per run, Phase 6's `git add` reaches the repository root with git's `:/`
+  pathspec while staying a project-directory command, and its link check now resolves each link
+  from the directory of the file that contains it — that check already existed and still missed
+  this bug. New
+  `references/monorepo-roots.md` holds the detail, the guards against writing into an unrelated
+  ancestor repository, and what to do with an orphan `REVIEW.md` from an earlier run (#121).
+
+### Changed
+
+- **`debt-triage` triages in plan mode and closes on a gate, the way
+  `/generar-pruebas-en-code-legacy` does.** Four things the sibling command already had and this
+  skill did not. It ran with no approval checkpoint at all: "propose a minimal fix" and "write the
+  fix" sat in the same phase, so a run could reach a verdict and apply it in one breath — the exact
+  shape of the auto-fix this skill exists to refuse. Phases 1 to 3 now run inside `EnterPlanMode`
+  (reading the analyzer's report, or running its own report target, writes nothing versionable),
+  and two `STOP`s replace the two places where the body merely *suggested* pausing: one at the
+  grouped list, so the user can scope the run before any budget is spent, and one at the full
+  triage plan, after which `ExitPlanMode` writes the approved rows and nothing else. A finding
+  struck from the plan is reported as un-actioned rather than quietly suppressed. The body also
+  contradicted itself on the test net — Philosophy said an untested finding is "safer left as a
+  filed issue", Phase 4 said to fix it anyway and "say so explicitly" — which is the same
+  body-versus-detail contradiction the command fixed for its own coverage gate; it resolves toward
+  the checkpoint: the missing net is a mark on the plan and the user decides, not the skill. Phase
+  5 becomes an explicit gate/informative split (six gate rows — every finding verdicted, every
+  suppression's reason inline, every fix read at its call site and present in the approved plan, no
+  untested fix unnamed in it, nothing committed — against counts and severity mix as the only
+  informative part), with a failed row sending the run back to Phase 3 instead of being reported as
+  triaged with a caveat. Frontmatter gains `model: opus`, the first skill in the plugin to pin one:
+  judgement over someone else's code is not where to economize. And, as in the command, Windows
+  runs are told to activate `windows-powershell` before the first non-trivial shell command. The
+  process viewer's `ds` node and `docs/skills/debt-triage-es.md` say the same.
+
 ## [0.4.2] — 2026-09-15
 
 ### Fixed

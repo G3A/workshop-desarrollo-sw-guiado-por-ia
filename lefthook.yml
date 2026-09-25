@@ -18,8 +18,53 @@ pre-commit:
       run: sh ./mvnw -q spotless:check
       fail_text: "Style: run `make -C base-conocimiento format` and re-stage."
 
+# Todo commit declara si lo asistio una IA (#192): `Asistido-por-IA: <modelo>` o `Sin-IA:`. El pie
+# es de donde sale el porcentaje de PRs asistidas que reporta impact-metrics, y hasta este issue
+# era una convencion escrita que nadie verificaba. Se exige declarar, no decir que si.
+#
+# `{1}` es la ruta del archivo del mensaje, que git le pasa al hook commit-msg. Los merges y
+# rebases se saltan por lo mismo que en pre-commit: repiten mensajes que ya pasaron.
+commit-msg:
+  skip:
+    - merge
+    - rebase
+  commands:
+    pie-ia:
+      run: node scripts/verificar-pie-ia.mjs --mensaje {1}
+      fail_text: "The commit must declare `Asistido-por-IA: <model>` or `Sin-IA:`."
+
 pre-push:
   commands:
+    # Los dos sensores de aca van sin `root:`: cubren todo el monorepo y sus rutas son relativas a
+    # la raiz del repositorio. Los dos son locales y de un segundo, por eso corren tambien en el
+    # pre-push; el del espejo no, porque sale a la red y un hook que sale a la red bloquea el push
+    # cuando falla el wifi.
+    #
+    # Las `priority` no son adorno y el orden de declaracion NO alcanza: lefthook ordena los
+    # comandos secuenciales ALFABETICAMENTE. Da la casualidad de que "ancho" y "base-conocimiento-
+    # check" ya quedarian en ese orden, pero "enlaces" no: sin su priority correria DESPUES del
+    # `make check`, que tarda mas de dos minutos, y no tiene sentido esperarlo para enterarte de un
+    # enlace roto que se ve en un segundo. Un comando sin `priority` corre al final.
+    # https://lefthook.dev/configuration/priority/
+    #
+    # Hasta #144 el de enlaces solo corria en CI, o sea que la rotura se descubria despues del
+    # push. Los dos necesitan node >= 18 en el PATH, que antes solo hacia falta en el runner.
+    ancho:
+      priority: 1
+      run: node scripts/verificar-ancho.mjs
+      fail_text: "A prose line is over 100 chars. See scripts/verificar-ancho.mjs."
+    enlaces:
+      priority: 2
+      run: node scripts/verificar-enlaces.mjs
+      fail_text: "Broken doc links (or node missing from PATH). See scripts/verificar-enlaces.mjs."
+    pasos-skill:
+      priority: 3
+      run: node scripts/verificar-pasos-skill.mjs
+      fail_text: "The viewer cites a skill step that no longer exists. See scripts/verificar-pasos-skill.mjs."
+    visor-playbook:
+      priority: 4
+      run: node scripts/verificar-visor-playbook.mjs
+      fail_text: "The playbook cites a viewer node that changed. See scripts/verificar-visor-playbook.mjs."
     base-conocimiento-check:
       root: "base-conocimiento/"
       run: make check

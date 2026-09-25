@@ -49,7 +49,7 @@
         <tr><td><strong>github-plan-build</strong></td><td>Issue → plan → build test-first → PR verificada, con el CI vigilado hasta verde. Cierra proponiendo dónde va la lección de la vuelta.</td><td>3 y 4</td></tr>
         <tr><td><strong>impact-metrics</strong></td><td>Mide qué cambió con la IA y escribe el reporte a liderazgo. Genera y abre la PR; enviarlo es tuyo.</td><td>5</td></tr>
         <tr><td><strong>debt-triage</strong></td><td>Triaja con criterio los hallazgos que un analizador ya reportó. Nunca instala un sensor nuevo.</td><td>puente</td></tr>
-        <tr><td><strong>legacy-test-harness</strong></td><td>Hace crecer pruebas reales en cinco capas sobre código que ya está en producción.</td><td>puente</td></tr>
+        <tr><td><strong>legacy-test-harness</strong></td><td>Hace crecer pruebas reales en cinco capas sobre código que ya está en producción. Censa los actores y mapea costuras antes de escribir; corre en modo plan.</td><td>puente</td></tr>
       </table>
     </div>
     <div class="fuente"><b>Fuente:</b> <code>instrumentacion-java-ia/README.md</code> y el <code>SKILL.md</code> de cada skill.</div>
@@ -73,6 +73,7 @@
     <p>Un control es <strong>determinista solo si el disparo y la decisión quedan los dos fuera del razonamiento del modelo</strong>. Basta que una de las dos dependa del modelo para que sea no determinista.</p>
     <p>El eje es <em>quién dispara y quién decide</em>, no cómo está implementado. Por eso los nueve hooks de comando que instala <code>instrument-agent-java</code> son deterministas —el ciclo de vida del agente los dispara en un punto fijo, y un script de shell decide— mientras que los servidores MCP que la misma skill registra son no deterministas: el modelo decide cuándo llamarlos y con qué argumentos.</p>
     <div class="excep"><b>Dos excepciones que rompen la intuición.</b> Un hook <code>type: mcp_tool</code> es determinista, aunque llame a un servidor MCP, porque el modelo no eligió llamarlo. Y un hook <code>type: prompt</code> es no determinista, aunque sea un hook, porque la decisión sale de inferencia.</div>
+    <p class="eje"><b>Dónde se aplica:</b> en la <a href="03-preparacion-del-terreno.html#DH">Fase 2</a>. En el diagrama, el <b>relleno</b> de la caja dice quién la ejecuta y el <b>contorno</b> de qué tipo es — azul determinista, violeta no determinista — y lo llevan las cajas de «Hooks» y «MCP», el único grupo que mezcla los dos tipos. Acá cada sección lo repite con su pastilla y cierra diciendo quién dispara y quién decide. Las dos excepciones de arriba están marcadas ahí como tales: <a href="03-preparacion-del-terreno.html#DMH">Hook de herramienta MCP</a> y <a href="03-preparacion-del-terreno.html#NHP">Hook de prompt</a>.</p>
     <div class="fuente"><b>Fuente:</b> la leyenda de <code>proceso-operacional-con-ia/comandos.json</code> (<code>instrumentacionTipos</code>), que cita la documentación de Claude Code y la especificación de MCP.</div>
   </section>
 
@@ -95,8 +96,8 @@
     <span class="tag">B0</span><span class="badge mano">A mano</span>
     <h2>Selecciona el repositorio</h2>
     <p>Brownfield, Java con Maven. El plugin está afinado para eso: <code>instrument-project-java</code> lee el JDK y la versión de Maven del wrapper y del POM, y <code>agent-context-java</code> confirma que es un repo Java antes de hacer nada.</p>
-    <p>Antes de seguir, el visor te hace dos chequeos que conviene no saltar: el nodo <code>f0</code> confirma que el equipo ya tiene las cuatro prácticas base funcionando <em>sin</em> el agente, y el nodo <code>G1</code> comprueba que la instalación quedó sana.</p>
-    <div class="fuente"><b>Fuente:</b> visor, nodos <code>f0</code> y <code>G1</code>.</div>
+    <p>Antes de seguir, el visor te hace dos chequeos que conviene no saltar: el nodo «Fundamentos de colaboración» confirma que el equipo ya tiene las cuatro prácticas base funcionando <em>sin</em> el agente, y el nodo «¿Chequeo de salud OK?» comprueba que la instalación quedó sana.</p>
+    <div class="fuente"><b>Fuente:</b> visor, nodos «Fundamentos de colaboración» (<code>f0</code>) y «¿Chequeo de salud OK?» (<code>G1</code>).</div>
   </section>
 
   <section id="IP" class="skill">
