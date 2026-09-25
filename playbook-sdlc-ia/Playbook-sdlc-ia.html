@@ -458,7 +458,10 @@ style P6 fill:#0b0f15,stroke:#6b2018,color:#FF9C8C
     startOnLoad:false,
     theme:'base',
     securityLevel:'loose',
-    flowchart:{ useMaxWidth:false, htmlLabels:true, curve:'basis', nodeSpacing:34, rankSpacing:46, padding:10, wrappingWidth:380 },
+    // subGraphTitleMargin: dagre reserva alto para UNA linea de titulo; los subgraph con <br/>
+    // (P2B, P2C, P2D1, P2D2) llegan a tres y sin este margen su titulo cae sobre la primera caja.
+    flowchart:{ useMaxWidth:false, htmlLabels:true, curve:'basis', nodeSpacing:34, rankSpacing:46, padding:10, wrappingWidth:380,
+                subGraphTitleMargin:{ top:0, bottom:40 } },
     themeVariables:{
       fontFamily:'Inter, sans-serif', fontSize:'14px', background:'transparent',
       lineColor:'#34E0CC', primaryColor:'#11161d', primaryBorderColor:'#3a4250', primaryTextColor:'#EDEAE3'
@@ -478,7 +481,21 @@ style P6 fill:#0b0f15,stroke:#6b2018,color:#FF9C8C
     apply();
   }
 
-  function render(){ return mermaid.run({ querySelector:'.mermaid' }).then(function(){ fit(); markLinks(); }); }
+  // Mermaid pinta los titulos de subgraph ANTES que las aristas, y una flecha que entra por arriba
+  // cruza el texto. Cada titulo pasa al final de su g.root (g.clusters no tiene transform, asi que
+  // las coordenadas no cambian) con el fondo de su subgraph: la flecha queda detras del texto.
+  function liftClusterLabels(){
+    document.querySelectorAll('.mermaid svg g.cluster').forEach(function(c){
+      var label = c.querySelector('.cluster-label'), root = c.parentNode && c.parentNode.parentNode;
+      if(!label || !root || c.parentNode.getAttribute('transform')) return;
+      var rect = c.querySelector('rect'), fill = rect ? getComputedStyle(rect).fill : '';
+      if(!fill || fill === 'none' || /rgba\(.*,\s*0\)$/.test(fill)) fill = getComputedStyle(document.body).backgroundColor;
+      label.querySelectorAll('foreignObject div').forEach(function(d){ d.style.background = fill; });
+      label.setAttribute('data-cluster', c.id);
+      root.appendChild(label);
+    });
+  }
+  function render(){ return mermaid.run({ querySelector:'.mermaid' }).then(function(){ liftClusterLabels(); fit(); markLinks(); }); }
   // Renderiza solo cuando la fuente ya cargó, para que las cajas midan bien y el texto no se corte.
   if(document.fonts && document.fonts.ready){ document.fonts.ready.then(render); } else { render(); }
 
