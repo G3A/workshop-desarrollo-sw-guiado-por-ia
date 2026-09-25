@@ -7,11 +7,28 @@ released**. Dates are the date a release PR (`dev` → `main`) landed on `main`.
 **One version per release.** A PR to `dev` that changes a skill files its entry under the
 "unreleased" heading; the release PR `dev` → `main` bumps the `version` field, turns that heading
 into the new version and dates it. The version is what lets a machine say which copy it runs
-(`claude plugin list`) — it is not what refreshes the install: Claude Code copies the plugin into
-a cache and `claude plugin install` never refreshes an already-installed plugin, even after a
-version bump (verified 0.1.0 → 0.2.0). Updating on any machine is `update.ps1` / `update.sh` at
-the plugin root, which uninstalls and reinstalls (see the README, "Actualizar cuando sale una
-versión nueva", and `AGENTS.md`).
+(`claude plugin list`) — nothing refreshes the install, because nothing is copied: the plugin
+loads in place from its folder in the local-directory marketplace at every session start, whatever
+its version says (verified with Claude Code 2.1.282, #209). Updating on any machine is
+`update.ps1` / `update.sh` at the plugin root, which pulls and checks that the CLI loads the plugin
+from that folder (see the README, "Actualizar cuando sale una versión nueva", and `AGENTS.md`).
+
+## [unreleased]
+
+### Fixed
+
+- **`update.ps1` / `update.sh` check what runs, not a copy nobody uses.** With Claude Code 2.1.282
+  the plugin loads in place from the marketplace folder — the CLI says so on install ("it loads in
+  place from …") and `--debug-file` shows the skills read from the source. The scripts still
+  uninstalled and reinstalled, then printed "the cache is identical to the source": a green on a
+  file nothing loads. They now install only if missing, let `claude plugin update` re-record the
+  version, and fail unless the CLI says it loads from this folder and the recorded version matches
+  `plugin.json`. No reinstall fallback: a CLI that does not confirm it is a red with its message
+  and version in view. `update.sh` also stops needing python: in Git Bash `python3` is often the
+  Microsoft Store alias, and the script re-registered the marketplace on every run. The README,
+  `AGENTS.md`, the release manual, `REVIEW.md`, the process viewer and the playbook now say the
+  same, including that the clone's current branch — uncommitted changes and all — is the plugin
+  that runs from the next session or `/reload-plugins`.
 
 ## [0.4.3] — 2026-09-25
 

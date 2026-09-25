@@ -81,23 +81,33 @@ Un solo comando, desde esta carpeta, en cualquier equipo que tenga el clon:
 ```
 
 Hace `git pull --ff-only` sobre la rama en la que esté el clon, registra el marketplace `sdlc-ia`
-sobre esta carpeta si falta o apunta a otra ruta, refresca e instala, y verifica que la caché
-instalada sea idéntica a la fuente archivo por archivo. Con `-NoPull` (o `--no-pull`) reinstala lo
-que ya está en disco sin tocar git. Un clon en `main` recibe lo liberado; un clon en `dev`, lo
-último integrado.
+sobre esta carpeta si falta o apunta a otra ruta, instala el plugin si falta, re-registra su
+versión con `claude plugin update` y falla si la CLI no dice que lo carga en su lugar desde esta
+carpeta. Con `-NoPull` (o `--no-pull`) hace lo mismo sin tocar git. Un clon en `main` recibe lo
+liberado; un clon en `dev`, lo último integrado.
 
-Por qué existe el script: la CLI instala el plugin **copiándolo a una caché**
-(`~/.claude/plugins/cache/sdlc-ia/sdlc-ia/<versión>/`) y `claude plugin install` **nunca refresca
-un plugin que ya figura instalado**, ni siquiera cuando `plugin.json` subió de versión (comprobado:
-con 0.1.0 instalado y 0.2.0 en la fuente, responde «already installed»). La única forma de traer
-la copia nueva es desinstalar e instalar, y eso es lo que hace el script. La regla que lo acompaña,
-**una versión por liberación: la PR `dev` → `main` sube `version` en
-`sdlc-ia/.claude-plugin/plugin.json` y fecha la entrada del CHANGELOG**, no es lo que dispara la
+Por qué no hay nada que copiar: el plugin **carga en su lugar**. `source` es una ruta relativa
+dentro de un marketplace agregado desde una carpeta local, y en ese caso la CLI lee los archivos de
+esta carpeta en cada inicio de sesión, diga lo que diga la versión
+([documentación oficial](https://code.claude.com/docs/en/plugins/loading#in-place-and-copied-plugins);
+comprobado con Claude Code 2.1.282 en #209). Dos consecuencias:
+
+- **La carpeta del clon es el plugin que corre**, con su rama y sus cambios sin commitear. Quien
+  cambia de rama o edita una skill la está probando en vivo desde la próxima sesión. Un worktree
+  enlazado no cuenta: corre la carpeta registrada como marketplace.
+- **`installPath` miente.** `claude plugin list --json` y `~/.claude/plugins/installed_plugins.json`
+  siguen apuntando a `~/.claude/plugins/cache/sdlc-ia/sdlc-ia/<versión>/`. Esa copia no se usa; la
+  CLI la marca como huérfana y la borra sola. Lo que corre lo dice `claude plugin install
+  sdlc-ia@sdlc-ia` («it loads in place from …»), que es lo que verifica el script, o el log de
+  `claude -p --debug-file <archivo> ok` («Attempting to load skills from plugin sdlc-ia»).
+
+La regla **una versión por liberación: la PR `dev` → `main` sube `version` en
+`sdlc-ia/.claude-plugin/plugin.json` y fecha la entrada del CHANGELOG** no es lo que dispara la
 actualización: es lo que permite saber qué copia tiene cada equipo (`claude plugin list` muestra
 la versión) y que el CHANGELOG cuente la verdad.
 
-Los cambios aplican a las **sesiones nuevas** de Claude Code; una sesión abierta sigue con las
-skills que cargó al arrancar. `claude plugin list` muestra la versión activa.
+Los cambios aplican en la **próxima sesión** de Claude Code, o en una abierta con
+`/reload-plugins`. Un plugin deshabilitado no corre, aunque el script termine en verde.
 
 Las 9 skills quedan disponibles como `/sdlc-ia:agent-context-java`,
 `/sdlc-ia:instrument-project-java`, `/sdlc-ia:instrument-agent-java`,

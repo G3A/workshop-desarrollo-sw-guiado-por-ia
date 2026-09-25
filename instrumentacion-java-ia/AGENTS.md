@@ -1,6 +1,6 @@
 # AGENTS.md — instrumentacion-java-ia (plugin `sdlc-ia`)
 
-Plugin de Claude Code con ocho skills. Las convenciones del monorepo (ramas, commits, idioma)
+Plugin de Claude Code con nueve skills. Las convenciones del monorepo (ramas, commits, idioma)
 están en el `AGENTS.md` de la raíz; este archivo cubre solo lo propio del plugin.
 
 ## Regla dura: versión y actualización
@@ -14,17 +14,16 @@ están en el `AGENTS.md` de la raíz; este archivo cubre solo lo propio del plug
   monorepo). La versión es lo
   que permite saber qué copia corre cada equipo (`claude plugin list`); no es lo que dispara la
   actualización.
-- Un equipo que quiere lo estable mantiene su clon en `main`; el que quiere lo último, en `dev`.
-  `update.ps1` actualiza la rama en la que esté el clon.
-- **`claude plugin install` nunca refresca un plugin ya instalado**, ni aunque `plugin.json` haya
-  subido de versión (comprobado con 0.1.0 → 0.2.0): responde «already installed» y deja la copia
-  vieja en la caché. La única forma de traer la copia nueva es desinstalar e instalar.
+- **El plugin carga en su lugar, no desde una caché** (comprobado con Claude Code 2.1.282, #209):
+  la carpeta del clon registrada como marketplace, con su rama y sus cambios sin commitear, es el
+  plugin que corre desde la próxima sesión o `/reload-plugins`; un worktree enlazado no. Un equipo
+  que quiere lo estable mantiene ese clon en `main`; el que quiere lo último, en `dev`. El
+  `installPath` que registra la CLI apunta a la caché y no dice qué corre.
 - **Actualizar en cualquier equipo es un solo comando:** `.\update.ps1` en PowerShell 5.1 o 7,
   `./update.sh` en bash. Hace `git pull --ff-only`, registra el marketplace sobre esta carpeta si
-  falta o apunta a otra ruta, refresca el marketplace, desinstala e instala, y falla si la caché
-  no queda idéntica a la fuente. Nunca documentes otra secuencia de instalación: el script es la
+  falta o apunta a otra ruta, instala si falta, re-registra la versión y falla si la CLI no dice
+  que carga en su lugar desde esta carpeta. Nunca documentes otra secuencia: el script es la
   fuente de verdad.
-- Los cambios aplican a las **sesiones nuevas** de Claude Code.
 
 ## Otras reglas
 

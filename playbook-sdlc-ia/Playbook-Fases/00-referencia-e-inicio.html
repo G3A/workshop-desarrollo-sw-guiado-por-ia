@@ -106,9 +106,9 @@
     <p>Un solo comando, desde la carpeta del plugin, en cualquier equipo que tenga el clon:</p>
     <pre class="snippet">.\update.ps1        # Windows PowerShell 5.1 o PowerShell 7
 ./update.sh         # macOS, Linux, Git Bash</pre>
-    <p>Hace <code>git pull --ff-only</code> sobre la rama en la que esté el clon, registra el marketplace si falta o apunta a otra ruta, refresca e instala, y verifica que la caché instalada sea idéntica a la fuente archivo por archivo.</p>
-    <div class="hint"><b>Por qué hace falta un script.</b> La CLI instala el plugin copiándolo a una caché, y <code>claude plugin install</code> <b>nunca refresca un plugin que ya figura instalado</b>, ni siquiera cuando <code>plugin.json</code> subió de versión. La única forma de traer la copia nueva es desinstalar e instalar, y eso es lo que hace el script.</div>
-    <p>Los cambios aplican a las <strong>sesiones nuevas</strong> de Claude Code; una sesión abierta sigue con las skills que cargó al arrancar.</p>
+    <p>Hace <code>git pull --ff-only</code> sobre la rama en la que esté el clon, registra el marketplace si falta o apunta a otra ruta, instala si falta, re-registra la versión y falla si la CLI no dice que carga el plugin en su lugar desde esa carpeta.</p>
+    <div class="hint"><b>Por qué no hay nada que copiar.</b> El plugin viene de un marketplace agregado desde una carpeta local, y en ese caso la CLI <b>lo carga en su lugar</b>: lee los archivos del clon en cada inicio de sesión, diga lo que diga la versión. La carpeta del clon, con su rama y sus cambios sin commitear, es el plugin que corre; un worktree enlazado no.</div>
+    <p>Los cambios aplican en la <strong>próxima sesión</strong> de Claude Code, o en una abierta con <code>/reload-plugins</code>.</p>
     <div class="fuente"><b>Fuente:</b> <code>instrumentacion-java-ia/README.md</code>, sección «Actualizar cuando sale una versión nueva», y su <code>AGENTS.md</code>.</div>
   </section>
 
