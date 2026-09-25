@@ -10,7 +10,7 @@ ROOT="$(cd "$(dirname "$0")" && pwd)"
 [ "${1:-}" = "--no-pull" ] || git -C "$ROOT" pull --ff-only
 
 # La CLI escribe las rutas en la forma del sistema: en Git Bash, D:\... y no /d/...
-if command -v cygpath >/dev/null 2>&1; then ROOT_CLI=$(cygpath -w "$ROOT"); else ROOT_CLI=$ROOT; fi
+if command -v cygpath >/dev/null 2>&1; then ROOT_CLI=$(cygpath -w "$ROOT"); SEP='\'; else ROOT_CLI=$ROOT; SEP=/; fi
 normalizar() { printf '%s' "$1" | tr '/' '\\' | sed 's/\\*$//' | tr '[:upper:]' '[:lower:]'; }
 # Una cadena JSON trae las barras invertidas escapadas: D:\\GitHub -> D:\GitHub
 desescapar() { sed 's/\\\\/\\/g'; }
@@ -48,14 +48,14 @@ fi
 if ! INSTALL=$(claude plugin install sdlc-ia@sdlc-ia -y --json); then
   echo "$INSTALL" >&2; falla "plugin install fallo"
 fi
-ESPERADA="$ROOT_CLI/sdlc-ia"
+ESPERADA="$ROOT_CLI${SEP}sdlc-ia"
 CARGA=$(printf '%s' "$INSTALL" | sed -n 's/.*loads in place from \(.*\), so edits.*/\1/p' | desescapar)
 if [ -z "$CARGA" ]; then
   echo "$INSTALL" >&2
   falla "la CLI ($(claude --version)) no confirma que sdlc-ia carga en su lugar.
 Verificado con Claude Code 2.1.282; si la tuya es anterior, actualizala. Si es posterior y cambio la
 redaccion, confirmalo a mano: claude -p --debug-file <archivo> 'ok' y busca en el archivo
-'Attempting to load skills from plugin sdlc-ia' seguido de $ESPERADA/skills"
+'Attempting to load skills from plugin sdlc-ia' seguido de $ESPERADA${SEP}skills"
 fi
 if [ "$(normalizar "$CARGA")" != "$(normalizar "$ESPERADA")" ]; then
   falla "sdlc-ia carga desde $CARGA, no desde $ESPERADA"
