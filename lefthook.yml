@@ -61,6 +61,10 @@ pre-push:
       priority: 3
       run: node scripts/verificar-pasos-skill.mjs
       fail_text: "The viewer cites a skill step that no longer exists. See scripts/verificar-pasos-skill.mjs."
+    visor-playbook:
+      priority: 4
+      run: node scripts/verificar-visor-playbook.mjs
+      fail_text: "The playbook cites a viewer node that changed. See scripts/verificar-visor-playbook.mjs."
     base-conocimiento-check:
       root: "base-conocimiento/"
       run: make check
