@@ -30,7 +30,7 @@
   <div class="cobertura">
     <span class="k-skill"><b>12</b> · skill</span>
     <span class="k-parcial"><b>1</b> · parcial</span>
-    <span class="k-mano"><b>2</b> · a mano</span>
+    <span class="k-mano"><b>7</b> · a mano</span>
   </div>
 
   <h2 class="muted" style="font-family:'Fraunces',serif;margin-top:30px">Especificación</h2>
@@ -217,6 +217,62 @@
     <div class="fuente"><b>Fuente:</b> visor, nodo «¿Quedan issues del sprint?» (<code>G7</code>), el cierre del ciclo PDCA.</div>
   </section>
 
+  <h2 class="muted" style="font-family:'Fraunces',serif;margin-top:30px">Entrega</h2>
+
+  <section id="EG1" class="mano">
+    <span class="tag">EG1</span><span class="badge mano">A mano</span>
+    <h2>Despliegue automático tras el merge</h2>
+    <p>Desplegar después de cada merge, en vez de acumular cambios para un despliegue grande, es lo que mantiene el entorno de prueba cerca de lo que hay en la rama de integración.</p>
+    <p><strong>Ninguna skill del plugin despliega.</strong> <code>instrument-project-java</code> instala el workflow de CI —el que juzga—, no el de entrega. Que exista un despliegue automático, y a dónde, es del equipo.</p>
+    <div class="fuente"><b>Fuente:</b> visor, nodo «CD automático a staging» (<code>cd1</code>).</div>
+  </section>
+
+  <section id="GES" class="dec">
+    <span class="tag">GES</span>
+    <h2>¿El despliegue quedó en verde?</h2>
+    <p>Un despliegue que falla en silencio es peor que no tener despliegue automático. Se pregunta por el <strong>commit del merge</strong>, no por la rama: con dos merges cerca, el último run puede ser de otra persona.</p>
+    <div class="fuente"><b>Fuente:</b> visor, nodo «¿CD en verde?» (<code>G8</code>).</div>
+  </section>
+
+  <section id="EG2" class="mano">
+    <span class="tag">EG2</span><span class="badge mano">A mano</span>
+    <h2>Arreglar hacia adelante, o volver atrás</h2>
+    <p>Revertir es más seguro y pierde el trabajo; arreglar hacia adelante es más rápido y exige confianza en que el arreglo es correcto. No hay una respuesta única: depende de qué tan grave sea lo que se rompió.</p>
+    <p>El proceso enseña <strong>cuándo cada uno</strong>. El comando depende de dónde despliegues, y por eso no está escrito acá.</p>
+    <div class="fuente"><b>Fuente:</b> visor, nodo «Arreglar hacia adelante» (<code>df</code>).</div>
+  </section>
+
+  <section id="EP1" class="mano">
+    <span class="tag">EP1</span><span class="badge mano">A mano</span>
+    <h2>Libera dev a main</h2>
+    <p><strong>Liberar es una decisión, no un efecto del trabajo diario.</strong> La toma quien libera, cuando la rama de integración está en verde, y se ejecuta en dos PR seguidas: la que sube la versión y fecha el CHANGELOG, y la de liberación.</p>
+    <p>El porqué de esa forma, con la alternativa descartada y qué haría reconsiderarla, está en <code>docs/adrs/0001-liberar-con-chore-release-a-dev.md</code>.</p>
+    <div class="fuente"><b>Fuente:</b> visor, nodo «Liberar dev a main» (<code>rl</code>).</div>
+  </section>
+
+  <section id="EP2" class="mano">
+    <span class="tag">EP2</span><span class="badge mano">A mano</span>
+    <h2>Despliega a producción con aprobación registrada</h2>
+    <p>El paso más caro del ciclo, y el que hasta el #197 no estaba dibujado en ninguna pieza. El <code>ADR-0004</code> fija <strong>qué exige el método</strong>: que lo dispare la liberación —no una persona que se acuerda—, y que la aprobación quede con nombre y hora, en un <strong>Environment con revisores requeridos</strong>.</p>
+    <p><strong>Y qué no prescribe: la herramienta.</strong> El paso de despliegue es un hueco a propósito, porque quien siga este método puede desplegar en un PaaS, en Kubernetes o en un servidor propio. Mientras el comando sea del equipo, ninguna skill puede cubrir esta caja.</p>
+    <div class="fuente"><b>Fuente:</b> visor, nodo «Desplegar a producción» (<code>cd2</code>), y <code>docs/adrs/0004-el-metodo-exige-el-despliegue-y-no-la-herramienta.md</code>.</div>
+  </section>
+
+  <section id="GPX" class="dec">
+    <span class="tag">GPX</span>
+    <h2>¿Producción en verde?</h2>
+    <p>Se mira el despliegue <strong>de esa liberación</strong>, por su SHA. Qué significa «verde» lo define el equipo: un healthcheck, una prueba de humo contra la URL real, una métrica que vuelve a su nivel. Y la lista vacía no es verde ni rojo: puede ser que la corrida siga esperando la aprobación.</p>
+    <div class="fuente"><b>Fuente:</b> visor, nodo «¿Producción en verde?» (<code>G9</code>).</div>
+  </section>
+
+  <section id="EP3" class="mano">
+    <span class="tag">EP3</span><span class="badge mano">A mano</span>
+    <h2>Vuelve a la versión anterior</h2>
+    <p>Dos familias, y el proceso enseña <strong>cuándo</strong>, no <strong>cómo</strong>: volver por el mecanismo del proveedor cuando el sistema está inutilizable —son minutos—, o revertir en git y liberar cuando el daño es acotado —cuesta una liberación entera y deja la historia coherente—.</p>
+    <p>Con la regla que las ata: si vuelves por el mecanismo del proveedor, <strong>la rama estable queda describiendo algo que ya no corre</strong>. Revertir el código deja de ser urgente, pero no deja de ser obligatorio.</p>
+    <p><strong>Y que esté ensayado.</strong> Un camino de vuelta que nadie ejecutó nunca es una promesa, no un camino — la misma exigencia con la que el método pide ver disparar cada hook en vez de comprobar que el archivo existe.</p>
+    <div class="fuente"><b>Fuente:</b> visor, nodo «Volver a la versión anterior» (<code>rb</code>).</div>
+  </section>
   <footer>Plugin <code>sdlc-ia</code> · monorepo <code>workshop-desarrollo-sw-guiado-por-ia</code></footer>
 </div>
 <script src="nav.js"></script>
