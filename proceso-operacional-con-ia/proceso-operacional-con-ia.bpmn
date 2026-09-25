@@ -53,6 +53,7 @@
         <bpmn:flowNodeRef>c2</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>c4p</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>pf</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>sy</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>df</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>rb</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>c5</bpmn:flowNodeRef>
@@ -342,9 +343,14 @@
       <bpmn:incoming>e50</bpmn:incoming>
       <bpmn:outgoing>e51</bpmn:outgoing>
     </bpmn:task>
+    <bpmn:task id="sy" name="Poner la rama al día con dev">
+      <bpmn:documentation>El Ruleset de la rama de integración exige que la rama esté al día antes de mergear. Con una persona casi nunca se nota; con dos, cada merge ajeno deja la tuya atrás, y acá es donde aparecen los conflictos.</bpmn:documentation>
+      <bpmn:incoming>e49</bpmn:incoming>
+      <bpmn:outgoing>e71</bpmn:outgoing>
+    </bpmn:task>
     <bpmn:task id="mg" name="Merge (Rulesets exige checks)">
       <bpmn:documentation>Merge del PR; los Rulesets de GitHub exigen que los checks estén en verde.</bpmn:documentation>
-      <bpmn:incoming>e49</bpmn:incoming>
+      <bpmn:incoming>e71</bpmn:incoming>
       <bpmn:outgoing>e52</bpmn:outgoing>
     </bpmn:task>
     <bpmn:task id="cd1" name="CD automático a staging">
@@ -466,7 +472,8 @@
     <bpmn:sequenceFlow id="e46" name="No" sourceRef="G5" targetRef="pf" />
     <bpmn:sequenceFlow id="e47" sourceRef="pf" targetRef="p1" />
     <bpmn:sequenceFlow id="e48" sourceRef="cr" targetRef="G6" />
-    <bpmn:sequenceFlow id="e49" name="Sí" sourceRef="G6" targetRef="mg" />
+    <bpmn:sequenceFlow id="e49" name="Sí" sourceRef="G6" targetRef="sy" />
+    <bpmn:sequenceFlow id="e71" sourceRef="sy" targetRef="mg" />
     <bpmn:sequenceFlow id="e50" name="No" sourceRef="G6" targetRef="ac" />
     <bpmn:sequenceFlow id="e51" sourceRef="ac" targetRef="cr" />
     <bpmn:sequenceFlow id="e52" sourceRef="mg" targetRef="cd1" />
@@ -685,6 +692,9 @@
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="ac_di" bpmnElement="ac" bioc:fill="#8fa8ff" bioc:stroke="#0d1a4d">
         <dc:Bounds x="8220" y="195" width="160" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="sy_di" bpmnElement="sy" bioc:fill="#8fa8ff" bioc:stroke="#0d1a4d">
+        <dc:Bounds x="8420" y="490" width="160" height="70" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="mg_di" bpmnElement="mg" bioc:fill="#8fa8ff" bioc:stroke="#0d1a4d">
         <dc:Bounds x="8420" y="1005" width="160" height="70" />
@@ -1063,10 +1073,16 @@
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="e49_di" bpmnElement="e49">
         <di:waypoint x="8325" y="1040" />
-        <di:waypoint x="8420" y="1040" />
+        <di:waypoint x="8380" y="1040" />
+        <di:waypoint x="8380" y="525" />
+        <di:waypoint x="8420" y="525" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="8354" y="1013" width="11" height="14" />
+          <dc:Bounds x="8336" y="1013" width="11" height="14" />
         </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="e71_di" bpmnElement="e71">
+        <di:waypoint x="8500" y="560" />
+        <di:waypoint x="8500" y="1005" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="e50_di" bpmnElement="e50">
         <di:waypoint x="8300" y="1015" />
