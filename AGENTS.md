@@ -4,7 +4,8 @@ Monorepo del taller de desarrollo de software guiado por IA. Cuatro piezas, cada
 contexto:
 
 - `base-conocimiento/` — la aplicación Java/Spring del taller. Tiene su `AGENTS.md`.
-- `instrumentacion-java-ia/` — el plugin `sdlc-ia` de Claude Code (ocho skills). Tiene su `AGENTS.md`.
+- `instrumentacion-java-ia/` — el plugin `sdlc-ia` de Claude Code (nueve skills). Tiene su
+  `AGENTS.md`.
 - `proceso-operacional-con-ia/` — el visor BPMN del proceso, que enseña con comandos lo que las
   skills ejecutan.
 - `playbook-sdlc-ia/` — el diagrama de las 7 fases del método con un badge de cobertura por caja
@@ -25,16 +26,19 @@ contexto:
   decidir cuál sale. Desde #193 está
   `verificar-pasos-skill.mjs`, que falla cuando el visor cita un paso de una skill —«el paso G de
   la skill», «su Fase 5»— que esa skill ya no tiene; las letras viven en sus `references/`, no en
-  el `SKILL.md`. Desde #192 está `verificar-pie-ia.mjs`, que exige que cada commit declare
+  el `SKILL.md`. Desde #203 está `verificar-visor-playbook.mjs`, que cierra la tercera relación de
+  la regla dura: cada código y cada título que el playbook cita del visor tiene que seguir
+  existiendo, y las skills nombradas deben ser las mismas de los dos lados. Desde #192 está
+  `verificar-pie-ia.mjs`, que exige que cada commit declare
   `Asistido-por-IA: <modelo>` o `Sin-IA:`; corre en dos lados con la misma regla, como hook
-  `commit-msg` sobre el mensaje y en CI sobre los commits de la PR. Los seis sensores del monorepo
-  piden **node >= 18** en el PATH; el del playbook
-  vive junto a lo que verifica (`playbook-sdlc-ia/verificar-cobertura.mjs`). Dónde bloquea cada uno
-  difiere: los de enlaces, ancho y pasos de skill corren en CI y también en el pre-push, porque son
-  locales y de un segundo; el del playbook, solo en CI; y el del espejo, **solo en CI porque sale a
-  la red** —un hook que sale a la red bloquea `git push` cuando falla el wifi—. A mano es
-  `node scripts/verificar-espejo.mjs` desde la
-  raíz; sin `GITHUB_TOKEN` en el entorno usa la API anónima, que permite 60 peticiones por hora.
+  `commit-msg` sobre el mensaje y en CI sobre los commits de la PR. Los siete sensores piden
+  **node >= 18** en el PATH; el del playbook vive junto a lo que verifica
+  (`playbook-sdlc-ia/verificar-cobertura.mjs`). Dónde bloquea cada uno difiere: los de enlaces,
+  ancho, pasos de skill, visor-playbook y pie de IA corren en CI y también en local, porque son de
+  un segundo y no salen a la red; el del playbook, solo en CI; y el del espejo, **solo en CI porque
+  sí sale** —un hook que sale a la red bloquea `git push` cuando falla el wifi—. A mano es
+  `node scripts/verificar-espejo.mjs` desde la raíz; sin `GITHUB_TOKEN` usa la API anónima, que
+  permite 60 peticiones por hora.
 - `REVIEW.md` — qué mirar en un diff ya escrito (lo lee el servicio de Code Review; no repite las
   reglas de generación de los `AGENTS.md`). `EXPERIMENTS.md` — el acuerdo sobre qué puede fallar
   con el agente; sus pendientes los completa el equipo.

@@ -113,6 +113,13 @@ jobs:
         working-directory: .
         run: node scripts/verificar-pasos-skill.mjs
 
+      # Sensor visor <-> playbook (#203): cada codigo y cada titulo que el playbook cita del visor
+      # tiene que seguir existiendo, y las skills nombradas tienen que ser las mismas de los dos
+      # lados. Era la unica de las tres relaciones de la regla dura sin sensor. Corre en la raiz.
+      - name: The playbook still describes the viewer it cites
+        working-directory: .
+        run: node scripts/verificar-visor-playbook.mjs
+
       # Sensor del playbook (#117): una caja que cambia de badge sin que cambien su dato B(), su
       # seccion y los contadores falla aca. Node ya viene en el runner; el script no tiene
       # dependencias. Corre en la raiz, no en base-conocimiento/.
