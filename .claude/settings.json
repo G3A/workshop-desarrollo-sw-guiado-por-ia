@@ -11,6 +11,15 @@
             "timeout": 90
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/acta/capturar.mjs\"",
+            "timeout": 20
+          }
+        ]
       }
     ],
     "PreToolUse": [
@@ -63,6 +72,11 @@
             "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/agent-hooks/audit-log.sh\"",
             "async": true,
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/acta/capturar.mjs\"",
+            "timeout": 20
           }
         ]
       }
@@ -81,6 +95,39 @@
             "type": "command",
             "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/agent-hooks/version-pin-guard.sh\"",
             "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/acta/capturar.mjs\"",
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/acta/capturar.mjs\"",
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/acta/capturar.mjs\"",
+            "timeout": 120
           }
         ]
       }
