@@ -2,7 +2,8 @@
 
 ## Estado
 
-Propuesto — 2026-10-01. El modelo de datos que este ADR usa como referencia está en
+Aceptado — 2026-10-01. Propuesto en la PR #214 y aceptado tras su revisión. El modelo de datos
+que este ADR usa como referencia está en
 [`docs/modelo-conceptual-registro-ia.md`](../modelo-conceptual-registro-ia.md).
 
 ## Contexto
