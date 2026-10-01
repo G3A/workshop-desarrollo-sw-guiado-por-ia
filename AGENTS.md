@@ -38,7 +38,9 @@ contexto:
   un segundo y no salen a la red; el del playbook, solo en CI; y el del espejo, **solo en CI porque
   sí sale** —un hook que sale a la red bloquea `git push` cuando falla el wifi—. A mano es
   `node scripts/verificar-espejo.mjs` desde la raíz; sin `GITHUB_TOKEN` usa la API anónima, que
-  permite 60 peticiones por hora.
+  permite 60 peticiones por hora. Desde #216, `scripts/acta/` registra lo que hace la IA: un hook
+  captura el árbol antes y después de cada acción, y al cerrar la sesión compila el acta cruda en
+  `.ia/registros/`, que no se versiona. Detalle en `scripts/acta/README.md` y en el ADR-0005.
 - `REVIEW.md` — qué mirar en un diff ya escrito (lo lee el servicio de Code Review; no repite las
   reglas de generación de los `AGENTS.md`). `EXPERIMENTS.md` — el acuerdo sobre qué puede fallar
   con el agente; sus pendientes los completa el equipo.
