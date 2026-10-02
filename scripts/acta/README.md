@@ -20,7 +20,8 @@ en Docker, el trailer `Registro-IA:` y el visor llegan en issues aparte.
 4. **Curación.** Por cada acta escrita, el hook llama a `curar-acta.mjs`, que deja
    `<sesión>.acta.curada.jsonl` junto a ella. Si la curación se detiene, lo avisa en stderr y la
    cruda queda escrita. Medido en la sesión de #218 (203 acciones): unos 12 s compilar y 15 s
-   curar y verificar, dentro de los 120 s que el hook tiene en `.claude/settings.json`.
+   curar y verificar. El hook tiene 300 s en `.claude/settings.json`, para que una sesión de unas
+   mil acciones también alcance; si se pasa, Claude Code lo corta y solo falta la curada.
 
 `.ia/` está en `.gitignore`: las actas pueden traer contenido leído durante la sesión, y qué se
 versiona lo decide el issue del trailer.
