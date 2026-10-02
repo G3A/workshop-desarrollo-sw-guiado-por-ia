@@ -51,6 +51,7 @@ test('sesion simple: un turno, un paso ausente, una decision y una accion pura',
   assert.equal(accion.claseDeterminismo, 'pura');
   assert.equal(accion.exito, true);
   assert.equal(accion.entrada.file_path, '.\\a.md');
+  assert.equal(accion.directorio, '.', 'el directorio de la llamada, para que el motor la corra');
   const [decision] = de(acta, 'decision');
   assert.equal(decision.texto, 'Voy a editar el archivo.');
   assert.deepEqual(decision.motiva, [accion.id]);
@@ -230,6 +231,7 @@ test('captura: los arboles antes y despues dan los cambios por archivo y la huel
     'a.md': 'uno\n',
     [skill]: '# demo\n',
     'instrumentacion-java-ia/sdlc-ia/.claude-plugin/plugin.json': '{"version":"9.9.9"}',
+    'scripts/acta/motor/Dockerfile': `FROM node@sha256:${'ab'.repeat(32)}\nUSER node\n`,
   });
   const headBase = git(['rev-parse', 'HEAD'], { cwd: raiz }).trim();
   const antes = arbolActual(raiz);
@@ -264,6 +266,10 @@ test('captura: los arboles antes y despues dan los cambios por archivo y la huel
   assert.equal(cabecera.huella.plugin, '9.9.9');
   assert.deepEqual(cabecera.huella.documentos.map((d) => d.ruta), [skill]);
   assert.equal(cabecera.huella.documentos[0].commit, headBase);
+  // La imagen del motor (#222, fase 2): el Dockerfile del HEAD base y el digest de su base.
+  assert.equal(cabecera.huella.imagen.dockerfile.commit, headBase);
+  assert.match(cabecera.huella.imagen.dockerfile.hash, /^[0-9a-f]{40}$/);
+  assert.equal(cabecera.huella.imagen.base, `node@sha256:${'ab'.repeat(32)}`);
 });
 
 // --- Efectos entre acciones (#218) ------------------------------------------------------------
