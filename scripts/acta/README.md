@@ -9,13 +9,14 @@ las skills marcan (#222). El trailer `Registro-IA:` y el visor son las fases sig
 
 ## Cómo funciona
 
-1. **Captura.** `capturar.mjs` corre como hook en `SessionStart`, `PreToolUse`, `PostToolUse`,
-   `PostToolUseFailure` y `SessionEnd`; está registrado en `.claude/settings.json`. Agrega una
-   línea a `.ia/captura/<sesión>.jsonl` con el `HEAD` y el hash del árbol antes y después de cada
-   acción. Las lecturas no capturan árbol, porque no lo cambian. Nunca bloquea la sesión. En
-   cada evento solo carga `nucleo-captura.mjs`, que no importa nada del repo: en la sesión de
-   #218 una acción dejó `curar-acta.mjs` con un error de sintaxis, el hook lo importaba y no
-   cargó hasta que otra acción lo arregló, y cuatro acciones quedaron sin captura (#222).
+1. **Captura.** `capturar.mjs` corre como hook en `SessionStart`, `PreToolUse`, `PermissionRequest`,
+   `PostToolUse`, `PostToolUseFailure` y `SessionEnd`; está registrado en `.claude/settings.json`.
+   Agrega una línea a `.ia/captura/<sesión>.jsonl` con el `HEAD` y el hash del árbol antes y
+   después de cada acción, y cada pedido de permiso. Las lecturas no capturan árbol, porque no
+   lo cambian. Nunca bloquea la sesión. En cada evento solo carga `nucleo-captura.mjs`, que no
+   importa nada del repo: en la sesión de #218 una acción dejó `curar-acta.mjs` con un error de
+   sintaxis, el hook lo importaba y no cargó hasta que otra acción lo arregló, y cuatro acciones
+   quedaron sin captura (#222).
 2. **Compilación.** Al cerrar la sesión, el mismo hook llama a `compilar-acta.mjs`, que lee el
    transcript principal, los de los subagentes y la captura, y escribe
    `.ia/registros/<tarea>/<sesión>.acta.cruda.jsonl`: un acta por tarea que la sesión tocó.
@@ -112,6 +113,30 @@ Medido sobre la fase 1 del #222 (55 acciones, unos 26 s): 45 verificadas, las 18
 iguales y una divergencia legítima, un `cd` a una carpeta de `$TEMP` que había creado un
 comando omitido.
 
+## Intervenciones
+
+Lo que hizo una persona durante la sesión (PC-10). Cada tipo sale de un hecho que el transcript o
+la captura registran, nunca de leer el texto:
+
+| Tipo | De dónde sale |
+|---|---|
+| `comando_usuario` | Un comando con `!` |
+| `interrupcion` | `[Request interrupted by user]` |
+| `permiso_rechazado` | El rechazo de una herramienta que pidió permiso |
+| `permiso_aprobado` | Un `PermissionRequest` en modo `default`, `acceptEdits` o `plan`, y la herramienta corrió después |
+| `correccion` | Un rechazo en el que la persona escribió cómo seguir («the user said:»), el rechazo de una pregunta o un plan (`AskUserQuestion`, `ExitPlanMode`) y el prompt que sigue a una interrupción. Lleva lo que la persona dijo en `texto` |
+
+`PermissionRequest` no trae `tool_use_id` (medido con una sonda en Claude Code 2.1.287): la
+captura guarda el hash de la entrada en cada `PreToolUse` y en cada pedido, y el compilador
+empareja el pedido con el último `PreToolUse` de la misma herramienta y la misma entrada. Así
+funcionan también dos llamadas en paralelo. No se registra como intervención:
+
+- el pedido que en modo `auto` resuelve el clasificador;
+- el «haven't granted it yet» de una sesión sin persona, como `claude -p`.
+
+Sobre las sesiones de este proyecto, los 5 «permisos rechazados» que registraba el compilador
+eran 2 rechazos de permiso y 3 preguntas descartadas, que ahora son correcciones.
+
 Los transcripts de Claude Code están en `~/.claude/projects/<proyecto>/<sesión>.jsonl`, y los de
 sus subagentes en `<sesión>/subagents/`. Los comandos son los mismos en PowerShell y en bash.
 
@@ -127,8 +152,11 @@ sus subagentes en `<sesión>/subagents/`. Los comandos son los mismos en PowerSh
   ([protocolo](../../docs/protocolo-de-marcadores-de-paso.md)). En las demás, cada paso es el turno
   completo, con procedencia `ausente` (PC-04), la fase queda en `null` y
   `conformidad.mjs` responde «sin datos».
-- **Permisos aprobados.** Solo se registran los rechazos que deja el transcript. Los hooks de
-  permisos van en otro issue (PC-10).
+- **Permisos que resolvió otro hook.** Si un hook responde un `PermissionRequest` antes que la
+  persona, el acta no lo sabe y lo cuenta como aprobación de la persona. En este repo ningún hook
+  responde pedidos de permiso.
+- **Un permiso aprobado con «no volver a preguntar».** Desde ahí la herramienta no pide permiso, y
+  sus llamadas siguientes no dejan intervención: la persona ya decidió, una sola vez.
 - **Árbol de los comandos con `!`.** Los hooks no corren para los comandos que escribe el
   usuario: su acción queda sin hash de árbol.
 - **Fallos dentro de un pipe.** Sin `pipefail`, `a | tail` sale con el código de `tail`, y el

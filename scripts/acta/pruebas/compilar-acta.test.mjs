@@ -12,6 +12,7 @@ import { CuracionDetenida, curar } from '../curar-acta.mjs';
 import { validarActa } from '../validar-acta.mjs';
 import { claseDeterminismo } from '../clasificar.mjs';
 import { arbolActual, git } from '../git.mjs';
+import { huellaDeEntrada } from '../nucleo-captura.mjs';
 import { carpetaTemporal, enCaptura, fabrica, repoQueAvanza, repoTemporal,
   marcaDePaso, sesionConGrepQueOcultaUnFallo, sesionConHook, sesionConSubagente, sesionMarcada,
   subagente,
@@ -167,6 +168,98 @@ test('permiso rechazado e interrupcion: dos intervenciones de la persona', () =>
   assert.equal(de(acta, 'intervencion')[0].accion, de(acta, 'accion')[0].id);
   assert.equal(de(acta, 'accion')[0].claseDeterminismo, 'efecto_externo');
   assert.equal(de(acta, 'turno').length, 1, 'la interrupcion no es un turno');
+});
+
+// --- Intervenciones completas (#222, fase 5) --------------------------------------------------
+
+const RECHAZO = "The user doesn't want to proceed with this tool use. The tool use was rejected " +
+  '(eg. if it was a file edit, the new_string was NOT written to the file).';
+const conTexto = (dicho) => `${RECHAZO} To tell you how to proceed, the user said:\n${dicho}`;
+const SIN_TEXTO = `${RECHAZO} STOP what you are doing and wait for the user to tell you how to ` +
+  'proceed.';
+
+// El PreToolUse y el PermissionRequest de una llamada, como los escribe la captura: el pedido no
+// trae tool_use_id, solo la herramienta y el hash de la entrada.
+const pedido = (id, herramienta, entrada, seg, modo = 'default') => [
+  { evento: 'PreToolUse', toolUseId: id, herramienta, entrada: huellaDeEntrada(entrada),
+    momento: enCaptura(0, seg), arbol: null },
+  { evento: 'PermissionRequest', herramienta, entrada: huellaDeEntrada(entrada), modo,
+    momento: enCaptura(0, seg) },
+];
+
+test('intervenciones: cada tipo del modelo tiene un escenario que lo produce', () => {
+  const instalar = { command: 'npm install left-pad' };
+  const editar = { file_path: 'a.md', old_string: 'a', new_string: 'b' };
+  const f = fabrica()
+    .prompt('<bash-input>git status</bash-input>')
+    .prompt('<bash-stdout>limpio</bash-stdout><bash-stderr></bash-stderr>')
+    .prompt('Instala y edita')
+    .llamada('tu1', 'Bash', instalar)
+    .resultado('tu1', 'added 1 package')
+    .llamada('tu2', 'Bash', { command: 'git push' })
+    .resultado('tu2', SIN_TEXTO, { error: true })
+    .llamada('tu3', 'Edit', editar)
+    .resultado('tu3', conTexto('usa b.md, no a.md'), { error: true })
+    .llamada('tu4', 'AskUserQuestion', { questions: [] })
+    .resultado('tu4', SIN_TEXTO, { error: true })
+    .prompt('[Request interrupted by user]')
+    .prompt('Mejor no instales nada');
+  const captura = [
+    { evento: 'SessionStart', momento: enCaptura(0, 0), arbol: null },
+    ...pedido('tu1', 'Bash', instalar, 4),
+    ...pedido('tu3', 'Edit', editar, 8),
+  ];
+  const acta = unicaActa(compilarFabrica(f, { captura }));
+  assert.deepEqual(validarActa(acta), []);
+  const filas = de(acta, 'intervencion').map((i) => [i.tipo, i.accion, i.texto]);
+  assert.deepEqual(filas, [
+    ['comando_usuario', 'a1', null],
+    ['permiso_aprobado', 'a2', null],
+    ['permiso_rechazado', 'a3', null],
+    ['permiso_rechazado', 'a4', null],
+    ['correccion', 'a4', 'usa b.md, no a.md'],
+    ['correccion', 'a5', null],
+    ['interrupcion', null, null],
+    ['correccion', null, 'Mejor no instales nada'],
+  ]);
+  assert.deepEqual([...new Set(filas.map(([t]) => t))].sort(), ['comando_usuario', 'correccion',
+    'interrupcion', 'permiso_aprobado', 'permiso_rechazado']);
+  assert.ok(de(acta, 'intervencion').every((i) => i.agente === 'usuario'));
+});
+
+test('permiso aprobado: no lo es en modo auto, ni sin persona, ni si despues se rechazo', () => {
+  const a = { command: 'npm ci' };
+  const b = { file_path: 'x.md', content: 'x' };
+  const c = { command: 'rm -rf dist' };
+  const f = fabrica()
+    .prompt('Tres pedidos')
+    .llamada('tu1', 'Bash', a)
+    .resultado('tu1', 'ok')
+    .llamada('tu2', 'Write', b)
+    .resultado('tu2', "Claude requested permissions to write to x.md, but you haven't granted " +
+      'it yet.', { error: true })
+    .llamada('tu3', 'Bash', c)
+    .resultado('tu3', SIN_TEXTO, { error: true });
+  const captura = [...pedido('tu1', 'Bash', a, 2, 'auto'), ...pedido('tu2', 'Write', b, 4),
+    ...pedido('tu3', 'Bash', c, 6)];
+  const { actas, avisos } = compilarFabrica(f, { captura });
+  assert.deepEqual(de(unicaActa({ actas }), 'intervencion').map((i) => [i.tipo, i.accion]),
+    [['permiso_rechazado', 'a3']], 'solo el rechazo de una persona');
+  assert.ok(avisos.some((x) => /se resolvio en modo auto/.test(x)), avisos.join());
+});
+
+test('permiso aprobado: el pedido se empareja por la entrada, no por el orden', () => {
+  // Dos llamadas en paralelo: los PreToolUse llegan antes que los pedidos, en otro orden.
+  const a = { command: 'npm ci' };
+  const b = { command: 'npm run build' };
+  const f = fabrica().prompt('En paralelo')
+    .llamada('tu1', 'Bash', a).llamada('tu2', 'Bash', b)
+    .resultado('tu1', 'ok').resultado('tu2', SIN_TEXTO, { error: true });
+  const [preA, pedidoA] = pedido('tu1', 'Bash', a, 2);
+  const [preB, pedidoB] = pedido('tu2', 'Bash', b, 2);
+  const { actas } = compilarFabrica(f, { captura: [preA, preB, pedidoB, pedidoA] });
+  assert.deepEqual(de(unicaActa({ actas }), 'intervencion').map((i) => [i.tipo, i.accion]),
+    [['permiso_aprobado', 'a1'], ['permiso_rechazado', 'a2']]);
 });
 
 test('comando con ! del usuario: turno propio, accion de la persona e intervencion', () => {

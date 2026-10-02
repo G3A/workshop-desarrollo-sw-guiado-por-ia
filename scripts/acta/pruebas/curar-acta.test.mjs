@@ -151,9 +151,10 @@ test('intervenciones: entran las que apuntan a lo que quedo', () => {
     .prompt('[Request interrupted by user]'));
   const tipos = (acta) => de(acta, 'intervencion').map((i) => i.tipo);
   assert.deepEqual(tipos(cruda),
-    ['comando_usuario', 'permiso_rechazado', 'interrupcion', 'interrupcion']);
+    ['comando_usuario', 'permiso_rechazado', 'interrupcion', 'correccion', 'interrupcion']);
   const curada = curarYValidar(cruda);
-  // El rechazo sale con su accion; la segunda interrupcion, con su turno de solo texto.
+  // El rechazo sale con su accion; la correccion y la segunda interrupcion, con su turno de
+  // solo texto.
   assert.deepEqual(tipos(curada), ['comando_usuario', 'interrupcion']);
   assert.ok(ids(curada, 'agente').includes('usuario'));
 });
