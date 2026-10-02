@@ -27,7 +27,9 @@
 // 6. Si los dos arboles son iguales, o la herramienta no cambia el arbol (SIN_ARBOL), o escribe
 //    fuera de la maquina (efecto_externo), no hay residuo. Lo ultimo cubre los `!git push` de la
 //    persona: no tienen arbol, porque los hooks no corren, y git escribe su avance en stderr, asi
-//    que el compilador los marca como fallidos.
+//    que el compilador los marca como fallidos. Tampoco hay residuo si la herramienta no llego a
+//    correr (`capturada = false`): un Edit que no paso la validacion o un Write que freno el
+//    clasificador. Los dos aparecieron al curar sesiones reales de este repo.
 // 7. En cualquier otro caso la curacion se DETIENE: un fallo sin arbol que pudo escribir, o un
 //    residuo sin diff (la cruda se compilo sin repo). Una curada que no sabe si falta un cambio
 //    miente sobre lo que el motor va a reproducir.
@@ -69,6 +71,7 @@ export class CuracionDetenida extends Error {
 
 // Que deja un fallo en la curada: un residuo, nada, o un motivo para detenerse.
 function residuoDe(a) {
+  if (a.capturada === false) return { nada: true };
   const sinArbol = !a.arbolAntes || !a.arbolDespues;
   if (!sinArbol && a.arbolAntes === a.arbolDespues) return { nada: true };
   if (sinArbol && (SIN_ARBOL.has(a.herramienta) || a.claseDeterminismo === 'efecto_externo')) {

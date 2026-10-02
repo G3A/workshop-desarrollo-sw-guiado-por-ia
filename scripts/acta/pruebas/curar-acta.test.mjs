@@ -16,7 +16,8 @@ import { compilar, compilarYEscribir, serializar } from '../compilar-acta.mjs';
 import { CuracionDetenida, curar, curarYEscribir } from '../curar-acta.mjs';
 import { validarActa } from '../validar-acta.mjs';
 import { arbolActual } from '../git.mjs';
-import { carpetaTemporal, fabrica, repoTemporal, sesionConHook, subagente } from './fabrica.mjs';
+import { carpetaTemporal, enCaptura, fabrica, repoTemporal, sesionConHook, subagente }
+  from './fabrica.mjs';
 
 const silencio = { log: () => {}, error: () => {} };
 const de = (registros, elemento) => registros.filter((r) => r.elemento === elemento);
@@ -226,6 +227,33 @@ test('residuo: una accion de subagente sin resultado lo deja en el paso de la ll
   residuo.intentosPrevios = [escrita.id];
   assert.deepEqual(validarActa(curada, { cruda }).map((e) => e.invariante), ['I7'],
     'un residuo no tiene intentos previos');
+});
+
+test('sin residuo: una herramienta que no llego a correr, con la captura como testigo', () => {
+  // Paso en dos sesiones reales: el Edit no paso la validacion y el Write lo freno el
+  // clasificador. Ningun hook se disparo, asi que la captura no tiene ningun evento suyo.
+  const cruda = crudaDe(fabrica()
+    .prompt('Edita')
+    .llamada('tu1', 'Edit', { file_path: 'a.md', old_string: 'x', new_string: 'x' })
+    .resultado('tu1', '<tool_use_error>No changes to make</tool_use_error>', { error: true })
+    .llamada('tu2', 'Write', { file_path: 'b.md', content: 'b' })
+    .resultado('tu2', 'Not run: stopped by a safety classifier.', { error: true }), {
+    captura: [{ evento: 'SessionStart', momento: enCaptura(0, 0), arbol: 'arbol-a' }],
+  });
+  assert.deepEqual(de(cruda, 'accion').map((a) => a.capturada), [false, false]);
+  const curada = curarYValidar(cruda);
+  assert.deepEqual(de(curada, 'accion'), []);
+});
+
+test('detenida: un fallo de antes de que empezara la captura no se da por no corrido', () => {
+  const cruda = crudaDe(fabrica()
+    .prompt('Edita')
+    .llamada('tu1', 'Write', { file_path: 'b.md', content: 'b' })
+    .resultado('tu1', 'Error: disco lleno', { error: true }), {
+    captura: [{ evento: 'SessionStart', momento: enCaptura(5, 0), arbol: 'arbol-a' }],
+  });
+  assert.equal(de(cruda, 'accion')[0].capturada, null);
+  assert.throws(() => curar(serializar(cruda)), CuracionDetenida);
 });
 
 test('detenida: un fallo sin arbol que pudo escribir', () => {

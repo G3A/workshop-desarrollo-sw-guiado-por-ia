@@ -97,6 +97,17 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
   }
   const headBase = inicioSesion?.head || null;
 
+  // Si la captura vio el PreToolUse de la accion (#218). `false` dice que la herramienta no llego
+  // a correr: un Edit que no paso la validacion, o un Write que freno el clasificador, no
+  // disparan ningun hook. Solo se afirma con captura desde antes de la accion, y nunca para un
+  // comando con !, que no pasa por los hooks: en esos casos es null, no se sabe.
+  const inicioCaptura = captura.map((c) => c.momento).filter(Boolean).sort()[0] || null;
+  const capturada = (uso, agenteId, momento) => {
+    if (capturaPorUso.get(uso.id)?.antes !== undefined) return true;
+    if (agenteId === 'usuario' || !inicioCaptura || !momento) return null;
+    return momento >= inicioCaptura ? false : null;
+  };
+
   const agentes = new Map();
   const agente = (id, tipo, rol, actuoEnNombreDe = null) => {
     if (!agentes.has(id)) {
@@ -184,6 +195,7 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
       resultadoCompleto: null,
       resultadoDiferido: null,
       error: null,
+      capturada: capturada(uso, agenteId, linea.timestamp),
       arbolAntes: antes,
       arbolDespues: despues,
       cambios: raizRepo ? cambiosEntre(raizRepo, antes, despues).map(norm.profundo) : [],
@@ -431,6 +443,7 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
           resultadoCompleto: null,
           resultadoDiferido: null,
           error: null,
+          capturada: null,
           arbolAntes: visto.arbol,
           arbolDespues: c.arbol,
           cambios: raizRepo ? cambiosEntre(raizRepo, visto.arbol, c.arbol).map(norm.profundo) : [],

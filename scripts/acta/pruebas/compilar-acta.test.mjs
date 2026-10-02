@@ -266,6 +266,31 @@ test('captura: los arboles antes y despues dan los cambios por archivo y la huel
 
 // --- Efectos entre acciones (#218) ------------------------------------------------------------
 
+test('capturada: si la captura vio el PreToolUse, con null cuando no se puede saber', () => {
+  const f = fabrica()
+    .prompt('Varias cosas')
+    .llamada('tu0', 'Bash', { command: 'antes de la captura' })
+    .resultado('tu0', 'ok')
+    .llamada('tu1', 'Edit', { file_path: 'a.md', old_string: 'x', new_string: 'x' })
+    .resultado('tu1', '<tool_use_error>No changes to make</tool_use_error>', { error: true })
+    .llamada('tu2', 'Bash', { command: 'npm test' })
+    .resultado('tu2', 'ok')
+    .prompt('<bash-input>git status</bash-input>')
+    .prompt('<bash-stdout>limpio</bash-stdout><bash-stderr></bash-stderr>');
+  const captura = [
+    { evento: 'SessionStart', momento: enCaptura(0, 3), arbol: 'x' },
+    { evento: 'PreToolUse', toolUseId: 'tu2', momento: enCaptura(0, 6), arbol: 'x' },
+    { evento: 'PostToolUse', toolUseId: 'tu2', momento: enCaptura(0, 6), arbol: 'x' },
+  ];
+  const acta = unicaActa(compilarFabrica(f, { captura }));
+  assert.deepEqual(de(acta, 'accion').map((a) => [a.toolUseId, a.capturada]), [
+    ['tu0', null],
+    ['tu1', false],
+    ['tu2', true],
+    ['usuario-t2', null],
+  ]);
+});
+
 test('efecto de hook: un cambio entre dos acciones entra como accion derivada con su diff', () => {
   const { f, captura, raiz, arboles: [, a1, a2] } = sesionConHook();
   const acta = unicaActa(compilarFabrica(f, { captura, raizRepo: raiz }));
