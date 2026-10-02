@@ -65,6 +65,13 @@ pre-push:
       priority: 4
       run: node scripts/verificar-visor-playbook.mjs
       fail_text: "The playbook cites a viewer node that changed. See scripts/verificar-visor-playbook.mjs."
+    # Pruebas del compilador del acta (#216). Unos segundos: crean repos git temporales, y por
+    # eso git.mjs limpia GIT_DIR del entorno que git le pasa a este hook.
+    acta:
+      priority: 5
+      glob: "scripts/acta/**"
+      run: node --test scripts/acta/pruebas/compilar-acta.test.mjs scripts/acta/pruebas/capturar.test.mjs
+      fail_text: "The acta compiler tests failed. See scripts/acta/README.md."
     base-conocimiento-check:
       root: "base-conocimiento/"
       run: make check
