@@ -11,7 +11,8 @@ import { compilar, compilarYEscribir, serializar } from '../compilar-acta.mjs';
 import { validarActa } from '../validar-acta.mjs';
 import { claseDeterminismo } from '../clasificar.mjs';
 import { arbolActual, git } from '../git.mjs';
-import { carpetaTemporal, fabrica, repoTemporal, subagente } from './fabrica.mjs';
+import { carpetaTemporal, enCaptura, fabrica, repoQueAvanza, repoTemporal, sesionConHook,
+  sesionConSubagente, subagente } from './fabrica.mjs';
 
 const silencio = { log: () => {}, error: () => {} };
 const de = (registros, elemento) => registros.filter((r) => r.elemento === elemento);
@@ -261,6 +262,195 @@ test('captura: los arboles antes y despues dan los cambios por archivo y la huel
   assert.equal(cabecera.huella.plugin, '9.9.9');
   assert.deepEqual(cabecera.huella.documentos.map((d) => d.ruta), [skill]);
   assert.equal(cabecera.huella.documentos[0].commit, headBase);
+});
+
+// --- Efectos entre acciones (#218) ------------------------------------------------------------
+
+test('capturada: si la captura vio el PreToolUse, con null cuando no se puede saber', () => {
+  const f = fabrica()
+    .prompt('Varias cosas')
+    .llamada('tu0', 'Bash', { command: 'antes de la captura' })
+    .resultado('tu0', 'ok')
+    .llamada('tu1', 'Edit', { file_path: 'a.md', old_string: 'x', new_string: 'x' })
+    .resultado('tu1', '<tool_use_error>No changes to make</tool_use_error>', { error: true })
+    .llamada('tu2', 'Bash', { command: 'npm test' })
+    .resultado('tu2', 'ok')
+    .prompt('<bash-input>git status</bash-input>')
+    .prompt('<bash-stdout>limpio</bash-stdout><bash-stderr></bash-stderr>');
+  const captura = [
+    { evento: 'SessionStart', momento: enCaptura(0, 3), arbol: 'x' },
+    { evento: 'PreToolUse', toolUseId: 'tu2', momento: enCaptura(0, 6), arbol: 'x' },
+    { evento: 'PostToolUse', toolUseId: 'tu2', momento: enCaptura(0, 6), arbol: 'x' },
+  ];
+  const acta = unicaActa(compilarFabrica(f, { captura }));
+  assert.deepEqual(de(acta, 'accion').map((a) => [a.toolUseId, a.capturada]), [
+    ['tu0', null],
+    ['tu1', false],
+    ['tu2', true],
+    ['usuario-t2', null],
+  ]);
+});
+
+test('efecto de hook: un cambio entre dos acciones entra como accion derivada con su diff', () => {
+  const { f, captura, raiz, arboles: [, a1, a2] } = sesionConHook();
+  const acta = unicaActa(compilarFabrica(f, { captura, raizRepo: raiz }));
+  assert.deepEqual(validarActa(acta), []);
+  const [edit, hook, bash] = de(acta, 'accion');
+  assert.deepEqual([edit.herramienta, hook.herramienta, bash.herramienta],
+    ['Edit', 'hook', 'Bash'], 'el efecto queda entre las dos acciones');
+  assert.equal(hook.agente, 'hook:sin-identificar');
+  assert.equal(hook.claseDeterminismo, 'pura');
+  assert.equal(hook.exito, true);
+  assert.equal(hook.paso, edit.paso);
+  assert.deepEqual([hook.despuesDe, hook.antesDe], [edit.id, bash.id]);
+  assert.deepEqual([hook.arbolAntes, hook.arbolDespues], [a1, a2]);
+  assert.deepEqual(hook.cambios.map((c) => c.archivo), ['b.md']);
+  const agente = de(acta, 'agente').find((a) => a.id === 'hook:sin-identificar');
+  assert.deepEqual([agente.tipo, agente.rol], ['automatismo', 'hook:sin-identificar']);
+});
+
+test('efecto de hook: despues de la ultima accion lo ve el arbol de SessionEnd', () => {
+  const { f, captura, raiz } = sesionConHook({ alFinal: true });
+  const acta = unicaActa(compilarFabrica(f, { captura, raizRepo: raiz }));
+  assert.deepEqual(validarActa(acta), []);
+  const acciones = de(acta, 'accion');
+  const hook = acciones[acciones.length - 1];
+  assert.equal(hook.herramienta, 'hook');
+  assert.deepEqual([hook.despuesDe, hook.antesDe], [acciones[1].id, null]);
+});
+
+test('sin efecto de hook: con dos acciones en paralelo el cambio es de ellas', () => {
+  const repo = repoQueAvanza({ 'a.md': 'a\n', 'b.md': 'b\n' });
+  const a0 = repo.arbol();
+  const a1 = repo.cambiar({ 'a.md': 'a2\n' });
+  const a2 = repo.cambiar({ 'b.md': 'b2\n' });
+  const f = fabrica()
+    .prompt('Dos comandos a la vez')
+    .llamada('tu1', 'Bash', { command: 'gen a' })
+    .llamada('tu2', 'Bash', { command: 'gen b' })
+    .resultado('tu1', 'ok')
+    .resultado('tu2', 'ok');
+  const captura = [
+    { evento: 'PreToolUse', toolUseId: 'tu1', momento: enCaptura(0, 2), arbol: a0 },
+    // tu2 arranca cuando tu1 ya escribio a.md, pero tu1 sigue abierta: el cambio es suyo.
+    { evento: 'PreToolUse', toolUseId: 'tu2', momento: enCaptura(0, 3), arbol: a1 },
+    { evento: 'PostToolUse', toolUseId: 'tu1', momento: enCaptura(0, 4), arbol: a1 },
+    { evento: 'PostToolUse', toolUseId: 'tu2', momento: enCaptura(0, 5), arbol: a2 },
+  ];
+  const acta = unicaActa(compilarFabrica(f, { captura, raizRepo: repo.raiz }));
+  assert.deepEqual(de(acta, 'accion').map((a) => a.herramienta), ['Bash', 'Bash']);
+});
+
+test('efecto de hook: un PreToolUse que nunca cierra no apaga la deteccion', () => {
+  // Paso en vivo: la captura vio un PreToolUse de una llamada que el transcript no tiene, y una
+  // accion interrumpida tampoco recibe su Post.
+  const { f, captura, raiz, arboles: [a0] } = sesionConHook();
+  f.llamada('tu3', 'Bash', { command: 'npm run largo' });
+  const huerfanos = [
+    { evento: 'PreToolUse', toolUseId: 'sin-llamada', momento: enCaptura(0, 1), arbol: a0 },
+    { evento: 'PreToolUse', toolUseId: 'tu3', momento: enCaptura(0, 1), arbol: a0 },
+  ];
+  const acta = unicaActa(compilarFabrica(f, { captura: [captura[0], ...huerfanos,
+    ...captura.slice(1)], raizRepo: raiz }));
+  assert.equal(de(acta, 'accion').find((a) => a.toolUseId === 'tu3').exito, null);
+  const hooks = de(acta, 'accion').filter((a) => a.herramienta === 'hook');
+  assert.deepEqual(hooks.map((h) => h.cambios.map((c) => c.archivo)), [['b.md']]);
+});
+
+test('efecto de hook dentro de un subagente: va al paso de la llamada, que no es eslabon', () => {
+  const repo = repoQueAvanza({ 'a.md': 'a\n', 'b.md': 'b\n' });
+  const a0 = repo.arbol();
+  const a1 = repo.cambiar({ 'a.md': 'a2\n' });
+  const a2 = repo.cambiar({ 'b.md': 'b2\n' });
+  const f = fabrica()
+    .prompt('Delega')
+    .llamada('tu1', 'Agent', { subagent_type: 'general-purpose', prompt: 'x' })
+    .resultado('tu1', 'ok', { extra: { agentId: 'ab12' } });
+  const captura = [
+    { evento: 'PreToolUse', toolUseId: 'tu1', momento: enCaptura(0, 2), arbol: a0 },
+    { evento: 'PreToolUse', toolUseId: 'su1', momento: enCaptura(30, 1), arbol: a0 },
+    { evento: 'PostToolUse', toolUseId: 'su1', momento: enCaptura(30, 2), arbol: a1 },
+    { evento: 'PreToolUse', toolUseId: 'su2', momento: enCaptura(30, 3), arbol: a2 },
+    { evento: 'PostToolUse', toolUseId: 'su2', momento: enCaptura(30, 4), arbol: a2 },
+    { evento: 'PostToolUse', toolUseId: 'tu1', momento: enCaptura(31, 0), arbol: a2 },
+  ];
+  const acta = unicaActa(compilarFabrica(f, { captura, raizRepo: repo.raiz,
+    antes: (c) => subagente(c, 'ab12', [
+      { id: 'su1', name: 'Write', input: { file_path: 'a.md', content: 'a2\n' } },
+      { id: 'su2', name: 'Bash', input: { command: 'npm test' } },
+    ]) }));
+  assert.deepEqual(validarActa(acta), []);
+  const hooks = de(acta, 'accion').filter((a) => a.herramienta === 'hook');
+  assert.equal(hooks.length, 1, 'ni la entrada ni la salida de la llamada Agent son huecos');
+  const llamada = de(acta, 'accion').find((a) => a.herramienta === 'Agent');
+  assert.equal(hooks[0].paso, llamada.paso);
+  assert.deepEqual(hooks[0].cambios.map((c) => c.archivo), ['b.md']);
+});
+
+// --- Arbol final (#218) -----------------------------------------------------------------------
+
+test('arbol final: el de SessionEnd, solo en el acta de la ultima accion con arbol', () => {
+  const f = fabrica()
+    .prompt('Primera tarea')
+    .llamada('tu1', 'Write', { file_path: 'a.md', content: 'a' })
+    .resultado('tu1', 'ok')
+    .rama('fix/11-otra')
+    .prompt('Segunda tarea')
+    .llamada('tu2', 'Write', { file_path: 'b.md', content: 'b' })
+    .resultado('tu2', 'ok');
+  const captura = [
+    { evento: 'PreToolUse', toolUseId: 'tu1', arbol: 'x0' },
+    { evento: 'PostToolUse', toolUseId: 'tu1', arbol: 'x1' },
+    { evento: 'PreToolUse', toolUseId: 'tu2', arbol: 'x1' },
+    { evento: 'PostToolUse', toolUseId: 'tu2', arbol: 'x2' },
+  ];
+  const conCierre = compilarFabrica(f, { captura: [...captura,
+    { evento: 'SessionEnd', arbol: 'x2' }] }).actas;
+  assert.deepEqual([...conCierre].map(([t, acta]) => [t, acta[0].arbolFinal]),
+    [['10', null], ['11', 'x2']]);
+  const sinCierre = compilarFabrica(f, { captura }).actas;
+  assert.equal(sinCierre.get('11')[0].arbolFinal, null, 'sin SessionEnd con arbol no hay final');
+});
+
+// --- Integracion de subagentes (#218) ---------------------------------------------------------
+
+const integracionDe = (acta) => de(acta, 'agente').find((a) => a.id === 'subagente:ab12')
+  .integracion;
+
+function compilarConSubagente(revierte, { conRepo = true } = {}) {
+  const { f, captura, raiz, conSubagente } = sesionConSubagente({ revierte });
+  return unicaActa(compilarFabrica(f, { captura, raizRepo: conRepo ? raiz : null,
+    antes: conSubagente }));
+}
+
+test('integracion: integrado si su cambio sigue en el arbol final', () => {
+  const acta = compilarConSubagente('nadie');
+  assert.deepEqual(validarActa(acta), []);
+  assert.equal(integracionDe(acta), 'integrado');
+  assert.equal(de(acta, 'agente').find((a) => a.id === 'orquestador').integracion, null);
+});
+
+test('integracion: descartado si todo lo que cambio volvio a como estaba antes de el', () => {
+  for (const revierte of ['el-mismo', 'orquestador']) {
+    const acta = compilarConSubagente(revierte);
+    assert.deepEqual(validarActa(acta), []);
+    assert.equal(integracionDe(acta), 'descartado', revierte);
+  }
+});
+
+test('integracion: un subagente que no cambio el arbol esta integrado, por vacuidad', () => {
+  const f = fabrica()
+    .prompt('Revisa')
+    .llamada('tu1', 'Agent', { subagent_type: 'Explore', prompt: 'x' })
+    .resultado('tu1', 'ok', { extra: { agentId: 'ab12' } });
+  const acta = unicaActa(compilarFabrica(f, {
+    antes: (c) => subagente(c, 'ab12', [{ id: 'su1', name: 'Read', input: { file_path: 'a' } }]),
+  }));
+  assert.equal(integracionDe(acta), 'integrado');
+});
+
+test('integracion: null si cambio el arbol y no hay repo para comparar', () => {
+  assert.equal(integracionDe(compilarConSubagente('nadie', { conRepo: false })), null);
 });
 
 // --- Secretos ---------------------------------------------------------------------------------
