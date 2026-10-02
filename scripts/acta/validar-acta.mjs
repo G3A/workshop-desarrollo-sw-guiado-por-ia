@@ -8,11 +8,16 @@
 //   I5  sin marcador de la skill, el paso es el turno completo: procedencia ausente y unico.
 //   I6  solo en la curada (la que trae `derivadaDe` en la cabecera): toda accion tiene
 //       exito = true, todo paso al menos una accion y todo turno al menos un paso.
+//   I7  solo en la curada, y solo si se pasa la cruda: los intentosPrevios de cada accion son
+//       exactamente los fallos de la cruda con su misma herramienta y su mismo archivo o
+//       comando, posteriores al exito anterior con esa clave. Un residuo no tiene.
 //
 // Ademas se valida el esquema: valores cerrados y referencias que existen.
 //
 // Uso: node scripts/acta/validar-acta.mjs <acta.cruda.jsonl | acta.curada.jsonl>
+// Con una curada, busca la cruda de la que deriva en la misma carpeta para validar I7.
 import fs from 'node:fs';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const CLASES = new Set(['pura', 'local', 'externa_lectura', 'efecto_externo']);
@@ -21,7 +26,19 @@ const TIPOS_AGENTE = new Set(['persona', 'automatismo', 'ia']);
 const INTERVENCIONES = new Set(['permiso_aprobado', 'permiso_rechazado', 'interrupcion',
   'comando_usuario', 'correccion']);
 
-export function validarActa(registros) {
+// El archivo o el comando sobre el que actua una accion: la clave de sus intentos previos (I7).
+export function objetivoDe(accion) {
+  const e = accion.entrada || {};
+  const objetivo = e.file_path ?? e.notebook_path ?? e.command ?? null;
+  return objetivo === null ? null : String(objetivo);
+}
+
+const claveDe = (a) => {
+  const objetivo = objetivoDe(a);
+  return objetivo === null ? null : JSON.stringify([a.herramienta, objetivo]);
+};
+
+export function validarActa(registros, { cruda = null } = {}) {
   const errores = [];
   const falla = (invariante, mensaje) => errores.push({ invariante, mensaje });
 
@@ -120,6 +137,49 @@ export function validarActa(registros) {
       if (!conPaso.has(t.id)) falla('I6', `el turno ${t.id} de la curada no tiene pasos`);
     }
   }
+  if (acta.derivadaDe && cruda) {
+    for (const e of intentosPreviosRotos(acciones, cruda)) falla('I7', e);
+  }
+  return errores;
+}
+
+// Recorre la cruda hacia atras desde cada accion curada hasta el exito anterior con su clave.
+function intentosPreviosRotos(acciones, cruda) {
+  const errores = [];
+  const orden = cruda.filter((r) => r.elemento === 'accion');
+  const indice = new Map(orden.map((a, i) => [a.id, i]));
+  for (const c of acciones) {
+    const previos = c.intentosPrevios;
+    if (!Array.isArray(previos)) {
+      errores.push(`la accion ${c.id} no tiene intentosPrevios`);
+      continue;
+    }
+    if (c.residuoDe) {
+      if (previos.length) errores.push(`el residuo ${c.id} tiene intentos previos`);
+      continue;
+    }
+    const i = indice.get(c.id);
+    if (i === undefined) {
+      errores.push(`la accion ${c.id} no esta en la cruda`);
+      continue;
+    }
+    const clave = claveDe(c);
+    const esperados = [];
+    for (let j = i - 1; j >= 0 && clave !== null; j--) {
+      const a = orden[j];
+      if (claveDe(a) !== clave) continue;
+      if (a.exito === true) break;
+      esperados.unshift(a.id);
+    }
+    for (const p of previos) {
+      if (!esperados.includes(p)) {
+        errores.push(`la accion ${c.id} cuenta como intento previo a ${p}, que no lo es`);
+      }
+    }
+    for (const p of esperados) {
+      if (!previos.includes(p)) errores.push(`a la accion ${c.id} le falta el intento previo ${p}`);
+    }
+  }
   return errores;
 }
 
@@ -135,9 +195,13 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     process.exitCode = 2;
   } else {
     const registros = leerActa(archivo);
-    const errores = validarActa(registros);
+    const derivada = registros.find((r) => r.elemento === 'acta')?.derivadaDe;
+    const rutaCruda = derivada ? path.join(path.dirname(archivo), derivada.acta) : null;
+    const cruda = rutaCruda && fs.existsSync(rutaCruda) ? leerActa(rutaCruda) : null;
+    if (derivada && !cruda) console.error(`aviso: sin ${derivada.acta} al lado, I7 no se valida`);
+    const errores = validarActa(registros, { cruda });
     for (const e of errores) console.error(`${e.invariante}: ${e.mensaje}`);
-    const hasta = registros.some((r) => r.elemento === 'acta' && r.derivadaDe) ? 'I6' : 'I5';
+    const hasta = !derivada ? 'I5' : cruda ? 'I7' : 'I6';
     if (errores.length) process.exitCode = 1;
     else console.log(`Acta valida: cumple las invariantes I1 a ${hasta} y el esquema.`);
   }

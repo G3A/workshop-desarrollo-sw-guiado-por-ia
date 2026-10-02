@@ -2,27 +2,39 @@
 //   node --test scripts/acta/pruebas/curar-acta.test.mjs
 //
 // Cada escenario es un transcript sintetico (fabrica.mjs) que se compila a la cruda y se cura.
-// La invariante I6 se prueba en las dos direcciones: la curada la cumple, y una curada sembrada
-// con cada rotura sale en rojo con I6 (REVIEW.md, seccion 3).
+// Las invariantes I6 e I7 se prueban en las dos direcciones: la curada las cumple, y una curada
+// sembrada con cada rotura sale en rojo con la que corresponde (REVIEW.md, seccion 3).
+//
+// Un fallo sin arbol que pudo escribir detiene la curacion, asi que los escenarios con fallos le
+// pasan al compilador una captura: `sinCambio` dice que el fallo no toco el arbol.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { compilar, compilarYEscribir, serializar } from '../compilar-acta.mjs';
-import { curar, curarYEscribir } from '../curar-acta.mjs';
+import { CuracionDetenida, curar, curarYEscribir } from '../curar-acta.mjs';
 import { validarActa } from '../validar-acta.mjs';
-import { carpetaTemporal, fabrica, subagente } from './fabrica.mjs';
+import { arbolActual } from '../git.mjs';
+import { carpetaTemporal, fabrica, repoTemporal, subagente } from './fabrica.mjs';
 
 const silencio = { log: () => {}, error: () => {} };
 const de = (registros, elemento) => registros.filter((r) => r.elemento === elemento);
 const ids = (registros, elemento) => de(registros, elemento).map((r) => r.id);
 
-function crudaDe(f, { antes } = {}) {
+// La captura de acciones que no cambiaron el arbol: el mismo hash antes y despues.
+function sinCambio(...toolUseIds) {
+  return toolUseIds.flatMap((toolUseId) => [
+    { evento: 'PreToolUse', toolUseId, arbol: 'arbol-igual' },
+    { evento: 'PostToolUseFailure', toolUseId, arbol: 'arbol-igual' },
+  ]);
+}
+
+function crudaDe(f, { antes, captura = [], raizRepo = null } = {}) {
   const carpeta = carpetaTemporal('sesion');
   const transcript = f.escribir(carpeta);
   if (antes) antes(transcript.replace(/\.jsonl$/, ''));
-  const { actas } = compilar({ transcript });
+  const { actas } = compilar({ transcript, captura, raizRepo });
   assert.equal(actas.size, 1, 'se esperaba un acta');
   const cruda = [...actas.values()][0];
   assert.deepEqual(validarActa(cruda), [], 'la cruda tiene que estar en verde');
@@ -31,7 +43,7 @@ function crudaDe(f, { antes } = {}) {
 
 function curarYValidar(cruda) {
   const curada = curar(serializar(cruda));
-  assert.deepEqual(validarActa(curada), []);
+  assert.deepEqual(validarActa(curada, { cruda }), []);
   return curada;
 }
 
@@ -44,10 +56,10 @@ test('fallo con reintento: entra el exito con el id de la cruda y el fallo queda
     .llamada('tu1', 'Edit', { file_path: 'a.md', old_string: 'zz', new_string: 'b' })
     .resultado('tu1', 'String to replace not found in file.', { error: true })
     .llamada('tu2', 'Edit', { file_path: 'a.md', old_string: 'a', new_string: 'b' })
-    .resultado('tu2', 'The file has been updated'));
+    .resultado('tu2', 'The file has been updated'), { captura: sinCambio('tu1') });
   const curada = curarYValidar(cruda);
   const [fallida, exitosa] = de(cruda, 'accion');
-  assert.deepEqual(de(curada, 'accion'), [exitosa]);
+  assert.deepEqual(de(curada, 'accion'), [{ ...exitosa, intentosPrevios: [fallida.id] }]);
   assert.notEqual(fallida.id, exitosa.id);
   const [decision] = de(curada, 'decision');
   assert.deepEqual(decision.motiva, [exitosa.id], 'la decision pierde la accion que salio');
@@ -77,7 +89,7 @@ test('accion sin resultado: con exito null no entra', () => {
     .llamada('tu1', 'Bash', { command: 'npm test' })
     .prompt('Otra cosa')
     .llamada('tu2', 'Read', { file_path: 'a.md' })
-    .resultado('tu2', 'a'));
+    .resultado('tu2', 'a'), { captura: sinCambio('tu1') });
   assert.equal(de(cruda, 'accion')[0].exito, null);
   const curada = curarYValidar(cruda);
   assert.deepEqual(de(curada, 'accion').map((a) => a.toolUseId), ['tu2']);
@@ -104,9 +116,11 @@ test('subagente: entran sus exitos, sale su fallo y conserva en nombre de quien 
 });
 
 test('agentes: la persona sale si no le queda ninguna accion ni intervencion', () => {
+  // Un !git push de la persona: sin arbol, y fallido para el compilador porque git escribe su
+  // avance en stderr. Como escribe fuera de la maquina, no deja residuo ni detiene la curacion.
   const cruda = crudaDe(fabrica()
-    .prompt('<bash-input>git sttaus</bash-input>')
-    .prompt('<bash-stdout></bash-stdout><bash-stderr>no es un comando</bash-stderr>')
+    .prompt('<bash-input>git push</bash-input>')
+    .prompt('<bash-stdout></bash-stdout><bash-stderr>To github.com:x/y.git</bash-stderr>')
     .prompt('Arregla el titulo')
     .llamada('tu1', 'Edit', { file_path: 'a.md', old_string: 'a', new_string: 'b' })
     .resultado('tu1', 'ok'));
@@ -154,6 +168,100 @@ test('cabecera: la de la cruda, con el sha256 de sus bytes en derivadaDe', () =>
   });
 });
 
+// --- Residuos de los fallos -------------------------------------------------------------------
+//
+// Los caminos sin residuo ya tienen su escenario arriba: arboles iguales (fallo con reintento),
+// herramienta que no cambia el arbol (turnos vacios) y efecto externo sin arbol (la persona).
+
+test('residuo: un Bash que fallo despues de escribir entra como accion derivada y su diff', () => {
+  const raiz = repoTemporal({ 'a.md': 'uno\n' });
+  const antes = arbolActual(raiz);
+  fs.writeFileSync(path.join(raiz, 'a.md'), 'dos\n');
+  const despues = arbolActual(raiz);
+  const cruda = crudaDe(fabrica()
+    .prompt('Genera el archivo')
+    .texto('Corro el generador.')
+    .llamada('tu1', 'Bash', { command: 'npm run generar' })
+    .resultado('tu1', 'Error: fallo a mitad de camino', { error: true }), {
+    captura: [
+      { evento: 'PreToolUse', toolUseId: 'tu1', arbol: antes },
+      { evento: 'PostToolUseFailure', toolUseId: 'tu1', arbol: despues },
+    ],
+    raizRepo: raiz,
+  });
+  const curada = curarYValidar(cruda);
+  const [fallida] = de(cruda, 'accion');
+  const [residuo] = de(curada, 'accion');
+  assert.equal(residuo.id, `${fallida.id}.r`);
+  assert.equal(residuo.herramienta, 'residuo');
+  assert.equal(residuo.residuoDe, fallida.id);
+  assert.equal(residuo.claseDeterminismo, 'pura');
+  assert.equal(residuo.exito, true);
+  assert.equal(residuo.paso, fallida.paso);
+  assert.deepEqual([residuo.arbolAntes, residuo.arbolDespues], [antes, despues]);
+  assert.deepEqual(residuo.cambios.map((c) => c.archivo), ['a.md']);
+  assert.match(residuo.cambios[0].diff, /-uno\n\+dos/);
+  assert.deepEqual(residuo.intentosPrevios, []);
+  assert.deepEqual(de(curada, 'decision')[0].motiva, [residuo.id], 'hereda la decision');
+});
+
+test('residuo: una accion de subagente sin resultado lo deja en el paso de la llamada', () => {
+  const cruda = crudaDe(fabrica()
+    .prompt('Delega')
+    .llamada('tu1', 'Agent', { subagent_type: 'general-purpose', prompt: 'x' })
+    .resultado('tu1', 'ok', { extra: { agentId: 'ab12' } }), {
+    antes: (carpeta) => subagente(carpeta, 'ab12', [
+      { id: 'su1', name: 'Write', input: { file_path: 'b.md', content: 'b' } },
+    ]),
+  });
+  // Un subagente cortado a mitad de una escritura: sin resultado, pero con el arbol cambiado.
+  const escrita = de(cruda, 'accion').find((a) => a.toolUseId === 'su1');
+  Object.assign(escrita, { exito: null, resultado: null, arbolAntes: 'arbol-a',
+    arbolDespues: 'arbol-b', cambios: [{ archivo: 'b.md', diff: '+b\n' }] });
+  const curada = curarYValidar(cruda);
+  const residuo = de(curada, 'accion').find((a) => a.id === `${escrita.id}.r`);
+  assert.equal(residuo.agente, 'subagente:ab12');
+  assert.equal(residuo.lanzadaPor, escrita.lanzadaPor);
+  assert.equal(residuo.paso, escrita.paso);
+  residuo.intentosPrevios = [escrita.id];
+  assert.deepEqual(validarActa(curada, { cruda }).map((e) => e.invariante), ['I7'],
+    'un residuo no tiene intentos previos');
+});
+
+test('detenida: un fallo sin arbol que pudo escribir', () => {
+  const cruda = crudaDe(fabrica()
+    .prompt('Compila')
+    .llamada('tu1', 'Bash', { command: 'make build' })
+    .resultado('tu1', 'make: *** Error 2', { error: true }));
+  assert.throws(() => curar(serializar(cruda)), (e) => e instanceof CuracionDetenida &&
+    /a1 \(Bash\) fallo sin arbol/.test(e.motivos.join()));
+});
+
+test('detenida: un fallo que cambio el arbol y no trae su diff', () => {
+  const cruda = crudaDe(fabrica()
+    .prompt('Compila')
+    .llamada('tu1', 'Bash', { command: 'make build' })
+    .resultado('tu1', 'make: *** Error 2', { error: true }), {
+    captura: [
+      { evento: 'PreToolUse', toolUseId: 'tu1', arbol: 'arbol-a' },
+      { evento: 'PostToolUseFailure', toolUseId: 'tu1', arbol: 'arbol-b' },
+    ],
+  });
+  assert.throws(() => curar(serializar(cruda)), (e) => e instanceof CuracionDetenida &&
+    /no trae su diff/.test(e.motivos.join()));
+});
+
+test('curarYEscribir: una curacion detenida no escribe nada (codigo 3)', () => {
+  const carpeta = carpetaTemporal('detenida');
+  const cruda = path.join(carpeta, 'sesion-1.acta.cruda.jsonl');
+  fs.writeFileSync(cruda, serializar(crudaDe(fabrica()
+    .prompt('Compila')
+    .llamada('tu1', 'Bash', { command: 'make build' })
+    .resultado('tu1', 'make: *** Error 2', { error: true }))));
+  assert.equal(curarYEscribir({ cruda, log: silencio }), 3);
+  assert.deepEqual(fs.readdirSync(carpeta), ['sesion-1.acta.cruda.jsonl']);
+});
+
 // --- Determinismo (I8) ------------------------------------------------------------------------
 
 test('determinismo: curar dos veces la misma cruda da el mismo archivo, byte a byte', () => {
@@ -173,8 +281,11 @@ test('determinismo: curar dos veces la misma cruda da el mismo archivo, byte a b
   subagente(transcript.replace(/\.jsonl$/, ''), 'cd34', [
     { id: 'su1', name: 'Grep', input: { pattern: 'x' } },
   ]);
+  const captura = path.join(carpeta, 'captura.jsonl');
+  fs.writeFileSync(captura, sinCambio('tu1').map((c) => JSON.stringify(c)).join('\n'));
   const salida = carpetaTemporal('det-cruda');
-  assert.equal(compilarYEscribir({ transcript, salida, verificar: false, log: silencio }), 0);
+  assert.equal(compilarYEscribir({ transcript, captura, salida, verificar: false,
+    log: silencio }), 0);
   const cruda = path.join(salida, '10', 'sesion-1.acta.cruda.jsonl');
   const destinos = [carpetaTemporal('det-a'), carpetaTemporal('det-b')]
     .map((c) => path.join(c, 'sesion-1.acta.curada.jsonl'));
@@ -243,4 +354,79 @@ test('curarYEscribir: una curada que rompe el modelo no se escribe (codigo 1)', 
   fs.writeFileSync(cruda, serializar(registros));
   assert.equal(curarYEscribir({ cruda, log: silencio }), 1);
   assert.deepEqual(fs.readdirSync(carpeta), ['sesion-1.acta.cruda.jsonl']);
+});
+
+// --- Intentos previos (I7) --------------------------------------------------------------------
+
+// a.md con Edit: dos fallos, un exito, un fallo y otro exito. En medio, un fallo de Edit sobre
+// b.md y un Write exitoso sobre a.md: otra clave, no cuentan.
+function crudaConIntentos() {
+  const f = fabrica().prompt('Edita');
+  const pasos = [
+    ['tu1', 'Edit', 'a.md', false],
+    ['tu2', 'Edit', 'b.md', false],
+    ['tu3', 'Edit', 'a.md', false],
+    ['tu4', 'Write', 'a.md', true],
+    ['tu5', 'Edit', 'a.md', true],
+    ['tu6', 'Edit', 'a.md', false],
+    ['tu7', 'Edit', 'a.md', true],
+  ];
+  for (const [id, herramienta, archivo, exito] of pasos) {
+    f.llamada(id, herramienta, { file_path: archivo, old_string: id, new_string: 'y' })
+      .resultado(id, exito ? 'ok' : 'String to replace not found in file.', { error: !exito });
+  }
+  return crudaDe(f, { captura: sinCambio('tu1', 'tu2', 'tu3', 'tu6') });
+}
+
+const idDe = (acta, toolUseId) => de(acta, 'accion').find((a) => a.toolUseId === toolUseId).id;
+
+test('intentos previos: los fallos con su herramienta y su archivo desde el exito anterior', () => {
+  const cruda = crudaConIntentos();
+  const curada = curarYValidar(cruda);
+  const previos = Object.fromEntries(de(curada, 'accion')
+    .map((a) => [a.toolUseId, a.intentosPrevios]));
+  assert.deepEqual(previos, {
+    tu4: [],
+    tu5: [idDe(cruda, 'tu1'), idDe(cruda, 'tu3')],
+    tu7: [idDe(cruda, 'tu6')],
+  });
+});
+
+function sembrarIntentos(mutar) {
+  const cruda = crudaConIntentos();
+  const curada = structuredClone(curarYValidar(cruda));
+  const accion = (toolUseId) => de(curada, 'accion').find((a) => a.toolUseId === toolUseId);
+  mutar(accion, (toolUseId) => idDe(cruda, toolUseId));
+  return { con: validarActa(curada, { cruda }).map((e) => e.invariante),
+    sin: validarActa(curada).map((e) => e.invariante) };
+}
+
+test('rojo I7: le falta un intento previo', () => {
+  const r = sembrarIntentos((accion, id) => { accion('tu5').intentosPrevios = [id('tu3')]; });
+  assert.deepEqual(r, { con: ['I7'], sin: [] }, 'sin la cruda, I7 no se valida');
+});
+
+test('rojo I7: un exito contado como intento previo', () => {
+  const r = sembrarIntentos((accion, id) => { accion('tu7').intentosPrevios.push(id('tu5')); });
+  assert.deepEqual(r.con, ['I7']);
+});
+
+test('rojo I7: un fallo sobre otro archivo', () => {
+  const r = sembrarIntentos((accion, id) => { accion('tu5').intentosPrevios.push(id('tu2')); });
+  assert.deepEqual(r.con, ['I7']);
+});
+
+test('rojo I7: un fallo con otra herramienta sobre el mismo archivo', () => {
+  const r = sembrarIntentos((accion, id) => { accion('tu4').intentosPrevios.push(id('tu3')); });
+  assert.deepEqual(r.con, ['I7']);
+});
+
+test('rojo I7: un fallo anterior al exito previo', () => {
+  const r = sembrarIntentos((accion, id) => { accion('tu7').intentosPrevios.unshift(id('tu1')); });
+  assert.deepEqual(r.con, ['I7']);
+});
+
+test('rojo I7: una accion curada sin intentosPrevios', () => {
+  const r = sembrarIntentos((accion) => { delete accion('tu4').intentosPrevios; });
+  assert.deepEqual(r.con, ['I7']);
 });

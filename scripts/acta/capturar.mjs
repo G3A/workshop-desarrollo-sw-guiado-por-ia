@@ -20,9 +20,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { arbolActual, head, raizDelRepo } from './git.mjs';
 import { compilarYEscribir } from './compilar-acta.mjs';
-
-const SIN_ARBOL = new Set(['Read', 'Grep', 'Glob', 'LS', 'WebSearch', 'WebFetch', 'ToolSearch',
-  'Skill', 'TodoWrite', 'AskUserQuestion']);
+import { SIN_ARBOL } from './clasificar.mjs';
 
 function leerEntrada() {
   try {

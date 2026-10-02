@@ -76,6 +76,11 @@ export function claseDeterminismo(herramienta, entrada = {}) {
   return 'efecto_externo';
 }
 
+// Las herramientas que no cambian el arbol. La captura no les toma el hash (cuesta unos 70 ms), y
+// la curacion sabe que un fallo suyo no deja residuo aunque su arbol este en null.
+export const SIN_ARBOL = new Set(['Read', 'Grep', 'Glob', 'LS', 'WebSearch', 'WebFetch',
+  'ToolSearch', 'Skill', 'TodoWrite', 'AskUserQuestion']);
+
 // Un rechazo de permiso deja un tool_result con error y uno de estos textos. Un hook que deniega
 // NO es un rechazo de una persona: ese caso queda como accion fallida, sin intervencion.
 const RECHAZO = [
