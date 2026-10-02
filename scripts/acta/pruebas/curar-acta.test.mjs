@@ -19,8 +19,9 @@ import { compilar, compilarYEscribir, serializar } from '../compilar-acta.mjs';
 import { CuracionDetenida, comprobarCurada, curar, curarYEscribir } from '../curar-acta.mjs';
 import { leerActa, validarActa } from '../validar-acta.mjs';
 import { arbolActual } from '../git.mjs';
-import { carpetaTemporal, enCaptura, fabrica, repoQueAvanza, repoTemporal, sesionConHook,
-  sesionConSubagente, subagente } from './fabrica.mjs';
+import { COMANDO_CON_GREP, carpetaTemporal, enCaptura, fabrica, repoQueAvanza,
+  repoTemporal, sesionConGrepQueOcultaUnFallo, sesionConHook, sesionConSubagente,
+  subagente } from './fabrica.mjs';
 
 const silencio = { log: () => {}, error: () => {} };
 const de = (registros, elemento) => registros.filter((r) => r.elemento === elemento);
@@ -395,6 +396,60 @@ test('rojo esquema: una integracion fuera de los valores, o en quien no es subag
   assert.deepEqual(sembrarSubagente((a, c) => {
     de(c, 'agente').find((x) => x.id === 'orquestador').integracion = 'integrado';
   }), ['esquema']);
+});
+
+// --- Codigo de salida reinterpretado (#219) ---------------------------------------------------
+
+test('codigo reinterpretado: no entra, no deja residuo si no cambio el arbol y es intento previo',
+  () => {
+    const { f, captura, raiz } = sesionConGrepQueOcultaUnFallo();
+    const cruda = crudaDe(f, { captura, raizRepo: raiz });
+    const [oculta, repetida] = de(cruda, 'accion');
+    const curada = curarYValidar(cruda);
+    assert.deepEqual(de(curada, 'accion'), [{ ...repetida, intentosPrevios: [oculta.id] }]);
+  });
+
+test('codigo reinterpretado: si cambio el arbol, su residuo entra y la curada llega al final',
+  () => {
+    const { f, captura, raiz } = sesionConGrepQueOcultaUnFallo({ escribe: true });
+    const cruda = crudaDe(f, { captura, raizRepo: raiz });
+    const [oculta, repetida] = de(cruda, 'accion');
+    const curada = curarYValidar(cruda);
+    assert.deepEqual(de(curada, 'accion').map((a) => a.id), [`${oculta.id}.r`, repetida.id]);
+    assert.match(de(curada, 'accion')[0].cambios[0].diff, /-uno\n\+a medias/);
+    // De punta a punta: la verificacion del arbol acepta la cadena hasta el de SessionEnd.
+    const carpeta = carpetaTemporal('cruda');
+    const archivo = path.join(carpeta, `${cruda[0].sesion}.acta.cruda.jsonl`);
+    fs.writeFileSync(archivo, serializar(cruda));
+    assert.equal(curarYEscribir({ cruda: archivo, raizRepo: raiz, log: silencio }), 0);
+  });
+
+test('detenida: un codigo reinterpretado sin arbol, que pudo escribir', () => {
+  const { f } = sesionConGrepQueOcultaUnFallo();
+  const cruda = crudaDe(f);
+  assert.throws(() => curar(serializar(cruda)), (e) => e instanceof CuracionDetenida &&
+    /a1 \(Bash\) termino con el codigo reinterpretado «No matches found» sin arbol/
+      .test(e.motivos.join()));
+});
+
+test('anexo: un rojo esperado con el codigo reinterpretado queda con enRojo = null', () => {
+  const comando = `${COMANDO_CON_GREP}  # rojo-esperado: prueba de la curacion`;
+  const cruda = crudaDe(fabrica()
+    .prompt('Siembra')
+    .llamada('tu1', 'Bash', { command: comando })
+    .resultado('tu1', 'Error: boom', { extra: { returnCodeInterpretation: 'No matches found' } }),
+  { captura: sinCambio('tu1') });
+  const curada = curarYValidar(cruda);
+  assert.deepEqual(de(curada, 'accion'), []);
+  assert.equal(de(curada, 'verificacion_negativa')[0].enRojo, null);
+});
+
+test('rojo I6: una accion con el codigo reinterpretado dentro de la curada', () => {
+  const { f, captura, raiz } = sesionConGrepQueOcultaUnFallo();
+  const cruda = crudaDe(f, { captura, raizRepo: raiz });
+  const curada = curarYValidar(cruda);
+  curada.splice(curada.length - 1, 0, { ...de(cruda, 'accion')[0], intentosPrevios: [] });
+  assert.ok(validarActa(curada).some((e) => e.invariante === 'I6'));
 });
 
 // --- Anexo de verificaciones negativas --------------------------------------------------------

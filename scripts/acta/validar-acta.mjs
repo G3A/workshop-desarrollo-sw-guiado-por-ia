@@ -15,9 +15,10 @@
 //       comando, posteriores al exito anterior con esa clave. Una accion derivada
 //       (un residuo, o el hook de una accion partida) no tiene.
 //
-// Ademas se valida el esquema: valores cerrados y referencias que existen. Y el anexo de
-// verificaciones negativas: solo la curada lo tiene, ningun rojo esperado queda en la secuencia
-// y, con la cruda, el anexo trae exactamente sus acciones marcadas, con su resultado.
+// Ademas se valida el esquema: valores cerrados y referencias que existen, y que una accion con
+// el codigo de salida reinterpretado por Claude Code (#219) no figure como exito ni como fallo.
+// Y el anexo de verificaciones negativas: solo la curada lo tiene, ningun rojo esperado queda en
+// la secuencia y, con la cruda, el anexo trae exactamente sus acciones marcadas, con su resultado.
 //
 // Uso: node scripts/acta/validar-acta.mjs <acta.cruda.jsonl | acta.curada.jsonl>
 // Con una curada, busca la cruda de la que deriva en la misma carpeta para validar I7.
@@ -116,6 +117,9 @@ export function validarActa(registros, { cruda = null } = {}) {
     if (!agentes.has(a.agente)) falla('esquema', `la accion ${a.id} no tiene un agente conocido`);
     if (!CLASES.has(a.claseDeterminismo)) {
       falla('esquema', `la accion ${a.id} tiene clase ${a.claseDeterminismo}`);
+    }
+    if (a.codigoReinterpretado != null && (a.exito !== null || a.error !== null)) {
+      falla('esquema', `la accion ${a.id} tiene el codigo reinterpretado y exito = ${a.exito}`);
     }
     if (a.agente.startsWith('subagente:')) {
       const lanzadora = porId.get(a.lanzadaPor);

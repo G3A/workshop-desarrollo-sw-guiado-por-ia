@@ -9,7 +9,12 @@
 // Lo que entra (primer comentario del #218):
 //
 // 1. Las acciones con `exito = true`, de todos los agentes: orquestador, subagentes y persona.
-//    Una accion sin resultado (exito null) no entra: no se sabe que salio bien.
+//    Una accion sin resultado (exito null) no entra: no se sabe que salio bien. Tampoco una con
+//    `codigoReinterpretado` (#219), que el compilador deja en exito null: salio con un codigo
+//    distinto de 0 que Claude Code leyo como benigno, y el 1 de un `| grep` puede ser «sin
+//    coincidencias» o el fallo de un eslabon anterior. Como cualquier exito null, pasa por la
+//    regla de residuos, cuenta como intento previo y, si es un rojo esperado, queda con enRojo
+//    null. Un grep legitimo que no cambio el arbol sale de la curada sin quitarle nada al motor.
 // 2. Cada accion conserva su id de la cruda, y lo mismo pasos, turnos y decisiones: el vinculo
 //    entre las dos actas es directo, sin tabla de traduccion.
 // 3. Un paso entra solo si conserva al menos una accion, y un turno solo si conserva al menos un
@@ -190,7 +195,10 @@ export function curar(textoCruda) {
       if (clave !== null) pendientes.set(clave, [...(pendientes.get(clave) || []), a.id]);
       if (sale) continue;
     }
-    const r = residuoDe(a, a.exito === true ? 'salio verde de la secuencia' : 'fallo');
+    const reinterpretado = `termino con el codigo reinterpretado «${a.codigoReinterpretado}»`;
+    const que = a.exito === true ? 'salio verde de la secuencia'
+      : a.codigoReinterpretado ? reinterpretado : 'fallo';
+    const r = residuoDe(a, que);
     if (r.motivo) motivos.push(r.motivo);
     if (r.residuo) {
       acciones.push({ ...r.residuo, intentosPrevios: [] });
