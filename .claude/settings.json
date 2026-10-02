@@ -109,6 +109,18 @@
         ]
       }
     ],
+    "PermissionRequest": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/acta/capturar.mjs\"",
+            "timeout": 20
+          }
+        ]
+      }
+    ],
     "PostToolUseFailure": [
       {
         "matcher": "*",

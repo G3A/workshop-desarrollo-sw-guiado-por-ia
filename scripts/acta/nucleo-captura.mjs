@@ -19,6 +19,7 @@
 //
 // Medido en este repo (599 archivos versionados): unos 70 ms por hash.
 import { execFileSync } from 'node:child_process';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -27,6 +28,20 @@ import path from 'node:path';
 // la curacion sabe que un fallo suyo no deja residuo aunque su arbol este en null.
 export const SIN_ARBOL = new Set(['Read', 'Grep', 'Glob', 'LS', 'WebSearch', 'WebFetch',
   'ToolSearch', 'Skill', 'TodoWrite', 'AskUserQuestion']);
+
+// El sha256 de una entrada de herramienta, con las claves en orden. PermissionRequest no trae
+// tool_use_id (verificado con Claude Code 2.1.287, #222): se empareja con su PreToolUse por la
+// herramienta y este hash.
+export function huellaDeEntrada(valor) {
+  const canonico = (v) => {
+    if (Array.isArray(v)) return v.map(canonico);
+    if (v && typeof v === 'object') {
+      return Object.fromEntries(Object.keys(v).sort().map((k) => [k, canonico(v[k])]));
+    }
+    return v;
+  };
+  return crypto.createHash('sha256').update(JSON.stringify(canonico(valor ?? null))).digest('hex');
+}
 
 function entornoLimpio(extra = {}) {
   const env = { ...process.env };
@@ -68,7 +83,16 @@ export function arbolActual(raiz) {
   try {
     const rel = git(['rev-parse', '--git-path', 'index'], { cwd: raiz }).trim();
     const indiceReal = path.resolve(raiz, rel);
-    if (fs.existsSync(indiceReal)) fs.copyFileSync(indiceReal, tmp);
+    // La copia conserva el mtime del indice real. Git vuelve a leer las entradas cuyo mtime no es
+    // anterior al del indice («racy git»): un archivo escrito en el mismo tick que el indice, con
+    // el mismo tamano, tiene el mismo stat que su entrada. Con el mtime de ahora, la copia daba
+    // esas entradas por limpias y el hash perdia el cambio: una prueba de captura fallaba en 5 de
+    // 60 corridas en Linux, y en 0 de 60 con el arreglo (#222, fase 5).
+    if (fs.existsSync(indiceReal)) {
+      fs.copyFileSync(indiceReal, tmp);
+      const { atime, mtime } = fs.statSync(indiceReal);
+      fs.utimesSync(tmp, atime, mtime);
+    }
     // .ia/ queda fuera aunque el repo no la ignore: la captura escribe ahi en cada accion, y
     // si entrara en el hash, el arbol cambiaria por el solo hecho de registrarlo. Si el repo ya
     // la ignora, el pathspec de exclusion NO se pasa: git lo trata como agregar una ruta

@@ -42,7 +42,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { ENVOLTORIOS, claseDeterminismo, esRechazoDePermiso } from './clasificar.mjs';
+import { ENVOLTORIOS, MODOS_CON_PERSONA, SIN_PERMISO, claseDeterminismo, esRechazoDePermiso,
+  textoDelRechazo } from './clasificar.mjs';
 import { normalizador } from './normalizar.mjs';
 import { validarActa } from './validar-acta.mjs';
 import { blobEn, cambiosEntre, leerEnCommit, raizDelRepo, versionDe } from './git.mjs';
@@ -157,6 +158,7 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
   let turno = null;
   let paso = null;
   let comandoPendiente = null;
+  let trasInterrupcion = false;
 
   const nuevoTurno = (linea, prompt, origen) => {
     const n = turnos.length + 1;
@@ -203,7 +205,7 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
     pasos.push(paso);
   };
 
-  const nuevaIntervencion = (tipo, linea, accion = null, quien = 'usuario') => {
+  const nuevaIntervencion = (tipo, linea, accion = null, { texto = null } = {}) => {
     if (!paso) {
       avisos.push(`una intervencion ${tipo} llego antes del primer turno y se ignoro`);
       return;
@@ -215,7 +217,8 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
       tipo,
       paso: accion ? accion.paso : paso.id,
       accion: accion ? accion.id : null,
-      agente: quien,
+      agente: 'usuario',
+      texto: texto === null ? null : norm.texto(texto),
       momento: linea.timestamp || null,
     });
   };
@@ -281,8 +284,18 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
       if (extra.agentId) accion.subagente = String(extra.agentId);
       if (extra.backgroundTaskId) accion.tareaFondo = String(extra.backgroundTaskId);
     }
+    // Un rechazo (#222, fase 5): el de una pregunta o un plan es una correccion, no un permiso.
+    // El de un permiso es permiso_rechazado y, si la persona escribio como seguir, tambien una
+    // correccion con su texto. El «haven't granted it yet» de una sesion sin persona (claude -p)
+    // no es ninguna de las dos.
     if (bloque.is_error === true && esRechazoDePermiso(texto)) {
-      nuevaIntervencion('permiso_rechazado', linea, accion);
+      const dicho = textoDelRechazo(texto);
+      if (SIN_PERMISO.has(accion.herramienta)) {
+        nuevaIntervencion('correccion', linea, accion, { texto: dicho });
+      } else {
+        nuevaIntervencion('permiso_rechazado', linea, accion);
+        if (dicho !== null) nuevaIntervencion('correccion', linea, accion, { texto: dicho });
+      }
     }
   };
 
@@ -378,10 +391,12 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
       const uso = { id: `usuario-${turno.id}`, name: 'Bash', input: { command: comando } };
       comandoPendiente = nuevaAccion({ linea, uso, pasoId: paso.id, agenteId: 'usuario' });
       nuevaIntervencion('comando_usuario', linea, comandoPendiente);
+      trasInterrupcion = false;
       continue;
     }
     if (texto.includes('[Request interrupted by user')) {
       nuevaIntervencion('interrupcion', linea);
+      trasInterrupcion = true;
       continue;
     }
     if (texto.includes('<task-notification>')) {
@@ -406,6 +421,11 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
       if (skill.includes(':')) skills.add(skill);
     } else {
       nuevoTurno(linea, texto, 'prompt');
+    }
+    // El prompt que sigue a una interrupcion es la persona diciendo como seguir (#222, fase 5).
+    if (trasInterrupcion) {
+      nuevaIntervencion('correccion', linea, null, { texto: turno.prompt });
+      trasInterrupcion = false;
     }
   }
 
@@ -468,6 +488,35 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
   for (const a of acciones.filter((x) => x.subagente && x.agente === 'orquestador')) {
     expandir(a, 1);
   }
+
+  // Permisos aprobados (#222, fase 5). PermissionRequest no trae tool_use_id: se empareja con el
+  // ultimo PreToolUse anterior de la misma herramienta y la misma entrada (por su hash). Si la
+  // accion corrio despues, la persona aprobo; si la rechazo, ya quedo como permiso_rechazado. Un
+  // pedido en modo auto lo resolvio el clasificador, no una persona, y no se registra. Lo que no
+  // se puede afirmar es que ningun otro hook haya respondido el pedido antes que la persona.
+  const emparejados = new Set();
+  captura.forEach((c, i) => {
+    if (c.evento !== 'PermissionRequest') return;
+    const pre = captura.slice(0, i).reverse().find((p) => p.evento === 'PreToolUse' &&
+      p.herramienta === c.herramienta && p.entrada === c.entrada && !emparejados.has(p));
+    if (!pre) {
+      avisos.push(`un pedido de permiso de ${c.herramienta} (${c.momento}) no tiene su PreToolUse`);
+      return;
+    }
+    emparejados.add(pre);
+    const accion = accionPorUso.get(pre.toolUseId);
+    if (!accion) return;
+    if (!MODOS_CON_PERSONA.has(c.modo)) {
+      avisos.push(`el permiso de ${accion.id} se resolvio en modo ${c.modo}: no lo decidio una ` +
+        'persona');
+      return;
+    }
+    const sinPersona = /haven't granted it yet/.test(accion.error || '');
+    const corrio = accion.exito !== null || accion.codigoReinterpretado !== null;
+    if (corrio && !sinPersona && !esRechazoDePermiso(accion.error)) {
+      nuevaIntervencion('permiso_aprobado', { timestamp: c.momento }, accion);
+    }
+  });
 
   // Eventos perdidos (#222). Una accion que termino sin fallar corrio, y si la captura no tiene su
   // PreToolUse o su PostToolUse, los perdio: en la sesion de #218 el hook no cargaba porque una
@@ -657,7 +706,7 @@ function separarPorTarea(s) {
     const idsPaso = new Set(pasos.map((p) => p.id));
     const acciones = porMomento(s.acciones.filter((a) => idsPaso.has(a.paso)));
     const decisiones = s.decisiones.filter((d) => idsTurno.has(d.turno));
-    const intervenciones = s.intervenciones.filter((i) => idsPaso.has(i.paso));
+    const intervenciones = porMomento(s.intervenciones.filter((i) => idsPaso.has(i.paso)));
     const usados = new Set(['orquestador', ...acciones.map((a) => a.agente),
       ...intervenciones.map((i) => i.agente)]);
     const agentes = [...s.agentes.values()].filter((a) => usados.has(a.id));
