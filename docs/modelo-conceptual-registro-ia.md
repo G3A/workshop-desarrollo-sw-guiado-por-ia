@@ -202,7 +202,10 @@ Son las reglas que el compilador y la curación hacen cumplir. Si se rompe una, 
 4. **Una acción en segundo plano pertenece al paso que la lanzó**, aunque su resultado llegue en
    otro turno.
 5. **Sin marcador de la skill, el paso es el turno completo** y su procedencia es `ausente`. Cuando
-   la skill marca sus pasos, un turno se divide en varios pasos.
+   la skill marca sus pasos, un turno se divide en varios pasos: cada paso marcado dice su skill,
+   su paso prescrito y su fase, y lo que el turno hizo antes del primer marcador es el único paso
+   `ausente`, el primero del turno. El protocolo está en
+   [`protocolo-de-marcadores-de-paso.md`](protocolo-de-marcadores-de-paso.md).
 6. **En el acta curada, toda acción tiene `exito = true`** y todo paso tiene al menos una acción. En
    la cruda puede haber pasos sin acciones (turnos de solo texto) y acciones fallidas.
 7. **Los intentos previos de una acción curada apuntan a acciones fallidas de la cruda** con la
@@ -292,8 +295,9 @@ y sensores en verde) y no por hash.
 - **Eventos de permisos (PC-10).** Hay que verificar qué eventos de hook relacionados con permisos
   ofrece la versión de Claude Code en uso. Si no hay ninguno, la intervención sale solo del
   transcript, y un permiso aprobado puede no dejar rastro.
-- **Marcadores de paso (PC-04 y PC-05).** Mientras ninguna skill emita marcadores, todos los pasos
-  quedan con `procedencia = ausente` y PC-05 responde «sin datos». Marcar los pasos toca las nueve
-  skills, el visor, el playbook y `verificar-pasos-skill.mjs`, y merece su propio issue.
+- **Marcadores de paso (PC-04 y PC-05).** Desde #222 el protocolo existe y `debt-triage` lo
+  emite. Las otras ocho skills todavía no: sus pasos quedan con `procedencia = ausente` y la
+  conformidad responde «sin datos». Cada skill que se suma toca su `SKILL.md`, el visor y el
+  playbook en el mismo PR.
 - **Redacción de secretos en las decisiones (PC-07).** El texto del asistente puede citar
   contenido leído de archivos. Pasa por el mismo filtro que el resto del acta antes de escribirse.

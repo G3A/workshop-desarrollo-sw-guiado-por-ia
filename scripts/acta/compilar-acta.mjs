@@ -14,15 +14,19 @@
 // 1. DETERMINISTA. La misma entrada produce el mismo archivo, byte a byte: ids secuenciales, orden
 //    estable, claves en orden fijo, sin la hora de la compilacion. Lo exige la re-ejecucion, que
 //    compara hashes, y lo verifica una prueba.
-// 2. Sin marcadores de paso en las skills, cada PASO es el TURNO completo, con procedencia
-//    `ausente` (invariante I5). No se infiere: una heuristica meteria no determinismo (PC-04).
+// 2. Los PASOS salen de los marcadores que la skill escribe en su texto (#222, fase 4;
+//    docs/protocolo-de-marcadores-de-paso.md). Cada marcador abre un paso `marcado` en el turno;
+//    lo que el turno hizo antes del primero queda en un paso `ausente`, el primero del turno.
+//    Sin marcadores, el paso es el turno completo, con procedencia `ausente` (invariante I5).
+//    No se infiere: una heuristica meteria no determinismo (PC-04).
 // 3. Una sesion que cambia de rama se parte: un acta por tarea (I2). La tarea sale de la rama
 //    (`<tipo>/<N>-slug`); en dev, main o una rama sin numero es `sin-tarea`.
 // 4. El acta no se escribe si rompe una invariante, ni si gitleaks encuentra un secreto. Un acta
 //    a medias o con una credencial es peor que ninguna: la primera miente y la segunda filtra.
 // 5. Las rutas se normalizan: la raiz del repo pasa a "." y la carpeta del usuario a "~".
 //
-// La fase queda en null: la declara la skill, y ninguna la declara todavia.
+// La fase la declara la skill en cada marcador. El acta lleva la fase cuando todos sus pasos
+// marcados declaran la misma; si declaran varias, queda en null y se avisa.
 //
 // El exito sale del `is_error` del resultado, salvo cuando Claude Code reinterpreto el codigo de
 // salida (#219): un comando que termina en `| grep` y sale con 1 queda como «No matches found»,
@@ -48,6 +52,19 @@ const RUTA_PLUGIN = 'instrumentacion-java-ia/sdlc-ia';
 const RUTA_DOCKERFILE = 'scripts/acta/motor/Dockerfile';
 const DOC_DE_SKILL = /(^|\/)skills\/[^/]+\/(SKILL\.md|references\/[^/]+\.md)$/;
 const PROFUNDIDAD_MAXIMA = 5;
+
+// El marcador de paso (docs/protocolo-de-marcadores-de-paso.md): una linea sola en el texto de la
+// skill, con o sin backticks alrededor. `step` es el numero de un `Phase N` o la letra de un
+// `Step X` del instructivo; `method-phase`, la fase del playbook, de 0 a 6.
+const MARCADOR = new RegExp('^`?\\[sdlc-ia:step skill=([a-z0-9][a-z0-9-]*) ' +
+  'step=([0-9]+|[A-Z]) method-phase=([0-6])\\]`?[ \\t]*$', 'gm');
+
+export function marcadoresEn(texto) {
+  return [...String(texto ?? '').matchAll(MARCADOR)]
+    .map((m) => ({ skill: m[1], letra: m[2], fase: Number(m[3]) }));
+}
+
+const sinMarcadores = (texto) => String(texto ?? '').replace(MARCADOR, '').trim();
 
 export function tareaDeRama(rama) {
   const m = RAMA_CON_TAREA.exec(rama || '');
@@ -161,7 +178,28 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
       turno: turno.id,
       procedencia: 'ausente',
       pasoPrescrito: null,
+      faseDeclarada: null,
     };
+    pasos.push(paso);
+  };
+
+  // Un marcador abre un paso marcado. El mismo paso marcado dos veces seguidas en un turno es uno
+  // solo; un paso ausente todavia sin acciones se convierte en vez de quedar vacio.
+  const pasoConAcciones = new Set();
+  const marcarPaso = (linea, m) => {
+    if (!turno) nuevoTurno(linea, null, 'sin_prompt');
+    const prescrito = { skill: m.skill, letra: m.letra };
+    if (paso.procedencia === 'marcado' && paso.pasoPrescrito.skill === m.skill &&
+      paso.pasoPrescrito.letra === m.letra) return;
+    if (paso.procedencia === 'ausente' && !pasoConAcciones.has(paso.id)) {
+      paso.procedencia = 'marcado';
+      paso.pasoPrescrito = prescrito;
+      paso.faseDeclarada = m.fase;
+      return;
+    }
+    const n = pasos.filter((p) => p.turno === turno.id).length + 1;
+    paso = { elemento: 'paso', id: `${turno.id}.p${n}`, turno: turno.id, procedencia: 'marcado',
+      pasoPrescrito: prescrito, faseDeclarada: m.fase };
     pasos.push(paso);
   };
 
@@ -214,6 +252,7 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
       tareaFondo: null,
     };
     acciones.push(accion);
+    pasoConAcciones.add(pasoId);
     accionPorUso.set(uso.id, accion);
     if (uso.name === 'Skill' && entrada.skill) skills.add(String(entrada.skill));
     return accion;
@@ -258,8 +297,10 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
         actual = null;
       },
       texto(t) {
+        const limpio = sinMarcadores(t);
+        if (!limpio) return;
         if (actual) actual = null;
-        pendiente += (pendiente ? '\n' : '') + t;
+        pendiente += (pendiente ? '\n' : '') + limpio;
       },
       llamada(accion) {
         if (pendiente.trim()) {
@@ -296,7 +337,10 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
       const modelo = linea.message?.model;
       if (modelo && modelo !== '<synthetic>') modelos.add(modelo);
       for (const b of linea.message?.content || []) {
-        if (b.type === 'text') decisionesPrincipal.texto(b.text);
+        if (b.type === 'text') {
+          decisionesPrincipal.texto(b.text);
+          for (const m of marcadoresEn(b.text)) marcarPaso(linea, m);
+        }
         if (b.type !== 'tool_use') continue;
         if (!turno) nuevoTurno(linea, null, 'sin_prompt');
         const accion = nuevaAccion({ linea, uso: b, pasoId: paso.id, agenteId: 'orquestador' });
@@ -541,7 +585,7 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
   };
 
   const finSesion = [...captura].reverse().find((c) => c.evento === 'SessionEnd' && c.arbol);
-  return { actas: separarPorTarea({ sesion, turnos, pasos, acciones, decisiones,
+  return { actas: separarPorTarea({ sesion, turnos, pasos, acciones, decisiones, avisos,
     intervenciones, agentes, huella, headBase, inicioSesion,
     arbolFinal: finSesion?.arbol || null }), avisos };
 }
@@ -627,6 +671,11 @@ function separarPorTarea(s) {
       const comando = t.origen === 'comando' ? t.prompt.split(/\s/)[0].replace(/^\//, '') : '';
       if (comando.includes(':')) actividades.add(comando);
     }
+    const fases = [...new Set(pasos.map((p) => p.faseDeclarada).filter((x) => x !== null))].sort();
+    if (fases.length > 1) {
+      s.avisos.push(`el acta de la tarea ${tarea} declara las fases ${fases.join(', ')}; ` +
+        'queda sin fase');
+    }
     const cabecera = {
       elemento: 'acta',
       version: 1,
@@ -635,7 +684,7 @@ function separarPorTarea(s) {
       ramas: [...new Set(turnos.map((t) => t.rama).filter(Boolean))].sort(),
       proceso: 'sdlc-ia',
       actividades: [...actividades].sort(),
-      fase: null,
+      fase: fases.length === 1 ? fases[0] : null,
       headBase: s.headBase,
       arbolBase: primeraConArbol ? primeraConArbol.arbolAntes : s.inicioSesion?.arbol || null,
       arbolFinal: tarea === tareaFinal ? s.arbolFinal : null,
