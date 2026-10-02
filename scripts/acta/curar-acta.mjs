@@ -32,6 +32,13 @@
 //    residuo sin diff (la cruda se compilo sin repo). Una curada que no sabe si falta un cambio
 //    miente sobre lo que el motor va a reproducir.
 //
+// Efectos de hooks. El compilador ya los trae como acciones `hook`, de clase pura y con exito,
+// asi que entran como cualquier otra. La curacion comprueba que no falte ninguno:
+//
+// 8. La cadena de arboles es continua: cada accion con arbol empieza donde termino la anterior.
+//    Si no, se DETIENE, igual que con un `hook` que cambio el arbol sin traer su diff. Un hueco
+//    sale de dos acciones en paralelo, o de una captura con eventos perdidos.
+//
 // Intentos previos (invariante I7, PC-08): cada accion curada lista en `intentosPrevios` los
 // fallos de la cruda con su misma herramienta y su mismo archivo o comando, posteriores al exito
 // anterior con esa misma clave. Una accion sin archivo ni comando, o un residuo, lleva [].
@@ -47,7 +54,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { SIN_ARBOL } from './clasificar.mjs';
+import { ENVOLTORIOS, SIN_ARBOL } from './clasificar.mjs';
 import { serializar } from './compilar-acta.mjs';
 import { leerActa, objetivoDe, validarActa } from './validar-acta.mjs';
 
@@ -92,6 +99,24 @@ function residuoDe(a) {
   };
 }
 
+// La cadena de arboles de la curada (regla 8): cada accion con arbol empieza donde termino la
+// anterior. Las llamadas Agent y Task no son eslabones: envuelven a su subagente.
+function cadenaRota(acciones) {
+  const motivos = [];
+  let previa = null;
+  for (const a of acciones) {
+    if (a.herramienta === 'hook' && a.arbolAntes !== a.arbolDespues && !a.cambios.length) {
+      motivos.push(`el efecto de hook ${a.id} cambio el arbol, pero la cruda no trae su diff`);
+    }
+    if (!a.arbolAntes || !a.arbolDespues || ENVOLTORIOS.has(a.herramienta)) continue;
+    if (previa && previa.arbolDespues !== a.arbolAntes) {
+      motivos.push(`entre ${previa.id} y ${a.id} el arbol cambio sin una accion que lo explique`);
+    }
+    previa = a;
+  }
+  return motivos;
+}
+
 // La curacion como funcion pura sobre el texto de la cruda: deriva de esos bytes y no de otros.
 // Lanza CuracionDetenida si algun fallo no se puede curar.
 export function curar(textoCruda) {
@@ -119,6 +144,7 @@ export function curar(textoCruda) {
       reemplazo.set(a.id, r.residuo.id);
     }
   }
+  motivos.push(...cadenaRota(acciones));
   if (motivos.length) throw new CuracionDetenida(motivos);
 
   const idsAccion = new Set(acciones.map((a) => a.id));

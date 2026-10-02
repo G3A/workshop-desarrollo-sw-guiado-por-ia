@@ -11,7 +11,8 @@ import { compilar, compilarYEscribir, serializar } from '../compilar-acta.mjs';
 import { validarActa } from '../validar-acta.mjs';
 import { claseDeterminismo } from '../clasificar.mjs';
 import { arbolActual, git } from '../git.mjs';
-import { carpetaTemporal, fabrica, repoTemporal, subagente } from './fabrica.mjs';
+import { carpetaTemporal, enCaptura, fabrica, repoQueAvanza, repoTemporal, sesionConHook,
+  subagente } from './fabrica.mjs';
 
 const silencio = { log: () => {}, error: () => {} };
 const de = (registros, elemento) => registros.filter((r) => r.elemento === elemento);
@@ -261,6 +262,88 @@ test('captura: los arboles antes y despues dan los cambios por archivo y la huel
   assert.equal(cabecera.huella.plugin, '9.9.9');
   assert.deepEqual(cabecera.huella.documentos.map((d) => d.ruta), [skill]);
   assert.equal(cabecera.huella.documentos[0].commit, headBase);
+});
+
+// --- Efectos entre acciones (#218) ------------------------------------------------------------
+
+test('efecto de hook: un cambio entre dos acciones entra como accion derivada con su diff', () => {
+  const { f, captura, raiz, arboles: [, a1, a2] } = sesionConHook();
+  const acta = unicaActa(compilarFabrica(f, { captura, raizRepo: raiz }));
+  assert.deepEqual(validarActa(acta), []);
+  const [edit, hook, bash] = de(acta, 'accion');
+  assert.deepEqual([edit.herramienta, hook.herramienta, bash.herramienta],
+    ['Edit', 'hook', 'Bash'], 'el efecto queda entre las dos acciones');
+  assert.equal(hook.agente, 'hook:sin-identificar');
+  assert.equal(hook.claseDeterminismo, 'pura');
+  assert.equal(hook.exito, true);
+  assert.equal(hook.paso, edit.paso);
+  assert.deepEqual([hook.despuesDe, hook.antesDe], [edit.id, bash.id]);
+  assert.deepEqual([hook.arbolAntes, hook.arbolDespues], [a1, a2]);
+  assert.deepEqual(hook.cambios.map((c) => c.archivo), ['b.md']);
+  const agente = de(acta, 'agente').find((a) => a.id === 'hook:sin-identificar');
+  assert.deepEqual([agente.tipo, agente.rol], ['automatismo', 'hook:sin-identificar']);
+});
+
+test('efecto de hook: despues de la ultima accion lo ve el arbol de SessionEnd', () => {
+  const { f, captura, raiz } = sesionConHook({ alFinal: true });
+  const acta = unicaActa(compilarFabrica(f, { captura, raizRepo: raiz }));
+  assert.deepEqual(validarActa(acta), []);
+  const acciones = de(acta, 'accion');
+  const hook = acciones[acciones.length - 1];
+  assert.equal(hook.herramienta, 'hook');
+  assert.deepEqual([hook.despuesDe, hook.antesDe], [acciones[1].id, null]);
+});
+
+test('sin efecto de hook: con dos acciones en paralelo el cambio es de ellas', () => {
+  const repo = repoQueAvanza({ 'a.md': 'a\n', 'b.md': 'b\n' });
+  const a0 = repo.arbol();
+  const a1 = repo.cambiar({ 'a.md': 'a2\n' });
+  const a2 = repo.cambiar({ 'b.md': 'b2\n' });
+  const f = fabrica()
+    .prompt('Dos comandos a la vez')
+    .llamada('tu1', 'Bash', { command: 'gen a' })
+    .llamada('tu2', 'Bash', { command: 'gen b' })
+    .resultado('tu1', 'ok')
+    .resultado('tu2', 'ok');
+  const captura = [
+    { evento: 'PreToolUse', toolUseId: 'tu1', momento: enCaptura(0, 2), arbol: a0 },
+    // tu2 arranca cuando tu1 ya escribio a.md, pero tu1 sigue abierta: el cambio es suyo.
+    { evento: 'PreToolUse', toolUseId: 'tu2', momento: enCaptura(0, 3), arbol: a1 },
+    { evento: 'PostToolUse', toolUseId: 'tu1', momento: enCaptura(0, 4), arbol: a1 },
+    { evento: 'PostToolUse', toolUseId: 'tu2', momento: enCaptura(0, 5), arbol: a2 },
+  ];
+  const acta = unicaActa(compilarFabrica(f, { captura, raizRepo: repo.raiz }));
+  assert.deepEqual(de(acta, 'accion').map((a) => a.herramienta), ['Bash', 'Bash']);
+});
+
+test('efecto de hook dentro de un subagente: va al paso de la llamada, que no es eslabon', () => {
+  const repo = repoQueAvanza({ 'a.md': 'a\n', 'b.md': 'b\n' });
+  const a0 = repo.arbol();
+  const a1 = repo.cambiar({ 'a.md': 'a2\n' });
+  const a2 = repo.cambiar({ 'b.md': 'b2\n' });
+  const f = fabrica()
+    .prompt('Delega')
+    .llamada('tu1', 'Agent', { subagent_type: 'general-purpose', prompt: 'x' })
+    .resultado('tu1', 'ok', { extra: { agentId: 'ab12' } });
+  const captura = [
+    { evento: 'PreToolUse', toolUseId: 'tu1', momento: enCaptura(0, 2), arbol: a0 },
+    { evento: 'PreToolUse', toolUseId: 'su1', momento: enCaptura(30, 1), arbol: a0 },
+    { evento: 'PostToolUse', toolUseId: 'su1', momento: enCaptura(30, 2), arbol: a1 },
+    { evento: 'PreToolUse', toolUseId: 'su2', momento: enCaptura(30, 3), arbol: a2 },
+    { evento: 'PostToolUse', toolUseId: 'su2', momento: enCaptura(30, 4), arbol: a2 },
+    { evento: 'PostToolUse', toolUseId: 'tu1', momento: enCaptura(31, 0), arbol: a2 },
+  ];
+  const acta = unicaActa(compilarFabrica(f, { captura, raizRepo: repo.raiz,
+    antes: (c) => subagente(c, 'ab12', [
+      { id: 'su1', name: 'Write', input: { file_path: 'a.md', content: 'a2\n' } },
+      { id: 'su2', name: 'Bash', input: { command: 'npm test' } },
+    ]) }));
+  assert.deepEqual(validarActa(acta), []);
+  const hooks = de(acta, 'accion').filter((a) => a.herramienta === 'hook');
+  assert.equal(hooks.length, 1, 'ni la entrada ni la salida de la llamada Agent son huecos');
+  const llamada = de(acta, 'accion').find((a) => a.herramienta === 'Agent');
+  assert.equal(hooks[0].paso, llamada.paso);
+  assert.deepEqual(hooks[0].cambios.map((c) => c.archivo), ['b.md']);
 });
 
 // --- Secretos ---------------------------------------------------------------------------------

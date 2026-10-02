@@ -81,6 +81,10 @@ export function claseDeterminismo(herramienta, entrada = {}) {
 export const SIN_ARBOL = new Set(['Read', 'Grep', 'Glob', 'LS', 'WebSearch', 'WebFetch',
   'ToolSearch', 'Skill', 'TodoWrite', 'AskUserQuestion']);
 
+// Las llamadas que envuelven el trabajo de un subagente: su arbol antes y despues abarca todas
+// las acciones del subagente, asi que no cuentan como un eslabon de la cadena de arboles.
+export const ENVOLTORIOS = new Set(['Agent', 'Task']);
+
 // Un rechazo de permiso deja un tool_result con error y uno de estos textos. Un hook que deniega
 // NO es un rechazo de una persona: ese caso queda como accion fallida, sin intervencion.
 const RECHAZO = [

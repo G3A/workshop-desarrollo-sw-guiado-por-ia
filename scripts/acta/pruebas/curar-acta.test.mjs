@@ -16,7 +16,7 @@ import { compilar, compilarYEscribir, serializar } from '../compilar-acta.mjs';
 import { CuracionDetenida, curar, curarYEscribir } from '../curar-acta.mjs';
 import { validarActa } from '../validar-acta.mjs';
 import { arbolActual } from '../git.mjs';
-import { carpetaTemporal, fabrica, repoTemporal, subagente } from './fabrica.mjs';
+import { carpetaTemporal, fabrica, repoTemporal, sesionConHook, subagente } from './fabrica.mjs';
 
 const silencio = { log: () => {}, error: () => {} };
 const de = (registros, elemento) => registros.filter((r) => r.elemento === elemento);
@@ -260,6 +260,51 @@ test('curarYEscribir: una curacion detenida no escribe nada (codigo 3)', () => {
     .resultado('tu1', 'make: *** Error 2', { error: true }))));
   assert.equal(curarYEscribir({ cruda, log: silencio }), 3);
   assert.deepEqual(fs.readdirSync(carpeta), ['sesion-1.acta.cruda.jsonl']);
+});
+
+// --- Efectos de hooks y cadena de arboles -----------------------------------------------------
+
+test('efecto de hook: entra en la curada y la cadena de arboles queda continua', () => {
+  const { f, captura, raiz } = sesionConHook();
+  const curada = curarYValidar(crudaDe(f, { captura, raizRepo: raiz }));
+  assert.deepEqual(de(curada, 'accion').map((a) => a.herramienta), ['Edit', 'hook', 'Bash']);
+  assert.ok(ids(curada, 'agente').includes('hook:sin-identificar'));
+});
+
+test('detenida: un hueco en la cadena de arboles que ninguna accion explica', () => {
+  const { f, captura, raiz } = sesionConHook();
+  const cruda = crudaDe(f, { captura, raizRepo: raiz });
+  const hook = de(cruda, 'accion').find((a) => a.herramienta === 'hook');
+  cruda.splice(cruda.indexOf(hook), 1);
+  assert.throws(() => curar(serializar(cruda)), (e) => e instanceof CuracionDetenida &&
+    /sin una accion que lo explique/.test(e.motivos.join()));
+});
+
+test('detenida: un efecto de hook que no trae su diff', () => {
+  const { f, captura } = sesionConHook();
+  const cruda = crudaDe(f, { captura });
+  assert.throws(() => curar(serializar(cruda)), (e) => e instanceof CuracionDetenida &&
+    /efecto de hook a\d+ .*no trae su diff/.test(e.motivos.join()));
+});
+
+test('cadena: la llamada Agent envuelve a su subagente y no la corta', () => {
+  const cruda = crudaDe(fabrica()
+    .prompt('Delega')
+    .llamada('tu1', 'Agent', { subagent_type: 'general-purpose', prompt: 'x' })
+    .resultado('tu1', 'ok', { extra: { agentId: 'ab12' } }), {
+    antes: (carpeta) => subagente(carpeta, 'ab12', [
+      { id: 'su1', name: 'Bash', input: { command: 'gen' } },
+    ]),
+    captura: [
+      { evento: 'PreToolUse', toolUseId: 'tu1', arbol: 'arbol-a' },
+      { evento: 'PreToolUse', toolUseId: 'su1', arbol: 'arbol-a' },
+      { evento: 'PostToolUse', toolUseId: 'su1', arbol: 'arbol-b' },
+      { evento: 'PostToolUse', toolUseId: 'tu1', arbol: 'arbol-b' },
+    ],
+  });
+  // La llamada (a -> b) va antes que su subagente (a -> b): como eslabon, cortaria la cadena.
+  assert.deepEqual(de(cruda, 'accion').map((a) => a.toolUseId), ['tu1', 'su1']);
+  curarYValidar(cruda);
 });
 
 // --- Determinismo (I8) ------------------------------------------------------------------------

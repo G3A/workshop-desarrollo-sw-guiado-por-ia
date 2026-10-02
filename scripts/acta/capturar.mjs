@@ -59,7 +59,8 @@ function principal() {
       arbol: SIN_ARBOL.has(herramienta) ? null : arbolActual(raiz),
     };
   } else if (evento === 'SessionEnd') {
-    registro = { ...registro, motivo: e.reason || null };
+    // El arbol al cerrar deja ver lo que un hook cambio despues de la ultima accion (#218).
+    registro = { ...registro, motivo: e.reason || null, arbol: arbolActual(raiz) };
   } else {
     return;
   }

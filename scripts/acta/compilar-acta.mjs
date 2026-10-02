@@ -31,7 +31,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { claseDeterminismo, esRechazoDePermiso } from './clasificar.mjs';
+import { ENVOLTORIOS, claseDeterminismo, esRechazoDePermiso } from './clasificar.mjs';
 import { normalizador } from './normalizar.mjs';
 import { validarActa } from './validar-acta.mjs';
 import { cambiosEntre, leerEnCommit, raizDelRepo, versionDe } from './git.mjs';
@@ -397,6 +397,58 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
   };
   for (const a of acciones.filter((x) => x.subagente && x.agente === 'orquestador')) {
     expandir(a, 1);
+  }
+
+  // Efectos entre acciones (#218): un hook como format-on-edit corre en paralelo con la captura,
+  // y lo que escribe puede quedar entre el `despues` de una accion y el `antes` de la siguiente.
+  // Se recorre la captura en el orden en que se escribio, y cada cambio del arbol sin ninguna
+  // accion abierta entra como accion derivada `hook`. No se infiere que hook fue, ni si fue una
+  // persona editando a mano: el agente es `hook:sin-identificar`, y el nombre lo admite.
+  let visto = null;
+  const abiertas = new Set();
+  for (const c of captura) {
+    if (!c.arbol) continue;
+    const accion = c.toolUseId ? accionPorUso.get(c.toolUseId) || null : null;
+    const esPunto = c.evento === 'PreToolUse' || c.evento === 'SessionStart' ||
+      c.evento === 'SessionEnd';
+    if (esPunto && visto && abiertas.size === 0 && c.arbol !== visto.arbol) {
+      const paso = (visto.accion || accion)?.paso;
+      if (paso) {
+        acciones.push({
+          elemento: 'accion',
+          id: `a${++cont.a}`,
+          paso,
+          agente: agente('hook:sin-identificar', 'automatismo', 'hook:sin-identificar'),
+          lanzadaPor: null,
+          herramienta: 'hook',
+          toolUseId: null,
+          entrada: null,
+          claseDeterminismo: 'pura',
+          segundoPlano: false,
+          momento: visto.momento || null,
+          exito: true,
+          resultado: null,
+          resultadoCompleto: null,
+          resultadoDiferido: null,
+          error: null,
+          arbolAntes: visto.arbol,
+          arbolDespues: c.arbol,
+          cambios: raizRepo ? cambiosEntre(raizRepo, visto.arbol, c.arbol).map(norm.profundo) : [],
+          subagente: null,
+          tareaFondo: null,
+          despuesDe: visto.accion?.id || null,
+          antesDe: accion?.id || null,
+        });
+      } else {
+        avisos.push(`el arbol cambio entre ${visto.momento} y ${c.momento}, sin acciones cerca`);
+      }
+    }
+    if (c.evento === 'PreToolUse' && !ENVOLTORIOS.has(accion?.herramienta)) {
+      abiertas.add(c.toolUseId);
+    } else {
+      abiertas.delete(c.toolUseId);
+    }
+    visto = { arbol: c.arbol, momento: c.momento, accion };
   }
 
   const huella = {

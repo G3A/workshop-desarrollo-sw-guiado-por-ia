@@ -83,6 +83,8 @@ test('captura: SessionEnd compila el acta de la sesion', (t) => {
   const r = correrHook({ session_id: 's3', cwd: raiz, hook_event_name: 'SessionEnd',
     reason: 'other', transcript_path: transcript });
   assert.equal(r.status, 0);
+  const [cierre] = leer(path.join(raiz, '.ia', 'captura', 's3.jsonl'));
+  assert.match(cierre.arbol || '', /^[0-9a-f]{40}$/, 'el cierre deja ver el ultimo efecto de hook');
   if (/No hay gitleaks/.test(r.stderr)) {
     t.skip('gitleaks no esta en el PATH');
     return;

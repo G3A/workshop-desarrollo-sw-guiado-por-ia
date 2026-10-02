@@ -34,7 +34,9 @@ node --test scripts/acta/pruebas/curar-acta.test.mjs
 La curada entra solo con las acciones exitosas, de todos los agentes, con su id de la cruda; los
 pasos y turnos que quedan vacíos salen. Un fallo que cambió el árbol entra como acción `residuo`
 con su diff, y uno sin árbol que pudo escribir detiene la curación (código 3). Cada acción lista
-en `intentosPrevios` los fallos que la precedieron sobre el mismo archivo o comando. Por ahora se
+en `intentosPrevios` los fallos que la precedieron sobre el mismo archivo o comando. Lo que un hook
+cambia entre dos acciones lo registra el compilador como acción `hook`, con su diff y el agente
+`hook:sin-identificar`; la curación exige que la cadena de árboles no tenga huecos. Por ahora se
 corre a mano: el hook de cierre de sesión la va a generar cuando la curación esté completa.
 
 Los transcripts de Claude Code están en `~/.claude/projects/<proyecto>/<sesión>.jsonl`, y los de
