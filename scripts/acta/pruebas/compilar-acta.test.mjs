@@ -341,6 +341,22 @@ test('sin efecto de hook: con dos acciones en paralelo el cambio es de ellas', (
   assert.deepEqual(de(acta, 'accion').map((a) => a.herramienta), ['Bash', 'Bash']);
 });
 
+test('efecto de hook: un PreToolUse que nunca cierra no apaga la deteccion', () => {
+  // Paso en vivo: la captura vio un PreToolUse de una llamada que el transcript no tiene, y una
+  // accion interrumpida tampoco recibe su Post.
+  const { f, captura, raiz, arboles: [a0] } = sesionConHook();
+  f.llamada('tu3', 'Bash', { command: 'npm run largo' });
+  const huerfanos = [
+    { evento: 'PreToolUse', toolUseId: 'sin-llamada', momento: enCaptura(0, 1), arbol: a0 },
+    { evento: 'PreToolUse', toolUseId: 'tu3', momento: enCaptura(0, 1), arbol: a0 },
+  ];
+  const acta = unicaActa(compilarFabrica(f, { captura: [captura[0], ...huerfanos,
+    ...captura.slice(1)], raizRepo: raiz }));
+  assert.equal(de(acta, 'accion').find((a) => a.toolUseId === 'tu3').exito, null);
+  const hooks = de(acta, 'accion').filter((a) => a.herramienta === 'hook');
+  assert.deepEqual(hooks.map((h) => h.cambios.map((c) => c.archivo)), [['b.md']]);
+});
+
 test('efecto de hook dentro de un subagente: va al paso de la llamada, que no es eslabon', () => {
   const repo = repoQueAvanza({ 'a.md': 'a\n', 'b.md': 'b\n' });
   const a0 = repo.arbol();

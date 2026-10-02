@@ -456,7 +456,11 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
         avisos.push(`el arbol cambio entre ${visto.momento} y ${c.momento}, sin acciones cerca`);
       }
     }
-    if (c.evento === 'PreToolUse' && !ENVOLTORIOS.has(accion?.herramienta)) {
+    // Solo abre la ventana una accion que el transcript tiene y que termino: un PreToolUse sin
+    // llamada en el transcript, o el de una accion interrumpida, nunca recibe su Post, y dejarlo
+    // abierto apagaba la deteccion el resto de la sesion. Paso en vivo en la sesion de #218.
+    if (c.evento === 'PreToolUse' && accion && accion.exito !== null &&
+      !ENVOLTORIOS.has(accion.herramienta)) {
       abiertas.add(c.toolUseId);
     } else {
       abiertas.delete(c.toolUseId);
