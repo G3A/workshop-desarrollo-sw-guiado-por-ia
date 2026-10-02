@@ -4,3 +4,7 @@ logs/
 # Informe generado por `make capturar-error`: es una salida, no fuente.
 # Se sube a mano cuando hace falta compartirlo (puede traer datos del entorno).
 base-conocimiento/scripts/error-api.txt
+
+# Registro de la IA (#216): la captura de cada sesion y las actas compiladas. No se versionan
+# hasta que el issue del trailer Registro-IA decida que se commitea (pueden traer contenido leido).
+.ia/

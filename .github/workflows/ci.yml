@@ -127,6 +127,15 @@ jobs:
         working-directory: .
         run: node playbook-sdlc-ia/verificar-cobertura.mjs
 
+      # Pruebas del compilador del acta (#216, ADR-0005): escenarios sinteticos, determinismo byte
+      # a byte y un rojo sembrado por invariante. Van despues de instalar gitleaks a proposito: con
+      # gitleaks en el PATH, la prueba de secretos corre de verdad en vez de saltarse.
+      - name: The acta compiler keeps the model invariants
+        working-directory: .
+        run: >-
+          node --test scripts/acta/pruebas/compilar-acta.test.mjs
+          scripts/acta/pruebas/capturar.test.mjs
+
       # Sensor del espejo con el sandbox (#155): una diferencia entre base-conocimiento/ y la raiz
       # de G3A/base-conocimiento-sandbox que el ADR-0003 no explique falla aca. Hasta este issue la
       # lista de divergencias se mantenia a mano y el propio ADR lo admitia. Corre en la raiz.
