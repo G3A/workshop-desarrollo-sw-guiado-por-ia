@@ -15,6 +15,17 @@ from that folder (see the README, "Actualizar cuando sale una versión nueva", a
 
 ## [unreleased]
 
+### Added
+
+- **`debt-triage` marks its steps for the session record** (#222, phase 4). It declares method
+  phase 2 and writes `[sdlc-ia:step skill=debt-triage step=<Phase> method-phase=2]` on its own
+  line when it starts each Phase, and again when it resumes after the user replies. The acta
+  compiler turns each marker into a `marcado` step, and `scripts/acta/conformidad.mjs` compares
+  the sequence with the Phase headings of the `SKILL.md` version the acta recorded: omitted,
+  repeated and out-of-order steps, and actions outside any step. No other skill marks yet; for
+  them the conformity answers "no data" instead of guessing. Protocol:
+  `docs/protocolo-de-marcadores-de-paso.md` at the monorepo root.
+
 ### Fixed
 
 - **`update.ps1` / `update.sh` check what runs, not a copy nobody uses.** With Claude Code 2.1.282

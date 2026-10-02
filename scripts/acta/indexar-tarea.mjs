@@ -15,7 +15,8 @@
 // 2. El indice inverso sale de la CRUDA: lista tambien los fallos que dejaron residuo, los
 //    efectos de hook y los subagentes descartados. Un archivo que cambio y volvio a quedar igual
 //    figura igual, porque la pregunta es que acciones lo tocaron, no como termino.
-// 3. La fase queda en null, en la tarea y en cada acta, hasta que las skills la declaren.
+// 3. La fase de cada acta es la que declararon sus pasos marcados, o null; la tarea lista en
+//    `fases` las de todas sus actas (#222, fase 4). Una tarea puede pasar por varias.
 //
 // Codigos de salida: 0 escrito, 2 uso incorrecto. Un acta que no se puede leer no detiene el
 // indice: sale de el con un aviso en stderr.
@@ -82,7 +83,7 @@ export function indexarTarea(carpeta, { log = console } = {}) {
   const momentos = actas.flatMap((a) => [a.inicio, a.fin]).filter(Boolean).sort();
   return {
     tarea: path.basename(carpeta),
-    fase: null,
+    fases: [...new Set(actas.map((a) => a.fase).filter((x) => x !== null))].sort(),
     inicio: momentos[0] || null,
     fin: momentos[momentos.length - 1] || null,
     ramas: [...new Set(actas.flatMap((a) => a.ramas || []))].sort(),

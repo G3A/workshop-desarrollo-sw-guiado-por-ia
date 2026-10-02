@@ -49,10 +49,10 @@ function tareaConDosSesiones() {
   return carpeta;
 }
 
-test('indice: actas en orden de inicio, con sus ramas, su curada y la fase en null', () => {
+test('indice: actas en orden de inicio, con sus ramas, su curada y sin fases marcadas', () => {
   const indice = indexarTarea(tareaConDosSesiones(), { log: silencio });
   assert.equal(indice.tarea, '10');
-  assert.equal(indice.fase, null);
+  assert.deepEqual(indice.fases, []);
   assert.deepEqual(indice.actas.map((a) => [a.sesion, a.curada, a.fase]), [
     ['sesion-1', 'sesion-1.acta.curada.jsonl', null],
     ['zeta', null, null],

@@ -13,7 +13,8 @@ import { validarActa } from '../validar-acta.mjs';
 import { claseDeterminismo } from '../clasificar.mjs';
 import { arbolActual, git } from '../git.mjs';
 import { carpetaTemporal, enCaptura, fabrica, repoQueAvanza, repoTemporal,
-  sesionConGrepQueOcultaUnFallo, sesionConHook, sesionConSubagente, subagente,
+  marcaDePaso, sesionConGrepQueOcultaUnFallo, sesionConHook, sesionConSubagente, sesionMarcada,
+  subagente,
 } from './fabrica.mjs';
 
 const silencio = { log: () => {}, error: () => {} };
@@ -689,4 +690,57 @@ test('rojo I5: un paso con procedencia inferida', () => {
     de(acta, 'paso')[0].procedencia = 'inferido';
   });
   assert.deepEqual(r, ['I5']);
+});
+
+// --- Marcadores de paso (#222, fase 4) ---------------------------------------------------------
+
+const marca = marcaDePaso;
+
+test('marcadores: el turno se parte en los pasos que la skill marco, con su fase', () => {
+  const acta = unicaActa(compilarFabrica(sesionMarcada()));
+  assert.deepEqual(validarActa(acta), []);
+  const paso = (id) => de(acta, 'paso').find((p) => p.id === id);
+  assert.deepEqual(de(acta, 'paso').map((p) => [p.id, p.procedencia,
+    p.pasoPrescrito?.letra ?? null]), [
+    ['t1.p1', 'ausente', null],
+    ['t1.p2', 'marcado', '1'],
+    ['t1.p3', 'marcado', '2'],
+    ['t2.p1', 'marcado', '2'],
+    ['t2.p2', 'marcado', '3'],
+  ]);
+  assert.deepEqual(paso('t1.p2').pasoPrescrito, { skill: 'debt-triage', letra: '1' });
+  assert.equal(paso('t1.p2').faseDeclarada, 2);
+  assert.deepEqual(de(acta, 'accion').map((a) => a.paso),
+    ['t1.p1', 't1.p2', 't1.p3', 't2.p1', 't2.p2']);
+  assert.equal(acta[0].fase, 2, 'la fase del acta es la que declaran sus pasos');
+  assert.ok(de(acta, 'decision').every((d) => !d.texto.includes('sdlc-ia:step')),
+    'el marcador no es parte de la decision');
+});
+
+test('marcadores: dos fases distintas dejan el acta sin fase, con un aviso', () => {
+  const f = sesionMarcada().texto(marca(4, 3))
+    .llamada('tu5', 'Edit', { file_path: 'a.java', old_string: 'A', new_string: 'A2' })
+    .resultado('tu5', 'ok');
+  const { actas, avisos } = compilarFabrica(f);
+  assert.equal(unicaActa({ actas })[0].fase, null);
+  assert.ok(avisos.some((a) => /declara las fases 2, 3; queda sin fase/.test(a)), avisos.join());
+});
+
+test('rojo I5: un paso marcado sin su fase', () => {
+  const acta = unicaActa(compilarFabrica(sesionMarcada()));
+  de(acta, 'paso')[1].faseDeclarada = null;
+  assert.deepEqual(validarActa(acta).map((e) => e.invariante), ['I5']);
+});
+
+test('rojo I5: un paso sin marcador despues de uno marcado', () => {
+  const acta = unicaActa(compilarFabrica(sesionMarcada()));
+  Object.assign(de(acta, 'paso')[2], { procedencia: 'ausente', pasoPrescrito: null,
+    faseDeclarada: null });
+  assert.deepEqual(validarActa(acta).map((e) => e.invariante), ['I5']);
+});
+
+test('rojo I5: un paso sin marcador que apunta a un paso prescrito', () => {
+  const acta = unicaActa(compilarFabrica(sesionMarcada()));
+  de(acta, 'paso')[0].pasoPrescrito = { skill: 'debt-triage', letra: '1' };
+  assert.deepEqual(validarActa(acta).map((e) => e.invariante), ['I5']);
 });
