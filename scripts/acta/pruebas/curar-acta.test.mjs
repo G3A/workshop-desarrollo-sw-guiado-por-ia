@@ -16,8 +16,8 @@ import { compilar, compilarYEscribir, serializar } from '../compilar-acta.mjs';
 import { CuracionDetenida, curar, curarYEscribir } from '../curar-acta.mjs';
 import { validarActa } from '../validar-acta.mjs';
 import { arbolActual } from '../git.mjs';
-import { carpetaTemporal, enCaptura, fabrica, repoTemporal, sesionConHook, subagente }
-  from './fabrica.mjs';
+import { carpetaTemporal, enCaptura, fabrica, repoQueAvanza, repoTemporal, sesionConHook,
+  sesionConSubagente, subagente } from './fabrica.mjs';
 
 const silencio = { log: () => {}, error: () => {} };
 const de = (registros, elemento) => registros.filter((r) => r.elemento === elemento);
@@ -316,6 +316,8 @@ test('detenida: un efecto de hook que no trae su diff', () => {
 });
 
 test('cadena: la llamada Agent envuelve a su subagente y no la corta', () => {
+  const repo = repoQueAvanza({ 'a.md': 'a\n' });
+  const [a, b] = [repo.arbol(), repo.cambiar({ 'a.md': 'b\n' })];
   const cruda = crudaDe(fabrica()
     .prompt('Delega')
     .llamada('tu1', 'Agent', { subagent_type: 'general-purpose', prompt: 'x' })
@@ -324,15 +326,72 @@ test('cadena: la llamada Agent envuelve a su subagente y no la corta', () => {
       { id: 'su1', name: 'Bash', input: { command: 'gen' } },
     ]),
     captura: [
-      { evento: 'PreToolUse', toolUseId: 'tu1', arbol: 'arbol-a' },
-      { evento: 'PreToolUse', toolUseId: 'su1', arbol: 'arbol-a' },
-      { evento: 'PostToolUse', toolUseId: 'su1', arbol: 'arbol-b' },
-      { evento: 'PostToolUse', toolUseId: 'tu1', arbol: 'arbol-b' },
+      { evento: 'PreToolUse', toolUseId: 'tu1', arbol: a },
+      { evento: 'PreToolUse', toolUseId: 'su1', arbol: a },
+      { evento: 'PostToolUse', toolUseId: 'su1', arbol: b },
+      { evento: 'PostToolUse', toolUseId: 'tu1', arbol: b },
     ],
+    raizRepo: repo.raiz,
   });
   // La llamada (a -> b) va antes que su subagente (a -> b): como eslabon, cortaria la cadena.
   assert.deepEqual(de(cruda, 'accion').map((a) => a.toolUseId), ['tu1', 'su1']);
   curarYValidar(cruda);
+});
+
+// --- Subagentes no integrados -----------------------------------------------------------------
+
+function crudaConSubagente(revierte, { conRepo = true } = {}) {
+  const { f, captura, raiz, conSubagente } = sesionConSubagente({ revierte });
+  return crudaDe(f, { captura, raizRepo: conRepo ? raiz : null, antes: conSubagente });
+}
+
+test('subagente integrado: entra con sus acciones', () => {
+  const curada = curarYValidar(crudaConSubagente('nadie'));
+  assert.ok(ids(curada, 'agente').includes('subagente:ab12'));
+  assert.ok(de(curada, 'accion').some((a) => a.agente === 'subagente:ab12'));
+});
+
+test('subagente descartado que deshizo lo suyo: sale entero y la cadena aguanta', () => {
+  const cruda = crudaConSubagente('el-mismo');
+  const curada = curarYValidar(cruda);
+  assert.deepEqual(de(curada, 'accion').map((a) => a.toolUseId), ['tu1', 'tu2']);
+  assert.ok(!ids(curada, 'agente').includes('subagente:ab12'));
+  const [, edit] = de(curada, 'accion');
+  const fallido = de(cruda, 'accion').find((a) => a.toolUseId === 'su0');
+  assert.deepEqual(edit.intentosPrevios, [fallido.id], 'sus fallos siguen contando para I7');
+});
+
+test('detenida: un subagente descartado que el orquestador revirtio corta la cadena', () => {
+  const cruda = crudaConSubagente('orquestador');
+  assert.throws(() => curar(serializar(cruda)), (e) => e instanceof CuracionDetenida &&
+    /quitar subagente:ab12, descartado, corta la cadena/.test(e.motivos.join()));
+});
+
+test('detenida: un subagente que cambio el arbol y no se sabe si llego al final', () => {
+  const cruda = crudaConSubagente('nadie', { conRepo: false });
+  assert.throws(() => curar(serializar(cruda)), (e) => e instanceof CuracionDetenida &&
+    /subagente:ab12 cambio el arbol y no se sabe/.test(e.motivos.join()));
+});
+
+function sembrarSubagente(mutar) {
+  const curada = structuredClone(curarYValidar(crudaConSubagente('nadie')));
+  mutar(de(curada, 'agente').find((a) => a.id === 'subagente:ab12'), curada);
+  return validarActa(curada).map((e) => e.invariante);
+}
+
+test('rojo I3: un subagente descartado dentro de la curada', () => {
+  assert.deepEqual(sembrarSubagente((a) => { a.integracion = 'descartado'; }), ['I3']);
+});
+
+test('rojo I3: un subagente sin integracion conocida dentro de la curada', () => {
+  assert.deepEqual(sembrarSubagente((a) => { a.integracion = null; }), ['I3']);
+});
+
+test('rojo esquema: una integracion fuera de los valores, o en quien no es subagente', () => {
+  assert.deepEqual(sembrarSubagente((a) => { a.integracion = 'quizas'; }), ['esquema']);
+  assert.deepEqual(sembrarSubagente((a, c) => {
+    de(c, 'agente').find((x) => x.id === 'orquestador').integracion = 'integrado';
+  }), ['esquema']);
 });
 
 // --- Determinismo (I8) ------------------------------------------------------------------------

@@ -12,7 +12,7 @@ import { validarActa } from '../validar-acta.mjs';
 import { claseDeterminismo } from '../clasificar.mjs';
 import { arbolActual, git } from '../git.mjs';
 import { carpetaTemporal, enCaptura, fabrica, repoQueAvanza, repoTemporal, sesionConHook,
-  subagente } from './fabrica.mjs';
+  sesionConSubagente, subagente } from './fabrica.mjs';
 
 const silencio = { log: () => {}, error: () => {} };
 const de = (registros, elemento) => registros.filter((r) => r.elemento === elemento);
@@ -369,6 +369,47 @@ test('efecto de hook dentro de un subagente: va al paso de la llamada, que no es
   const llamada = de(acta, 'accion').find((a) => a.herramienta === 'Agent');
   assert.equal(hooks[0].paso, llamada.paso);
   assert.deepEqual(hooks[0].cambios.map((c) => c.archivo), ['b.md']);
+});
+
+// --- Integracion de subagentes (#218) ---------------------------------------------------------
+
+const integracionDe = (acta) => de(acta, 'agente').find((a) => a.id === 'subagente:ab12')
+  .integracion;
+
+function compilarConSubagente(revierte, { conRepo = true } = {}) {
+  const { f, captura, raiz, conSubagente } = sesionConSubagente({ revierte });
+  return unicaActa(compilarFabrica(f, { captura, raizRepo: conRepo ? raiz : null,
+    antes: conSubagente }));
+}
+
+test('integracion: integrado si su cambio sigue en el arbol final', () => {
+  const acta = compilarConSubagente('nadie');
+  assert.deepEqual(validarActa(acta), []);
+  assert.equal(integracionDe(acta), 'integrado');
+  assert.equal(de(acta, 'agente').find((a) => a.id === 'orquestador').integracion, null);
+});
+
+test('integracion: descartado si todo lo que cambio volvio a como estaba antes de el', () => {
+  for (const revierte of ['el-mismo', 'orquestador']) {
+    const acta = compilarConSubagente(revierte);
+    assert.deepEqual(validarActa(acta), []);
+    assert.equal(integracionDe(acta), 'descartado', revierte);
+  }
+});
+
+test('integracion: un subagente que no cambio el arbol esta integrado, por vacuidad', () => {
+  const f = fabrica()
+    .prompt('Revisa')
+    .llamada('tu1', 'Agent', { subagent_type: 'Explore', prompt: 'x' })
+    .resultado('tu1', 'ok', { extra: { agentId: 'ab12' } });
+  const acta = unicaActa(compilarFabrica(f, {
+    antes: (c) => subagente(c, 'ab12', [{ id: 'su1', name: 'Read', input: { file_path: 'a' } }]),
+  }));
+  assert.equal(integracionDe(acta), 'integrado');
+});
+
+test('integracion: null si cambio el arbol y no hay repo para comparar', () => {
+  assert.equal(integracionDe(compilarConSubagente('nadie', { conRepo: false })), null);
 });
 
 // --- Secretos ---------------------------------------------------------------------------------

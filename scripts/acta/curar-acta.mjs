@@ -41,6 +41,16 @@
 //    Si no, se DETIENE, igual que con un `hook` que cambio el arbol sin traer su diff. Un hueco
 //    sale de dos acciones en paralelo, o de una captura con eventos perdidos.
 //
+// Subagentes (ADR-0005, segunda regla; PC-11). El compilador marca cada uno como `integrado` o
+// `descartado` comparando por blob los archivos que cambio contra el arbol final:
+//
+// 9. Un subagente descartado sale entero de la curada. Si sin el la cadena de arboles queda
+//    continua (por ejemplo, el mismo deshizo lo suyo), la curada sale; si no, se DETIENE
+//    diciendo que subagente la corta. No se infiere que accion revirtio que.
+// 10. Un subagente con integracion null cambio el arbol y no se pudo comparar: la curacion se
+//    DETIENE. En los datos reales de este repo ningun subagente trabajo fuera del arbol de la
+//    sesion, asi que un descartado es siempre trabajo que se revirtio despues.
+//
 // Intentos previos (invariante I7, PC-08): cada accion curada lista en `intentosPrevios` los
 // fallos de la cruda con su misma herramienta y su mismo archivo o comando, posteriores al exito
 // anterior con esa misma clave. Una accion sin archivo ni comando, o un residuo, lleva [].
@@ -102,11 +112,12 @@ function residuoDe(a) {
   };
 }
 
-// La cadena de arboles de la curada (regla 8): cada accion con arbol empieza donde termino la
-// anterior. Las llamadas Agent y Task no son eslabones: envuelven a su subagente.
-function cadenaRota(acciones) {
+// La cadena de arboles de la curada (regla 8): arranca en el arbol base del acta, y cada accion
+// con arbol empieza donde termino la anterior. Las llamadas Agent y Task no son eslabones:
+// envuelven a su subagente.
+function cadenaRota(acciones, arbolBase) {
   const motivos = [];
-  let previa = null;
+  let previa = arbolBase ? { id: 'el arbol base', arbolDespues: arbolBase } : null;
   for (const a of acciones) {
     if (a.herramienta === 'hook' && a.arbolAntes !== a.arbolDespues && !a.cambios.length) {
       motivos.push(`el efecto de hook ${a.id} cambio el arbol, pero la cruda no trae su diff`);
@@ -127,19 +138,32 @@ export function curar(textoCruda) {
   const de = (elemento) => registros.filter((r) => r.elemento === elemento);
   const cabecera = registros.find((r) => r.elemento === 'acta');
 
+  const motivos = [];
+  const descartados = new Set();
+  for (const ag of de('agente')) {
+    if (ag.integracion === 'descartado') descartados.add(ag.id);
+    if (ag.id.startsWith('subagente:') && ag.integracion === null) {
+      motivos.push(`el subagente ${ag.id} cambio el arbol y no se sabe si llego al final`);
+    }
+  }
+
   const acciones = [];
   const reemplazo = new Map();
-  const motivos = [];
   const pendientes = new Map();
   for (const a of de('accion')) {
     const objetivo = objetivoDe(a);
     const clave = objetivo === null ? null : JSON.stringify([a.herramienta, objetivo]);
+    // Un subagente descartado sale entero (regla 9), pero sus fallos y sus exitos siguen
+    // contando para los intentos previos de los demas: I7 se mide sobre la cruda.
+    const sale = descartados.has(a.agente);
     if (a.exito === true) {
-      acciones.push({ ...a, intentosPrevios: clave === null ? [] : pendientes.get(clave) || [] });
+      const intentosPrevios = clave === null ? [] : pendientes.get(clave) || [];
+      if (!sale) acciones.push({ ...a, intentosPrevios });
       if (clave !== null) pendientes.delete(clave);
       continue;
     }
     if (clave !== null) pendientes.set(clave, [...(pendientes.get(clave) || []), a.id]);
+    if (sale) continue;
     const r = residuoDe(a);
     if (r.motivo) motivos.push(r.motivo);
     if (r.residuo) {
@@ -147,7 +171,11 @@ export function curar(textoCruda) {
       reemplazo.set(a.id, r.residuo.id);
     }
   }
-  motivos.push(...cadenaRota(acciones));
+  const rota = cadenaRota(acciones, cabecera.arbolBase);
+  if (rota.length && descartados.size) {
+    motivos.push(`quitar ${[...descartados].join(', ')}, descartado, corta la cadena de arboles`);
+  }
+  motivos.push(...rota);
   if (motivos.length) throw new CuracionDetenida(motivos);
 
   const idsAccion = new Set(acciones.map((a) => a.id));

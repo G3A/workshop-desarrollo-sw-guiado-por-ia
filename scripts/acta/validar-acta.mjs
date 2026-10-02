@@ -3,7 +3,9 @@
 //
 //   I1  una accion pertenece a un solo paso, un paso a un solo turno, un turno a la sesion.
 //   I2  todos los turnos del acta son de la misma tarea.
-//   I3  las acciones de un subagente estan en el paso de la llamada Agent que lo lanzo.
+//   I3  las acciones de un subagente estan en el paso de la llamada Agent que lo lanzo. Cada
+//       subagente lleva su integracion (integrado, descartado, o null si no se pudo saber), y
+//       en la curada solo hay subagentes integrados.
 //   I4  una accion en segundo plano esta en el paso que la lanzo, no en el de su resultado.
 //   I5  sin marcador de la skill, el paso es el turno completo: procedencia ausente y unico.
 //   I6  solo en la curada (la que trae `derivadaDe` en la cabecera): toda accion tiene
@@ -23,6 +25,7 @@ import { fileURLToPath } from 'node:url';
 const CLASES = new Set(['pura', 'local', 'externa_lectura', 'efecto_externo']);
 const PROCEDENCIAS = new Set(['marcado', 'ausente']);
 const TIPOS_AGENTE = new Set(['persona', 'automatismo', 'ia']);
+const INTEGRACIONES = new Set(['integrado', 'descartado', null]);
 const INTERVENCIONES = new Set(['permiso_aprobado', 'permiso_rechazado', 'interrupcion',
   'comando_usuario', 'correccion']);
 
@@ -85,6 +88,12 @@ export function validarActa(registros, { cruda = null } = {}) {
   const agentes = new Map(de('agente').map((a) => [a.id, a]));
   for (const a of agentes.values()) {
     if (!TIPOS_AGENTE.has(a.tipo)) falla('esquema', `el agente ${a.id} tiene tipo ${a.tipo}`);
+    const esSubagente = a.id.startsWith('subagente:');
+    if (!INTEGRACIONES.has(a.integracion) || (!esSubagente && a.integracion !== null)) {
+      falla('esquema', `el agente ${a.id} tiene integracion ${a.integracion}`);
+    } else if (esSubagente && acta.derivadaDe && a.integracion !== 'integrado') {
+      falla('I3', `el subagente ${a.id} de la curada no esta integrado (${a.integracion})`);
+    }
   }
 
   for (const a of acciones) {

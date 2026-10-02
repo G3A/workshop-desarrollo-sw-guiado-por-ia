@@ -99,6 +99,15 @@ export function versionDe(raiz, commit, ruta) {
   return { ruta, commit: ultimo ? ultimo.trim() : null, hash: blob.trim() };
 }
 
+// El hash del blob de una ruta dentro de un arbol. Null si la ruta no existe en ese arbol.
+export function blobEn(raiz, arbol, ruta) {
+  const r = git(['rev-parse', '--verify', '--quiet', `${arbol}:${ruta}`], {
+    cwd: raiz,
+    permitirFallo: true,
+  });
+  return r ? r.trim() : null;
+}
+
 export function leerEnCommit(raiz, commit, ruta) {
   if (!commit) return null;
   return git(['show', `${commit}:${ruta}`], { cwd: raiz, permitirFallo: true });

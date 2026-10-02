@@ -33,6 +33,12 @@ export function fabrica({ sesion = 'sesion-1', cwd = RAIZ_FICTICIA, rama = 'feat
       estado.rama = r;
       return f;
     },
+    // Adelanta el reloj: lo que sigue queda despues de las lineas de un subagente, que empiezan
+    // a las 12:30.
+    pausa(minutos) {
+      reloj += minutos * 60 * 1000;
+      return f;
+    },
     prompt(texto) {
       lineas.push(base({ type: 'user', message: { role: 'user', content: texto } }));
       return f;
@@ -85,7 +91,8 @@ export function subagente(carpetaSesion, agentId, pasos, { sesion = 'sesion-1' }
       model: 'claude-prueba', content: [{ type: 'tool_use', id: p.id, name: p.name,
         input: p.input }] } });
     lineas.push({ ...comun(), type: 'user', message: { role: 'user', content: [
-      { type: 'tool_result', tool_use_id: p.id, content: p.salida || 'ok' }] } });
+      { type: 'tool_result', tool_use_id: p.id, content: p.salida || 'ok',
+        ...(p.error ? { is_error: true } : {}) }] } });
   }
   const carpeta = path.join(carpetaSesion, 'subagents');
   fs.mkdirSync(carpeta, { recursive: true });
@@ -157,4 +164,53 @@ export function sesionConHook({ alFinal = false } = {}) {
     { evento: 'SessionEnd', momento: enCaptura(0, 6), arbol: a2 },
   ];
   return { f, captura, raiz: repo.raiz, arboles: [a0, a1, a2] };
+}
+
+// Un subagente que reescribe a.md y una accion del orquestador despues de el. `revierte` dice
+// quien deshace el cambio: 'nadie', 'el-mismo' (con un Bash propio, despues de fallar un Edit
+// sobre b.md que el orquestador repite con exito) o 'orquestador'.
+export function sesionConSubagente({ revierte = 'nadie' } = {}) {
+  const repo = repoQueAvanza({ 'a.md': 'a\n', 'b.md': 'b\n' });
+  const a0 = repo.arbol();
+  const a1 = repo.cambiar({ 'a.md': 'a2\n' });
+  repo.cambiar({ 'a.md': 'a\n' });
+  const a2 = repo.cambiar({ 'b.md': 'b2\n' });
+  const ev = (evento, toolUseId, arbol) => ({ evento, toolUseId, arbol });
+  const pasos = [];
+  const delSubagente = [];
+  if (revierte === 'el-mismo') {
+    pasos.push({ id: 'su0', name: 'Edit', input: { file_path: 'b.md', old_string: 'zz',
+      new_string: 'b2' }, salida: 'String to replace not found in file.', error: true });
+    delSubagente.push(ev('PreToolUse', 'su0', a0), ev('PostToolUseFailure', 'su0', a0));
+  }
+  pasos.push({ id: 'su1', name: 'Write', input: { file_path: 'a.md', content: 'a2\n' } });
+  delSubagente.push(ev('PreToolUse', 'su1', a0), ev('PostToolUse', 'su1', a1));
+  if (revierte === 'el-mismo') {
+    pasos.push({ id: 'su2', name: 'Bash', input: { command: 'git checkout -- a.md' } });
+    delSubagente.push(ev('PreToolUse', 'su2', a1), ev('PostToolUse', 'su2', a0));
+  }
+  const finSubagente = revierte === 'el-mismo' ? a0 : a1;
+  const [herramienta, entrada, antes, despues] = {
+    nadie: ['Bash', { command: 'npm test' }, a1, a1],
+    'el-mismo': ['Edit', { file_path: 'b.md', old_string: 'b', new_string: 'b2' }, a0, a2],
+    orquestador: ['Bash', { command: 'git checkout -- a.md' }, a1, a0],
+  }[revierte];
+  const f = fabrica()
+    .prompt('Delega')
+    .llamada('tu1', 'Agent', { subagent_type: 'general-purpose', prompt: 'x' })
+    .resultado('tu1', 'ok', { extra: { agentId: 'ab12' } })
+    .pausa(60)
+    .llamada('tu2', herramienta, entrada)
+    .resultado('tu2', 'ok');
+  const captura = [
+    { evento: 'SessionStart', arbol: a0 },
+    ev('PreToolUse', 'tu1', a0),
+    ...delSubagente,
+    ev('PostToolUse', 'tu1', finSubagente),
+    ev('PreToolUse', 'tu2', antes),
+    ev('PostToolUse', 'tu2', despues),
+    { evento: 'SessionEnd', arbol: despues },
+  ];
+  const conSubagente = (carpeta) => subagente(carpeta, 'ab12', pasos);
+  return { f, captura, raiz: repo.raiz, conSubagente };
 }

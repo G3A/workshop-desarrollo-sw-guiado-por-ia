@@ -36,7 +36,9 @@ pasos y turnos que quedan vacíos salen. Un fallo que cambió el árbol entra co
 con su diff, y uno sin árbol que pudo escribir detiene la curación (código 3). Cada acción lista
 en `intentosPrevios` los fallos que la precedieron sobre el mismo archivo o comando. Lo que un hook
 cambia entre dos acciones lo registra el compilador como acción `hook`, con su diff y el agente
-`hook:sin-identificar`; la curación exige que la cadena de árboles no tenga huecos. Por ahora se
+`hook:sin-identificar`; la curación exige que la cadena de árboles no tenga huecos. Cada subagente
+queda `integrado` o `descartado` según si lo que cambió sigue en el árbol final; uno descartado sale
+de la curada, y si sin él la cadena se corta, la curación se detiene. Por ahora se
 corre a mano: el hook de cierre de sesión la va a generar cuando la curación esté completa.
 
 Los transcripts de Claude Code están en `~/.claude/projects/<proyecto>/<sesión>.jsonl`, y los de

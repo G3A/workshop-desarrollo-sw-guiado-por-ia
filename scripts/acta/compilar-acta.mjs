@@ -34,7 +34,7 @@ import { fileURLToPath } from 'node:url';
 import { ENVOLTORIOS, claseDeterminismo, esRechazoDePermiso } from './clasificar.mjs';
 import { normalizador } from './normalizar.mjs';
 import { validarActa } from './validar-acta.mjs';
-import { cambiosEntre, leerEnCommit, raizDelRepo, versionDe } from './git.mjs';
+import { blobEn, cambiosEntre, leerEnCommit, raizDelRepo, versionDe } from './git.mjs';
 
 const RAMA_CON_TAREA = /^[a-z]+\/(\d+)-/;
 const RUTA_PLUGIN = 'instrumentacion-java-ia/sdlc-ia';
@@ -111,7 +111,7 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
   const agentes = new Map();
   const agente = (id, tipo, rol, actuoEnNombreDe = null) => {
     if (!agentes.has(id)) {
-      agentes.set(id, { elemento: 'agente', id, tipo, rol, actuoEnNombreDe });
+      agentes.set(id, { elemento: 'agente', id, tipo, rol, actuoEnNombreDe, integracion: null });
     }
     return id;
   };
@@ -462,6 +462,31 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
       abiertas.delete(c.toolUseId);
     }
     visto = { arbol: c.arbol, momento: c.momento, accion };
+  }
+
+  // Integracion de cada subagente (invariante I3, PC-11): `descartado` si todos los archivos que
+  // cambio estan en el arbol final como estaban antes de su primer cambio; `integrado` si alguno
+  // no, o si no cambio el arbol (por vacuidad: no le falta nada al arbol final). Null cuando
+  // cambio el arbol y no se puede comparar, sin repo o sin arbol final. Se compara por blob.
+  const arbolFinal = [...captura].reverse().find((c) => c.arbol)?.arbol || null;
+  for (const ag of agentes.values()) {
+    if (!ag.id.startsWith('subagente:')) continue;
+    const conCambios = acciones.filter((a) => a.agente === ag.id && a.arbolAntes &&
+      a.arbolDespues && a.arbolAntes !== a.arbolDespues);
+    if (conCambios.length === 0) {
+      ag.integracion = 'integrado';
+      continue;
+    }
+    const antesDeEl = new Map();
+    for (const a of conCambios) {
+      for (const c of a.cambios) {
+        if (!antesDeEl.has(c.archivo)) antesDeEl.set(c.archivo, a.arbolAntes);
+      }
+    }
+    if (!raizRepo || !arbolFinal || antesDeEl.size === 0) continue;
+    const revertido = [...antesDeEl].every(([archivo, arbol]) =>
+      blobEn(raizRepo, arbolFinal, archivo) === blobEn(raizRepo, arbol, archivo));
+    ag.integracion = revertido ? 'descartado' : 'integrado';
   }
 
   const huella = {
