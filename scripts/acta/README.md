@@ -17,6 +17,10 @@ en Docker, el trailer `Registro-IA:` y el visor llegan en issues aparte.
    `.ia/registros/<tarea>/<sesión>.acta.cruda.jsonl`: un acta por tarea que la sesión tocó.
 3. **Verificación.** El acta no se escribe si rompe una invariante del modelo (`validar-acta.mjs`)
    o si gitleaks encuentra un posible secreto. Sin gitleaks en el PATH tampoco se escribe.
+4. **Curación.** Por cada acta escrita, el hook llama a `curar-acta.mjs`, que deja
+   `<sesión>.acta.curada.jsonl` junto a ella. Si la curación se detiene, lo avisa en stderr y la
+   cruda queda escrita. Medido en la sesión de #218 (203 acciones): unos 12 s compilar y 15 s
+   curar y verificar, dentro de los 120 s que el hook tiene en `.claude/settings.json`.
 
 `.ia/` está en `.gitignore`: las actas pueden traer contenido leído durante la sesión, y qué se
 versiona lo decide el issue del trailer.
@@ -44,9 +48,7 @@ de la curada, y si sin él la cadena se corta, la curación se detiene. Un coman
 `# rojo-esperado: <qué demuestra>` sale de la secuencia y va al anexo de verificaciones negativas,
 al final de la curada: el motor no lo ejecuta. Antes de escribirla, `verificar-arbol.mjs` aplica
 en memoria sus Edit y Write sobre los blobs del repo y comprueba que la cadena llegue al árbol de
-`SessionEnd`; un Edit en cuya ventana escribió un hook se parte en dos. Sin repo no se cura. Por
-ahora se
-corre a mano: el hook de cierre de sesión la va a generar cuando la curación esté completa.
+`SessionEnd`; un Edit en cuya ventana escribió un hook se parte en dos. Sin repo no se cura.
 
 Los transcripts de Claude Code están en `~/.claude/projects/<proyecto>/<sesión>.jsonl`, y los de
 sus subagentes en `<sesión>/subagents/`. Los comandos son los mismos en PowerShell y en bash.

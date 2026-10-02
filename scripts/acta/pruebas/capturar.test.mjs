@@ -92,4 +92,30 @@ test('captura: SessionEnd compila el acta de la sesion', (t) => {
   const acta = path.join(raiz, '.ia', 'registros', '10', 's3.acta.cruda.jsonl');
   assert.ok(fs.existsSync(acta), r.stderr);
   assert.equal(leer(acta)[0].elemento, 'acta');
+  const curada = path.join(raiz, '.ia', 'registros', '10', 's3.acta.curada.jsonl');
+  assert.ok(fs.existsSync(curada), `SessionEnd tambien cura el acta: ${r.stderr}`);
+  assert.equal(leer(curada)[0].derivadaDe.acta, 's3.acta.cruda.jsonl');
+});
+
+test('captura: si la curacion no sale, avisa, no bloquea y no deja una curada vieja', (t) => {
+  const raiz = repoTemporal({ 'a.md': 'uno\n' });
+  // Un Bash que fallo antes de la captura: no se sabe si escribio, y la curacion se detiene.
+  const transcript = fabrica({ sesion: 's4', cwd: raiz })
+    .prompt('Compila')
+    .llamada('tu1', 'Bash', { command: 'make build' })
+    .resultado('tu1', 'make: *** Error 2', { error: true })
+    .escribir(carpetaTemporal('t'));
+  const vieja = path.join(raiz, '.ia', 'registros', '10', 's4.acta.curada.jsonl');
+  fs.mkdirSync(path.dirname(vieja), { recursive: true });
+  fs.writeFileSync(vieja, '{"elemento":"acta","de":"un cierre anterior"}\n');
+  const r = correrHook({ session_id: 's4', cwd: raiz, hook_event_name: 'SessionEnd',
+    reason: 'other', transcript_path: transcript });
+  assert.equal(r.status, 0);
+  if (/No hay gitleaks/.test(r.stderr)) {
+    t.skip('gitleaks no esta en el PATH');
+    return;
+  }
+  assert.ok(fs.existsSync(path.join(raiz, '.ia', 'registros', '10', 's4.acta.cruda.jsonl')));
+  assert.equal(fs.existsSync(vieja), false, 'la curada vieja no queda junto a la cruda nueva');
+  assert.match(r.stderr, /la curacion de la tarea 10 termino con codigo 3; la cruda quedo/);
 });

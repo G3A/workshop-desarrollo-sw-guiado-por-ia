@@ -620,9 +620,10 @@ export function leerCaptura(archivo) {
   return leerJsonl(archivo).registros;
 }
 
-// Compila y escribe. La usan la CLI y el hook SessionEnd. Devuelve el codigo de salida.
+// Compila y escribe. La usan la CLI y el hook SessionEnd. Devuelve el codigo de salida, y deja
+// en `escritas` la ruta de cada acta que escribio: el hook las cura despues.
 export function compilarYEscribir({
-  transcript, captura, salida, raizRepo = null, verificar = true, log = console,
+  transcript, captura, salida, raizRepo = null, verificar = true, log = console, escritas = [],
 }) {
   const { actas, avisos } = compilar({ transcript, captura: leerCaptura(captura), raizRepo });
   for (const a of avisos) log.error(`aviso: ${a}`);
@@ -655,6 +656,7 @@ export function compilarYEscribir({
     }
     fs.copyFileSync(tmp, destino);
     fs.rmSync(tmp, { force: true });
+    escritas.push(destino);
     log.log(`Acta de la tarea ${tarea}: ${destino}`);
   }
   return codigo;
