@@ -107,7 +107,8 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
   // Si la captura vio el PreToolUse de la accion (#218). `false` dice que la herramienta no llego
   // a correr: un Edit que no paso la validacion, o un Write que freno el clasificador, no
   // disparan ningun hook. Solo se afirma con captura desde antes de la accion, y nunca para un
-  // comando con !, que no pasa por los hooks: en esos casos es null, no se sabe.
+  // comando con !, que no pasa por los hooks: en esos casos es null, no se sabe. Tampoco se
+  // afirma de una accion que no fallo: ver «Eventos perdidos», mas abajo.
   const inicioCaptura = captura.map((c) => c.momento).filter(Boolean).sort()[0] || null;
   const capturada = (uso, agenteId, momento) => {
     if (capturaPorUso.get(uso.id)?.antes !== undefined) return true;
@@ -420,6 +421,27 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
   };
   for (const a of acciones.filter((x) => x.subagente && x.agente === 'orquestador')) {
     expandir(a, 1);
+  }
+
+  // Eventos perdidos (#222). Una accion que termino sin fallar corrio, y si la captura no tiene su
+  // PreToolUse o su PostToolUse, los perdio: en la sesion de #218 el hook no cargaba porque una
+  // accion habia roto un modulo que importaba. Esa accion queda con `capturada` en null, no en
+  // false, que diria que no corrio y le quitaria el residuo en la curacion. Se avisa: la cadena
+  // de arboles va a tener un hueco, y la curacion se detendra en el.
+  const perdidas = [];
+  for (const a of acciones) {
+    const cap = capturaPorUso.get(a.toolUseId);
+    const termino = a.exito !== null || a.codigoReinterpretado !== null;
+    if (a.capturada === false && termino && a.exito !== false) {
+      a.capturada = null;
+      perdidas.push(a.id);
+    } else if (a.capturada === true && termino && cap.despues === undefined) {
+      perdidas.push(a.id);
+    }
+  }
+  if (perdidas.length) {
+    avisos.push(`la captura perdio eventos de ${perdidas.length} acciones que corrieron ` +
+      `(${perdidas.join(', ')}): el hook no corrio o no cargo en ese tramo`);
   }
 
   // Efectos entre acciones (#218): un hook como format-on-edit corre en paralelo con la captura,
