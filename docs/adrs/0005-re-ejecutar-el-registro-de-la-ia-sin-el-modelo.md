@@ -6,6 +6,9 @@ Aceptado — 2026-10-01. Propuesto en la PR #214 y aceptado tras su revisión. E
 que este ADR usa como referencia está en
 [`docs/modelo-conceptual-registro-ia.md`](../modelo-conceptual-registro-ia.md).
 
+El [ADR-0006](0006-el-acta-de-la-ia-se-versiona-en-git.md) decide qué se versiona y enmienda el
+punto 5: un comando ejecutado que diverge en el contenedor se avisa, no falla.
+
 ## Contexto
 
 Hoy el trailer `Asistido-por-IA:` declara **que** hubo IA en un commit, pero no **qué hizo**.

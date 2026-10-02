@@ -4,8 +4,9 @@ El registro de lo que hizo la IA en una sesión de Claude Code, según el
 [ADR-0005](../../docs/adrs/0005-re-ejecutar-el-registro-de-la-ia-sin-el-modelo.md) y el
 [modelo conceptual](../../docs/modelo-conceptual-registro-ia.md). Esta carpeta trae la primera
 pieza, el **acta cruda** (#216), la **curada** que se deriva de ella (#218), el **índice de la
-tarea**, el **motor** que re-ejecuta la curada en Docker y la **conformidad** con los pasos que
-las skills marcan (#222). El trailer `Registro-IA:` y el visor son las fases siguientes del #222.
+tarea**, el **motor** que re-ejecuta la curada en Docker, la **conformidad** con los pasos que
+las skills marcan y el trailer `Registro-IA:` con su sensor del CI (#222). El visor es una fase
+siguiente del #222.
 
 ## Cómo funciona
 
@@ -36,8 +37,8 @@ las skills marcan (#222). El trailer `Registro-IA:` y el visor son las fases sig
 
 El motor no corre en el hook: se llama a mano, y en la fase 3 lo llamará el CI.
 
-`.ia/` está en `.gitignore`: las actas pueden traer contenido leído durante la sesión, y qué se
-versiona lo decide el issue del trailer.
+`.ia/` está en `.gitignore`, pero las actas se versionan de a una (ADR-0006): ver «Versionar el
+acta», más abajo.
 
 ## A mano
 
@@ -49,10 +50,15 @@ node scripts/acta/validar-acta.mjs <acta.cruda.jsonl | acta.curada.jsonl>
 node scripts/acta/indexar-tarea.mjs <.ia/registros/<tarea>>
 node scripts/acta/reejecutar-acta.mjs <acta.curada.jsonl> [--reporte <archivo>] [--tiempo <s>]
 node scripts/acta/conformidad.mjs <acta.cruda.jsonl | acta.curada.jsonl>
+node scripts/acta/registrar-sesion.mjs [--sesion <id>] [--sin-stage]
+node scripts/acta/verificar-registro-ia.mjs --rango <A..B> [--cuerpo-pr <archivo>] [--sin-motor]
+node scripts/acta/deriva-huella.mjs <acta> [--hasta <commit>] [--modelo <id>]
 node --test scripts/acta/pruebas/compilar-acta.test.mjs scripts/acta/pruebas/capturar.test.mjs
 node --test scripts/acta/pruebas/curar-acta.test.mjs scripts/acta/pruebas/verificar-arbol.test.mjs
 node --test scripts/acta/pruebas/indexar-tarea.test.mjs scripts/acta/pruebas/ejecutar-acta.test.mjs
 node --test scripts/acta/pruebas/reejecutar-acta.test.mjs scripts/acta/pruebas/conformidad.test.mjs
+node --test scripts/acta/pruebas/verificar-registro-ia.test.mjs
+node --test scripts/acta/pruebas/deriva-huella.test.mjs
 ```
 
 `curar-acta.mjs` se corre desde dentro del repo: lee de él los blobs para verificar el árbol.
@@ -112,6 +118,41 @@ divergencias, 1 si no, y 3 si no se pudo re-ejecutar, por ejemplo sin Docker.
 Medido sobre la fase 1 del #222 (55 acciones, unos 26 s): 45 verificadas, las 18 ediciones
 iguales y una divergencia legítima, un `cd` a una carpeta de `$TEMP` que había creado un
 comando omitido.
+
+## Versionar el acta
+
+El [ADR-0006](../../docs/adrs/0006-el-acta-de-la-ia-se-versiona-en-git.md) decide que el acta va en
+git, y cómo. El flujo de una PR asistida:
+
+1. **Commitear el trabajo.** Dentro de Claude Code, el hook `commit-msg` (`citar-acta.mjs`)
+   agrega `Registro-IA: .ia/registros/<tarea>/<sesión>.acta.curada.jsonl` debajo de
+   `Asistido-por-IA:`. Usa `CLAUDE_CODE_SESSION_ID`, que Claude Code exporta a sus comandos.
+   Fuera de Claude Code, el trailer se escribe a mano; sin acta, `Registro-IA: ninguno: <motivo>`.
+2. **Registrar la sesión.** `node scripts/acta/registrar-sesion.mjs` compila lo que va de la
+   sesión, cortando la llamada en curso, la cura, empaca sus objetos, reescribe el índice y deja en
+   stage con `git add -f` la cruda, la curada, `<sesión>.acta.objetos.pack` y `indice.json`.
+   **Antes de commitearlos, léelos:** este repo es público, y el acta trae prompts, salidas y
+   contenido leído.
+3. **Commitear el acta y abrir la PR**, con cada `Registro-IA:` repetido en el cuerpo: el merge a
+   `dev` es por squash con ese cuerpo como mensaje.
+
+El pack de objetos existe porque los árboles del acta los escribió la captura en la máquina de
+quien trabajó, y ningún commit los alcanza. Lleva solo lo que el `headBase` no tiene: en la
+sesión de este issue, 260 KB en vez de 8,7 MB.
+
+En el CI, `verificar-registro-ia.mjs` falla si un commit asistido no declara su acta, si el acta
+no está en la PR, si la curada no sale de su cruda (I8), si el commit deja un archivo con un
+contenido que ningún árbol del acta tuvo, si el motor no reproduce una acción aplicada o si el
+cuerpo de la PR no repite un trailer. Un comando ejecutado que diverge en el contenedor se avisa y
+no falla (ADR-0006).
+
+`deriva-huella.mjs` responde PC-14. Dice qué cambió desde el `headBase` del acta en los
+instructivos, la versión del plugin y el Dockerfile del motor, y en la versión de Claude Code y
+el modelo si se los pasa. Lo que no se puede saber queda en `null`.
+
+El compilador redacta además el valor de toda variable cuyo nombre dice que es secreta
+(`*TOKEN*`, `*SECRET*`, `*PASSWORD*`, `*API_KEY*`) en la forma `NOMBRE=valor`. Un `env`
+dentro de Claude Code muestra `CLAUDE_CODE_MESSAGING_TOKEN`, y gitleaks no lo reconoce.
 
 ## Intervenciones
 

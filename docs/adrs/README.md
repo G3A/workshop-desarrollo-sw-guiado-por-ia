@@ -21,6 +21,10 @@ Contexto, Decisión, Consecuencias), una página, nombre `NNNN-slug-corto.md`.
   los comandos y resultados grabados del orquestador y sus subagentes, no con el modelo, en un
   contenedor sin red. Acta cruda y curada, cuatro clases de determinismo y anexo de
   verificaciones negativas. Reproduce, no replica.
+- `0006-el-acta-de-la-ia-se-versiona-en-git` — el acta va en git, en `.ia/registros/` con
+  `git add -f`, junto a un pack de los árboles de la sesión. Todo commit asistido declara
+  `Registro-IA:`, y el CI falla si el acta no llega a su diff. Enmienda el 0005: un comando
+  ejecutado que diverge en el contenedor se avisa, no falla.
 - `0003-el-adr-como-fuente-de-datos-del-sensor-de-espejo` — la lista de divergencias deja de ser un
   acuerdo escrito: la lee `scripts/verificar-espejo.mjs` en el CI. Qué se espeja, qué difiere a
   propósito, qué es residuo pendiente de limpieza, y qué bloquea el job frente a qué solo avisa.

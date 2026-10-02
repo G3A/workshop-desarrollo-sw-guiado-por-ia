@@ -44,9 +44,9 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { ENVOLTORIOS, MODOS_CON_PERSONA, SIN_PERMISO, claseDeterminismo, esRechazoDePermiso,
   textoDelRechazo } from './clasificar.mjs';
-import { normalizador } from './normalizar.mjs';
+import { identidadDelEntorno, normalizador } from './normalizar.mjs';
 import { validarActa } from './validar-acta.mjs';
-import { blobEn, cambiosEntre, leerEnCommit, raizDelRepo, versionDe } from './git.mjs';
+import { blobEn, cambiosEntre, git, leerEnCommit, raizDelRepo, versionDe } from './git.mjs';
 
 const RAMA_CON_TAREA = /^[a-z]+\/(\d+)-/;
 const RUTA_PLUGIN = 'instrumentacion-java-ia/sdlc-ia';
@@ -102,13 +102,14 @@ const entre = (texto, etiqueta) => {
 
 // El compilador como funcion pura sobre sus entradas. `raizRepo` es opcional: sin ella no hay
 // diffs ni versiones de documentos, pero el resto del acta se arma igual.
-export function compilar({ transcript, captura = [], raizRepo = null, carpetaSesion = null }) {
+export function compilar({ transcript, captura = [], raizRepo = null, carpetaSesion = null,
+  identidad = {} }) {
   const avisos = [];
   const { registros: lineas, ilegibles } = leerJsonl(transcript);
   if (ilegibles) avisos.push(`${ilegibles} lineas del transcript no son JSON y se ignoraron`);
   const primera = lineas.find((l) => l.sessionId && l.cwd) || {};
   const sesion = primera.sessionId || path.basename(transcript, '.jsonl');
-  const norm = normalizador(primera.cwd || null);
+  const norm = normalizador(primera.cwd || null, { identidad });
   const carpeta = carpetaSesion || transcript.replace(/\.jsonl$/, '');
 
   const capturaPorUso = new Map();
@@ -747,6 +748,19 @@ function separarPorTarea(s) {
   return actas;
 }
 
+// Quien compila es quien trabajo: el hook corre en su maquina. Su cuenta, su dominio, su carpeta
+// y su email de git se redactan del acta (#222, fase 3).
+function identidadDeQuienCompila(raizRepo) {
+  let usuario = process.env.USERNAME || null;
+  try {
+    usuario = usuario || os.userInfo().username;
+  } catch { /* sin cuenta legible, sin redaccion de cuenta */ }
+  const email = raizRepo ? git(['config', 'user.email'], { cwd: raizRepo,
+    permitirFallo: true }) : null;
+  return identidadDelEntorno({ email: email ? email.trim() : null, usuario,
+    dominio: process.env.USERDOMAIN || null, casa: path.basename(os.homedir()) });
+}
+
 export function serializar(registros) {
   return registros.map((r) => JSON.stringify(r)).join('\n') + '\n';
 }
@@ -774,8 +788,10 @@ export function leerCaptura(archivo) {
 // en `escritas` la ruta de cada acta que escribio: el hook las cura despues.
 export function compilarYEscribir({
   transcript, captura, salida, raizRepo = null, verificar = true, log = console, escritas = [],
+  carpetaSesion = null,
 }) {
-  const { actas, avisos } = compilar({ transcript, captura: leerCaptura(captura), raizRepo });
+  const { actas, avisos } = compilar({ transcript, captura: leerCaptura(captura), raizRepo,
+    carpetaSesion, identidad: identidadDeQuienCompila(raizRepo) });
   for (const a of avisos) log.error(`aviso: ${a}`);
   let codigo = 0;
   for (const [tarea, registros] of actas) {
