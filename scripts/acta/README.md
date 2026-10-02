@@ -42,12 +42,16 @@ Con `--comprobar` vuelve a derivar la curada y falla si no coincide byte a byte 
 
 La curada entra solo con las acciones exitosas, de todos los agentes, con su id de la cruda; los
 pasos y turnos que quedan vacíos salen. Un fallo que cambió el árbol entra como acción `residuo`
-con su diff, y uno sin árbol que pudo escribir detiene la curación (código 3). Cada acción lista
-en `intentosPrevios` los fallos que la precedieron sobre el mismo archivo o comando. Lo que un hook
-cambia entre dos acciones lo registra el compilador como acción `hook`, con su diff y el agente
-`hook:sin-identificar`; la curación exige que la cadena de árboles no tenga huecos. Cada subagente
-queda `integrado` o `descartado` según si lo que cambió sigue en el árbol final; uno descartado sale
-de la curada, y si sin él la cadena se corta, la curación se detiene. Un comando que termina con
+con su diff, y uno sin árbol que pudo escribir detiene la curación (código 3). Una acción
+cuyo código de salida Claude Code reinterpretó como benigno, como el 1 de un `| grep` que en
+realidad era el fallo de un eslabón anterior, queda en la cruda con `exito` en null y la
+interpretación en `codigoReinterpretado` (#219): en la curada se trata como un fallo. Cada acción
+lista en `intentosPrevios` los fallos que la precedieron sobre el mismo archivo o comando. Lo que
+un hook cambia entre dos acciones lo registra el compilador como acción `hook`, con su diff y el
+agente `hook:sin-identificar`; la curación exige que la cadena de árboles no tenga huecos. Cada
+subagente queda `integrado` o `descartado` según si lo que cambió sigue en el árbol final; uno
+descartado sale de la curada, y si sin él la cadena se corta, la curación se detiene. Un comando
+que termina con
 `# rojo-esperado: <qué demuestra>` sale de la secuencia y va al anexo de verificaciones negativas,
 al final de la curada: el motor no lo ejecuta. Antes de escribirla, `verificar-arbol.mjs` aplica
 en memoria sus Edit y Write sobre los blobs del repo y comprueba que la cadena llegue al árbol de
@@ -65,5 +69,8 @@ sus subagentes en `<sesión>/subagents/`. Los comandos son los mismos en PowerSh
   permisos van en otro issue (PC-10).
 - **Árbol de los comandos con `!`.** Los hooks no corren para los comandos que escribe el
   usuario: su acción queda sin hash de árbol.
+- **Fallos dentro de un pipe.** Sin `pipefail`, `a | tail` sale con el código de `tail`, y el
+  fallo de `a` no deja rastro ni en el transcript ni en el payload de los hooks, que tampoco traen
+  el código de salida crudo. Si importa, el comando se escribe con `set -o pipefail`.
 - **Huella sin captura.** Si la sesión no tiene captura (por ejemplo, una sesión anterior a este
   hook), no hay `HEAD` base, y el acta sale sin versión del plugin ni documentos de la huella.

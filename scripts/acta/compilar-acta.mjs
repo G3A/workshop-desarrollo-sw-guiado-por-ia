@@ -24,6 +24,13 @@
 //
 // La fase queda en null: la declara la skill, y ninguna la declara todavia.
 //
+// El exito sale del `is_error` del resultado, salvo cuando Claude Code reinterpreto el codigo de
+// salida (#219): un comando que termina en `| grep` y sale con 1 queda como «No matches found»,
+// sin `is_error`, aunque el 1 viniera de un eslabon anterior que fallo. Ni el transcript ni el
+// payload de PostToolUse traen el codigo crudo, solo esa interpretacion. La accion queda con
+// `exito = null`, porque no se sabe, y la interpretacion en `codigoReinterpretado`. Leer la
+// salida para decidir (buscar `Error:`) seria una heuristica, y el modelo las prohibe.
+//
 // Codigos de salida: 0 todo escrito, 1 un acta rompe una invariante, 2 uso incorrecto,
 // 3 gitleaks encontro un secreto, 4 no hay gitleaks para verificar.
 import fs from 'node:fs';
@@ -195,6 +202,7 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
       resultadoCompleto: null,
       resultadoDiferido: null,
       error: null,
+      codigoReinterpretado: null,
       capturada: capturada(uso, agenteId, linea.timestamp),
       arbolAntes: antes,
       arbolDespues: despues,
@@ -215,7 +223,11 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
       return;
     }
     const texto = norm.texto(textoDe(bloque.content));
-    accion.exito = bloque.is_error !== true;
+    const extra = linea.toolUseResult;
+    const interpretacion = bloque.is_error !== true && typeof extra?.returnCodeInterpretation ===
+      'string' && extra.returnCodeInterpretation.trim() ? extra.returnCodeInterpretation : null;
+    accion.exito = interpretacion !== null ? null : bloque.is_error !== true;
+    accion.codigoReinterpretado = interpretacion;
     accion.resultado = texto;
     accion.error = bloque.is_error === true ? texto : null;
     const archivo = /tool-results[\\/]([\w.-]+)/.exec(texto);
@@ -223,7 +235,6 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
       const ruta = path.join(carpeta, 'tool-results', archivo[1]);
       if (fs.existsSync(ruta)) accion.resultadoCompleto = norm.texto(fs.readFileSync(ruta, 'utf8'));
     }
-    const extra = linea.toolUseResult;
     if (extra && typeof extra === 'object') {
       if (extra.agentId) accion.subagente = String(extra.agentId);
       if (extra.backgroundTaskId) accion.tareaFondo = String(extra.backgroundTaskId);
@@ -443,6 +454,7 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
           resultadoCompleto: null,
           resultadoDiferido: null,
           error: null,
+          codigoReinterpretado: null,
           capturada: null,
           arbolAntes: visto.arbol,
           arbolDespues: c.arbol,
@@ -458,8 +470,10 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
     }
     // Solo abre la ventana una accion que el transcript tiene y que termino: un PreToolUse sin
     // llamada en el transcript, o el de una accion interrumpida, nunca recibe su Post, y dejarlo
-    // abierto apagaba la deteccion el resto de la sesion. Paso en vivo en la sesion de #218.
-    if (c.evento === 'PreToolUse' && accion && accion.exito !== null &&
+    // abierto apagaba la deteccion el resto de la sesion. Paso en vivo en la sesion de #218. Una
+    // accion con el codigo reinterpretado tambien termino, aunque su exito sea null (#219).
+    const termino = accion && (accion.exito !== null || accion.codigoReinterpretado !== null);
+    if (c.evento === 'PreToolUse' && termino &&
       !ENVOLTORIOS.has(accion.herramienta)) {
       abiertas.add(c.toolUseId);
     } else {

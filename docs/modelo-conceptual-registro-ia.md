@@ -71,6 +71,7 @@ classDiagram
       entrada
       resultado
       exito
+      codigoReinterpretado
       claseDeterminismo
       arbolAntes
       arbolDespues
@@ -181,6 +182,7 @@ El hash prueba que el documento cambió; el commit y la ruta permiten abrir la v
 | Campo | Valores |
 |---|---|
 | `Paso.procedencia` | `marcado` (la skill emitió el marcador) o `ausente`. **Sin inferencias en la primera versión** (PC-04): una heurística metería no determinismo en el registro |
+| `Accion.exito` | `true`, `false` o `null`: sin resultado, o con un código de salida distinto de 0 que Claude Code leyó como benigno, como el 1 de un `| grep`, guardado en `codigoReinterpretado` (#219). No se infiere de la salida |
 | `Accion.claseDeterminismo` | `pura`, `local`, `externa_lectura`, `efecto_externo` |
 | `Agente.tipo` | `persona`, `automatismo`, `ia` |
 | `Agente.rol` | `orquestador`, `subagente:<tipo>`, `hook:<nombre>`, `usuario` |

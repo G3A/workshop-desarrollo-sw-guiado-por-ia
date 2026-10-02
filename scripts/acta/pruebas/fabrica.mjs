@@ -214,3 +214,40 @@ export function sesionConSubagente({ revierte = 'nadie' } = {}) {
   const conSubagente = (carpeta) => subagente(carpeta, 'ab12', pasos);
   return { f, captura, raiz: repo.raiz, conSubagente };
 }
+
+// El caso de #219, medido en la sesion de #218: un script que lanza una excepcion antes de un
+// `| grep`. El `&&` corta la cadena con codigo 1, Claude Code ve el grep al final y lo lee como
+// «No matches found»: el resultado llega sin is_error, con la interpretacion en toolUseResult,
+// como en Claude Code 2.1.282 y 2.1.287. Despues, el mismo comando corregido sale bien. Con
+// `escribe`, el script alcanzo a cambiar a.md antes de la excepcion.
+export const COMANDO_CON_GREP =
+  'node t.mjs && node --test pruebas/curar.test.mjs 2>&1 | grep -E "^# (pass|fail)"';
+
+export function sesionConGrepQueOcultaUnFallo({ escribe = false } = {}) {
+  const repo = repoQueAvanza({ 'a.md': 'uno\n' });
+  const a0 = repo.arbol();
+  const a1 = escribe ? repo.cambiar({ 'a.md': 'a medias\n' }) : a0;
+  const a2 = repo.cambiar({ 'a.md': 'dos\n' });
+  const salida = 'file:///t.mjs:3\n    throw new Error("boom");\n\nError: boom\n';
+  const bash = (stdout, extra = {}) => ({ stdout, stderr: '', interrupted: false,
+    isImage: false, noOutputExpected: false, ...extra });
+  const f = fabrica()
+    .prompt('Corre las pruebas')
+    .texto('Corro el script y las pruebas.')
+    .llamada('tu1', 'Bash', { command: COMANDO_CON_GREP })
+    .resultado('tu1', salida, {
+      extra: bash(salida, { returnCodeInterpretation: 'No matches found' }) })
+    .texto('Corrijo el script y repito.')
+    .llamada('tu2', 'Bash', { command: COMANDO_CON_GREP })
+    .resultado('tu2', '# pass 12\n# fail 0', { extra: bash('# pass 12\n# fail 0') });
+  const ev = (evento, toolUseId, arbol) => ({ evento, toolUseId, arbol });
+  const captura = [
+    { evento: 'SessionStart', arbol: a0 },
+    ev('PreToolUse', 'tu1', a0),
+    ev('PostToolUse', 'tu1', a1),
+    ev('PreToolUse', 'tu2', a1),
+    ev('PostToolUse', 'tu2', a2),
+    { evento: 'SessionEnd', arbol: a2 },
+  ];
+  return { f, captura, raiz: repo.raiz, arboles: [a0, a1, a2] };
+}

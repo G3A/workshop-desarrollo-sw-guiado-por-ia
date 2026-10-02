@@ -11,8 +11,9 @@ import { compilar, compilarYEscribir, serializar } from '../compilar-acta.mjs';
 import { validarActa } from '../validar-acta.mjs';
 import { claseDeterminismo } from '../clasificar.mjs';
 import { arbolActual, git } from '../git.mjs';
-import { carpetaTemporal, enCaptura, fabrica, repoQueAvanza, repoTemporal, sesionConHook,
-  sesionConSubagente, subagente } from './fabrica.mjs';
+import { carpetaTemporal, enCaptura, fabrica, repoQueAvanza, repoTemporal,
+  sesionConGrepQueOcultaUnFallo, sesionConHook, sesionConSubagente, subagente,
+} from './fabrica.mjs';
 
 const silencio = { log: () => {}, error: () => {} };
 const de = (registros, elemento) => registros.filter((r) => r.elemento === elemento);
@@ -538,6 +539,52 @@ function sembrar(mutar) {
   mutar(acta);
   return validarActa(acta).map((e) => e.invariante);
 }
+
+test('codigo reinterpretado: el | grep que oculta un fallo queda con exito null y su marca', () => {
+  const { f, captura, raiz } = sesionConGrepQueOcultaUnFallo();
+  const acta = unicaActa(compilarFabrica(f, { captura, raizRepo: raiz }));
+  assert.deepEqual(validarActa(acta), []);
+  const [oculta, repetida] = de(acta, 'accion');
+  assert.equal(oculta.exito, null, 'no se sabe si fallo: no se infiere de la salida');
+  assert.equal(oculta.codigoReinterpretado, 'No matches found');
+  assert.equal(oculta.error, null);
+  assert.match(oculta.resultado, /Error: boom/, 'la salida queda en la cruda tal cual');
+  assert.equal(repetida.exito, true);
+  assert.equal(repetida.codigoReinterpretado, null);
+});
+
+test('codigo reinterpretado: con is_error manda el fallo, y una cadena vacia no es marca', () => {
+  const f = fabrica()
+    .prompt('Corre')
+    .llamada('tu1', 'Bash', { command: 'diff a b' })
+    .resultado('tu1', 'Exit code 2', { error: true,
+      extra: { stdout: '', returnCodeInterpretation: 'Files differ' } })
+    .llamada('tu2', 'Bash', { command: 'grep x a' })
+    .resultado('tu2', '', { extra: { stdout: '', returnCodeInterpretation: '  ' } });
+  const [fallo, vacia] = de(unicaActa(compilarFabrica(f)), 'accion');
+  assert.deepEqual([fallo.exito, fallo.codigoReinterpretado], [false, null]);
+  assert.deepEqual([vacia.exito, vacia.codigoReinterpretado], [true, null]);
+});
+
+test('codigo reinterpretado: la accion termino, y su ventana no deja ver un hook falso', () => {
+  // Un PreToolUse ajeno dentro de la ventana de la accion ve el arbol a medio cambiar: es de ella,
+  // no de un hook. Con la ventana cerrada por su exito null, se inventaba una accion `hook`.
+  const { f, captura, raiz, arboles: [, a1] } = sesionConGrepQueOcultaUnFallo({ escribe: true });
+  const ajeno = { evento: 'PreToolUse', toolUseId: 'sin-llamada', arbol: a1 };
+  const conAjeno = [...captura.slice(0, 2), ajeno, ...captura.slice(2)];
+  const acta = unicaActa(compilarFabrica(f, { captura: conAjeno, raizRepo: raiz }));
+  assert.deepEqual(de(acta, 'accion').map((a) => a.herramienta), ['Bash', 'Bash']);
+});
+
+test('rojo esquema: una accion con el codigo reinterpretado que figura como exito o fallo', () => {
+  for (const [exito, error] of [[true, null], [false, 'Exit code 1']]) {
+    const r = sembrar((acta) => {
+      Object.assign(de(acta, 'accion')[0], { codigoReinterpretado: 'No matches found', exito,
+        error });
+    });
+    assert.ok(r.includes('esquema'), `${exito}: ${r.join()}`);
+  }
+});
 
 test('rojo I1: una accion que apunta a un paso que no existe', () => {
   const r = sembrar((acta) => {
