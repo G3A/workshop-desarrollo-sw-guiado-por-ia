@@ -3,8 +3,8 @@
 El registro de lo que hizo la IA en una sesión de Claude Code, según el
 [ADR-0005](../../docs/adrs/0005-re-ejecutar-el-registro-de-la-ia-sin-el-modelo.md) y el
 [modelo conceptual](../../docs/modelo-conceptual-registro-ia.md). Esta carpeta trae la primera
-pieza, el **acta cruda** (#216). La curación, el motor en Docker, el trailer `Registro-IA:` y el
-visor llegan en issues aparte.
+pieza, el **acta cruda** (#216), y la **curada** que se deriva de ella (#218, en curso). El motor
+en Docker, el trailer `Registro-IA:` y el visor llegan en issues aparte.
 
 ## Cómo funciona
 
@@ -25,9 +25,15 @@ versiona lo decide el issue del trailer.
 
 ```text
 node scripts/acta/compilar-acta.mjs --transcript <sesión.jsonl> [--salida <carpeta>]
-node scripts/acta/validar-acta.mjs <acta.cruda.jsonl>
+node scripts/acta/curar-acta.mjs <acta.cruda.jsonl> [--salida <acta.curada.jsonl>]
+node scripts/acta/validar-acta.mjs <acta.cruda.jsonl | acta.curada.jsonl>
 node --test scripts/acta/pruebas/compilar-acta.test.mjs scripts/acta/pruebas/capturar.test.mjs
+node --test scripts/acta/pruebas/curar-acta.test.mjs
 ```
+
+La curada entra solo con las acciones exitosas, de todos los agentes, con su id de la cruda; los
+pasos y turnos que quedan vacíos salen. Por ahora se corre a mano: el hook de cierre de sesión la
+va a generar cuando la curación esté completa.
 
 Los transcripts de Claude Code están en `~/.claude/projects/<proyecto>/<sesión>.jsonl`, y los de
 sus subagentes en `<sesión>/subagents/`. Los comandos son los mismos en PowerShell y en bash.

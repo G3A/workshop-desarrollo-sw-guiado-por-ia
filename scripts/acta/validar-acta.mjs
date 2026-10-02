@@ -6,10 +6,12 @@
 //   I3  las acciones de un subagente estan en el paso de la llamada Agent que lo lanzo.
 //   I4  una accion en segundo plano esta en el paso que la lanzo, no en el de su resultado.
 //   I5  sin marcador de la skill, el paso es el turno completo: procedencia ausente y unico.
+//   I6  solo en la curada (la que trae `derivadaDe` en la cabecera): toda accion tiene
+//       exito = true, todo paso al menos una accion y todo turno al menos un paso.
 //
 // Ademas se valida el esquema: valores cerrados y referencias que existen.
 //
-// Uso: node scripts/acta/validar-acta.mjs <acta.cruda.jsonl>
+// Uso: node scripts/acta/validar-acta.mjs <acta.cruda.jsonl | acta.curada.jsonl>
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -105,6 +107,19 @@ export function validarActa(registros) {
       falla('esquema', `la intervencion ${i.id} apunta a un paso inexistente`);
     }
   }
+  if (acta.derivadaDe) {
+    const conAccion = new Set(acciones.map((a) => a.paso));
+    const conPaso = new Set(pasos.map((p) => p.turno));
+    for (const a of acciones) {
+      if (a.exito !== true) falla('I6', `la accion ${a.id} de la curada tiene exito = ${a.exito}`);
+    }
+    for (const p of pasos) {
+      if (!conAccion.has(p.id)) falla('I6', `el paso ${p.id} de la curada no tiene acciones`);
+    }
+    for (const t of turnos) {
+      if (!conPaso.has(t.id)) falla('I6', `el turno ${t.id} de la curada no tiene pasos`);
+    }
+  }
   return errores;
 }
 
@@ -115,12 +130,15 @@ export function leerActa(archivo) {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const archivo = process.argv[2];
   if (!archivo) {
-    console.error('Uso: node scripts/acta/validar-acta.mjs <acta.cruda.jsonl>');
+    console.error('Uso: node scripts/acta/validar-acta.mjs <acta.cruda.jsonl | ' +
+      'acta.curada.jsonl>');
     process.exitCode = 2;
   } else {
-    const errores = validarActa(leerActa(archivo));
+    const registros = leerActa(archivo);
+    const errores = validarActa(registros);
     for (const e of errores) console.error(`${e.invariante}: ${e.mensaje}`);
+    const hasta = registros.some((r) => r.elemento === 'acta' && r.derivadaDe) ? 'I6' : 'I5';
     if (errores.length) process.exitCode = 1;
-    else console.log('Acta valida: cumple las invariantes I1 a I5 y el esquema.');
+    else console.log(`Acta valida: cumple las invariantes I1 a ${hasta} y el esquema.`);
   }
 }
