@@ -3,15 +3,19 @@
 El registro de lo que hizo la IA en una sesión de Claude Code, según el
 [ADR-0005](../../docs/adrs/0005-re-ejecutar-el-registro-de-la-ia-sin-el-modelo.md) y el
 [modelo conceptual](../../docs/modelo-conceptual-registro-ia.md). Esta carpeta trae la primera
-pieza, el **acta cruda** (#216), y la **curada** que se deriva de ella (#218). El motor
-en Docker, el trailer `Registro-IA:` y el visor llegan en issues aparte.
+pieza, el **acta cruda** (#216), la **curada** que se deriva de ella (#218) y el **índice de la
+tarea** (#222). El motor en Docker, el trailer `Registro-IA:` y el visor son las fases
+siguientes del #222.
 
 ## Cómo funciona
 
 1. **Captura.** `capturar.mjs` corre como hook en `SessionStart`, `PreToolUse`, `PostToolUse`,
    `PostToolUseFailure` y `SessionEnd`; está registrado en `.claude/settings.json`. Agrega una
    línea a `.ia/captura/<sesión>.jsonl` con el `HEAD` y el hash del árbol antes y después de cada
-   acción. Las lecturas no capturan árbol, porque no lo cambian. Nunca bloquea la sesión.
+   acción. Las lecturas no capturan árbol, porque no lo cambian. Nunca bloquea la sesión. En
+   cada evento solo carga `nucleo-captura.mjs`, que no importa nada del repo: en la sesión de
+   #218 una acción dejó `curar-acta.mjs` con un error de sintaxis, el hook lo importaba y no
+   cargó hasta que otra acción lo arregló, y cuatro acciones quedaron sin captura (#222).
 2. **Compilación.** Al cerrar la sesión, el mismo hook llama a `compilar-acta.mjs`, que lee el
    transcript principal, los de los subagentes y la captura, y escribe
    `.ia/registros/<tarea>/<sesión>.acta.cruda.jsonl`: un acta por tarea que la sesión tocó.
@@ -22,6 +26,12 @@ en Docker, el trailer `Registro-IA:` y el visor llegan en issues aparte.
    cruda queda escrita. Medido en la sesión de #218 (203 acciones): unos 12 s compilar y 15 s
    curar y verificar. El hook tiene 300 s en `.claude/settings.json`, para que una sesión de unas
    mil acciones también alcance; si se pasa, Claude Code lo corta y solo falta la curada.
+5. **Índice.** Por último, `indexar-tarea.mjs` reescribe `.ia/registros/<tarea>/indice.json`
+   con las actas de la tarea —sesión, inicio, fin, ramas, sha256 de la cruda y si tiene
+   curada— y el índice inverso: por cada archivo que la tarea cambió, qué acciones lo cambiaron,
+   de qué sesión y de qué agente (PC-02 y PC-03). Sale de las crudas, así que también lista los
+   fallos con residuo, los efectos de hook y los subagentes descartados. Es determinista y no
+   lleva la hora en que se indexó.
 
 `.ia/` está en `.gitignore`: las actas pueden traer contenido leído durante la sesión, y qué se
 versiona lo decide el issue del trailer.
@@ -33,8 +43,10 @@ node scripts/acta/compilar-acta.mjs --transcript <sesión.jsonl> [--salida <carp
 node scripts/acta/curar-acta.mjs <acta.cruda.jsonl> [--salida <acta.curada.jsonl>]
 node scripts/acta/curar-acta.mjs <acta.cruda.jsonl> --comprobar <acta.curada.jsonl>
 node scripts/acta/validar-acta.mjs <acta.cruda.jsonl | acta.curada.jsonl>
+node scripts/acta/indexar-tarea.mjs <.ia/registros/<tarea>>
 node --test scripts/acta/pruebas/compilar-acta.test.mjs scripts/acta/pruebas/capturar.test.mjs
 node --test scripts/acta/pruebas/curar-acta.test.mjs scripts/acta/pruebas/verificar-arbol.test.mjs
+node --test scripts/acta/pruebas/indexar-tarea.test.mjs
 ```
 
 `curar-acta.mjs` se corre desde dentro del repo: lee de él los blobs para verificar el árbol.
@@ -61,6 +73,12 @@ Los transcripts de Claude Code están en `~/.claude/projects/<proyecto>/<sesión
 sus subagentes en `<sesión>/subagents/`. Los comandos son los mismos en PowerShell y en bash.
 
 ## Lo que el acta cruda todavía no tiene
+
+- **Eventos que la captura perdió.** Si una acción que corrió no tiene su `PreToolUse` o su
+  `PostToolUse` en la captura, el compilador lo avisa y la deja con `capturada` en null, no en
+  false, que diría que no corrió. La curación se detiene en el hueco: es el caso de la sesión de
+  #218, que recompilada con #222 sigue sin curarse por las acciones a236 a a239. No hay de dónde
+  recuperar sus árboles; la causa, el hook que no cargaba, ya no se repite.
 
 - **Pasos del instructivo.** Ninguna skill marca sus pasos, así que cada paso es el turno completo,
   con procedencia `ausente` (PC-04).

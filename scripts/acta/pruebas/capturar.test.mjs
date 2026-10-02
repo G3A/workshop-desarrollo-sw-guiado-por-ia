@@ -12,12 +12,12 @@ import { carpetaTemporal, fabrica, repoTemporal } from './fabrica.mjs';
 
 const HOOK = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'capturar.mjs');
 
-function correrHook(entrada) {
+function correrHook(entrada, hook = HOOK) {
   const env = { ...process.env };
   delete env.GIT_DIR;
   delete env.GIT_WORK_TREE;
   delete env.GIT_INDEX_FILE;
-  return spawnSync(process.execPath, [HOOK], {
+  return spawnSync(process.execPath, [hook], {
     input: typeof entrada === 'string' ? entrada : JSON.stringify(entrada),
     env,
     encoding: 'utf8',
@@ -67,6 +67,48 @@ for (const [nombre, archivos] of [
   });
 }
 
+// La perdida de eventos de la sesion de #218 (#222). Una accion dejo curar-acta.mjs con un salto
+// de linea dentro de un literal, y capturar.mjs, que lo importaba, no cargaba: de a236 a a239 no
+// se registro ningun evento. Aqui se copia la carpeta del acta y se rompe asi cada modulo salvo
+// los dos que el hook carga en cada evento. Si la captura vuelve a importar alguno, esta prueba
+// lo ve.
+test('captura: un modulo del acta roto a mitad de sesion no le quita eventos', () => {
+  const origen = path.dirname(HOOK);
+  const copia = path.join(carpetaTemporal('acta-rota'), 'acta');
+  fs.mkdirSync(copia);
+  for (const nombre of fs.readdirSync(origen).filter((n) => n.endsWith('.mjs'))) {
+    const intactos = ['capturar.mjs', 'nucleo-captura.mjs'];
+    const texto = intactos.includes(nombre) ? fs.readFileSync(path.join(origen, nombre), 'utf8')
+      : "export const roto = 'un salto\nde linea';\n";
+    fs.writeFileSync(path.join(copia, nombre), texto);
+  }
+  const hook = path.join(copia, 'capturar.mjs');
+  const raiz = repoTemporal({ 'a.md': 'uno\n' });
+  const comun = { session_id: 's5', cwd: raiz };
+  const correr = (entrada) => correrHook(entrada, hook);
+  correr({ ...comun, hook_event_name: 'SessionStart', source: 'startup' });
+  correr({ ...comun, hook_event_name: 'PreToolUse', tool_name: 'Edit', tool_use_id: 'tu1' });
+  fs.writeFileSync(path.join(raiz, 'a.md'), 'dos\n');
+  correr({ ...comun, hook_event_name: 'PostToolUse', tool_name: 'Edit', tool_use_id: 'tu1' });
+  correr({ ...comun, hook_event_name: 'PreToolUse', tool_name: 'Read', tool_use_id: 'tu2' });
+  correr({ ...comun, hook_event_name: 'PostToolUse', tool_name: 'Read', tool_use_id: 'tu2' });
+  const transcript = fabrica({ sesion: 's5', cwd: raiz }).prompt('Edita')
+    .escribir(carpetaTemporal('t'));
+  const cierre = correr({ ...comun, hook_event_name: 'SessionEnd', reason: 'other',
+    transcript_path: transcript });
+
+  assert.equal(cierre.status, 0);
+  assert.match(cierre.stderr, /la captura quedo escrita, pero el compilador no carga/);
+  const registros = leer(path.join(raiz, '.ia', 'captura', 's5.jsonl'));
+  assert.deepEqual(registros.map((r) => [r.evento, r.toolUseId ?? null]), [
+    ['SessionStart', null], ['PreToolUse', 'tu1'], ['PostToolUse', 'tu1'],
+    ['PreToolUse', 'tu2'], ['PostToolUse', 'tu2'], ['SessionEnd', null],
+  ]);
+  const [, antes, despues] = registros;
+  assert.match(antes.arbol || '', /^[0-9a-f]{40}$/);
+  assert.notEqual(despues.arbol, antes.arbol);
+});
+
 test('captura: nunca bloquea la sesion, ni con entrada rota ni fuera de un repo', () => {
   assert.equal(correrHook('esto no es json').status, 0);
   assert.equal(correrHook({ session_id: 'x', hook_event_name: 'PreToolUse',
@@ -95,6 +137,9 @@ test('captura: SessionEnd compila el acta de la sesion', (t) => {
   const curada = path.join(raiz, '.ia', 'registros', '10', 's3.acta.curada.jsonl');
   assert.ok(fs.existsSync(curada), `SessionEnd tambien cura el acta: ${r.stderr}`);
   assert.equal(leer(curada)[0].derivadaDe.acta, 's3.acta.cruda.jsonl');
+  const indice = JSON.parse(fs.readFileSync(path.join(path.dirname(acta), 'indice.json'), 'utf8'));
+  assert.deepEqual(indice.actas.map((a) => [a.sesion, a.curada]),
+    [['s3', 's3.acta.curada.jsonl']], 'el indice se escribe despues de curar');
 });
 
 test('captura: si la curacion no sale, avisa, no bloquea y no deja una curada vieja', (t) => {
