@@ -7,7 +7,10 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { compilar, serializar } from '../compilar-acta.mjs';
+import { curarYEscribir } from '../curar-acta.mjs';
 import { arbolActual, git } from '../git.mjs';
+import { leerActa } from '../validar-acta.mjs';
 
 export const RAIZ_FICTICIA = 'D:\\Repo\\proyecto';
 
@@ -250,4 +253,73 @@ export function sesionConGrepQueOcultaUnFallo({ escribe = false } = {}) {
     { evento: 'SessionEnd', arbol: a2 },
   ];
   return { f, captura, raiz: repo.raiz, arboles: [a0, a1, a2] };
+}
+
+// Una sesion para el motor (#222, fase 2), con una accion de cada modo: un Write y un Edit que se
+// aplican, un efecto de hook entre los dos siguientes, un Bash que escribe c.md, un Read, una
+// lectura externa (gh) y un efecto externo (git push). Con `powershell`, al final un comando de
+// pwsh que escribe d.md: solo corre en el contenedor, que trae pwsh.
+export function sesionParaElMotor({ powershell = false } = {}) {
+  const repo = repoQueAvanza({ 'a.md': 'uno\n', 'b.md': 'b\n' });
+  const a0 = repo.arbol();
+  const a1 = repo.cambiar({ 'a.md': 'uno\ndos\n' });
+  const a2 = repo.cambiar({ 'a.md': 'uno\ntres\n' });
+  const a3 = repo.cambiar({ 'b.md': 'b formateado\n' });
+  const a4 = repo.cambiar({ 'c.md': 'c\n' });
+  const a5 = powershell ? repo.cambiar({ 'd.md': 'd\n' }) : a4;
+  const f = fabrica()
+    .prompt('Edita y verifica')
+    .llamada('tu1', 'Write', { file_path: 'a.md', content: 'uno\ndos\n' })
+    .resultado('tu1', 'ok')
+    .llamada('tu2', 'Edit', { file_path: 'a.md', old_string: 'dos', new_string: 'tres' })
+    .resultado('tu2', 'ok')
+    .llamada('tu3', 'Bash', { command: "printf 'c\\n' > c.md" })
+    .resultado('tu3', '')
+    .llamada('tu4', 'Read', { file_path: 'a.md' })
+    .resultado('tu4', '1\tuno\n2\ttres')
+    .llamada('tu5', 'Bash', { command: 'gh issue view 1' })
+    .resultado('tu5', 'titulo del issue')
+    .llamada('tu6', 'Bash', { command: 'git push' })
+    .resultado('tu6', '');
+  if (powershell) {
+    f.llamada('tu7', 'PowerShell', { command: "Set-Content -Path d.md -Value 'd'" })
+      .resultado('tu7', '');
+  }
+  const ev = (evento, toolUseId, arbol, seg) => ({ evento, toolUseId, arbol,
+    momento: enCaptura(0, seg) });
+  const captura = [
+    { evento: 'SessionStart', arbol: a0, momento: enCaptura(0, 0),
+      head: git(['rev-parse', 'HEAD'], { cwd: repo.raiz }).trim() },
+    ev('PreToolUse', 'tu1', a0, 2), ev('PostToolUse', 'tu1', a1, 2),
+    ev('PreToolUse', 'tu2', a1, 4), ev('PostToolUse', 'tu2', a2, 4),
+    ev('PreToolUse', 'tu3', a3, 6), ev('PostToolUse', 'tu3', a4, 6),
+    ev('PreToolUse', 'tu4', null, 8), ev('PostToolUse', 'tu4', null, 8),
+    ev('PreToolUse', 'tu5', a4, 10), ev('PostToolUse', 'tu5', a4, 10),
+    ev('PreToolUse', 'tu6', a4, 12), ev('PostToolUse', 'tu6', a4, 12),
+    ...(powershell ? [ev('PreToolUse', 'tu7', a4, 14), ev('PostToolUse', 'tu7', a5, 14)] : []),
+    { evento: 'SessionEnd', arbol: a5, momento: enCaptura(0, 20) },
+  ];
+  return { f, captura, raiz: repo.raiz, arboles: [a0, a1, a2, a3, a4, a5] };
+}
+
+// La curada de la sesion para el motor, escrita como la deja el hook.
+export function curadaParaElMotor(opciones) {
+  const { f, captura, raiz } = sesionParaElMotor(opciones);
+  const transcript = f.escribir(carpetaTemporal('sesion'));
+  const [registros] = [...compilar({ transcript, captura, raizRepo: raiz }).actas.values()];
+  const carpeta = path.join(carpetaTemporal('registros'), '10');
+  fs.mkdirSync(carpeta);
+  const cruda = path.join(carpeta, 'sesion-1.acta.cruda.jsonl');
+  fs.writeFileSync(cruda, serializar(registros));
+  const silencio = { log: () => {}, error: () => {} };
+  if (curarYEscribir({ cruda, raizRepo: raiz, log: silencio }) !== 0) {
+    throw new Error('la sesion para el motor no se cura');
+  }
+  const curada = cruda.replace('.cruda.', '.curada.');
+  return { curada, registros: leerActa(curada), raiz };
+}
+
+// Una copia de la curada con un cambio a mano en una accion: el rojo sembrado del motor.
+export function sembrar(registros, id, entrada) {
+  return registros.map((r) => (r.id === id ? { ...r, entrada: { ...r.entrada, ...entrada } } : r));
 }

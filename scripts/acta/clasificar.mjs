@@ -76,6 +76,39 @@ export function claseDeterminismo(herramienta, entrada = {}) {
   return 'efecto_externo';
 }
 
+// Lo que Windows PowerShell 5.1 tiene y `pwsh` de Linux no (ADR-0005; #222, fase 2): el motor no
+// ejecuta esos comandos, los marca como no re-ejecutables y toma su arbol del registro. La lista
+// es deliberadamente corta y literal; lo que no esta en ella se ejecuta, y si falla, el reporte
+// lo dice. Un comando de Windows que corre en Linux con otro resultado no se puede detectar sin
+// ejecutarlo, y para eso esta el veredicto.
+const SOLO_WINDOWS = [
+  [/\bpowershell(\.exe)?\s/i, 'llama a Windows PowerShell'],
+  [/\bHK(LM|CU|CR|U):/i, 'usa el registro de Windows'],
+  [new RegExp(`\\b(${alternativas(['Get-WmiObject', 'gwmi', 'Get-CimInstance',
+    'Invoke-CimMethod', 'Get-EventLog', 'Get-Service', 'Start-Service', 'Stop-Service',
+    'Set-Service', 'Restart-Service', 'Get-Acl', 'Set-Acl', 'Out-GridView',
+    'Set-ExecutionPolicy', 'Unblock-File'])})\\b`, 'i'),
+  'usa un cmdlet que solo existe en Windows'],
+  [/\bNew-Object\s+-ComObject\b|\bSystem\.Windows\.Forms\b|\bPresentationFramework\b/i,
+    'usa COM o la interfaz grafica de Windows'],
+  [/-Encoding\s+(Default|OEM)\b/i, 'escribe con la codificacion ANSI de Windows PowerShell 5.1'],
+  [/\$env:(LOCALAPPDATA|APPDATA|USERPROFILE|ProgramFiles|SystemRoot|windir|ComSpec)\b/i,
+    'lee una variable de entorno de Windows'],
+  [/(^|[\s"'(])[A-Za-z]:\\/, 'usa una ruta con letra de unidad'],
+  [/\b[\w.-]+\.exe\b/i, 'llama a un ejecutable de Windows'],
+];
+
+// Por que el motor no puede ejecutar una accion de shell, o null si puede.
+export function motivoNoReejecutable(herramienta, entrada = {}) {
+  if (entrada.run_in_background === true) return 'corrio en segundo plano';
+  const cmd = String(entrada.command || '');
+  // El compilador cambia la carpeta del usuario por "~": lo que hay ahi no viaja al sandbox.
+  if (/(^|[\s"'=:(])~[/\\]/.test(cmd)) return 'usa la carpeta del usuario, fuera del sandbox';
+  if (herramienta !== 'PowerShell') return null;
+  for (const [re, motivo] of SOLO_WINDOWS) if (re.test(cmd)) return motivo;
+  return null;
+}
+
 // Las herramientas que no cambian el arbol viven en nucleo-captura.mjs: la captura las necesita
 // sin cargar este archivo (#222).
 export { SIN_ARBOL } from './nucleo-captura.mjs';
