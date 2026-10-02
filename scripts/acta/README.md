@@ -5,8 +5,8 @@ El registro de lo que hizo la IA en una sesión de Claude Code, según el
 [modelo conceptual](../../docs/modelo-conceptual-registro-ia.md). Esta carpeta trae la primera
 pieza, el **acta cruda** (#216), la **curada** que se deriva de ella (#218), el **índice de la
 tarea**, el **motor** que re-ejecuta la curada en Docker, la **conformidad** con los pasos que
-las skills marcan y el trailer `Registro-IA:` con su sensor del CI (#222). El visor es una fase
-siguiente del #222.
+las skills marcan, el trailer `Registro-IA:` con su sensor del CI y la exportación a OCEL 2.0 y
+PROV-O (#222). El visor es una fase siguiente del #222.
 
 ## Cómo funciona
 
@@ -53,12 +53,13 @@ node scripts/acta/conformidad.mjs <acta.cruda.jsonl | acta.curada.jsonl>
 node scripts/acta/registrar-sesion.mjs [--sesion <id>] [--sin-stage]
 node scripts/acta/verificar-registro-ia.mjs --rango <A..B> [--cuerpo-pr <archivo>] [--sin-motor]
 node scripts/acta/deriva-huella.mjs <acta> [--hasta <commit>] [--modelo <id>]
+node scripts/acta/exportar-acta.mjs <acta> --formato ocel|prov [--salida <archivo>]
 node --test scripts/acta/pruebas/compilar-acta.test.mjs scripts/acta/pruebas/capturar.test.mjs
 node --test scripts/acta/pruebas/curar-acta.test.mjs scripts/acta/pruebas/verificar-arbol.test.mjs
 node --test scripts/acta/pruebas/indexar-tarea.test.mjs scripts/acta/pruebas/ejecutar-acta.test.mjs
 node --test scripts/acta/pruebas/reejecutar-acta.test.mjs scripts/acta/pruebas/conformidad.test.mjs
 node --test scripts/acta/pruebas/verificar-registro-ia.test.mjs
-node --test scripts/acta/pruebas/deriva-huella.test.mjs
+node --test scripts/acta/pruebas/deriva-huella.test.mjs scripts/acta/pruebas/exportar-acta.test.mjs
 ```
 
 `curar-acta.mjs` se corre desde dentro del repo: lee de él los blobs para verificar el árbol.
@@ -153,6 +154,26 @@ el modelo si se los pasa. Lo que no se puede saber queda en `null`.
 El compilador redacta además el valor de toda variable cuyo nombre dice que es secreta
 (`*TOKEN*`, `*SECRET*`, `*PASSWORD*`, `*API_KEY*`) en la forma `NOMBRE=valor`. Un `env`
 dentro de Claude Code muestra `CLAUDE_CODE_MESSAGING_TOKEN`, y gitleaks no lo reconoce.
+
+## Exportar a OCEL 2.0 y PROV-O
+
+`exportar-acta.mjs` escribe el acta en [OCEL 2.0](https://www.ocel-standard.org) (JSON) o en
+[W3C PROV-O](https://www.w3.org/TR/prov-o/) (JSON-LD), con la correspondencia de la sección 6 del
+[modelo conceptual](../../docs/modelo-conceptual-registro-ia.md):
+
+- **OCEL:** cada acción es un evento con el tipo de su herramienta, y cada intervención, un evento
+  `intervencion`. Tarea, sesión, turno, paso, paso prescrito, decisión, archivo y agente son
+  objetos, con relaciones calificadas.
+- **PROV-O:** sesión, turno, paso y acción son `prov:Activity` anidadas. Los agentes son
+  `prov:Person` o `prov:SoftwareAgent`, con `prov:actedOnBehalfOf`. La curada es un
+  `prov:Bundle` que `prov:wasDerivedFrom` su cruda, identificada por su sha256.
+
+**Sin pérdida:** cada nodo lleva su elemento del acta exacto en `registro`, y
+`importarOcel` / `importarProv` lo reconstruyen byte a byte. La prueba lo comprueba con cada
+escenario de la fábrica, crudo y curado.
+
+El análisis entre actas queda para cuando haya unas 20: con menos, los patrones no significan nada
+(ADR-0005).
 
 ## Intervenciones
 
