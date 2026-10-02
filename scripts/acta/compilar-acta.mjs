@@ -31,10 +31,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { claseDeterminismo, esRechazoDePermiso } from './clasificar.mjs';
+import { ENVOLTORIOS, claseDeterminismo, esRechazoDePermiso } from './clasificar.mjs';
 import { normalizador } from './normalizar.mjs';
 import { validarActa } from './validar-acta.mjs';
-import { cambiosEntre, leerEnCommit, raizDelRepo, versionDe } from './git.mjs';
+import { blobEn, cambiosEntre, leerEnCommit, raizDelRepo, versionDe } from './git.mjs';
 
 const RAMA_CON_TAREA = /^[a-z]+\/(\d+)-/;
 const RUTA_PLUGIN = 'instrumentacion-java-ia/sdlc-ia';
@@ -97,10 +97,21 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
   }
   const headBase = inicioSesion?.head || null;
 
+  // Si la captura vio el PreToolUse de la accion (#218). `false` dice que la herramienta no llego
+  // a correr: un Edit que no paso la validacion, o un Write que freno el clasificador, no
+  // disparan ningun hook. Solo se afirma con captura desde antes de la accion, y nunca para un
+  // comando con !, que no pasa por los hooks: en esos casos es null, no se sabe.
+  const inicioCaptura = captura.map((c) => c.momento).filter(Boolean).sort()[0] || null;
+  const capturada = (uso, agenteId, momento) => {
+    if (capturaPorUso.get(uso.id)?.antes !== undefined) return true;
+    if (agenteId === 'usuario' || !inicioCaptura || !momento) return null;
+    return momento >= inicioCaptura ? false : null;
+  };
+
   const agentes = new Map();
   const agente = (id, tipo, rol, actuoEnNombreDe = null) => {
     if (!agentes.has(id)) {
-      agentes.set(id, { elemento: 'agente', id, tipo, rol, actuoEnNombreDe });
+      agentes.set(id, { elemento: 'agente', id, tipo, rol, actuoEnNombreDe, integracion: null });
     }
     return id;
   };
@@ -184,6 +195,7 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
       resultadoCompleto: null,
       resultadoDiferido: null,
       error: null,
+      capturada: capturada(uso, agenteId, linea.timestamp),
       arbolAntes: antes,
       arbolDespues: despues,
       cambios: raizRepo ? cambiosEntre(raizRepo, antes, despues).map(norm.profundo) : [],
@@ -399,6 +411,88 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
     expandir(a, 1);
   }
 
+  // Efectos entre acciones (#218): un hook como format-on-edit corre en paralelo con la captura,
+  // y lo que escribe puede quedar entre el `despues` de una accion y el `antes` de la siguiente.
+  // Se recorre la captura en el orden en que se escribio, y cada cambio del arbol sin ninguna
+  // accion abierta entra como accion derivada `hook`. No se infiere que hook fue, ni si fue una
+  // persona editando a mano: el agente es `hook:sin-identificar`, y el nombre lo admite.
+  let visto = null;
+  const abiertas = new Set();
+  for (const c of captura) {
+    if (!c.arbol) continue;
+    const accion = c.toolUseId ? accionPorUso.get(c.toolUseId) || null : null;
+    const esPunto = c.evento === 'PreToolUse' || c.evento === 'SessionStart' ||
+      c.evento === 'SessionEnd';
+    if (esPunto && visto && abiertas.size === 0 && c.arbol !== visto.arbol) {
+      const paso = (visto.accion || accion)?.paso;
+      if (paso) {
+        acciones.push({
+          elemento: 'accion',
+          id: `a${++cont.a}`,
+          paso,
+          agente: agente('hook:sin-identificar', 'automatismo', 'hook:sin-identificar'),
+          lanzadaPor: null,
+          herramienta: 'hook',
+          toolUseId: null,
+          entrada: null,
+          claseDeterminismo: 'pura',
+          segundoPlano: false,
+          momento: visto.momento || null,
+          exito: true,
+          resultado: null,
+          resultadoCompleto: null,
+          resultadoDiferido: null,
+          error: null,
+          capturada: null,
+          arbolAntes: visto.arbol,
+          arbolDespues: c.arbol,
+          cambios: raizRepo ? cambiosEntre(raizRepo, visto.arbol, c.arbol).map(norm.profundo) : [],
+          subagente: null,
+          tareaFondo: null,
+          despuesDe: visto.accion?.id || null,
+          antesDe: accion?.id || null,
+        });
+      } else {
+        avisos.push(`el arbol cambio entre ${visto.momento} y ${c.momento}, sin acciones cerca`);
+      }
+    }
+    // Solo abre la ventana una accion que el transcript tiene y que termino: un PreToolUse sin
+    // llamada en el transcript, o el de una accion interrumpida, nunca recibe su Post, y dejarlo
+    // abierto apagaba la deteccion el resto de la sesion. Paso en vivo en la sesion de #218.
+    if (c.evento === 'PreToolUse' && accion && accion.exito !== null &&
+      !ENVOLTORIOS.has(accion.herramienta)) {
+      abiertas.add(c.toolUseId);
+    } else {
+      abiertas.delete(c.toolUseId);
+    }
+    visto = { arbol: c.arbol, momento: c.momento, accion };
+  }
+
+  // Integracion de cada subagente (invariante I3, PC-11): `descartado` si todos los archivos que
+  // cambio estan en el arbol final como estaban antes de su primer cambio; `integrado` si alguno
+  // no, o si no cambio el arbol (por vacuidad: no le falta nada al arbol final). Null cuando
+  // cambio el arbol y no se puede comparar, sin repo o sin arbol final. Se compara por blob.
+  const arbolFinal = [...captura].reverse().find((c) => c.arbol)?.arbol || null;
+  for (const ag of agentes.values()) {
+    if (!ag.id.startsWith('subagente:')) continue;
+    const conCambios = acciones.filter((a) => a.agente === ag.id && a.arbolAntes &&
+      a.arbolDespues && a.arbolAntes !== a.arbolDespues);
+    if (conCambios.length === 0) {
+      ag.integracion = 'integrado';
+      continue;
+    }
+    const antesDeEl = new Map();
+    for (const a of conCambios) {
+      for (const c of a.cambios) {
+        if (!antesDeEl.has(c.archivo)) antesDeEl.set(c.archivo, a.arbolAntes);
+      }
+    }
+    if (!raizRepo || !arbolFinal || antesDeEl.size === 0) continue;
+    const revertido = [...antesDeEl].every(([archivo, arbol]) =>
+      blobEn(raizRepo, arbolFinal, archivo) === blobEn(raizRepo, arbol, archivo));
+    ag.integracion = revertido ? 'descartado' : 'integrado';
+  }
+
   const huella = {
     claudeCode: [...versiones].sort(),
     modelos: [...modelos].sort(),
@@ -406,8 +500,10 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
     documentos: documentosUsados(raizRepo, headBase, skills, acciones),
   };
 
+  const finSesion = [...captura].reverse().find((c) => c.evento === 'SessionEnd' && c.arbol);
   return { actas: separarPorTarea({ sesion, turnos, pasos, acciones, decisiones,
-    intervenciones, agentes, huella, headBase, inicioSesion }), avisos };
+    intervenciones, agentes, huella, headBase, inicioSesion,
+    arbolFinal: finSesion?.arbol || null }), avisos };
 }
 
 function versionDelPlugin(raizRepo, commit) {
@@ -449,6 +545,14 @@ function porMomento(lista) {
 
 function separarPorTarea(s) {
   const tareas = [...new Set(s.turnos.map((t) => t.tarea))].sort();
+  // El arbol de SessionEnd va solo en el acta de la ultima accion con arbol (#218): las demas
+  // tareas dejaron de actuar antes, y su arbol final no es ese.
+  const tareaDe = (a) => {
+    const paso = s.pasos.find((p) => p.id === a.paso);
+    return s.turnos.find((t) => t.id === paso?.turno)?.tarea;
+  };
+  const ultimaConArbol = porMomento(s.acciones.filter((a) => a.arbolDespues)).pop();
+  const tareaFinal = ultimaConArbol ? tareaDe(ultimaConArbol) : null;
   const actas = new Map();
   for (const tarea of tareas) {
     const turnos = s.turnos.filter((t) => t.tarea === tarea);
@@ -482,6 +586,7 @@ function separarPorTarea(s) {
       fase: null,
       headBase: s.headBase,
       arbolBase: primeraConArbol ? primeraConArbol.arbolAntes : s.inicioSesion?.arbol || null,
+      arbolFinal: tarea === tareaFinal ? s.arbolFinal : null,
       inicio: momentos[0] || null,
       fin: momentos[momentos.length - 1] || null,
       huella: s.huella,
@@ -515,9 +620,10 @@ export function leerCaptura(archivo) {
   return leerJsonl(archivo).registros;
 }
 
-// Compila y escribe. La usan la CLI y el hook SessionEnd. Devuelve el codigo de salida.
+// Compila y escribe. La usan la CLI y el hook SessionEnd. Devuelve el codigo de salida, y deja
+// en `escritas` la ruta de cada acta que escribio: el hook las cura despues.
 export function compilarYEscribir({
-  transcript, captura, salida, raizRepo = null, verificar = true, log = console,
+  transcript, captura, salida, raizRepo = null, verificar = true, log = console, escritas = [],
 }) {
   const { actas, avisos } = compilar({ transcript, captura: leerCaptura(captura), raizRepo });
   for (const a of avisos) log.error(`aviso: ${a}`);
@@ -550,6 +656,7 @@ export function compilarYEscribir({
     }
     fs.copyFileSync(tmp, destino);
     fs.rmSync(tmp, { force: true });
+    escritas.push(destino);
     log.log(`Acta de la tarea ${tarea}: ${destino}`);
   }
   return codigo;
