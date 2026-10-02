@@ -3,7 +3,7 @@
 El registro de lo que hizo la IA en una sesión de Claude Code, según el
 [ADR-0005](../../docs/adrs/0005-re-ejecutar-el-registro-de-la-ia-sin-el-modelo.md) y el
 [modelo conceptual](../../docs/modelo-conceptual-registro-ia.md). Esta carpeta trae la primera
-pieza, el **acta cruda** (#216), y la **curada** que se deriva de ella (#218, en curso). El motor
+pieza, el **acta cruda** (#216), y la **curada** que se deriva de ella (#218). El motor
 en Docker, el trailer `Registro-IA:` y el visor llegan en issues aparte.
 
 ## Cómo funciona
