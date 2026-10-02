@@ -8,6 +8,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { git } from '../git.mjs';
+import { huellaDeEntrada } from '../nucleo-captura.mjs';
 import { carpetaTemporal, fabrica, repoTemporal } from './fabrica.mjs';
 
 const HOOK = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'capturar.mjs');
@@ -107,6 +108,26 @@ test('captura: un modulo del acta roto a mitad de sesion no le quita eventos', (
   const [, antes, despues] = registros;
   assert.match(antes.arbol || '', /^[0-9a-f]{40}$/);
   assert.notEqual(despues.arbol, antes.arbol);
+});
+
+// La forma del PermissionRequest de Claude Code 2.1.287, medida con una sonda (#222, fase 5): trae
+// tool_name, tool_input, permission_mode y permission_suggestions, pero no tool_use_id.
+test('captura: el pedido de permiso, con el hash de su entrada y sin responder nada', () => {
+  const raiz = repoTemporal({ 'a.md': 'uno\n' });
+  const tool_input = { file_path: 'a.md', content: 'dos\n' };
+  const comun = { session_id: 's6', cwd: raiz, tool_name: 'Write', tool_input };
+  correrHook({ ...comun, hook_event_name: 'PreToolUse', tool_use_id: 'tu1' });
+  const r = correrHook({ ...comun, hook_event_name: 'PermissionRequest',
+    permission_mode: 'default', permission_suggestions: [] });
+  assert.deepEqual([r.status, r.stdout], [0, ''], 'sin salida no decide el permiso');
+  const [pre, permiso] = leer(path.join(raiz, '.ia', 'captura', 's6.jsonl'));
+  assert.equal(permiso.evento, 'PermissionRequest');
+  assert.equal(permiso.herramienta, 'Write');
+  assert.equal(permiso.modo, 'default');
+  assert.match(permiso.entrada, /^[0-9a-f]{64}$/);
+  assert.equal(permiso.entrada, pre.entrada, 'se empareja con su PreToolUse por la entrada');
+  assert.equal(permiso.entrada, huellaDeEntrada({ content: 'dos\n', file_path: 'a.md' }),
+    'el orden de las claves no cambia el hash');
 });
 
 test('captura: nunca bloquea la sesion, ni con entrada rota ni fuera de un repo', () => {

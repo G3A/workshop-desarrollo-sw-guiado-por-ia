@@ -19,6 +19,7 @@
 //
 // Medido en este repo (599 archivos versionados): unos 70 ms por hash.
 import { execFileSync } from 'node:child_process';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -27,6 +28,20 @@ import path from 'node:path';
 // la curacion sabe que un fallo suyo no deja residuo aunque su arbol este en null.
 export const SIN_ARBOL = new Set(['Read', 'Grep', 'Glob', 'LS', 'WebSearch', 'WebFetch',
   'ToolSearch', 'Skill', 'TodoWrite', 'AskUserQuestion']);
+
+// El sha256 de una entrada de herramienta, con las claves en orden. PermissionRequest no trae
+// tool_use_id (verificado con Claude Code 2.1.287, #222): se empareja con su PreToolUse por la
+// herramienta y este hash.
+export function huellaDeEntrada(valor) {
+  const canonico = (v) => {
+    if (Array.isArray(v)) return v.map(canonico);
+    if (v && typeof v === 'object') {
+      return Object.fromEntries(Object.keys(v).sort().map((k) => [k, canonico(v[k])]));
+    }
+    return v;
+  };
+  return crypto.createHash('sha256').update(JSON.stringify(canonico(valor ?? null))).digest('hex');
+}
 
 function entornoLimpio(extra = {}) {
   const env = { ...process.env };

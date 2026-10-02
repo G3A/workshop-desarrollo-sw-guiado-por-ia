@@ -4,8 +4,9 @@
 //   node "$CLAUDE_PROJECT_DIR/scripts/acta/capturar.mjs"
 //
 // Agrega una linea a .ia/captura/<sesion>.jsonl con lo que el transcript no guarda: el HEAD y el
-// hash del arbol, antes y despues de cada accion. En SessionEnd compila el acta cruda, la cura y
-// reescribe el indice de cada tarea que toco.
+// hash del arbol, antes y despues de cada accion, y cada PermissionRequest (#222, fase 5): el
+// dialogo de permiso que la persona tuvo delante. El hook no responde nada, asi que no decide.
+// En SessionEnd compila el acta cruda, la cura y reescribe el indice de cada tarea que toco.
 //
 // Cuatro decisiones que no son de estilo:
 //
@@ -22,7 +23,7 @@
 //    uno de ellos con un error de sintaxis pierde el acta de ese cierre, no la captura.
 import fs from 'node:fs';
 import path from 'node:path';
-import { SIN_ARBOL, arbolActual, head, raizDelRepo } from './nucleo-captura.mjs';
+import { SIN_ARBOL, arbolActual, head, huellaDeEntrada, raizDelRepo } from './nucleo-captura.mjs';
 
 function leerEntrada() {
   try {
@@ -58,7 +59,16 @@ async function principal() {
       toolUseId: e.tool_use_id || null,
       herramienta,
       agenteId: e.agent_id || null,
+      ...(evento === 'PreToolUse' ? { entrada: huellaDeEntrada(e.tool_input) } : {}),
       arbol: SIN_ARBOL.has(herramienta) ? null : arbolActual(raiz),
+    };
+  } else if (evento === 'PermissionRequest') {
+    registro = {
+      ...registro,
+      herramienta: e.tool_name || null,
+      agenteId: e.agent_id || null,
+      entrada: huellaDeEntrada(e.tool_input),
+      modo: e.permission_mode || null,
     };
   } else if (evento === 'SessionEnd') {
     // El arbol al cerrar deja ver lo que un hook cambio despues de la ultima accion (#218).

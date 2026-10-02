@@ -128,3 +128,18 @@ const RECHAZO = [
 export function esRechazoDePermiso(texto) {
   return RECHAZO.some((r) => r.test(texto || ''));
 }
+
+// Las herramientas cuyo «rechazo» no es un permiso negado: la persona descarto una pregunta o un
+// plan (#222, fase 5). En las sesiones de este equipo, la mayoria de los rechazos eran de
+// AskUserQuestion, y el compilador los contaba como permisos.
+export const SIN_PERMISO = new Set(['AskUserQuestion', 'ExitPlanMode', 'EnterPlanMode']);
+
+// Lo que la persona escribio al rechazar, o null si rechazo sin escribir nada.
+export function textoDelRechazo(texto) {
+  const m = /the user said:\n([\s\S]*)$/i.exec(texto || '');
+  return m && m[1].trim() ? m[1].trim() : null;
+}
+
+// Los modos en que un PermissionRequest lo resuelve una persona. En `auto` lo resuelve el
+// clasificador, y en `bypassPermissions` o `dontAsk` no hay dialogo.
+export const MODOS_CON_PERSONA = new Set(['default', 'acceptEdits', 'plan']);

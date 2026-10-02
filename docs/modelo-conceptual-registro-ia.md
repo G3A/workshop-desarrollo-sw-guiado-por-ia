@@ -174,7 +174,7 @@ El hash prueba que el documento cambió; el commit y la ruta permiten abrir la v
 | **Paso** | Un grupo de acciones dentro de un turno, enlazado o no a un paso prescrito | Marcador de la skill, o el turno completo |
 | **Acción** | Una llamada a una herramienta, del orquestador, de un subagente o derivada de un hook | Transcripts y hooks |
 | **Decisión** | El texto que el asistente escribió antes de una o más acciones | Transcript |
-| **Intervención** | Lo que hizo una persona durante la sesión | Transcript; a verificar los hooks de permisos |
+| **Intervención** | Lo que hizo una persona durante la sesión | Transcript y el hook `PermissionRequest` (#222) |
 | **Agente** | Quién actuó, con su tipo y su rol | Transcript y hooks |
 
 ### Valores cerrados
@@ -292,9 +292,12 @@ y sensores en verde) y no por hash.
 
 ## 8. Pendientes antes de implementar
 
-- **Eventos de permisos (PC-10).** Hay que verificar qué eventos de hook relacionados con permisos
-  ofrece la versión de Claude Code en uso. Si no hay ninguno, la intervención sale solo del
-  transcript, y un permiso aprobado puede no dejar rastro.
+- **Eventos de permisos (PC-10).** Resuelto en #222 con Claude Code 2.1.287: `PermissionRequest`
+  se dispara cuando la herramienta pide permiso, después de su `PreToolUse`, y no trae
+  `tool_use_id`. La captura lo empareja por la herramienta y el hash de la entrada. Ningún evento
+  dice que la persona aprobó: se afirma cuando hubo pedido y la herramienta corrió.
+  `PermissionDenied` es del modo `auto` y no es una persona. El detalle está en
+  [`scripts/acta/README.md`](../scripts/acta/README.md#intervenciones).
 - **Marcadores de paso (PC-04 y PC-05).** Desde #222 el protocolo existe y `debt-triage` lo
   emite. Las otras ocho skills todavía no: sus pasos quedan con `procedencia = ausente` y la
   conformidad responde «sin datos». Cada skill que se suma toca su `SKILL.md`, el visor y el
