@@ -4,8 +4,8 @@ El registro de lo que hizo la IA en una sesión de Claude Code, según el
 [ADR-0005](../../docs/adrs/0005-re-ejecutar-el-registro-de-la-ia-sin-el-modelo.md) y el
 [modelo conceptual](../../docs/modelo-conceptual-registro-ia.md). Esta carpeta trae la primera
 pieza, el **acta cruda** (#216), la **curada** que se deriva de ella (#218), el **índice de la
-tarea** y el **motor** que re-ejecuta la curada en Docker (#222). El trailer `Registro-IA:` y
-el visor son las fases siguientes del #222.
+tarea**, el **motor** que re-ejecuta la curada en Docker y la **conformidad** con los pasos que
+las skills marcan (#222). El trailer `Registro-IA:` y el visor son las fases siguientes del #222.
 
 ## Cómo funciona
 
@@ -47,10 +47,11 @@ node scripts/acta/curar-acta.mjs <acta.cruda.jsonl> --comprobar <acta.curada.jso
 node scripts/acta/validar-acta.mjs <acta.cruda.jsonl | acta.curada.jsonl>
 node scripts/acta/indexar-tarea.mjs <.ia/registros/<tarea>>
 node scripts/acta/reejecutar-acta.mjs <acta.curada.jsonl> [--reporte <archivo>] [--tiempo <s>]
+node scripts/acta/conformidad.mjs <acta.cruda.jsonl | acta.curada.jsonl>
 node --test scripts/acta/pruebas/compilar-acta.test.mjs scripts/acta/pruebas/capturar.test.mjs
 node --test scripts/acta/pruebas/curar-acta.test.mjs scripts/acta/pruebas/verificar-arbol.test.mjs
 node --test scripts/acta/pruebas/indexar-tarea.test.mjs scripts/acta/pruebas/ejecutar-acta.test.mjs
-node --test scripts/acta/pruebas/reejecutar-acta.test.mjs
+node --test scripts/acta/pruebas/reejecutar-acta.test.mjs scripts/acta/pruebas/conformidad.test.mjs
 ```
 
 `curar-acta.mjs` se corre desde dentro del repo: lee de él los blobs para verificar el árbol.
@@ -122,9 +123,10 @@ sus subagentes en `<sesión>/subagents/`. Los comandos son los mismos en PowerSh
   #218, que recompilada con #222 sigue sin curarse por las acciones a236 a a239. No hay de dónde
   recuperar sus árboles; la causa, el hook que no cargaba, ya no se repite.
 
-- **Pasos del instructivo.** Ninguna skill marca sus pasos, así que cada paso es el turno completo,
-  con procedencia `ausente` (PC-04).
-- **Fase.** La declara la skill, y ninguna la declara todavía: queda en `null`.
+- **Pasos del instructivo de casi todas las skills.** Solo `debt-triage` marca sus pasos
+  ([protocolo](../../docs/protocolo-de-marcadores-de-paso.md)). En las demás, cada paso es el turno
+  completo, con procedencia `ausente` (PC-04), la fase queda en `null` y
+  `conformidad.mjs` responde «sin datos».
 - **Permisos aprobados.** Solo se registran los rechazos que deja el transcript. Los hooks de
   permisos van en otro issue (PC-10).
 - **Árbol de los comandos con `!`.** Los hooks no corren para los comandos que escribe el

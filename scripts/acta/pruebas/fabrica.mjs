@@ -323,3 +323,32 @@ export function curadaParaElMotor(opciones) {
 export function sembrar(registros, id, entrada) {
   return registros.map((r) => (r.id === id ? { ...r, entrada: { ...r.entrada, ...entrada } } : r));
 }
+
+// El marcador de paso de debt-triage (docs/protocolo-de-marcadores-de-paso.md).
+export const marcaDePaso = (letra, fase = 2) =>
+  `[sdlc-ia:step skill=debt-triage step=${letra} method-phase=${fase}]`;
+
+// Una corrida de debt-triage que marca sus pasos (#222, fase 4): un Bash antes del primer
+// marcador, las Phase 1 y 2 en el primer turno, y despues de la respuesta de la persona, la 2
+// de nuevo (retoma) y la 3. La segunda marca va entre backticks, como el modelo suele escribirla.
+export function sesionMarcada(opciones) {
+  const marca = marcaDePaso;
+  return fabrica(opciones)
+    .prompt('<command-name>/sdlc-ia:debt-triage</command-name><command-args></command-args>')
+    .llamada('tu0', 'Bash', { command: 'git status' })
+    .resultado('tu0', 'limpio')
+    .texto(`${marca(1)}\nBusco el analizador.`)
+    .llamada('tu1', 'Glob', { pattern: '**/checkstyle.xml' })
+    .resultado('tu1', 'checkstyle.xml')
+    .texto(`\`${marca(2)}\``)
+    .llamada('tu2', 'Bash', { command: 'mvn checkstyle:check' })
+    .resultado('tu2', '3 reglas')
+    .texto('Esta es la lista agrupada.')
+    .prompt('Solo la regla MagicNumber')
+    .texto(marca(2))
+    .llamada('tu3', 'Read', { file_path: 'a.java' })
+    .resultado('tu3', '1\tclass A {}')
+    .texto(marca(3))
+    .llamada('tu4', 'Read', { file_path: 'b.java' })
+    .resultado('tu4', '1\tclass B {}');
+}
