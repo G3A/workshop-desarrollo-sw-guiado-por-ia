@@ -51,6 +51,15 @@
 //    DETIENE. En los datos reales de este repo ningun subagente trabajo fuera del arbol de la
 //    sesion, asi que un descartado es siempre trabajo que se revirtio despues.
 //
+// Anexo de verificaciones negativas (ADR-0005; PC-16). Un rojo esperado, como el de TDD o el de
+// sembrar un sensor (REVIEW.md, seccion 3), se declara en el propio comando con un comentario
+// que vale en bash y en PowerShell: `<comando>  # rojo-esperado: <sensor o prueba>`.
+//
+// 11. Un comando marcado sale de la secuencia y entra al anexo, al final de la curada, con
+//    `enRojo`: true si fallo, false si salio verde, null sin resultado. El motor no lo ejecuta.
+//    Si cambio el arbol, su residuo si entra a la secuencia, como el de cualquier fallo. Los de
+//    un subagente descartado tambien entran: sembrar y revertir es lo que lo deja descartado.
+//
 // Intentos previos (invariante I7, PC-08): cada accion curada lista en `intentosPrevios` los
 // fallos de la cruda con su misma herramienta y su mismo archivo o comando, posteriores al exito
 // anterior con esa misma clave. Una accion sin archivo ni comando, o un residuo, lleva [].
@@ -68,7 +77,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ENVOLTORIOS, SIN_ARBOL } from './clasificar.mjs';
 import { serializar } from './compilar-acta.mjs';
-import { leerActa, objetivoDe, validarActa } from './validar-acta.mjs';
+import { leerActa, objetivoDe, rojoEsperadoDe, validarActa } from './validar-acta.mjs';
 
 const SUFIJO_CRUDA = '.acta.cruda.jsonl';
 
@@ -79,8 +88,9 @@ export class CuracionDetenida extends Error {
   }
 }
 
-// Que deja un fallo en la curada: un residuo, nada, o un motivo para detenerse.
-function residuoDe(a) {
+// Que deja en la curada una accion que sale de la secuencia (un fallo, o un rojo esperado que
+// salio verde): un residuo, nada, o un motivo para detenerse.
+function residuoDe(a, que = 'fallo') {
   if (a.capturada === false) return { nada: true };
   const sinArbol = !a.arbolAntes || !a.arbolDespues;
   if (!sinArbol && a.arbolAntes === a.arbolDespues) return { nada: true };
@@ -88,10 +98,10 @@ function residuoDe(a) {
     return { nada: true };
   }
   if (sinArbol) {
-    return { motivo: `la accion ${a.id} (${a.herramienta}) fallo sin arbol y pudo escribir` };
+    return { motivo: `la accion ${a.id} (${a.herramienta}) ${que} sin arbol y pudo escribir` };
   }
   if (!a.cambios.length) {
-    return { motivo: `la accion ${a.id} fallo y cambio el arbol, pero la cruda no trae su diff` };
+    return { motivo: `la accion ${a.id} ${que} y cambio el arbol, y la cruda no trae su diff` };
   }
   return {
     residuo: {
@@ -148,6 +158,7 @@ export function curar(textoCruda) {
   }
 
   const acciones = [];
+  const anexo = [];
   const reemplazo = new Map();
   const pendientes = new Map();
   for (const a of de('accion')) {
@@ -156,15 +167,18 @@ export function curar(textoCruda) {
     // Un subagente descartado sale entero (regla 9), pero sus fallos y sus exitos siguen
     // contando para los intentos previos de los demas: I7 se mide sobre la cruda.
     const sale = descartados.has(a.agente);
+    const rojo = rojoEsperadoDe(a);
+    if (rojo !== null) anexo.push(verificacionNegativa(a, rojo));
     if (a.exito === true) {
       const intentosPrevios = clave === null ? [] : pendientes.get(clave) || [];
-      if (!sale) acciones.push({ ...a, intentosPrevios });
+      if (!sale && rojo === null) acciones.push({ ...a, intentosPrevios });
       if (clave !== null) pendientes.delete(clave);
-      continue;
+      if (sale || rojo === null) continue;
+    } else {
+      if (clave !== null) pendientes.set(clave, [...(pendientes.get(clave) || []), a.id]);
+      if (sale) continue;
     }
-    if (clave !== null) pendientes.set(clave, [...(pendientes.get(clave) || []), a.id]);
-    if (sale) continue;
-    const r = residuoDe(a);
+    const r = residuoDe(a, a.exito === true ? 'salio verde de la secuencia' : 'fallo');
     if (r.motivo) motivos.push(r.motivo);
     if (r.residuo) {
       acciones.push({ ...r.residuo, intentosPrevios: [] });
@@ -207,7 +221,23 @@ export function curar(textoCruda) {
     sha256: crypto.createHash('sha256').update(textoCruda).digest('hex'),
   };
   return [{ ...cabecera, derivadaDe }, ...agentes, ...turnos, ...pasos, ...decisiones,
-    ...acciones, ...intervenciones];
+    ...acciones, ...intervenciones, ...anexo];
+}
+
+// Un rojo esperado del anexo (regla 11). Apunta a su accion de la cruda: no es una accion de la
+// curada, y el motor no lo ejecuta.
+function verificacionNegativa(a, rojoEsperado) {
+  return {
+    elemento: 'verificacion_negativa',
+    id: `${a.id}.v`,
+    accion: a.id,
+    agente: a.agente,
+    comando: a.entrada.command,
+    rojoEsperado,
+    enRojo: a.exito === false ? true : a.exito === true ? false : null,
+    resultado: a.error ?? a.resultado ?? null,
+    momento: a.momento,
+  };
 }
 
 // Cura y escribe. Devuelve el codigo de salida.

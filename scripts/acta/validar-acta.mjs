@@ -14,7 +14,9 @@
 //       exactamente los fallos de la cruda con su misma herramienta y su mismo archivo o
 //       comando, posteriores al exito anterior con esa clave. Un residuo no tiene.
 //
-// Ademas se valida el esquema: valores cerrados y referencias que existen.
+// Ademas se valida el esquema: valores cerrados y referencias que existen. Y el anexo de
+// verificaciones negativas: solo la curada lo tiene, ningun rojo esperado queda en la secuencia
+// y, con la cruda, el anexo trae exactamente sus acciones marcadas, con su resultado.
 //
 // Uso: node scripts/acta/validar-acta.mjs <acta.cruda.jsonl | acta.curada.jsonl>
 // Con una curada, busca la cruda de la que deriva en la misma carpeta para validar I7.
@@ -35,6 +37,17 @@ export function objetivoDe(accion) {
   const objetivo = e.file_path ?? e.notebook_path ?? e.command ?? null;
   return objetivo === null ? null : String(objetivo);
 }
+
+// Lo que demuestra un rojo esperado, declarado en el propio comando con un comentario que vale en
+// bash y en PowerShell: `<comando>  # rojo-esperado: <sensor o prueba>`. Null si no lo declara.
+const MARCA_ROJO = /#\s*rojo-esperado:\s*(\S[^\n]*?)\s*$/m;
+export function rojoEsperadoDe(accion) {
+  if (accion.herramienta !== 'Bash' && accion.herramienta !== 'PowerShell') return null;
+  const m = MARCA_ROJO.exec(String(accion.entrada?.command ?? ''));
+  return m ? m[1] : null;
+}
+
+const enRojoDe = (exito) => (exito === false ? true : exito === true ? false : null);
 
 const claveDe = (a) => {
   const objetivo = objetivoDe(a);
@@ -148,6 +161,50 @@ export function validarActa(registros, { cruda = null } = {}) {
   }
   if (acta.derivadaDe && cruda) {
     for (const e of intentosPreviosRotos(acciones, cruda)) falla('I7', e);
+  }
+  for (const e of anexoRoto(acta, acciones, de('verificacion_negativa'), cruda)) falla('anexo', e);
+  return errores;
+}
+
+function anexoRoto(acta, acciones, anexo, cruda) {
+  const errores = [];
+  if (!acta.derivadaDe) {
+    if (anexo.length) errores.push('la cruda no tiene anexo de verificaciones negativas');
+    return errores;
+  }
+  for (const a of acciones) {
+    if (rojoEsperadoDe(a) !== null) {
+      errores.push(`la accion ${a.id} declara un rojo esperado y esta en la secuencia`);
+    }
+  }
+  for (const v of anexo) {
+    if (typeof v.rojoEsperado !== 'string' || !v.rojoEsperado) {
+      errores.push(`la verificacion ${v.id} no dice que demuestra`);
+    }
+    if (![true, false, null].includes(v.enRojo)) {
+      errores.push(`la verificacion ${v.id} tiene enRojo = ${v.enRojo}`);
+    }
+  }
+  if (!cruda) return errores;
+  const marcadas = cruda.filter((r) => r.elemento === 'accion' && rojoEsperadoDe(r) !== null);
+  const porAccion = new Map();
+  for (const v of anexo) porAccion.set(v.accion, [...(porAccion.get(v.accion) || []), v]);
+  for (const a of marcadas) {
+    const vs = porAccion.get(a.id) || [];
+    porAccion.delete(a.id);
+    if (vs.length !== 1) {
+      errores.push(`el rojo esperado ${a.id} esta ${vs.length} veces en el anexo`);
+      continue;
+    }
+    if (vs[0].rojoEsperado !== rojoEsperadoDe(a)) {
+      errores.push(`la verificacion ${vs[0].id} no dice lo que declara la accion ${a.id}`);
+    }
+    if (vs[0].enRojo !== enRojoDe(a.exito)) {
+      errores.push(`la verificacion ${vs[0].id} dice enRojo = ${vs[0].enRojo}, y la cruda no`);
+    }
+  }
+  for (const id of porAccion.keys()) {
+    errores.push(`el anexo trae ${id}, que no es una accion marcada de la cruda`);
   }
   return errores;
 }

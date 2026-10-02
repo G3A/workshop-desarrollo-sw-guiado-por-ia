@@ -394,6 +394,121 @@ test('rojo esquema: una integracion fuera de los valores, o en quien no es subag
   }), ['esquema']);
 });
 
+// --- Anexo de verificaciones negativas --------------------------------------------------------
+
+const MARCADO = 'node scripts/verificar-ancho.mjs  # rojo-esperado: ancho de linea';
+
+// Sembrar un sensor: se rompe a.md, el sensor sale en rojo y se revierte.
+function crudaConRojo({ verde = false } = {}) {
+  return crudaDe(fabrica()
+    .prompt('Siembra el sensor')
+    .texto('Rompo una linea y corro el sensor.')
+    .llamada('tu1', 'Edit', { file_path: 'a.md', old_string: 'a', new_string: 'a'.repeat(120) })
+    .resultado('tu1', 'ok')
+    .llamada('tu2', 'Bash', { command: MARCADO })
+    .resultado('tu2', verde ? 'Ninguna linea pasa del tope' : 'Fuera de regla (1)',
+      { error: !verde })
+    .llamada('tu3', 'Bash', { command: 'git checkout -- a.md' })
+    .resultado('tu3', 'ok'), { captura: sinCambio('tu2') });
+}
+
+test('anexo: un rojo esperado sale de la secuencia y queda al final de la curada', () => {
+  const cruda = crudaConRojo();
+  const curada = curarYValidar(cruda);
+  assert.deepEqual(de(curada, 'accion').map((a) => a.toolUseId), ['tu1', 'tu3']);
+  const rojo = de(cruda, 'accion').find((a) => a.toolUseId === 'tu2');
+  assert.deepEqual(curada[curada.length - 1], {
+    elemento: 'verificacion_negativa',
+    id: `${rojo.id}.v`,
+    accion: rojo.id,
+    agente: 'orquestador',
+    comando: MARCADO,
+    rojoEsperado: 'ancho de linea',
+    enRojo: true,
+    resultado: 'Fuera de regla (1)',
+    momento: rojo.momento,
+  });
+});
+
+test('anexo: un rojo esperado que sale verde queda con enRojo = false, fuera de secuencia', () => {
+  const curada = curarYValidar(crudaConRojo({ verde: true }));
+  assert.deepEqual(de(curada, 'accion').map((a) => a.toolUseId), ['tu1', 'tu3']);
+  assert.equal(de(curada, 'verificacion_negativa')[0].enRojo, false);
+});
+
+test('anexo: la marca vale en PowerShell y en cualquier linea del comando', () => {
+  const comando = 'mvn -q test  # rojo-esperado: prueba de aceptacion 3\nWrite-Host listo';
+  const cruda = crudaDe(fabrica()
+    .prompt('TDD')
+    .llamada('tu1', 'PowerShell', { command: comando })
+    .resultado('tu1', 'BUILD FAILURE', { error: true }), { captura: sinCambio('tu1') });
+  const curada = curarYValidar(cruda);
+  assert.deepEqual(de(curada, 'verificacion_negativa').map((v) => v.rojoEsperado),
+    ['prueba de aceptacion 3']);
+  assert.deepEqual(de(curada, 'turno'), [], 'el turno de solo el rojo queda vacio y sale');
+});
+
+test('anexo: un rojo esperado que cambio el arbol deja su residuo en la secuencia', () => {
+  const cruda = crudaConRojo();
+  const rojo = de(cruda, 'accion').find((a) => a.toolUseId === 'tu2');
+  Object.assign(rojo, { arbolAntes: 'arbol-a', arbolDespues: 'arbol-b',
+    cambios: [{ archivo: 'reporte.txt', diff: '+x\n' }] });
+  cruda[0].arbolBase = 'arbol-a';
+  const curada = curar(serializar(cruda));
+  assert.ok(de(curada, 'accion').some((a) => a.id === `${rojo.id}.r`));
+  assert.equal(de(curada, 'verificacion_negativa')[0].accion, rojo.id);
+});
+
+test('detenida: un rojo esperado que salio verde sin arbol y pudo escribir', () => {
+  const cruda = crudaDe(fabrica()
+    .prompt('Siembra')
+    .llamada('tu1', 'Bash', { command: MARCADO })
+    .resultado('tu1', 'Ninguna linea pasa del tope'));
+  assert.throws(() => curar(serializar(cruda)), (e) => e instanceof CuracionDetenida &&
+    /salio verde de la secuencia sin arbol/.test(e.motivos.join()));
+});
+
+test('anexo: el rojo de un subagente descartado se conserva', () => {
+  const cruda = crudaConSubagente('el-mismo');
+  const sembrado = de(cruda, 'accion').find((a) => a.toolUseId === 'su2');
+  sembrado.entrada.command = `npm test  # rojo-esperado: revertir deja la prueba en rojo`;
+  const curada = curarYValidar(cruda);
+  assert.ok(!ids(curada, 'agente').includes('subagente:ab12'));
+  assert.deepEqual(de(curada, 'verificacion_negativa').map((v) => v.accion), [sembrado.id]);
+});
+
+function sembrarAnexo(mutar) {
+  const cruda = crudaConRojo();
+  const curada = structuredClone(curarYValidar(cruda));
+  mutar(curada, cruda);
+  return validarActa(curada, { cruda }).map((e) => e.invariante);
+}
+
+test('rojo anexo: un rojo esperado dentro de la secuencia', () => {
+  const r = sembrarAnexo((c, cruda) => {
+    c.push({ ...de(cruda, 'accion').find((a) => a.toolUseId === 'tu2'), exito: true,
+      intentosPrevios: [] });
+  });
+  assert.ok(r.includes('anexo'), r.join());
+});
+
+test('rojo anexo: falta una verificacion, sobra otra o no dice lo que declara la accion', () => {
+  const v = (c) => de(c, 'verificacion_negativa')[0];
+  assert.deepEqual(sembrarAnexo((c) => { c.splice(c.indexOf(v(c)), 1); }), ['anexo']);
+  assert.deepEqual(sembrarAnexo((c) => { c.push({ ...v(c), id: 'x.v', accion: 'a1' }); }),
+    ['anexo']);
+  assert.deepEqual(sembrarAnexo((c) => { v(c).rojoEsperado = 'otra cosa'; }), ['anexo']);
+  assert.deepEqual(sembrarAnexo((c) => { v(c).enRojo = false; }), ['anexo']);
+  assert.deepEqual(sembrarAnexo((c) => { v(c).enRojo = 'si'; }), ['anexo', 'anexo']);
+});
+
+test('rojo anexo: la cruda no tiene anexo', () => {
+  const cruda = crudaConRojo();
+  const curada = curar(serializar(cruda));
+  cruda.push(de(curada, 'verificacion_negativa')[0]);
+  assert.deepEqual(validarActa(cruda).map((e) => e.invariante), ['anexo']);
+});
+
 // --- Determinismo (I8) ------------------------------------------------------------------------
 
 test('determinismo: curar dos veces la misma cruda da el mismo archivo, byte a byte', () => {

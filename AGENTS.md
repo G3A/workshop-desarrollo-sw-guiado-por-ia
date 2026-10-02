@@ -103,7 +103,9 @@ contexto:
   y el arnés que los siembra revierte con `git checkout`. Se hace con `git status --porcelain`
   vacío y el sensor ya commiteado: si no está versionado, lo que la siembra ensució termina dentro
   del commit; si lo está, ese `git checkout` se lleva puesto lo que estabas escribiendo. En #165
-  mordió de las dos formas, en ese orden.
+  mordió de las dos formas, en ese orden. Cada comando que debe salir en rojo lo declara al final:
+  `<comando>  # rojo-esperado: <qué demuestra>`, que vale en bash y en PowerShell. El acta lo lleva
+  al anexo de verificaciones negativas en vez de contarlo como un fallo (#218).
 - **Versión del plugin.** La PR de liberación `dev` → `main` sube la versión de `plugin.json` y
   fecha su entrada del CHANGELOG; las PR a `dev` registran lo suyo bajo la entrada «unreleased».
   La actualización en cualquier equipo es `instrumentacion-java-ia/update.ps1` o `update.sh`.
