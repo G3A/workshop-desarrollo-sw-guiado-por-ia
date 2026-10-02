@@ -76,10 +76,9 @@ export function claseDeterminismo(herramienta, entrada = {}) {
   return 'efecto_externo';
 }
 
-// Las herramientas que no cambian el arbol. La captura no les toma el hash (cuesta unos 70 ms), y
-// la curacion sabe que un fallo suyo no deja residuo aunque su arbol este en null.
-export const SIN_ARBOL = new Set(['Read', 'Grep', 'Glob', 'LS', 'WebSearch', 'WebFetch',
-  'ToolSearch', 'Skill', 'TodoWrite', 'AskUserQuestion']);
+// Las herramientas que no cambian el arbol viven en nucleo-captura.mjs: la captura las necesita
+// sin cargar este archivo (#222).
+export { SIN_ARBOL } from './nucleo-captura.mjs';
 
 // Las llamadas que envuelven el trabajo de un subagente: su arbol antes y despues abarca todas
 // las acciones del subagente, asi que no cuentan como un eslabon de la cadena de arboles.

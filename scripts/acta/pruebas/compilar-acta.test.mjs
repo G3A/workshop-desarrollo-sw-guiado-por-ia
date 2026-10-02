@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { compilar, compilarYEscribir, serializar } from '../compilar-acta.mjs';
+import { CuracionDetenida, curar } from '../curar-acta.mjs';
 import { validarActa } from '../validar-acta.mjs';
 import { claseDeterminismo } from '../clasificar.mjs';
 import { arbolActual, git } from '../git.mjs';
@@ -290,6 +291,46 @@ test('capturada: si la captura vio el PreToolUse, con null cuando no se puede sa
     ['tu2', true],
     ['usuario-t2', null],
   ]);
+});
+
+// La forma de la sesion de #218 (#222): un Bash rompe un modulo que el hook importa, y hasta que
+// un Edit lo arregla, el hook no carga. El Bash pierde su PostToolUse, el Read y el primer Edit
+// pierden los dos eventos, y el segundo Edit pierde el PreToolUse.
+test('eventos perdidos: lo que corrio sin captura no queda como no corrido, y se avisa', () => {
+  const repo = repoQueAvanza({ 'a.md': 'uno\n' });
+  const a0 = repo.arbol();
+  repo.cambiar({ 'a.md': 'roto\n' });
+  const a2 = repo.cambiar({ 'a.md': 'dos\n' });
+  const f = fabrica()
+    .prompt('Arregla')
+    .llamada('tu1', 'Bash', { command: 'node arreglar.mjs' })
+    .resultado('tu1', 'ok')
+    .llamada('tu2', 'Read', { file_path: 'a.md' })
+    .resultado('tu2', 'roto')
+    .llamada('tu3', 'Edit', { file_path: 'a.md', old_string: 'roto', new_string: 'medio' })
+    .resultado('tu3', 'ok')
+    .llamada('tu4', 'Edit', { file_path: 'a.md', old_string: 'medio', new_string: 'dos' })
+    .resultado('tu4', 'ok')
+    .llamada('tu5', 'Bash', { command: 'npm test' })
+    .resultado('tu5', 'ok');
+  const captura = [
+    { evento: 'SessionStart', momento: enCaptura(0, 0), arbol: a0 },
+    { evento: 'PreToolUse', toolUseId: 'tu1', momento: enCaptura(0, 2), arbol: a0 },
+    { evento: 'PostToolUse', toolUseId: 'tu4', momento: enCaptura(0, 9), arbol: a2 },
+    { evento: 'PreToolUse', toolUseId: 'tu5', momento: enCaptura(0, 10), arbol: a2 },
+    { evento: 'PostToolUse', toolUseId: 'tu5', momento: enCaptura(0, 10), arbol: a2 },
+    { evento: 'SessionEnd', momento: enCaptura(0, 12), arbol: a2 },
+  ];
+  const { actas, avisos } = compilarFabrica(f, { captura, raizRepo: repo.raiz });
+  const acta = unicaActa({ actas });
+  assert.deepEqual(validarActa(acta), []);
+  assert.deepEqual(de(acta, 'accion').map((a) => [a.toolUseId, a.capturada]), [
+    ['tu1', true], ['tu2', null], ['tu3', null], ['tu4', null], ['tu5', true],
+  ]);
+  assert.ok(avisos.some((a) => /perdio eventos de 4 acciones que corrieron \(a1, a2, a3, a4\)/
+    .test(a)), avisos.join('\n'));
+  assert.throws(() => curar(serializar(acta)),
+    (e) => e instanceof CuracionDetenida && /sin una accion que lo explique/.test(e.message));
 });
 
 test('efecto de hook: un cambio entre dos acciones entra como accion derivada con su diff', () => {
