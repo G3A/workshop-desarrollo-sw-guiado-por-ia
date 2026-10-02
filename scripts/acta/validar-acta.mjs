@@ -7,7 +7,9 @@
 //       subagente lleva su integracion (integrado, descartado, o null si no se pudo saber), y
 //       en la curada solo hay subagentes integrados.
 //   I4  una accion en segundo plano esta en el paso que la lanzo, no en el de su resultado.
-//   I5  sin marcador de la skill, el paso es el turno completo: procedencia ausente y unico.
+//   I5  sin marcador de la skill, el paso es el turno completo: procedencia ausente y unico. Con
+//       marcadores (#222, fase 4), cada paso marcado dice su skill, su paso y su fase, y lo que
+//       el turno hizo antes del primero es el unico paso ausente, y el primero del turno.
 //   I6  solo en la curada (la que trae `derivadaDe` en la cabecera): toda accion tiene
 //       exito = true, todo paso al menos una accion y todo turno al menos un paso.
 //   I7  solo en la curada, y solo si se pasa la cruda: los intentosPrevios de cada accion son
@@ -89,15 +91,28 @@ export function validarActa(registros, { cruda = null } = {}) {
   for (const p of pasos) {
     const t = porId.get(p.turno);
     if (!t || t.elemento !== 'turno') falla('I1', `el paso ${p.id} apunta a un turno inexistente`);
-    pasosPorTurno.set(p.turno, (pasosPorTurno.get(p.turno) || 0) + 1);
+    if (!pasosPorTurno.has(p.turno)) pasosPorTurno.set(p.turno, []);
+    pasosPorTurno.get(p.turno).push(p);
     if (!PROCEDENCIAS.has(p.procedencia)) {
       falla('I5', `el paso ${p.id} tiene procedencia ${p.procedencia}`);
     }
-  }
-  for (const p of pasos) {
-    if (p.procedencia === 'ausente' && pasosPorTurno.get(p.turno) !== 1) {
-      falla('I5', `el paso ${p.id} no tiene marcador y no es el unico de su turno`);
+    const prescrito = p.pasoPrescrito;
+    if (p.procedencia === 'ausente' && prescrito !== null) {
+      falla('I5', `el paso ${p.id} no tiene marcador y apunta a un paso prescrito`);
     }
+    if (p.procedencia === 'marcado' && (typeof prescrito?.skill !== 'string' ||
+      typeof prescrito?.letra !== 'string' || !Number.isInteger(p.faseDeclarada) ||
+      p.faseDeclarada < 0 || p.faseDeclarada > 6)) {
+      falla('I5', `el paso marcado ${p.id} no dice su skill, su paso y su fase (0 a 6)`);
+    }
+  }
+  // Lo que el turno hizo antes del primer marcador es el unico paso sin marcador, y va primero.
+  for (const [, delTurno] of pasosPorTurno) {
+    delTurno.forEach((p, i) => {
+      if (p.procedencia === 'ausente' && i > 0) {
+        falla('I5', `el paso ${p.id} no tiene marcador y no es el primero de su turno`);
+      }
+    });
   }
 
   const agentes = new Map(de('agente').map((a) => [a.id, a]));

@@ -76,7 +76,7 @@ pre-push:
         node --test scripts/acta/pruebas/compilar-acta.test.mjs
         scripts/acta/pruebas/capturar.test.mjs scripts/acta/pruebas/curar-acta.test.mjs
         scripts/acta/pruebas/verificar-arbol.test.mjs scripts/acta/pruebas/indexar-tarea.test.mjs
-        scripts/acta/pruebas/ejecutar-acta.test.mjs
+        scripts/acta/pruebas/ejecutar-acta.test.mjs scripts/acta/pruebas/conformidad.test.mjs
       fail_text: "The acta compiler or curation tests failed. See scripts/acta/README.md."
     base-conocimiento-check:
       root: "base-conocimiento/"

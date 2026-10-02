@@ -137,7 +137,7 @@ jobs:
           node --test scripts/acta/pruebas/compilar-acta.test.mjs
           scripts/acta/pruebas/capturar.test.mjs scripts/acta/pruebas/curar-acta.test.mjs
           scripts/acta/pruebas/verificar-arbol.test.mjs scripts/acta/pruebas/indexar-tarea.test.mjs
-          scripts/acta/pruebas/ejecutar-acta.test.mjs
+          scripts/acta/pruebas/ejecutar-acta.test.mjs scripts/acta/pruebas/conformidad.test.mjs
 
       # El motor de re-ejecucion dentro de Docker (#222, fase 2): construye la imagen de
       # scripts/acta/motor/ y re-ejecuta una curada sintetica, en verde y con un rojo sembrado.
