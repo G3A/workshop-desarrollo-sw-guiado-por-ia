@@ -137,6 +137,15 @@ jobs:
           node --test scripts/acta/pruebas/compilar-acta.test.mjs
           scripts/acta/pruebas/capturar.test.mjs scripts/acta/pruebas/curar-acta.test.mjs
           scripts/acta/pruebas/verificar-arbol.test.mjs scripts/acta/pruebas/indexar-tarea.test.mjs
+          scripts/acta/pruebas/ejecutar-acta.test.mjs
+
+      # El motor de re-ejecucion dentro de Docker (#222, fase 2): construye la imagen de
+      # scripts/acta/motor/ y re-ejecuta una curada sintetica, en verde y con un rojo sembrado.
+      # Solo aqui y no en el pre-push: construir la imagen sale a la red, y un hook que sale a la
+      # red bloquea el push cuando falla el wifi.
+      - name: The acta engine re-executes a curated acta inside its container
+        working-directory: .
+        run: node --test scripts/acta/pruebas/reejecutar-acta.test.mjs
 
       # Sensor del espejo con el sandbox (#155): una diferencia entre base-conocimiento/ y la raiz
       # de G3A/base-conocimiento-sandbox que el ADR-0003 no explique falla aca. Hasta este issue la
