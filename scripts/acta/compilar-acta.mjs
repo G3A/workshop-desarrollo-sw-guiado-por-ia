@@ -45,6 +45,7 @@ import { blobEn, cambiosEntre, leerEnCommit, raizDelRepo, versionDe } from './gi
 
 const RAMA_CON_TAREA = /^[a-z]+\/(\d+)-/;
 const RUTA_PLUGIN = 'instrumentacion-java-ia/sdlc-ia';
+const RUTA_DOCKERFILE = 'scripts/acta/motor/Dockerfile';
 const DOC_DE_SKILL = /(^|\/)skills\/[^/]+\/(SKILL\.md|references\/[^/]+\.md)$/;
 const PROFUNDIDAD_MAXIMA = 5;
 
@@ -197,6 +198,7 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
       entrada: norm.profundo(entrada),
       claseDeterminismo: claseDeterminismo(uso.name, entrada),
       segundoPlano: entrada.run_in_background === true,
+      directorio: linea.cwd ? norm.texto(linea.cwd) : null,
       momento: linea.timestamp || null,
       exito: null,
       resultado: null,
@@ -470,6 +472,7 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
           entrada: null,
           claseDeterminismo: 'pura',
           segundoPlano: false,
+          directorio: null,
           momento: visto.momento || null,
           exito: true,
           resultado: null,
@@ -534,6 +537,7 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
     modelos: [...modelos].sort(),
     plugin: versionDelPlugin(raizRepo, headBase),
     documentos: documentosUsados(raizRepo, headBase, skills, acciones),
+    imagen: imagenDelMotor(raizRepo, headBase),
   };
 
   const finSesion = [...captura].reverse().find((c) => c.evento === 'SessionEnd' && c.arbol);
@@ -551,6 +555,18 @@ function versionDelPlugin(raizRepo, commit) {
   } catch {
     return null;
   }
+}
+
+// La imagen con la que el motor re-ejecuta esta acta (#222, fase 2): el Dockerfile tal como
+// estaba en el HEAD base y el digest de su imagen de partida. El id de la imagen construida lo
+// guarda el reporte del motor, que es quien la construye.
+function imagenDelMotor(raizRepo, commit) {
+  if (!raizRepo || !commit) return null;
+  const dockerfile = versionDe(raizRepo, commit, RUTA_DOCKERFILE);
+  if (!dockerfile) return null;
+  const desde = /^FROM\s+(\S+@sha256:[0-9a-f]{64})/m.exec(leerEnCommit(raizRepo, commit,
+    RUTA_DOCKERFILE) || '');
+  return { dockerfile, base: desde ? desde[1] : null };
 }
 
 function documentosUsados(raizRepo, commit, skills, acciones) {

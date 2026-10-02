@@ -45,7 +45,7 @@ export function rutaEnRepo(archivo) {
 }
 
 // El contenido que deja la accion sobre `contenido`, o null si no se puede aplicar.
-function aplicar(accion, contenido) {
+export function aplicar(accion, contenido) {
   const e = accion.entrada || {};
   if (accion.herramienta === 'Write') return typeof e.content === 'string' ? e.content : null;
   if (contenido === null) return null;
