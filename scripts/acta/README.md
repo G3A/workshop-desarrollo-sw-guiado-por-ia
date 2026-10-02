@@ -30,12 +30,14 @@ versiona lo decide el issue del trailer.
 ```text
 node scripts/acta/compilar-acta.mjs --transcript <sesión.jsonl> [--salida <carpeta>]
 node scripts/acta/curar-acta.mjs <acta.cruda.jsonl> [--salida <acta.curada.jsonl>]
+node scripts/acta/curar-acta.mjs <acta.cruda.jsonl> --comprobar <acta.curada.jsonl>
 node scripts/acta/validar-acta.mjs <acta.cruda.jsonl | acta.curada.jsonl>
 node --test scripts/acta/pruebas/compilar-acta.test.mjs scripts/acta/pruebas/capturar.test.mjs
 node --test scripts/acta/pruebas/curar-acta.test.mjs scripts/acta/pruebas/verificar-arbol.test.mjs
 ```
 
 `curar-acta.mjs` se corre desde dentro del repo: lee de él los blobs para verificar el árbol.
+Con `--comprobar` vuelve a derivar la curada y falla si no coincide byte a byte (invariante 8).
 
 La curada entra solo con las acciones exitosas, de todos los agentes, con su id de la cruda; los
 pasos y turnos que quedan vacíos salen. Un fallo que cambió el árbol entra como acción `residuo`

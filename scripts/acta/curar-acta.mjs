@@ -1,6 +1,7 @@
 // Curacion del acta (#218, ADR-0005 punto 3), desde la raiz del repo:
 //
 //   node scripts/acta/curar-acta.mjs <acta.cruda.jsonl> [--salida <acta.curada.jsonl>]
+//   node scripts/acta/curar-acta.mjs <acta.cruda.jsonl> --comprobar <acta.curada.jsonl>
 //
 // Deriva el acta curada de la cruda y la escribe junto a ella, como <sesion>.acta.curada.jsonl.
 // La curada es lo que re-ejecuta el motor: solo lo que salio bien.
@@ -73,9 +74,13 @@
 // memoria sus Edit y Write contra el repo y comprueba que la cadena llegue al arbol final. Un
 // Edit en cuya ventana escribio un hook se parte en dos. Sin repo, la curacion se DETIENE.
 //
-// Codigos de salida: 0 escrita, 1 la curada rompe una invariante, 2 uso incorrecto, 3 la
-// curacion se detuvo: un fallo sin residuo verificable, o un arbol que no se pudo verificar.
-// En 1 y 3 no se escribe nada.
+// Invariante I8: la curada no se edita a mano. Con --comprobar, se vuelve a derivar desde la cruda
+// y el repo y se compara byte a byte con la que existe; tambien se mira que su derivadaDe sea el
+// sha256 de esa cruda. Es lo que va a necesitar el sensor del CI del trailer Registro-IA.
+//
+// Codigos de salida: 0 escrita (o, con --comprobar, coincide), 1 la curada rompe una invariante
+// (o no coincide), 2 uso incorrecto, 3 la curacion se detuvo: un fallo sin residuo verificable, o
+// un arbol que no se pudo verificar. En 1 y 3 no se escribe nada.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -248,6 +253,42 @@ function verificacionNegativa(a, rojoEsperado) {
 }
 
 // Cura y escribe. Devuelve el codigo de salida.
+// Invariante I8: los motivos por los que `curada` no es la que sale de `cruda`; vacio si lo es.
+export function comprobarCurada({ cruda, curada, raizRepo }) {
+  const textoCruda = fs.readFileSync(cruda, 'utf8');
+  const textoCurada = fs.readFileSync(curada, 'utf8');
+  const errores = [];
+  let derivadaDe = null;
+  try {
+    derivadaDe = JSON.parse(textoCurada.split('\n')[0]).derivadaDe;
+  } catch {
+    errores.push('la curada no empieza con una cabecera legible');
+  }
+  const sha256 = crypto.createHash('sha256').update(textoCruda).digest('hex');
+  if (derivadaDe?.sha256 !== sha256) {
+    errores.push(`la curada dice derivar de ${derivadaDe?.sha256}, y esta cruda es ${sha256}`);
+  }
+  let registros;
+  try {
+    registros = curar(textoCruda);
+  } catch (e) {
+    if (!(e instanceof CuracionDetenida)) throw e;
+    return [...errores, `la cruda no se puede curar: ${e.motivos.join('; ')}`];
+  }
+  const verificada = verificarArbol(registros, raizRepo);
+  if (verificada.motivos.length) {
+    return [...errores, `la cruda no se puede verificar: ${verificada.motivos.join('; ')}`];
+  }
+  const esperada = serializar(verificada.registros).split('\n');
+  const real = textoCurada.split('\n');
+  const linea = esperada.findIndex((l, i) => l !== real[i]);
+  if (linea !== -1 || real.length !== esperada.length) {
+    const n = linea === -1 ? Math.min(real.length, esperada.length) + 1 : linea + 1;
+    errores.push(`la curada no es la que sale de su cruda: difiere desde la linea ${n}`);
+  }
+  return errores;
+}
+
 // Cura, verifica el arbol contra el repo (verificar-arbol.mjs) y escribe. Devuelve el codigo de
 // salida.
 export function curarYEscribir({ cruda, salida = null, raizRepo = null, log = console }) {
@@ -281,14 +322,21 @@ export function curarYEscribir({ cruda, salida = null, raizRepo = null, log = co
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const [cruda, opcion, salida, ...resto] = process.argv.slice(2);
+  const [cruda, opcion, otra, ...resto] = process.argv.slice(2);
   const usoValido = cruda && cruda.endsWith(SUFIJO_CRUDA) && fs.existsSync(cruda) &&
-    resto.length === 0 && (opcion === undefined || (opcion === '--salida' && salida));
+    resto.length === 0 && (opcion === undefined ||
+      (opcion === '--salida' && otra) || (opcion === '--comprobar' && otra && fs.existsSync(otra)));
+  const raizRepo = raizDelRepo(process.cwd());
   if (!usoValido) {
     console.error('Uso: node scripts/acta/curar-acta.mjs <acta.cruda.jsonl> ' +
-      '[--salida <acta.curada.jsonl>]');
+      '[--salida <acta.curada.jsonl> | --comprobar <acta.curada.jsonl>]');
     process.exitCode = 2;
+  } else if (opcion === '--comprobar') {
+    const errores = comprobarCurada({ cruda, curada: otra, raizRepo });
+    for (const e of errores) console.error(`I8: ${e}`);
+    if (errores.length) process.exitCode = 1;
+    else console.log('La curada es la que sale de su cruda (I8).');
   } else {
-    process.exitCode = curarYEscribir({ cruda, salida, raizRepo: raizDelRepo(process.cwd()) });
+    process.exitCode = curarYEscribir({ cruda, salida: otra, raizRepo });
   }
 }

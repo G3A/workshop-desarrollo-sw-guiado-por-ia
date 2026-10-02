@@ -3,7 +3,8 @@
 //
 // Cada escenario es un transcript sintetico (fabrica.mjs) que se compila a la cruda y se cura.
 // Las invariantes I6 e I7 se prueban en las dos direcciones: la curada las cumple, y una curada
-// sembrada con cada rotura sale en rojo con la que corresponde (REVIEW.md, seccion 3).
+// sembrada con cada rotura sale en rojo con la que corresponde (REVIEW.md, seccion 3). La I8
+// (la curada no se edita a mano) se comprueba volviendo a derivarla con --comprobar.
 //
 // Un fallo sin arbol que pudo escribir detiene la curacion, asi que los escenarios con fallos le
 // pasan al compilador una captura: `sinCambio` dice que el fallo no toco el arbol.
@@ -12,9 +13,11 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { compilar, compilarYEscribir, serializar } from '../compilar-acta.mjs';
-import { CuracionDetenida, curar, curarYEscribir } from '../curar-acta.mjs';
-import { validarActa } from '../validar-acta.mjs';
+import { CuracionDetenida, comprobarCurada, curar, curarYEscribir } from '../curar-acta.mjs';
+import { leerActa, validarActa } from '../validar-acta.mjs';
 import { arbolActual } from '../git.mjs';
 import { carpetaTemporal, enCaptura, fabrica, repoQueAvanza, repoTemporal, sesionConHook,
   sesionConSubagente, subagente } from './fabrica.mjs';
@@ -558,6 +561,72 @@ test('determinismo: curar dos veces la misma cruda da el mismo archivo, byte a b
   assert.equal(curarYEscribir({ cruda, raizRepo: repo.raiz, log: silencio }), 0);
   const junto = path.join(salida, '10', 'sesion-1.acta.curada.jsonl');
   assert.ok(fs.readFileSync(junto).equals(a), 'sin --salida queda junto a la cruda');
+});
+
+// --- Invariante I8: la curada no se edita a mano ----------------------------------------------
+
+const CLI = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'curar-acta.mjs');
+
+// Una cruda y su curada escritas en disco, en una carpeta propia, con un repo para verificar.
+function curadaEnDisco(prompt = 'Uno') {
+  const raizRepo = repoTemporal({ 'a.md': 'a\n' });
+  const carpeta = carpetaTemporal('i8');
+  const cruda = path.join(carpeta, 'sesion-1.acta.cruda.jsonl');
+  fs.writeFileSync(cruda, serializar(crudaDe(fabrica()
+    .prompt(prompt)
+    .texto('Leo.')
+    .llamada('tu1', 'Read', { file_path: 'a.md' })
+    .resultado('tu1', 'a'))));
+  assert.equal(curarYEscribir({ cruda, raizRepo, log: silencio }), 0);
+  return { cruda, curada: cruda.replace('.cruda.', '.curada.'), raizRepo };
+}
+
+test('I8: la curada que salio de su cruda se comprueba en verde', () => {
+  assert.deepEqual(comprobarCurada(curadaEnDisco()), []);
+});
+
+test('rojo I8: una curada editada a mano', () => {
+  const caso = curadaEnDisco();
+  const texto = fs.readFileSync(caso.curada, 'utf8');
+  fs.writeFileSync(caso.curada, texto.replace('"texto":"Leo."', '"texto":"Leo con cuidado."'));
+  const errores = comprobarCurada(caso);
+  assert.equal(errores.length, 1, errores.join());
+  assert.match(errores[0], /no es la que sale de su cruda: difiere desde la linea \d+/);
+});
+
+test('rojo I8: una linea en blanco de mas al final, que no cambia ninguna linea', () => {
+  const caso = curadaEnDisco();
+  fs.appendFileSync(caso.curada, '\n');
+  assert.match(comprobarCurada(caso).join(), /no es la que sale de su cruda/);
+});
+
+test('rojo I8: una curada que deriva de otra cruda', () => {
+  const una = curadaEnDisco('Uno');
+  const otra = curadaEnDisco('Otro prompt');
+  const errores = comprobarCurada({ ...una, curada: otra.curada });
+  assert.match(errores.join(), /dice derivar de [0-9a-f]{64}, y esta cruda es [0-9a-f]{64}/);
+  assert.match(errores.join(), /no es la que sale de su cruda/);
+});
+
+test('rojo I8: una cruda que ya no se puede curar', () => {
+  const caso = curadaEnDisco();
+  const registros = leerActa(caso.cruda);
+  Object.assign(de(registros, 'accion')[0], { exito: false, herramienta: 'Bash',
+    entrada: { command: 'make' }, claseDeterminismo: 'local' });
+  fs.writeFileSync(caso.cruda, serializar(registros));
+  assert.match(comprobarCurada(caso).join(), /la cruda no se puede curar: .*pudo escribir/);
+});
+
+test('CLI --comprobar: 0 si coincide, 1 si no, 2 si falta la curada', () => {
+  const { cruda, curada, raizRepo } = curadaEnDisco();
+  const correr = (...args) => spawnSync(process.execPath, [CLI, cruda, ...args],
+    { cwd: raizRepo, encoding: 'utf8' });
+  assert.equal(correr('--comprobar', curada).status, 0);
+  fs.appendFileSync(curada, '{"elemento":"agregado a mano"}\n');
+  const r = correr('--comprobar', curada);
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /^I8: /m);
+  assert.equal(correr('--comprobar', `${curada}.no-existe`).status, 2);
 });
 
 // --- Rojos sembrados: invariante I6 -----------------------------------------------------------
