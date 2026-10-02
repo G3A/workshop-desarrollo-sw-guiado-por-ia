@@ -138,6 +138,7 @@ jobs:
           scripts/acta/pruebas/capturar.test.mjs scripts/acta/pruebas/curar-acta.test.mjs
           scripts/acta/pruebas/verificar-arbol.test.mjs scripts/acta/pruebas/indexar-tarea.test.mjs
           scripts/acta/pruebas/ejecutar-acta.test.mjs scripts/acta/pruebas/conformidad.test.mjs
+          scripts/acta/pruebas/verificar-registro-ia.test.mjs scripts/acta/pruebas/deriva-huella.test.mjs
 
       # El motor de re-ejecucion dentro de Docker (#222, fase 2): construye la imagen de
       # scripts/acta/motor/ y re-ejecuta una curada sintetica, en verde y con un rojo sembrado.
@@ -146,6 +147,23 @@ jobs:
       - name: The acta engine re-executes a curated acta inside its container
         working-directory: .
         run: node --test scripts/acta/pruebas/reejecutar-acta.test.mjs
+
+      # Sensor del trailer Registro-IA (#222, fase 3; ADR-0006): cada commit asistido de la PR
+      # cita su acta, la curada sale de su cruda (I8), el acta llega al diff del commit y el motor
+      # reproduce sus acciones aplicadas. Va despues del paso de Docker, que deja la imagen
+      # construida. Solo en una PR: en un push a dev, el commit del squash trae los trailers del
+      # cuerpo de la PR, que este mismo paso ya verifico.
+      - name: Every AI-assisted commit cites an acta that reaches its diff
+        if: github.event_name == 'pull_request'
+        working-directory: .
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          CUERPO_PR: ${{ github.event.pull_request.body }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$CUERPO_PR" > "$RUNNER_TEMP/cuerpo-pr.md"
+          node scripts/acta/verificar-registro-ia.mjs --rango "$BASE_SHA..HEAD" \
+            --cuerpo-pr "$RUNNER_TEMP/cuerpo-pr.md"
 
       # Sensor del espejo con el sandbox (#155): una diferencia entre base-conocimiento/ y la raiz
       # de G3A/base-conocimiento-sandbox que el ADR-0003 no explique falla aca. Hasta este issue la

@@ -87,6 +87,10 @@ contexto:
   del CI —el local se salta con `LEFTHOOK=0`, y el dato sostiene el porcentaje de PRs asistidas que
   reporta `impact-metrics`, así que no puede depender de eso—. Quedan fuera los merges y los
   `fixup!`/`squash!`.
+- **El commit asistido cita su acta** (ADR-0006): `Registro-IA: <ruta de la curada>` o
+  `Registro-IA: ninguno: <motivo>`. Dentro de Claude Code lo pone el hook `commit-msg`. Antes de
+  abrir la PR, `node scripts/acta/registrar-sesion.mjs` deja el acta en stage para commitearla, y
+  el cuerpo de la PR repite cada trailer. El CI falla si el acta no llega al diff del commit.
 
 ## Reglas duras
 

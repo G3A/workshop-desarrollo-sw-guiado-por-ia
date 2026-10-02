@@ -100,6 +100,11 @@ export function arbolActual(raiz) {
     const ignorada = git(['check-ignore', '-q', '.ia'], { cwd: raiz, permitirFallo: true });
     const rutas = ignorada === null ? ['--', '.', ':(exclude).ia'] : [];
     git(['add', '-A', ...rutas], { cwd: raiz, env: { GIT_INDEX_FILE: tmp } });
+    // Y lo que de .ia/ ya esta versionado tambien sale (#222, fase 3): git sigue los archivos
+    // versionados aunque esten bajo una ruta ignorada, y el acta que se commitea reescribiria el
+    // arbol de la sesion que registra.
+    git(['rm', '-r', '-q', '--cached', '--ignore-unmatch', '--', '.ia'],
+      { cwd: raiz, env: { GIT_INDEX_FILE: tmp } });
     return git(['write-tree'], { cwd: raiz, env: { GIT_INDEX_FILE: tmp } }).trim();
   } catch {
     return null;

@@ -5,6 +5,7 @@ logs/
 # Se sube a mano cuando hace falta compartirlo (puede traer datos del entorno).
 base-conocimiento/scripts/error-api.txt
 
-# Registro de la IA (#216): la captura de cada sesion y las actas compiladas. No se versionan
-# hasta que el issue del trailer Registro-IA decida que se commitea (pueden traer contenido leido).
+# Registro de la IA (#216): la captura de cada sesion y las actas compiladas. Las actas SI se
+# versionan (ADR-0006), pero de a una y a proposito: registrar-sesion.mjs las agrega con
+# `git add -f`, y asi un `git add -A` no publica todas las sesiones.
 .ia/

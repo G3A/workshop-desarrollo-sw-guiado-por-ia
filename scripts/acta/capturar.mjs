@@ -19,8 +19,9 @@
 //    `antes` de la accion siguiente si lo incluye. La diferencia entre los dos es justo lo que la
 //    curacion necesita para separar el efecto de un hook.
 // 4. En cada evento solo carga nucleo-captura.mjs, que no importa nada del repo (#222). El
-//    compilador, la curacion y el indice se cargan al cerrar, dentro del try: una sesion que deja
-//    uno de ellos con un error de sintaxis pierde el acta de ese cierre, no la captura.
+//    compilador, la curacion, el pack de objetos y el indice (cerrar-acta.mjs) se cargan al
+//    cerrar, dentro del try: una sesion que deja uno de ellos con un error de sintaxis pierde el
+//    acta de ese cierre, no la captura.
 import fs from 'node:fs';
 import path from 'node:path';
 import { SIN_ARBOL, arbolActual, head, huellaDeEntrada, raizDelRepo } from './nucleo-captura.mjs';
@@ -88,44 +89,17 @@ async function principal() {
 }
 
 async function cerrar({ raiz, captura, transcript }) {
-  let modulos;
+  let compilarYCerrar;
   try {
-    modulos = await Promise.all([
-      import('./compilar-acta.mjs'), import('./curar-acta.mjs'), import('./indexar-tarea.mjs'),
-    ]);
+    ({ compilarYCerrar } = await import('./cerrar-acta.mjs'));
   } catch (err) {
     process.stderr.write('acta: la captura quedo escrita, pero el compilador no carga y el ' +
       `acta de este cierre no sale (${err.message})\n`);
     return;
   }
-  const [{ compilarYEscribir }, { curarYEscribir }, { indexarYEscribir }] = modulos;
   const log = { log: () => {}, error: (m) => process.stderr.write(`acta: ${m}\n`) };
-  const escritas = [];
-  const codigo = compilarYEscribir({
-    transcript,
-    captura,
-    salida: path.join(raiz, '.ia', 'registros'),
-    raizRepo: raiz,
-    log,
-    escritas,
-  });
+  const { codigo } = compilarYCerrar({ transcript, captura, raizRepo: raiz, log });
   if (codigo !== 0) process.stderr.write(`acta: la compilacion termino con codigo ${codigo}\n`);
-  // La curada de cada acta escrita (#218). Una curada de un cierre anterior de la misma sesion
-  // (una sesion reanudada) se borra antes: si esta curacion no sale, no puede quedar una curada
-  // vieja junto a una cruda nueva.
-  for (const cruda of escritas) {
-    fs.rmSync(cruda.replace(/\.acta\.cruda\.jsonl$/, '.acta.curada.jsonl'), { force: true });
-    const curacion = curarYEscribir({ cruda, raizRepo: raiz, log });
-    if (curacion !== 0) {
-      const tarea = path.basename(path.dirname(cruda));
-      process.stderr.write(`acta: la curacion de la tarea ${tarea} termino con codigo ` +
-        `${curacion}; la cruda quedo escrita\n`);
-    }
-  }
-  // El indice de cada tarea, despues de curar: dice si cada acta tiene curada (#222).
-  for (const tarea of new Set(escritas.map((c) => path.dirname(c)))) {
-    indexarYEscribir(tarea, { log });
-  }
 }
 
 try {
