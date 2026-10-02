@@ -371,6 +371,31 @@ test('efecto de hook dentro de un subagente: va al paso de la llamada, que no es
   assert.deepEqual(hooks[0].cambios.map((c) => c.archivo), ['b.md']);
 });
 
+// --- Arbol final (#218) -----------------------------------------------------------------------
+
+test('arbol final: el de SessionEnd, solo en el acta de la ultima accion con arbol', () => {
+  const f = fabrica()
+    .prompt('Primera tarea')
+    .llamada('tu1', 'Write', { file_path: 'a.md', content: 'a' })
+    .resultado('tu1', 'ok')
+    .rama('fix/11-otra')
+    .prompt('Segunda tarea')
+    .llamada('tu2', 'Write', { file_path: 'b.md', content: 'b' })
+    .resultado('tu2', 'ok');
+  const captura = [
+    { evento: 'PreToolUse', toolUseId: 'tu1', arbol: 'x0' },
+    { evento: 'PostToolUse', toolUseId: 'tu1', arbol: 'x1' },
+    { evento: 'PreToolUse', toolUseId: 'tu2', arbol: 'x1' },
+    { evento: 'PostToolUse', toolUseId: 'tu2', arbol: 'x2' },
+  ];
+  const conCierre = compilarFabrica(f, { captura: [...captura,
+    { evento: 'SessionEnd', arbol: 'x2' }] }).actas;
+  assert.deepEqual([...conCierre].map(([t, acta]) => [t, acta[0].arbolFinal]),
+    [['10', null], ['11', 'x2']]);
+  const sinCierre = compilarFabrica(f, { captura }).actas;
+  assert.equal(sinCierre.get('11')[0].arbolFinal, null, 'sin SessionEnd con arbol no hay final');
+});
+
 // --- Integracion de subagentes (#218) ---------------------------------------------------------
 
 const integracionDe = (acta) => de(acta, 'agente').find((a) => a.id === 'subagente:ab12')

@@ -23,12 +23,13 @@ function entornoLimpio(extra = {}) {
   return { ...env, ...extra };
 }
 
-export function git(args, { cwd, env = {}, permitirFallo = false } = {}) {
+export function git(args, { cwd, env = {}, permitirFallo = false, input } = {}) {
   try {
     return execFileSync('git', args, {
       cwd,
       env: entornoLimpio(env),
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: [input === undefined ? 'ignore' : 'pipe', 'pipe', 'pipe'],
+      input,
       maxBuffer: 64 * 1024 * 1024,
     }).toString();
   } catch (e) {
@@ -106,6 +107,36 @@ export function blobEn(raiz, arbol, ruta) {
     permitirFallo: true,
   });
   return r ? r.trim() : null;
+}
+
+// El contenido de una ruta dentro de un arbol, como texto. Null si la ruta no esta.
+export function blobTexto(raiz, arbol, ruta) {
+  return git(['cat-file', 'blob', `${arbol}:${ruta}`], { cwd: raiz, permitirFallo: true });
+}
+
+// El arbol que resulta de poner `contenido` en `ruta` dentro de `arbol`. Lo escribe en el repo,
+// como la captura escribe los suyos, desde un indice temporal: el real no se toca. El blob se
+// guarda tal cual, sin filtros de fin de linea, porque `contenido` ya es contenido de un blob.
+export function arbolCon(raiz, arbol, ruta, contenido) {
+  const tmp = path.join(os.tmpdir(), `ia-acta-${process.pid}-${Date.now()}-${Math.random()}`);
+  const env = { GIT_INDEX_FILE: tmp };
+  try {
+    git(['read-tree', arbol], { cwd: raiz, env });
+    const blob = git(['hash-object', '-w', '--stdin'], { cwd: raiz, input: contenido }).trim();
+    const previo = git(['ls-tree', arbol, '--', ruta], { cwd: raiz }).trim();
+    const modo = previo ? previo.split(/\s/)[0] : '100644';
+    git(['update-index', '--add', '--cacheinfo', `${modo},${blob},${ruta}`], { cwd: raiz, env });
+    return git(['write-tree'], { cwd: raiz, env }).trim();
+  } finally {
+    fs.rmSync(tmp, { force: true });
+  }
+}
+
+// Los hashes que el repo no tiene como objeto, en una sola llamada.
+export function objetosQueFaltan(raiz, hashes) {
+  if (!hashes.length) return [];
+  const salida = git(['cat-file', '--batch-check'], { cwd: raiz, input: hashes.join('\n') + '\n' });
+  return salida.split('\n').filter((l) => / missing$/.test(l)).map((l) => l.split(' ')[0]);
 }
 
 export function leerEnCommit(raiz, commit, ruta) {

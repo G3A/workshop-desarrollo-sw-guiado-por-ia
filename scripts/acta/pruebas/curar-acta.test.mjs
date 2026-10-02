@@ -512,6 +512,12 @@ test('rojo anexo: la cruda no tiene anexo', () => {
 // --- Determinismo (I8) ------------------------------------------------------------------------
 
 test('determinismo: curar dos veces la misma cruda da el mismo archivo, byte a byte', () => {
+  // Con un Edit en cuya ventana escribio un hook: la verificacion lo parte y escribe un arbol
+  // intermedio en el repo, y aun asi las dos curadas son iguales.
+  const repo = repoQueAvanza({ 'a.md': 'a\n', 'b.md': 'b\n' });
+  const a0 = repo.arbol();
+  repo.cambiar({ 'a.md': 'b\n' });
+  const a2 = repo.cambiar({ 'b.md': 'B\n' });
   const carpeta = carpetaTemporal('det');
   const transcript = fabrica()
     .prompt('Uno')
@@ -529,18 +535,27 @@ test('determinismo: curar dos veces la misma cruda da el mismo archivo, byte a b
     { id: 'su1', name: 'Grep', input: { pattern: 'x' } },
   ]);
   const captura = path.join(carpeta, 'captura.jsonl');
-  fs.writeFileSync(captura, sinCambio('tu1').map((c) => JSON.stringify(c)).join('\n'));
+  fs.writeFileSync(captura, [
+    { evento: 'SessionStart', arbol: a0 },
+    { evento: 'PreToolUse', toolUseId: 'tu1', arbol: a0 },
+    { evento: 'PostToolUseFailure', toolUseId: 'tu1', arbol: a0 },
+    { evento: 'PreToolUse', toolUseId: 'tu2', arbol: a0 },
+    { evento: 'PostToolUse', toolUseId: 'tu2', arbol: a2 },
+    { evento: 'SessionEnd', arbol: a2 },
+  ].map((c) => JSON.stringify(c)).join('\n'));
   const salida = carpetaTemporal('det-cruda');
-  assert.equal(compilarYEscribir({ transcript, captura, salida, verificar: false,
-    log: silencio }), 0);
+  assert.equal(compilarYEscribir({ transcript, captura, salida, raizRepo: repo.raiz,
+    verificar: false, log: silencio }), 0);
   const cruda = path.join(salida, '10', 'sesion-1.acta.cruda.jsonl');
   const destinos = [carpetaTemporal('det-a'), carpetaTemporal('det-b')]
     .map((c) => path.join(c, 'sesion-1.acta.curada.jsonl'));
-  for (const d of destinos) assert.equal(curarYEscribir({ cruda, salida: d, log: silencio }), 0);
+  for (const d of destinos) {
+    assert.equal(curarYEscribir({ cruda, salida: d, raizRepo: repo.raiz, log: silencio }), 0);
+  }
   const [a, b] = destinos.map((d) => fs.readFileSync(d));
-  assert.ok(a.length > 0);
+  assert.match(a.toString(), /"herramienta":"hook"/, 'la verificacion partio el Edit');
   assert.ok(a.equals(b));
-  assert.equal(curarYEscribir({ cruda, log: silencio }), 0);
+  assert.equal(curarYEscribir({ cruda, raizRepo: repo.raiz, log: silencio }), 0);
   const junto = path.join(salida, '10', 'sesion-1.acta.curada.jsonl');
   assert.ok(fs.readFileSync(junto).equals(a), 'sin --salida queda junto a la cruda');
 });
@@ -599,7 +614,8 @@ test('curarYEscribir: una curada que rompe el modelo no se escribe (codigo 1)', 
     .resultado('tu1', 'a'));
   de(registros, 'turno')[0].tarea = '99';
   fs.writeFileSync(cruda, serializar(registros));
-  assert.equal(curarYEscribir({ cruda, log: silencio }), 1);
+  const raizRepo = repoTemporal({ 'a.md': 'a\n' });
+  assert.equal(curarYEscribir({ cruda, raizRepo, log: silencio }), 1);
   assert.deepEqual(fs.readdirSync(carpeta), ['sesion-1.acta.cruda.jsonl']);
 });
 

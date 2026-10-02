@@ -12,7 +12,8 @@
 //       exito = true, todo paso al menos una accion y todo turno al menos un paso.
 //   I7  solo en la curada, y solo si se pasa la cruda: los intentosPrevios de cada accion son
 //       exactamente los fallos de la cruda con su misma herramienta y su mismo archivo o
-//       comando, posteriores al exito anterior con esa clave. Un residuo no tiene.
+//       comando, posteriores al exito anterior con esa clave. Una accion derivada
+//       (un residuo, o el hook de una accion partida) no tiene.
 //
 // Ademas se valida el esquema: valores cerrados y referencias que existen. Y el anexo de
 // verificaciones negativas: solo la curada lo tiene, ningun rojo esperado queda en la secuencia
@@ -220,8 +221,8 @@ function intentosPreviosRotos(acciones, cruda) {
       errores.push(`la accion ${c.id} no tiene intentosPrevios`);
       continue;
     }
-    if (c.residuoDe) {
-      if (previos.length) errores.push(`el residuo ${c.id} tiene intentos previos`);
+    if (c.residuoDe || c.parteDe) {
+      if (previos.length) errores.push(`la accion derivada ${c.id} tiene intentos previos`);
       continue;
     }
     const i = indice.get(c.id);

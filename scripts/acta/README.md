@@ -28,8 +28,10 @@ node scripts/acta/compilar-acta.mjs --transcript <sesión.jsonl> [--salida <carp
 node scripts/acta/curar-acta.mjs <acta.cruda.jsonl> [--salida <acta.curada.jsonl>]
 node scripts/acta/validar-acta.mjs <acta.cruda.jsonl | acta.curada.jsonl>
 node --test scripts/acta/pruebas/compilar-acta.test.mjs scripts/acta/pruebas/capturar.test.mjs
-node --test scripts/acta/pruebas/curar-acta.test.mjs
+node --test scripts/acta/pruebas/curar-acta.test.mjs scripts/acta/pruebas/verificar-arbol.test.mjs
 ```
+
+`curar-acta.mjs` se corre desde dentro del repo: lee de él los blobs para verificar el árbol.
 
 La curada entra solo con las acciones exitosas, de todos los agentes, con su id de la cruda; los
 pasos y turnos que quedan vacíos salen. Un fallo que cambió el árbol entra como acción `residuo`
@@ -40,7 +42,10 @@ cambia entre dos acciones lo registra el compilador como acción `hook`, con su 
 queda `integrado` o `descartado` según si lo que cambió sigue en el árbol final; uno descartado sale
 de la curada, y si sin él la cadena se corta, la curación se detiene. Un comando que termina con
 `# rojo-esperado: <qué demuestra>` sale de la secuencia y va al anexo de verificaciones negativas,
-al final de la curada: el motor no lo ejecuta. Por ahora se
+al final de la curada: el motor no lo ejecuta. Antes de escribirla, `verificar-arbol.mjs` aplica
+en memoria sus Edit y Write sobre los blobs del repo y comprueba que la cadena llegue al árbol de
+`SessionEnd`; un Edit en cuya ventana escribió un hook se parte en dos. Sin repo no se cura. Por
+ahora se
 corre a mano: el hook de cierre de sesión la va a generar cuando la curación esté completa.
 
 Los transcripts de Claude Code están en `~/.claude/projects/<proyecto>/<sesión>.jsonl`, y los de

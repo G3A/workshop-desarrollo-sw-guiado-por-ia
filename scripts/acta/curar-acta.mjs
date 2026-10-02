@@ -69,15 +69,22 @@
 //
 // No pasa por gitleaks: la curada es un subconjunto de la cruda, que ya paso antes de escribirse.
 //
+// Validacion del arbol final (regla 12): antes de escribirla, verificar-arbol.mjs aplica en
+// memoria sus Edit y Write contra el repo y comprueba que la cadena llegue al arbol final. Un
+// Edit en cuya ventana escribio un hook se parte en dos. Sin repo, la curacion se DETIENE.
+//
 // Codigos de salida: 0 escrita, 1 la curada rompe una invariante, 2 uso incorrecto, 3 la
-// curacion se detuvo por un fallo sin residuo verificable. En 1 y 3 no se escribe nada.
+// curacion se detuvo: un fallo sin residuo verificable, o un arbol que no se pudo verificar.
+// En 1 y 3 no se escribe nada.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ENVOLTORIOS, SIN_ARBOL } from './clasificar.mjs';
 import { serializar } from './compilar-acta.mjs';
+import { raizDelRepo } from './git.mjs';
 import { leerActa, objetivoDe, rojoEsperadoDe, validarActa } from './validar-acta.mjs';
+import { verificarArbol } from './verificar-arbol.mjs';
 
 const SUFIJO_CRUDA = '.acta.cruda.jsonl';
 
@@ -241,17 +248,25 @@ function verificacionNegativa(a, rojoEsperado) {
 }
 
 // Cura y escribe. Devuelve el codigo de salida.
-export function curarYEscribir({ cruda, salida = null, log = console }) {
+// Cura, verifica el arbol contra el repo (verificar-arbol.mjs) y escribe. Devuelve el codigo de
+// salida.
+export function curarYEscribir({ cruda, salida = null, raizRepo = null, log = console }) {
   const texto = fs.readFileSync(cruda, 'utf8');
   let registros;
+  const detenida = (motivos) => {
+    for (const m of motivos) log.error(`detenida: ${m}`);
+    log.error(`La curada de ${cruda} no se escribio: no se puede curar o verificar.`);
+    return 3;
+  };
   try {
     registros = curar(texto);
   } catch (e) {
     if (!(e instanceof CuracionDetenida)) throw e;
-    for (const m of e.motivos) log.error(`detenida: ${m}`);
-    log.error(`La curada de ${cruda} no se escribio: hay fallos sin residuo verificable.`);
-    return 3;
+    return detenida(e.motivos);
   }
+  const verificada = verificarArbol(registros, raizRepo);
+  if (verificada.motivos.length) return detenida(verificada.motivos);
+  registros = verificada.registros;
   const errores = validarActa(registros, { cruda: leerActa(cruda) });
   if (errores.length) {
     for (const e of errores) log.error(`${e.invariante}: ${e.mensaje}`);
@@ -274,6 +289,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       '[--salida <acta.curada.jsonl>]');
     process.exitCode = 2;
   } else {
-    process.exitCode = curarYEscribir({ cruda, salida });
+    process.exitCode = curarYEscribir({ cruda, salida, raizRepo: raizDelRepo(process.cwd()) });
   }
 }

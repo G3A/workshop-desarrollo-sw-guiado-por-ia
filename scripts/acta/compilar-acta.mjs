@@ -496,8 +496,10 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
     documentos: documentosUsados(raizRepo, headBase, skills, acciones),
   };
 
+  const finSesion = [...captura].reverse().find((c) => c.evento === 'SessionEnd' && c.arbol);
   return { actas: separarPorTarea({ sesion, turnos, pasos, acciones, decisiones,
-    intervenciones, agentes, huella, headBase, inicioSesion }), avisos };
+    intervenciones, agentes, huella, headBase, inicioSesion,
+    arbolFinal: finSesion?.arbol || null }), avisos };
 }
 
 function versionDelPlugin(raizRepo, commit) {
@@ -539,6 +541,14 @@ function porMomento(lista) {
 
 function separarPorTarea(s) {
   const tareas = [...new Set(s.turnos.map((t) => t.tarea))].sort();
+  // El arbol de SessionEnd va solo en el acta de la ultima accion con arbol (#218): las demas
+  // tareas dejaron de actuar antes, y su arbol final no es ese.
+  const tareaDe = (a) => {
+    const paso = s.pasos.find((p) => p.id === a.paso);
+    return s.turnos.find((t) => t.id === paso?.turno)?.tarea;
+  };
+  const ultimaConArbol = porMomento(s.acciones.filter((a) => a.arbolDespues)).pop();
+  const tareaFinal = ultimaConArbol ? tareaDe(ultimaConArbol) : null;
   const actas = new Map();
   for (const tarea of tareas) {
     const turnos = s.turnos.filter((t) => t.tarea === tarea);
@@ -572,6 +582,7 @@ function separarPorTarea(s) {
       fase: null,
       headBase: s.headBase,
       arbolBase: primeraConArbol ? primeraConArbol.arbolAntes : s.inicioSesion?.arbol || null,
+      arbolFinal: tarea === tareaFinal ? s.arbolFinal : null,
       inicio: momentos[0] || null,
       fin: momentos[momentos.length - 1] || null,
       huella: s.huella,
