@@ -46,8 +46,11 @@ phase of this file each action belongs to from a marker line you write — it ne
   with the Phase number: `[sdlc-ia:step skill=github-plan-build step=1 method-phase=3]`.
 - When you resume after the user replies, write the marker of the Phase you are in again.
 - Going back to an earlier Phase gets its marker too.
-- The Steps of the build loop inside Phase 4 get no marker of their own yet: Phase 4's
-  marker covers them.
+- Inside Phase 4, start each Step A to K of the build loop with its own marker, with the Step
+  letter: `[sdlc-ia:step skill=github-plan-build step=F method-phase=3]`.
+- **Loop:** from Step I back to Step G — a red CI sends you to fix it, re-run the gates and push
+  again. Write the markers of G, H and I again on each round: the record counts it as an
+  iteration of the loop, not as a repeated step.
 - Write it exactly like that, one per line, and nothing else on the line. Subagents don't write it.
 
 ## The 9 bindings, resolved for GitHub

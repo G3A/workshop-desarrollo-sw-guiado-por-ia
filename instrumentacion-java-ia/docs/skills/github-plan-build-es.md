@@ -44,8 +44,11 @@ escribe una línea sola como esta:
 [sdlc-ia:step skill=github-plan-build step=1 method-phase=3]
 ```
 
-Los pasos del ciclo de construcción, dentro de la fase 4, todavía no llevan marcador propio:
-los cubre el de la fase 4.
+Dentro de la fase 4, cada paso del ciclo de construcción, de la A a la K, lleva su propio marcador
+con la letra del paso (`step=F`). La skill declara un único regreso legítimo: del paso I al G.
+Cuando el CI sale en rojo, arregla, vuelve a correr los gates y hace push otra vez, y escribe de
+nuevo los marcadores de G, H e I. El registro cuenta esa vuelta como una iteración del ciclo, no
+como un paso repetido.
 
 Con esa línea, el acta de la sesión sabe a qué fase de esta skill pertenece cada acción, y
 `scripts/acta/conformidad.mjs` puede decir qué fases se omitieron, repitieron o desordenaron. Sin
