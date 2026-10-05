@@ -109,3 +109,26 @@ test('plan de un issue: el instructivo es el plan guardado, con su fecha y su sh
   assert.equal(sinPlan.prescritos, null);
   assert.match(sinPlan.motivo, /no se guardo el plan del issue/);
 });
+
+// Las traducciones de proceso.json siguen a los SKILL.md (#230): cada skill del catalogo tiene la
+// suya, con un paso por encabezado del instructivo, ni uno de mas ni de menos. requirement-to-spec
+// lista sus fases en una tabla que la conformidad todavia no lee (frente 2 del #230).
+test('proceso.json: cada skill traduce exactamente los pasos de su SKILL.md', () => {
+  const proceso = JSON.parse(fs.readFileSync(path.join(RAIZ, 'scripts/acta/proceso.json'), 'utf8'));
+  const skills = path.join(RAIZ, 'instrumentacion-java-ia/sdlc-ia/skills');
+  const enDisco = fs.readdirSync(skills).sort();
+  const delCatalogo = Object.keys(proceso.actividades)
+    .filter((k) => !proceso.actividades[k].sinSkill).sort();
+  assert.deepEqual(delCatalogo, enDisco, 'el catalogo nombra las skills del plugin');
+  for (const skill of enDisco) {
+    const letras = pasosPrescritos(fs.readFileSync(path.join(skills, skill, 'SKILL.md'), 'utf8'))
+      .map((p) => p.letra);
+    const traducidas = Object.keys(proceso.traducciones[skill] || {});
+    assert.ok(traducidas.length, `${skill} no tiene traduccion de sus pasos`);
+    if (skill === 'requirement-to-spec-java') {
+      assert.deepEqual(letras, [], 'si ya se leen sus fases, esta excepcion sobra');
+      continue;
+    }
+    assert.deepEqual(traducidas, letras, `${skill}: los pasos traducidos no son los del SKILL.md`);
+  }
+});

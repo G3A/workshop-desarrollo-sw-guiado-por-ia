@@ -24,6 +24,70 @@
     "plan-de-issue": { "nombre": "Implementar el plan de un issue", "fase": 3, "rol": "orquestador IA", "sinSkill": true }
   },
   "traducciones": {
+    "agent-context-java": {
+      "1": "Descubrir (en silencio)",
+      "2": "Entrevistar",
+      "3": "Redactar",
+      "4": "Conectar AGENTS.md, CLAUDE.md y REVIEW.md",
+      "5": "Validar las afirmaciones",
+      "6": "Verificar"
+    },
+    "github-plan-build": {
+      "0": "Resolver el acceso",
+      "1": "Leer el issue y resolver el vínculo del estado",
+      "2": "Preparar el entorno de git",
+      "3": "Presentar el resumen del issue",
+      "4": "Ejecutar el ciclo de construcción"
+    },
+    "impact-metrics": {
+      "1": "Descubrir (en silencio)",
+      "2": "Prerrequisitos",
+      "3": "Medir",
+      "4": "La encuesta",
+      "5": "Escribir el reporte",
+      "6": "Abrir el pull request y detenerse"
+    },
+    "instrument-agent-java": {
+      "1": "Descubrir (en silencio)",
+      "2": "Prerrequisitos",
+      "3": "Acordar el alcance",
+      "4": "Aplicar",
+      "5": "Verificar rompiendo",
+      "6": "Documentar y reportar"
+    },
+    "instrument-github-repo": {
+      "1": "Descubrir (en silencio)",
+      "2": "Prerrequisitos",
+      "3": "Acordar el alcance",
+      "4": "Aplicar",
+      "5": "Verificar bloqueando",
+      "6": "Documentar y reportar"
+    },
+    "instrument-project-java": {
+      "1": "Descubrir (en silencio)",
+      "2": "Prerrequisitos",
+      "3": "Acordar el alcance y aplicar",
+      "4": "Verificar rompiendo",
+      "5": "Documentar y reportar"
+    },
+    "legacy-test-harness": {
+      "1": "Tomar la huella del proyecto",
+      "2": "Chequeo previo: ¿el terreno corre?",
+      "3": "Censar los actores y mapear las costuras",
+      "4": "Delimitar el tramo y elegir las capas",
+      "5": "Consolidar el entregable (aún en modo plan)",
+      "6": "Aprobación y escritura",
+      "7": "Gate de realidad, obligatorio",
+      "8": "Reportar y cerrar"
+    },
+    "requirement-to-spec-java": {
+      "1": "Descubrir (en silencio)",
+      "2": "Prerrequisitos",
+      "3": "Acordar el alcance",
+      "4": "Aplicar",
+      "5": "Verificar",
+      "6": "Reportar"
+    },
     "debt-triage": {
       "1": "Buscar el analizador",
       "2": "Traer y agrupar los hallazgos",
