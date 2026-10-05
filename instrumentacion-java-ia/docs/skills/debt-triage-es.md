@@ -37,6 +37,26 @@ de la prevención en modo estricto que ya instala `instrument-project-java`), la
 como tal — qué buscó y dónde — en vez de fallar en silencio o inventar hallazgos. La corrida
 siguiente, con un sensor real conectado, sí tiene con qué triajar.
 
+## Marcadores de paso
+
+La skill declara la **fase 2 del método** (preparación del terreno) y es la primera que marca sus
+pasos para el registro de la IA (#222). Al empezar cada fase, y al retomarla después de una
+respuesta tuya, escribe una línea sola como esta:
+
+```text
+[sdlc-ia:step skill=debt-triage step=2 method-phase=2]
+```
+
+Con esa línea, el acta de la sesión sabe a qué fase de esta skill pertenece cada acción, y
+`scripts/acta/conformidad.mjs` puede decir qué fases se omitieron, repitieron o desordenaron. Sin
+ella, el registro no adivina.
+
+El único regreso que la skill manda está declarado en su `SKILL.md` como bucle: `**Loop:** from
+Phase 5 back to Phase 3`. Cuando falla una fila del gate, vuelve a la fase 3 y escribe otra vez
+los marcadores de las fases 3, 4 y 5; el registro cuenta esa vuelta como una iteración del bucle,
+no como una fase repetida ni fuera de orden (#235). El protocolo completo está en
+[`docs/protocolo-de-marcadores-de-paso.md`](../../../docs/protocolo-de-marcadores-de-paso.md).
+
 ## Fases principales
 
 1. **Descubrir el/los analizador(es)** — busca, en orden: un paso de CI que nombre

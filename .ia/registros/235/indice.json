@@ -1,0 +1,76 @@
+{
+  "tarea": "235",
+  "fases": [
+    3
+  ],
+  "inicio": "2026-10-05T19:48:57.571Z",
+  "fin": "2026-10-05T21:01:53.913Z",
+  "ramas": [
+    "feat/235-bucle-debt-triage"
+  ],
+  "actas": [
+    {
+      "sesion": "8b08eaf8-8c03-4c56-b720-354861655d3b",
+      "cruda": "8b08eaf8-8c03-4c56-b720-354861655d3b.acta.cruda.jsonl",
+      "sha256": "8b0d44b8f51b391cf76e869dae2418da51f1e09c8f3aff438fbb8df707ffbc13",
+      "curada": "8b08eaf8-8c03-4c56-b720-354861655d3b.acta.curada.jsonl",
+      "ramas": [
+        "feat/235-bucle-debt-triage"
+      ],
+      "fase": 3,
+      "inicio": "2026-10-05T19:48:57.571Z",
+      "fin": "2026-10-05T21:01:53.913Z"
+    }
+  ],
+  "archivos": {
+    "docs/protocolo-de-marcadores-de-paso.md": [
+      {
+        "sesion": "8b08eaf8-8c03-4c56-b720-354861655d3b",
+        "accion": "a13",
+        "agente": "orquestador"
+      }
+    ],
+    "instrumentacion-java-ia/CHANGELOG.md": [
+      {
+        "sesion": "8b08eaf8-8c03-4c56-b720-354861655d3b",
+        "accion": "a8",
+        "agente": "orquestador"
+      }
+    ],
+    "instrumentacion-java-ia/docs/skills/debt-triage-es.md": [
+      {
+        "sesion": "8b08eaf8-8c03-4c56-b720-354861655d3b",
+        "accion": "a14",
+        "agente": "orquestador"
+      }
+    ],
+    "instrumentacion-java-ia/sdlc-ia/skills/debt-triage/SKILL.md": [
+      {
+        "sesion": "8b08eaf8-8c03-4c56-b720-354861655d3b",
+        "accion": "a7",
+        "agente": "orquestador"
+      }
+    ],
+    "playbook-sdlc-ia/Playbook-Fases/03-preparacion-del-terreno.html": [
+      {
+        "sesion": "8b08eaf8-8c03-4c56-b720-354861655d3b",
+        "accion": "a28",
+        "agente": "orquestador"
+      }
+    ],
+    "proceso-operacional-con-ia/comandos.json": [
+      {
+        "sesion": "8b08eaf8-8c03-4c56-b720-354861655d3b",
+        "accion": "a26",
+        "agente": "orquestador"
+      }
+    ],
+    "scripts/acta/pruebas/conformidad.test.mjs": [
+      {
+        "sesion": "8b08eaf8-8c03-4c56-b720-354861655d3b",
+        "accion": "a33",
+        "agente": "orquestador"
+      }
+    ]
+  }
+}

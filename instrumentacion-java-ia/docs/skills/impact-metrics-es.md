@@ -86,6 +86,21 @@ y un reporte a liderazgo es eso.
 Y la PR no es trámite: pone los números delante de alguien antes de que salgan del equipo, y deja
 un enlace permanente, que es lo que de verdad se comparte.
 
+## Marcadores de paso
+
+La skill declara la **fase 5 del método** (métricas y reporte) y marca sus pasos para el
+registro de la IA (#230). Al empezar cada fase, y al retomarla después de una respuesta tuya,
+escribe una línea sola como esta:
+
+```text
+[sdlc-ia:step skill=impact-metrics step=2 method-phase=5]
+```
+
+Con esa línea, el acta de la sesión sabe a qué fase de esta skill pertenece cada acción, y
+`scripts/acta/conformidad.mjs` puede decir qué fases se omitieron, repitieron o desordenaron. Sin
+ella, el registro no adivina. El protocolo completo está en
+[`docs/protocolo-de-marcadores-de-paso.md`](../../../docs/protocolo-de-marcadores-de-paso.md).
+
 ## Decisiones de diseño a tener en cuenta
 
 - **El reporte se deriva del agregado, nunca al revés.** El CSV se escribe primero, para que el

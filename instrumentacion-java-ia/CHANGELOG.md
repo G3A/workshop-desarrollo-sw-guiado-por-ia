@@ -7,11 +7,61 @@ released**. Dates are the date a release PR (`dev` → `main`) landed on `main`.
 **One version per release.** A PR to `dev` that changes a skill files its entry under the
 "unreleased" heading; the release PR `dev` → `main` bumps the `version` field, turns that heading
 into the new version and dates it. The version is what lets a machine say which copy it runs
-(`claude plugin list`) — it is not what refreshes the install: Claude Code copies the plugin into
-a cache and `claude plugin install` never refreshes an already-installed plugin, even after a
-version bump (verified 0.1.0 → 0.2.0). Updating on any machine is `update.ps1` / `update.sh` at
-the plugin root, which uninstalls and reinstalls (see the README, "Actualizar cuando sale una
-versión nueva", and `AGENTS.md`).
+(`claude plugin list`) — nothing refreshes the install, because nothing is copied: the plugin
+loads in place from its folder in the local-directory marketplace at every session start, whatever
+its version says (verified with Claude Code 2.1.282, #209). Updating on any machine is
+`update.ps1` / `update.sh` at the plugin root, which pulls and checks that the CLI loads the plugin
+from that folder (see the README, "Actualizar cuando sale una versión nueva", and `AGENTS.md`).
+
+## [0.5.0] — 2026-10-05
+
+### Added
+
+- **`debt-triage` declares its loop from Phase 5 back to Phase 3** (#235). A failed gate row
+  sends you back to Phase 3 for the findings it names; the "Step markers" section now says so
+  with `**Loop:** from Phase 5 back to Phase 3`, so the session record counts each round as an
+  iteration instead of reporting Phase 3 as repeated and out of order.
+
+- **`github-plan-build` marks the Steps A–K of its build loop** (#230). Inside Phase 4 each Step
+  gets its own marker with the Step letter, and the `SKILL.md` declares its one legitimate loop —
+  `**Loop:** from Step I back to Step G`, a red CI — so the session record counts each round as
+  an iteration instead of a repeated, out-of-order step. The acta now records every `references/`
+  file of an invoked skill, and the conformity reads the `Step <letter>` headings there, nested
+  under the Phase whose section names the file.
+
+- **The other eight skills mark their steps for the session record** (#230). Each `SKILL.md`
+  gets a "Step markers" section that declares its method phase — 2 for `agent-context-java`,
+  `instrument-agent-java`, `instrument-github-repo`, `instrument-project-java` and
+  `legacy-test-harness`; 3 for `github-plan-build` and `requirement-to-spec-java`; 5 for
+  `impact-metrics` — and writes `[sdlc-ia:step skill=<name> step=<Phase> method-phase=<N>]` when it
+  starts each Phase and when it resumes after the user replies. `requirement-to-spec-java` lists
+  its phases in a table, which the conformity now reads. The Steps A–K of the
+  `github-plan-build` build loop live in its `references/` and get no marker of their own yet.
+  Each Spanish doc, its visor node and its playbook box say the same.
+
+- **`debt-triage` marks its steps for the session record** (#222, phase 4). It declares method
+  phase 2 and writes `[sdlc-ia:step skill=debt-triage step=<Phase> method-phase=2]` on its own
+  line when it starts each Phase, and again when it resumes after the user replies. The acta
+  compiler turns each marker into a `marcado` step, and `scripts/acta/conformidad.mjs` compares
+  the sequence with the Phase headings of the `SKILL.md` version the acta recorded: omitted,
+  repeated and out-of-order steps, and actions outside any step. No other skill marks yet; for
+  them the conformity answers "no data" instead of guessing. Protocol:
+  `docs/protocolo-de-marcadores-de-paso.md` at the monorepo root.
+
+### Fixed
+
+- **`update.ps1` / `update.sh` check what runs, not a copy nobody uses.** With Claude Code 2.1.282
+  the plugin loads in place from the marketplace folder — the CLI says so on install ("it loads in
+  place from …") and `--debug-file` shows the skills read from the source. The scripts still
+  uninstalled and reinstalled, then printed "the cache is identical to the source": a green on a
+  file nothing loads. They now install only if missing, let `claude plugin update` re-record the
+  version, and fail unless the CLI says it loads from this folder and the recorded version matches
+  `plugin.json`. No reinstall fallback: a CLI that does not confirm it is a red with its message
+  and version in view. `update.sh` also stops needing python: in Git Bash `python3` is often the
+  Microsoft Store alias, and the script re-registered the marketplace on every run. The README,
+  `AGENTS.md`, the release manual, `REVIEW.md`, the process viewer and the playbook now say the
+  same, including that the clone's current branch — uncommitted changes and all — is the plugin
+  that runs from the next session or `/reload-plugins`.
 
 ## [0.4.3] — 2026-09-25
 

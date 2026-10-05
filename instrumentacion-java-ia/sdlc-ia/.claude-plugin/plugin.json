@@ -1,6 +1,6 @@
 {
   "name": "sdlc-ia",
-  "version": "0.4.3",
+  "version": "0.5.0",
   "description": "AI coding-agent skills for a Java/Spring, GitHub-native agentic SDLC.",
   "author": {
     "name": "G3A"

@@ -4,3 +4,8 @@ logs/
 # Informe generado por `make capturar-error`: es una salida, no fuente.
 # Se sube a mano cuando hace falta compartirlo (puede traer datos del entorno).
 base-conocimiento/scripts/error-api.txt
+
+# Registro de la IA (#216): la captura de cada sesion y las actas compiladas. Las actas SI se
+# versionan (ADR-0006), pero de a una y a proposito: registrar-sesion.mjs las agrega con
+# `git add -f`, y asi un `git add -A` no publica todas las sesiones.
+.ia/

@@ -29,3 +29,7 @@
 # es lo que ya hacen las tres piezas y no depende de una heuristica.
 *.png  binary
 *.jpg  binary
+
+# El acta de la IA (ADR-0006) va byte a byte: la curada guarda el sha256 de su cruda, y un
+# checkout que le cambie un fin de linea la rompe (invariante 8). El pack de objetos es binario.
+.ia/** -text

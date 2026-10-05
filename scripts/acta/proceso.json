@@ -1,0 +1,110 @@
+{
+  "proceso": "Desarrollo de software asistido por IA",
+  "dueno": null,
+  "manual": "Playbook del método sdlc-ia y ADR-0005, el registro de la IA",
+  "fases": [
+    { "numero": 0, "nombre": "Fundamentos", "gate": null },
+    { "numero": 1, "nombre": "Cultura de IA", "gate": null },
+    { "numero": 2, "nombre": "Preparación del terreno", "gate": null },
+    { "numero": 3, "nombre": "Ciclo por feature", "gate": null },
+    { "numero": 4, "nombre": "Retroalimentación", "gate": null },
+    { "numero": 5, "nombre": "Métricas y reporte", "gate": null },
+    { "numero": 6, "nombre": "Adopción por etapas", "gate": null }
+  ],
+  "actividades": {
+    "agent-context-java": { "nombre": "Documentar el repositorio para los agentes", "fase": 2, "rol": "orquestador IA" },
+    "debt-triage": { "nombre": "Triaje de la deuda técnica", "fase": 2, "rol": "orquestador IA" },
+    "github-plan-build": { "nombre": "Implementar un issue de punta a punta", "fase": 3, "rol": "orquestador IA" },
+    "impact-metrics": { "nombre": "Medir y reportar el impacto de la IA", "fase": 5, "rol": "orquestador IA" },
+    "instrument-agent-java": { "nombre": "Instrumentar el agente en el repositorio", "fase": 2, "rol": "orquestador IA" },
+    "instrument-github-repo": { "nombre": "Configurar los gates del repositorio en GitHub", "fase": 2, "rol": "orquestador IA" },
+    "instrument-project-java": { "nombre": "Instalar los controles deterministas del proyecto", "fase": 2, "rol": "orquestador IA" },
+    "legacy-test-harness": { "nombre": "Acondicionar código legado con pruebas", "fase": 2, "rol": "orquestador IA" },
+    "requirement-to-spec-java": { "nombre": "Convertir un requerimiento en especificación", "fase": 3, "rol": "orquestador IA" },
+    "plan-de-issue": { "nombre": "Implementar el plan de un issue", "fase": 3, "rol": "orquestador IA", "sinSkill": true }
+  },
+  "traducciones": {
+    "agent-context-java": {
+      "1": "Descubrir (en silencio)",
+      "2": "Entrevistar",
+      "3": "Redactar",
+      "4": "Conectar AGENTS.md, CLAUDE.md y REVIEW.md",
+      "5": "Validar las afirmaciones",
+      "6": "Verificar"
+    },
+    "github-plan-build": {
+      "0": "Resolver el acceso",
+      "1": "Leer el issue y resolver el vínculo del estado",
+      "2": "Preparar el entorno de git",
+      "3": "Presentar el resumen del issue",
+      "4": "Ejecutar el ciclo de construcción",
+      "A": "Preguntar a fondo a la persona",
+      "B": "Explorar",
+      "C": "Redactar el plan",
+      "D": "Revisión adversarial",
+      "E": "Punto de aprobación (condicional)",
+      "F": "Implementar, con la prueba primero",
+      "G": "Gates",
+      "H": "Commit, push y abrir el PR",
+      "I": "Esperar el CI en verde y atender los comentarios de revisión",
+      "J": "Cerrar",
+      "K": "Enrutar la lección"
+    },
+    "impact-metrics": {
+      "1": "Descubrir (en silencio)",
+      "2": "Prerrequisitos",
+      "3": "Medir",
+      "4": "La encuesta",
+      "5": "Escribir el reporte",
+      "6": "Abrir el pull request y detenerse"
+    },
+    "instrument-agent-java": {
+      "1": "Descubrir (en silencio)",
+      "2": "Prerrequisitos",
+      "3": "Acordar el alcance",
+      "4": "Aplicar",
+      "5": "Verificar rompiendo",
+      "6": "Documentar y reportar"
+    },
+    "instrument-github-repo": {
+      "1": "Descubrir (en silencio)",
+      "2": "Prerrequisitos",
+      "3": "Acordar el alcance",
+      "4": "Aplicar",
+      "5": "Verificar bloqueando",
+      "6": "Documentar y reportar"
+    },
+    "instrument-project-java": {
+      "1": "Descubrir (en silencio)",
+      "2": "Prerrequisitos",
+      "3": "Acordar el alcance y aplicar",
+      "4": "Verificar rompiendo",
+      "5": "Documentar y reportar"
+    },
+    "legacy-test-harness": {
+      "1": "Tomar la huella del proyecto",
+      "2": "Chequeo previo: ¿el terreno corre?",
+      "3": "Censar los actores y mapear las costuras",
+      "4": "Delimitar el tramo y elegir las capas",
+      "5": "Consolidar el entregable (aún en modo plan)",
+      "6": "Aprobación y escritura",
+      "7": "Gate de realidad, obligatorio",
+      "8": "Reportar y cerrar"
+    },
+    "requirement-to-spec-java": {
+      "1": "Descubrir (en silencio)",
+      "2": "Prerrequisitos",
+      "3": "Acordar el alcance",
+      "4": "Aplicar",
+      "5": "Verificar",
+      "6": "Reportar"
+    },
+    "debt-triage": {
+      "1": "Buscar el analizador",
+      "2": "Traer y agrupar los hallazgos",
+      "3": "Triar cada grupo",
+      "4": "Proponer, pedir aprobación y escribir",
+      "5": "Verificar y reportar"
+    }
+  }
+}

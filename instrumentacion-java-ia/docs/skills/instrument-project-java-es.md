@@ -104,6 +104,21 @@ no es qué tan buena es la herramienta: es si el job produce un **veredicto** co
 el equipo fijó (obligatorio) o una **cola de hallazgos** que alguien todavía tiene que juzgar
 (no obligatorio, como CodeQL y la revisión por IA).
 
+## Marcadores de paso
+
+La skill declara la **fase 2 del método** (preparación del terreno) y marca sus pasos para el
+registro de la IA (#230). Al empezar cada fase, y al retomarla después de una respuesta tuya,
+escribe una línea sola como esta:
+
+```text
+[sdlc-ia:step skill=instrument-project-java step=2 method-phase=2]
+```
+
+Con esa línea, el acta de la sesión sabe a qué fase de esta skill pertenece cada acción, y
+`scripts/acta/conformidad.mjs` puede decir qué fases se omitieron, repitieron o desordenaron. Sin
+ella, el registro no adivina. El protocolo completo está en
+[`docs/protocolo-de-marcadores-de-paso.md`](../../../docs/protocolo-de-marcadores-de-paso.md).
+
 ## Fases principales
 
 1. **Descubrimiento silencioso** — revisa a fondo el proyecto (Maven o Gradle, grafo de módulos,
