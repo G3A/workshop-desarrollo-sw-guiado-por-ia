@@ -51,19 +51,35 @@ test('conformidad: lo ejecutado contra el instructivo de la huella, con lo omiti
   assert.deepEqual(r.accionesSinPaso, ['a1'], 'el Bash de antes del primer marcador');
 });
 
-test('conformidad: volver a un paso es repetirlo y salir de orden; uno inventado se nombra', () => {
+function debtTriageCon(letras) {
   const f = sesionMarcada();
-  for (const [i, letra] of ['4', '5', '3', '5', '9'].entries()) {
+  for (const [i, letra] of letras.entries()) {
     f.texto(marcaDePaso(letra)).llamada(`tu-${i}`, 'Bash',
       { command: `echo ${letra}` }).resultado(`tu-${i}`, 'ok');
   }
   const { acta, raiz } = actaCon(f);
-  const [debt] = conformidad(acta, { raizRepo: raiz }).actividades;
-  assert.deepEqual(debt.ejecutados, ['1', '2', '3', '4', '5', '3', '5', '9']);
+  return conformidad(acta, { raizRepo: raiz }).actividades[0];
+}
+
+test('conformidad: volver a un paso no declarado es repetirlo y salir de orden', () => {
+  const debt = debtTriageCon(['4', '2', '5', '9']);
+  assert.deepEqual(debt.ejecutados, ['1', '2', '3', '4', '2', '5', '9']);
   assert.deepEqual(debt.omitidos, []);
-  assert.deepEqual(debt.repetidos, ['3', '5']);
-  assert.deepEqual(debt.fueraDeOrden, [{ letra: '3', despuesDe: '5' }]);
-  assert.deepEqual(debt.noPrescritos, ['9']);
+  assert.deepEqual(debt.repetidos, ['2']);
+  assert.deepEqual(debt.fueraDeOrden, [{ letra: '2', despuesDe: '4' }]);
+  assert.deepEqual(debt.iteraciones, []);
+  assert.deepEqual(debt.noPrescritos, ['9'], 'un paso inventado se nombra');
+});
+
+// #235: debt-triage declara su regreso de la Phase 5 a la 3, cuando falla una fila del gate.
+test('conformidad: la vuelta declarada de la Phase 5 a la 3 es una iteracion', () => {
+  assert.deepEqual(bucles(INSTRUCTIVO), [{ desde: '5', hacia: '3' }]);
+  const debt = debtTriageCon(['4', '5', '3', '4', '5']);
+  assert.deepEqual(debt.ejecutados, ['1', '2', '3', '4', '5', '3', '4', '5']);
+  assert.deepEqual(debt.omitidos, []);
+  assert.deepEqual(debt.repetidos, []);
+  assert.deepEqual(debt.fueraDeOrden, []);
+  assert.deepEqual(debt.iteraciones, [{ desde: '5', hacia: '3', veces: 1 }]);
 });
 
 test('conformidad: la curada conserva los pasos marcados y da la misma secuencia', () => {
