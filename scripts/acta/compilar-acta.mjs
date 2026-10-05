@@ -43,7 +43,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { ENVOLTORIOS, MODOS_CON_PERSONA, SIN_PERMISO, claseDeterminismo, esRechazoDePermiso,
+import { ENVOLTORIOS, MODOS_CON_PERSONA, SIN_PERMISO, claseDeterminismo, esPermisoSinPersona,
+  esRechazoDePermiso,
   textoDelRechazo } from './clasificar.mjs';
 import { identidadDelEntorno, normalizador } from './normalizar.mjs';
 import { validarActa } from './validar-acta.mjs';
@@ -611,9 +612,15 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
         'persona');
       return;
     }
-    const sinPersona = /haven't granted it yet/.test(accion.error || '');
-    const corrio = accion.exito !== null || accion.codigoReinterpretado !== null;
-    if (corrio && !sinPersona && !esRechazoDePermiso(accion.error)) {
+    // Aprobado es que la herramienta corrio despues del pedido: su Post esta en la captura, o
+    // termino bien. Un fallo sin Post no corrio. En la primera sesion real del #230 se contaban
+    // como aprobados diez comandos que `claude -p` nego, porque fallar parecia haber corrido.
+    const sinPersona = esPermisoSinPersona(accion.error);
+    const corrio = capturaPorUso.get(pre.toolUseId)?.despues !== undefined ||
+      accion.exito === true || accion.codigoReinterpretado !== null;
+    if (sinPersona) {
+      avisos.push(`el permiso de ${accion.id} no lo concedio nadie: la sesion no tenia persona`);
+    } else if (corrio && !esRechazoDePermiso(accion.error)) {
       nuevaIntervencion('permiso_aprobado', { timestamp: c.momento }, accion);
     }
   });
@@ -626,6 +633,13 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
   const perdidas = [];
   for (const a of acciones) {
     const cap = capturaPorUso.get(a.toolUseId);
+    // Un permiso negado o sin persona: los hooks de PreToolUse corren antes del pedido, asi que
+    // la captura vio la accion, pero la herramienta no corrio y no hay Post (#230, frente 4).
+    if (a.capturada === true && cap?.despues === undefined && a.exito === false &&
+      (esPermisoSinPersona(a.error) || esRechazoDePermiso(a.error))) {
+      a.capturada = false;
+      continue;
+    }
     const termino = a.exito !== null || a.codigoReinterpretado !== null;
     if (a.capturada === false && termino && a.exito !== false) {
       a.capturada = null;
