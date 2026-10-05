@@ -930,3 +930,26 @@ test('evidencia: lo que pasa de 20 MB por acta queda nombrado y sin incluir', ()
   assert.deepEqual(accion.evidencias.map((e) => [e.incluida, e.motivo]),
     [[true, null], [false, 'pasa del tope de 20 MB por acta']]);
 });
+
+// La primera sesion real del #230 (frente 4) corrio con `claude -p`: el hook vio el PreToolUse y
+// el pedido de permiso de comandos que nadie aprobo, y el compilador los conto como aprobados.
+test('permiso sin persona: un comando negado por claude -p no es aprobado y no corrio', () => {
+  const a = { command: 'node scripts/verificar-enlaces.mjs' };
+  const b = { command: 'npm test' };
+  const f = fabrica().prompt('Verifica')
+    .llamada('tu1', 'Bash', a)
+    .resultado('tu1', 'This Bash command contains multiple operations. The following parts ' +
+      'require approval: node scripts/verificar-enlaces.mjs', { error: true })
+    .llamada('tu2', 'Bash', b)
+    .resultado('tu2', 'Tests: 1 failed', { error: true });
+  const captura = [...pedido('tu1', 'Bash', a, 2, 'acceptEdits'),
+    ...pedido('tu2', 'Bash', b, 4),
+    { evento: 'PostToolUseFailure', toolUseId: 'tu2', momento: enCaptura(0, 5), arbol: null }];
+  const { actas, avisos } = compilarFabrica(f, { captura });
+  const acta = unicaActa({ actas });
+  assert.deepEqual(de(acta, 'intervencion').map((i) => [i.tipo, i.accion]),
+    [['permiso_aprobado', 'a2']], 'la persona aprobo el segundo, y fallo despues de correr');
+  assert.ok(avisos.some((x) => /permiso de a1 no lo concedio nadie/.test(x)), avisos.join());
+  assert.deepEqual(de(acta, 'accion').map((x) => x.capturada), [false, true]);
+  assert.ok(!avisos.some((x) => /perdio eventos/.test(x)), 'el negado no es un evento perdido');
+});
