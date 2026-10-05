@@ -153,10 +153,12 @@ jobs:
       # Sensor del trailer Registro-IA (#222, fase 3; ADR-0006): cada commit asistido de la PR
       # cita su acta, la curada sale de su cruda (I8), el acta llega al diff del commit y el motor
       # reproduce sus acciones aplicadas. Va despues del paso de Docker, que deja la imagen
-      # construida. Solo en una PR: en un push a dev, el commit del squash trae los trailers del
-      # cuerpo de la PR, que este mismo paso ya verifico.
+      # construida. Solo en una PR a dev: en un push a dev, el commit del squash trae los trailers
+      # del cuerpo de la PR, que este mismo paso ya verifico. Y no en la liberacion dev -> main
+      # (#241): sus commits son esos squash, ya verificados uno por uno, entre ellos los
+      # anteriores a la regla (#227); y va con merge commit, que no pierde ningun trailer.
       - name: Every AI-assisted commit cites an acta that reaches its diff
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'dev'
         working-directory: .
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
