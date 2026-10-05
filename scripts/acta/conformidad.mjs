@@ -28,6 +28,7 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { git, raizDelRepo } from './git.mjs';
 import { leerActa } from './validar-acta.mjs';
+import { BLOQUE_DE_CODIGO, PLAN_DE_ISSUE } from './compilar-acta.mjs';
 
 const RUTA_SKILL = /(^|\/)skills\/([^/]+)\/SKILL\.md$/;
 // Un numero o UNA mayuscula: «## Step markers» es un encabezado sobre los marcadores, no un paso.
@@ -39,12 +40,22 @@ export function pasosPrescritos(texto) {
     .map((m, i) => ({ letra: m[2], titulo: m[3].trim(), orden: i + 1 }));
 }
 
+// Los pasos del plan de un issue (#230): sus encabezados numerados, con o sin la palabra
+// «Fase», como «## Fase 2 · Motor de re-ejecución» o «## 5 · Actividad declarada».
+const PASO_DEL_PLAN =
+  /^#{2,3}\s*(?:(?:Fase|Paso|Phase|Step)\s+)?([0-9]+|[A-Z])\s*[·:—.-]\s*(.+)$/gm;
+
+export function pasosDelPlan(texto) {
+  return [...String(texto).replace(BLOQUE_DE_CODIGO, '').matchAll(PASO_DEL_PLAN)]
+    .map((m, i) => ({ letra: m[1], titulo: m[2].trim(), orden: i + 1 }));
+}
+
 function textoDelBlob(raizRepo, hash) {
   if (!raizRepo || !hash) return null;
   return git(['cat-file', 'blob', hash], { cwd: raizRepo, permitirFallo: true });
 }
 
-export function conformidad(registros, { raizRepo = null } = {}) {
+export function conformidad(registros, { raizRepo = null, planDelIssue = null } = {}) {
   const cabecera = registros.find((r) => r.elemento === 'acta');
   const pasos = registros.filter((r) => r.elemento === 'paso');
   const marcados = pasos.filter((p) => p.procedencia === 'marcado');
@@ -74,16 +85,24 @@ export function conformidad(registros, { raizRepo = null } = {}) {
         ejecutados.push(p.pasoPrescrito.letra);
       }
     }
-    const doc = instructivos.get(skill) || null;
-    const texto = doc ? textoDelBlob(raizRepo, doc.hash) : null;
-    const instructivo = doc ? { ruta: doc.ruta, commit: doc.commit, hash: doc.hash } : null;
+    // El plan de un issue no esta en el repo: su texto lo guardo registrar-sesion.mjs, con la
+    // fecha en que se leyo y su sha256 (#230).
+    const esPlan = skill === PLAN_DE_ISSUE;
+    const doc = esPlan ? null : instructivos.get(skill) || null;
+    const texto = esPlan ? planDelIssue?.cuerpo ?? null
+      : doc ? textoDelBlob(raizRepo, doc.hash) : null;
+    const instructivo = esPlan && planDelIssue
+      ? { ruta: `issue #${planDelIssue.numero}`, actualizado: planDelIssue.actualizado,
+        sha256: planDelIssue.sha256 }
+      : doc ? { ruta: doc.ruta, commit: doc.commit, hash: doc.hash } : null;
     if (texto === null) {
       return { skill, instructivo, ejecutados, prescritos: null, omitidos: null,
         repetidos: null, fueraDeOrden: null, noPrescritos: null,
-        motivo: doc ? 'el blob del instructivo no esta en el repo'
-          : 'la huella del acta no registra su instructivo' };
+        motivo: esPlan ? 'no se guardo el plan del issue al registrar la sesion'
+          : doc ? 'el blob del instructivo no esta en el repo'
+            : 'la huella del acta no registra su instructivo' };
     }
-    const prescritos = pasosPrescritos(texto);
+    const prescritos = esPlan ? pasosDelPlan(texto) : pasosPrescritos(texto);
     const orden = new Map(prescritos.map((p) => [p.letra, p.orden]));
     const vistos = new Set(ejecutados);
     const repetidos = [...vistos].filter((l) => ejecutados.filter((x) => x === l).length > 1);

@@ -26,7 +26,7 @@ import { conformidad } from './conformidad.mjs';
 import { derivaHuella } from './deriva-huella.mjs';
 import { git, raizDelRepo } from './git.mjs';
 import { leerActa } from './validar-acta.mjs';
-import { construirVista } from './vista-acta.mjs';
+import { construirVista, documentoDelProcedimiento } from './vista-acta.mjs';
 
 const AQUI = path.dirname(fileURLToPath(import.meta.url));
 // La hoja de estilo y el script de la pagina viven aparte, para leerlos y editarlos como lo que
@@ -72,7 +72,11 @@ export function recolectar({
     JSON.parse(fs.readFileSync(f, 'utf8')),
   );
   const proceso = JSON.parse(fs.readFileSync(path.join(AQUI, 'proceso.json'), 'utf8'));
-  const conf = conformidad(registros, { raizRepo });
+  // El plan del issue que registrar-sesion.mjs guardo junto al acta (#230).
+  const planDelIssue = leerSi(path.join(path.dirname(curada), 'plan-del-issue.json'), (f) =>
+    JSON.parse(fs.readFileSync(f, 'utf8')),
+  );
+  const conf = conformidad(registros, { raizRepo, planDelIssue });
   let deriva = null;
   let procedimiento = {};
   let commits = [];
@@ -82,7 +86,10 @@ export function recolectar({
     } catch {
       /* sin repo legible, sin deriva */
     }
-    const doc = conf.actividades?.[0]?.instructivo;
+    // La fecha del procedimiento: el SKILL.md de la actividad o, sin skill, el AGENTS.md.
+    const clave = conf.actividades?.[0]?.skill || (cab.actividades?.[0] || '').split(':').pop();
+    const doc = documentoDelProcedimiento(cab, clave || null,
+      Boolean(proceso.actividades?.[clave]?.sinSkill));
     if (doc?.commit) {
       const f = git(['show', '-s', '--format=%cs', doc.commit], {
         cwd: raizRepo,

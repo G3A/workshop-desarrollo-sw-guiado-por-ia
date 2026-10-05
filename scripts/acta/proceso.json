@@ -11,6 +11,18 @@
     { "numero": 5, "nombre": "Métricas y reporte", "gate": null },
     { "numero": 6, "nombre": "Adopción por etapas", "gate": null }
   ],
+  "actividades": {
+    "agent-context-java": { "nombre": "Documentar el repositorio para los agentes", "fase": 2, "rol": "orquestador IA" },
+    "debt-triage": { "nombre": "Triaje de la deuda técnica", "fase": 2, "rol": "orquestador IA" },
+    "github-plan-build": { "nombre": "Implementar un issue de punta a punta", "fase": 3, "rol": "orquestador IA" },
+    "impact-metrics": { "nombre": "Medir y reportar el impacto de la IA", "fase": 5, "rol": "orquestador IA" },
+    "instrument-agent-java": { "nombre": "Instrumentar el agente en el repositorio", "fase": 2, "rol": "orquestador IA" },
+    "instrument-github-repo": { "nombre": "Configurar los gates del repositorio en GitHub", "fase": 2, "rol": "orquestador IA" },
+    "instrument-project-java": { "nombre": "Instalar los controles deterministas del proyecto", "fase": 2, "rol": "orquestador IA" },
+    "legacy-test-harness": { "nombre": "Acondicionar código legado con pruebas", "fase": 2, "rol": "orquestador IA" },
+    "requirement-to-spec-java": { "nombre": "Convertir un requerimiento en especificación", "fase": 3, "rol": "orquestador IA" },
+    "plan-de-issue": { "nombre": "Implementar el plan de un issue", "fase": 3, "rol": "orquestador IA", "sinSkill": true }
+  },
   "traducciones": {
     "debt-triage": {
       "1": "Buscar el analizador",
