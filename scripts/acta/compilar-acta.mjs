@@ -353,7 +353,17 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
       for (const b of linea.message?.content || []) {
         if (b.type === 'text') {
           decisionesPrincipal.texto(b.text);
-          for (const m of marcadoresEn(b.text)) marcarPaso(linea, m);
+          // Un marcador cuenta solo si su skill se invoco antes en la sesion (#222, fase 6): un
+          // texto que EXPLICA el protocolo, con un marcador de ejemplo en su propia linea, no es
+          // la skill marcando un paso. Paso en la sesion que construyo el visor.
+          for (const m of marcadoresEn(b.text)) {
+            if ([...skills].some((s) => s.split(':').pop() === m.skill)) marcarPaso(linea, m);
+            else {
+              avisos.push(`un marcador de ${m.skill} aparecio sin que la skill se invocara ` +
+                'antes; ' +
+                'no cuenta como paso');
+            }
+          }
         }
         if (b.type !== 'tool_use') continue;
         if (!turno) nuevoTurno(linea, null, 'sin_prompt');
