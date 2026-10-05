@@ -13,7 +13,7 @@ its version says (verified with Claude Code 2.1.282, #209). Updating on any mach
 `update.ps1` / `update.sh` at the plugin root, which pulls and checks that the CLI loads the plugin
 from that folder (see the README, "Actualizar cuando sale una versión nueva", and `AGENTS.md`).
 
-## [unreleased]
+## [0.5.0] — 2026-10-05
 
 ### Added
 
