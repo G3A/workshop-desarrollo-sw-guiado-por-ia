@@ -60,10 +60,17 @@ const PROFUNDIDAD_MAXIMA = 5;
 const MARCADOR = new RegExp('^`?\\[sdlc-ia:step skill=([a-z0-9][a-z0-9-]*) ' +
   'step=([0-9]+|[A-Z]) method-phase=([0-6])\\]`?[ \\t]*$', 'gm');
 
+// Un marcador dentro de un bloque de codigo (```) no cuenta: es un ejemplo, no un paso (#230).
+export const BLOQUE_DE_CODIGO = /^```[\s\S]*?^```/gm;
+
 export function marcadoresEn(texto) {
-  return [...String(texto ?? '').matchAll(MARCADOR)]
+  return [...String(texto ?? '').replace(BLOQUE_DE_CODIGO, '').matchAll(MARCADOR)]
     .map((m) => ({ skill: m[1], letra: m[2], fase: Number(m[3]) }));
 }
+
+// La actividad que declara el agente cuando trabaja el plan de un issue sin una skill (#230). La
+// regla esta en AGENTS.md; su instructivo es el plan del issue, que registrar-sesion.mjs guarda.
+export const PLAN_DE_ISSUE = 'plan-de-issue';
 
 const sinMarcadores = (texto) => String(texto ?? '').replace(MARCADOR, '').trim();
 
@@ -355,9 +362,14 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
           decisionesPrincipal.texto(b.text);
           // Un marcador cuenta solo si su skill se invoco antes en la sesion (#222, fase 6): un
           // texto que EXPLICA el protocolo, con un marcador de ejemplo en su propia linea, no es
-          // la skill marcando un paso. Paso en la sesion que construyo el visor.
+          // la skill marcando un paso. Paso en la sesion que construyo el visor. El del plan de
+          // un issue no tiene skill: cuenta si el turno es de una tarea con numero (#230).
           for (const m of marcadoresEn(b.text)) {
-            if ([...skills].some((s) => s.split(':').pop() === m.skill)) marcarPaso(linea, m);
+            const delPlan = m.skill === PLAN_DE_ISSUE && turno &&
+              tareaDeRama(linea.gitBranch || turno.rama) !== 'sin-tarea';
+            if (delPlan || [...skills].some((x) => x.split(':').pop() === m.skill)) {
+              marcarPaso(linea, m);
+            }
             else {
               avisos.push(`un marcador de ${m.skill} aparecio sin que la skill se invocara ` +
                 'antes; ' +
@@ -673,9 +685,13 @@ function imagenDelMotor(raizRepo, commit) {
   return { dockerfile, base: desde ? desde[1] : null };
 }
 
+// AGENTS.md y CLAUDE.md de la raiz son el procedimiento de toda sesion: Claude Code los carga al
+// arrancar, haya o no una skill. Se registran siempre en la version del HEAD base (#230).
+const PROCEDIMIENTO_DEL_REPO = ['AGENTS.md', 'CLAUDE.md'];
+
 function documentosUsados(raizRepo, commit, skills, acciones) {
   if (!raizRepo || !commit) return [];
-  const rutas = new Set();
+  const rutas = new Set(PROCEDIMIENTO_DEL_REPO);
   for (const s of skills) {
     const nombre = s.split(':').pop();
     rutas.add(`${RUTA_PLUGIN}/skills/${nombre}/SKILL.md`);

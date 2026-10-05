@@ -93,7 +93,7 @@ const HEREDADOS = new Map([
   ['base-conocimiento/docs/data-model.md', 114],
   ['manuales/manual-proceso-completo/README.md', 112],
   ['validacion-workshop/f1-preparar-maquina.md', 111],
-  ['AGENTS.md', 102],
+  ['AGENTS.md', 101],
   ['base-conocimiento/docs/adrs/0009-bonsai-8b-integracion-pospuesta.md', 102],
   ['README.md', 102],
   ['scripts/verificar-enlaces.mjs', 102],

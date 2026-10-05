@@ -69,7 +69,26 @@ omitidos: inferirlos metería una heurística en el registro (PC-04).
 |---|---|---|
 | `debt-triage` | 2 · Preparación del terreno | Phase 1 a 5 |
 
-Las otras ocho se suman de a una. Cada una toca su `SKILL.md` (en inglés), su doc en español, el
+Las otras ocho se suman una por una.
+
+## El plan de un issue, sin skill
+
+Una sesión que implementa el plan de un issue sin invocar una skill también declara su actividad
+(#230). La regla está en `AGENTS.md`: al empezar cada fase del plan, el agente escribe
+`[sdlc-ia:step skill=plan-de-issue step=<N> method-phase=3]`. El compilador lo acepta sin skill
+invocada solo si el turno es de una tarea con número (la rama `feat/<N>-...`).
+
+| Nivel | Qué es en una sesión sin skill |
+|---|---|
+| Actividad | «Implementar el plan de un issue», del catálogo de `scripts/acta/proceso.json` |
+| Procedimiento | `AGENTS.md` (y `CLAUDE.md`), en la versión que la huella registra siempre |
+| Instructivo | el plan del issue, que `registrar-sesion.mjs` guarda en `plan-del-issue.json` con su fecha y su sha256 |
+
+Los pasos prescritos son los encabezados numerados del plan (`## Fase 2 · …`, `## 5 · …`). Sin
+`plan-del-issue.json`, la conformidad dice que no tiene contra qué comparar.
+
+Un marcador dentro de un bloque de código (```` ``` ````) es un ejemplo y no cuenta, ni en la sesión
+ni en el plan. Cada una toca su `SKILL.md` (en inglés), su doc en español, el
 nodo del visor que la cita y la caja del playbook que la nombra, en el mismo PR.
 
 ## Lo que el protocolo no garantiza

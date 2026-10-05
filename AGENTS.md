@@ -91,6 +91,10 @@ contexto:
   `Registro-IA: ninguno: <motivo>`. Dentro de Claude Code lo pone el hook `commit-msg`. Antes de
   abrir la PR, `node scripts/acta/registrar-sesion.mjs` deja el acta en stage para commitearla, y
   el cuerpo de la PR repite cada trailer. El CI falla si el acta no llega al diff del commit.
+- **Al trabajar el plan de un issue sin una skill**, al empezar cada fase del plan escribe en su
+  propia línea, fuera de un bloque de código, `[sdlc-ia:step skill=plan-de-issue step=<N>
+  method-phase=3]`, con `<N>` el número de la fase. Así el acta declara la actividad y su paso, y
+  la conformidad lo compara con el plan guardado (`docs/protocolo-de-marcadores-de-paso.md`).
 
 ## Reglas duras
 

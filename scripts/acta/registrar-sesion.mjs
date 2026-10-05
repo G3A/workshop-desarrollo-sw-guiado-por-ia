@@ -17,6 +17,8 @@
 // commiteo queda como estaba hasta el proximo registro.
 //
 // Codigos de salida: 0 registrada, 1 la compilacion o la curacion no salieron, 2 uso incorrecto.
+import { spawnSync } from 'node:child_process';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -76,7 +78,36 @@ export function cortarEnCurso({ transcript, captura, destino }) {
   return { transcript: t, captura: c, enCurso };
 }
 
-export function registrar({ sesion, raizRepo, stage = true, log = console, proyectos }) {
+// El plan del issue de la tarea, tal como estaba al registrar (#230): es el instructivo de trabajo
+// de una sesion que trabaja el issue sin una skill. Se guarda junto al acta con la fecha de su
+// ultima edicion y el sha256 de su texto, y se versiona con ella. Sin red o sin issue, no se
+// guarda y la conformidad lo dice.
+export function leerIssueDeGitHub(numero) {
+  const campos = 'number,title,body,updatedAt';
+  const r = spawnSync('gh', ['issue', 'view', String(numero), '--json', campos],
+    { encoding: 'utf8', timeout: 20000 });
+  if (r.status !== 0) return null;
+  try {
+    return JSON.parse(r.stdout);
+  } catch {
+    return null;
+  }
+}
+
+export function guardarPlanDelIssue({ carpeta, tarea, leerIssue = leerIssueDeGitHub }) {
+  if (!/^\d+$/.test(tarea)) return null;
+  const issue = leerIssue(tarea);
+  if (!issue?.body) return null;
+  const cuerpo = issue.body.replace(/\r\n/g, '\n');
+  const plan = { numero: Number(tarea), titulo: issue.title, actualizado: issue.updatedAt,
+    sha256: crypto.createHash('sha256').update(cuerpo).digest('hex'), cuerpo };
+  const destino = path.join(carpeta, 'plan-del-issue.json');
+  fs.writeFileSync(destino, JSON.stringify(plan, null, 2) + '\n');
+  return destino;
+}
+
+export function registrar({ sesion, raizRepo, stage = true, log = console, proyectos,
+  leerIssue = leerIssueDeGitHub }) {
   const transcript = buscarTranscript(sesion, proyectos);
   if (!transcript) {
     log.error(`No encuentro el transcript de la sesion ${sesion} en ~/.claude/projects.`);
@@ -95,8 +126,12 @@ export function registrar({ sesion, raizRepo, stage = true, log = console, proye
       log.error(`La sesion no escribio un acta para la tarea ${tarea} (rama ${rama}).`);
       return { codigo: 1, archivos: [] };
     }
+    if (!guardarPlanDelIssue({ carpeta: path.dirname(cruda), tarea, leerIssue })) {
+      log.error(`No se guardo el plan del issue #${tarea}: sin red, sin gh o sin texto.`);
+    }
     const archivos = [cruda, rutaHermana(cruda, '.acta.curada.jsonl'),
-      rutaHermana(cruda, '.acta.objetos.pack'), path.join(path.dirname(cruda), 'indice.json')]
+      rutaHermana(cruda, '.acta.objetos.pack'), path.join(path.dirname(cruda), 'indice.json'),
+      path.join(path.dirname(cruda), 'plan-del-issue.json')]
       .filter((f) => fs.existsSync(f)).map((f) => path.relative(raizRepo, f).replace(/\\/g, '/'));
     const curada = archivos.some((f) => f.endsWith('.acta.curada.jsonl'));
     if (stage) git(['add', '-f', '--', ...archivos], { cwd: raizRepo });

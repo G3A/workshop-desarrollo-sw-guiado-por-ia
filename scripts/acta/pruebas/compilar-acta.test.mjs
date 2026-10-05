@@ -14,7 +14,8 @@ import { claseDeterminismo } from '../clasificar.mjs';
 import { arbolActual, git } from '../git.mjs';
 import { huellaDeEntrada } from '../nucleo-captura.mjs';
 import { carpetaTemporal, enCaptura, fabrica, repoQueAvanza, repoTemporal,
-  marcaDePaso, sesionConGrepQueOcultaUnFallo, sesionConHook, sesionConSubagente, sesionMarcada,
+  marcaDePaso, marcaDelPlan, sesionConGrepQueOcultaUnFallo, sesionConHook, sesionConSubagente,
+  sesionMarcada,
   subagente,
 } from './fabrica.mjs';
 
@@ -849,4 +850,42 @@ test('rojo I5: un paso sin marcador que apunta a un paso prescrito', () => {
   const acta = unicaActa(compilarFabrica(sesionMarcada()));
   de(acta, 'paso')[0].pasoPrescrito = { skill: 'debt-triage', letra: '1' };
   assert.deepEqual(validarActa(acta).map((e) => e.invariante), ['I5']);
+});
+
+test('marcadores: uno dentro de un bloque de codigo es un ejemplo, no un paso (#230)', () => {
+  const f = fabrica()
+    .prompt('<command-name>/sdlc-ia:debt-triage</command-name><command-args></command-args>')
+    .texto(`Así se escribe:\n\`\`\`\n${marca(2)}\n\`\`\`\nY ahora empiezo.`)
+    .llamada('tu1', 'Bash', { command: 'git status' })
+    .resultado('tu1', 'limpio');
+  const acta = unicaActa(compilarFabrica(f));
+  assert.deepEqual(de(acta, 'paso').map((p) => p.procedencia), ['ausente']);
+});
+
+test('marcadores: el plan de un issue marca pasos sin skill si el turno tiene tarea (#230)', () => {
+  const conTarea = fabrica()
+    .prompt('ejecuta el plan del issue #10')
+    .texto(marcaDelPlan(1))
+    .llamada('tu1', 'Bash', { command: 'git status' })
+    .resultado('tu1', 'limpio');
+  const acta = unicaActa(compilarFabrica(conTarea));
+  assert.deepEqual(de(acta, 'paso').map((p) => p.pasoPrescrito?.skill), ['plan-de-issue']);
+  assert.equal(acta[0].fase, 3);
+
+  const sinTarea = fabrica({ rama: 'main' })
+    .prompt('ejecuta el plan')
+    .texto(marcaDelPlan(1))
+    .llamada('tu1', 'Bash', { command: 'git status' })
+    .resultado('tu1', 'limpio');
+  const sin = unicaActa(compilarFabrica(sinTarea));
+  assert.deepEqual(de(sin, 'paso').map((p) => p.procedencia), ['ausente']);
+});
+
+test('huella: AGENTS.md y CLAUDE.md van siempre, son el procedimiento sin skill (#230)', () => {
+  const repo = repoQueAvanza({ 'AGENTS.md': '# Reglas\n', 'CLAUDE.md': 'Lee AGENTS.md\n' });
+  const head = git(['rev-parse', 'HEAD'], { cwd: repo.raiz }).trim();
+  const f = fabrica().prompt('hola').texto('hola');
+  const captura = [{ evento: 'SessionStart', head, arbol: repo.arbol(), momento: enCaptura(0, 0) }];
+  const acta = unicaActa(compilarFabrica(f, { captura, raizRepo: repo.raiz }));
+  assert.deepEqual(acta[0].huella.documentos.map((d) => d.ruta), ['AGENTS.md', 'CLAUDE.md']);
 });

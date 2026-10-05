@@ -13,7 +13,7 @@ import { createRequire } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { generarHtml, recolectar } from '../visor-acta.mjs';
 import { construirVista, textosVisibles } from '../vista-acta.mjs';
-import { carpetaTemporal, sesionParaElVisor } from './fabrica.mjs';
+import { carpetaTemporal, sesionDelPlan, sesionParaElVisor } from './fabrica.mjs';
 
 const RAIZ = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 
@@ -82,7 +82,9 @@ test('tres ejes: trabajo con responsables, documentacion emparejada y fase en el
   assert.match(vista.trabajo.proceso.dueno, /sin configurar en proceso\.json/);
   assert.equal(vista.trabajo.tarea.nombre, 'Issue #10');
   assert.equal(vista.trabajo.tarea.asignado, 'asignada a una-persona');
-  assert.equal(vista.trabajo.actividad.nombre, 'Skill debt-triage');
+  assert.equal(vista.trabajo.actividad.nombre, 'Triaje de la deuda técnica');
+  assert.match(vista.trabajo.actividad.rol,
+    /^rol: orquestador IA · ejecutada con la skill debt-triage/);
   assert.equal(vista.documentacion.procedimiento.nombre, 'debt-triage · SKILL.md');
   assert.equal(vista.documentacion.instructivo, 'debt-triage · sus 5 pasos');
   assert.equal(vista.documentacion.instructivoEstado, 'se siguieron 3 de 5');
@@ -243,4 +245,49 @@ test('en Chromium: ficha, seleccion, intentos, pestanas y ningun id a la vista',
   } finally {
     await navegador.close();
   }
+});
+
+test('control documental: nombra el documento que cambió; procedimiento es solo el suyo', () => {
+  const { entradas } = vistaDeLaSesion();
+  const otro = { ruta: 'x/skills/otra-skill/SKILL.md', cambio: true };
+  const propio = { ruta: entradas.conformidad.actividades[0].instructivo.ruta, cambio: true };
+  const consultado = construirVista({ ...entradas, deriva: { documentos: [otro] } });
+  assert.equal(consultado.documentacion.procedimiento.cambio, false);
+  assert.equal(consultado.versiones.cambio,
+    'Hoy hay una versión más nueva de otra-skill/SKILL.md, que la sesión consultó.');
+  const delProcedimiento = construirVista({ ...entradas, deriva: { documentos: [propio] } });
+  assert.equal(delProcedimiento.documentacion.procedimiento.cambio, true);
+  assert.match(delProcedimiento.versiones.cambio,
+    /^Hoy hay una versión más nueva del procedimiento/);
+});
+
+function vistaDelPlan(opciones) {
+  const s = sesionDelPlan(opciones);
+  return construirVista(recolectar({ curada: s.curada, raizRepo: s.raiz, sinRed: true }));
+}
+
+test('sin skill: la actividad es el plan del issue, AGENTS.md el procedimiento (#230)', () => {
+  const vista = vistaDelPlan();
+  assert.equal(vista.trabajo.actividad.nombre, 'Implementar el plan de un issue');
+  assert.match(vista.trabajo.actividad.rol, /sin skill: el agente siguió el plan del issue/);
+  assert.equal(vista.documentacion.procedimiento.nombre, 'AGENTS.md del repositorio');
+  assert.match(vista.documentacion.procedimiento.version, /^versión del \d+ de /);
+  assert.equal(vista.documentacion.instructivo,
+    'Plan del issue #10 · sus 2 pasos · versión del 4 de octubre de 2026');
+  assert.equal(vista.documentacion.instructivoEstado, 'se siguieron 2 de 2');
+  assert.equal(vista.faseActual, 3);
+  const pasos = vista.turnos.flatMap((t) => t.pasos).filter((p) => p.marcado);
+  assert.deepEqual(pasos.map((p) => p.literal),
+    ['Catalogo de actividades', 'La ficha separa actividad y herramienta']);
+});
+
+test('sin plan guardado falta el instructivo; sin marcas, la actividad no se adivina', () => {
+  const sinPlan = vistaDelPlan({ conPlan: false });
+  assert.equal(sinPlan.trabajo.actividad.nombre, 'Implementar el plan de un issue');
+  assert.equal(sinPlan.documentacion.instructivo, '[sin instructivo]');
+  const sinMarcas = vistaDelPlan({ marcar: false });
+  assert.equal(sinMarcas.trabajo.actividad.nombre, '[sin actividad declarada]');
+  assert.equal(sinMarcas.faseActual, null);
+  assert.equal(sinMarcas.documentacion.procedimiento.nombre, 'AGENTS.md del repositorio',
+    'AGENTS.md se carga en toda sesion: es un hecho, no una inferencia');
 });

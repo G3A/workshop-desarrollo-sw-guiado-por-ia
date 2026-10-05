@@ -218,6 +218,15 @@ function registroCrudo(r) {
   return JSON.stringify(o, null, 1);
 }
 
+// El procedimiento de la sesion, tal como lo registra la huella (#230): el SKILL.md de la skill
+// que ejecuto la actividad o, sin skill, el AGENTS.md del repositorio.
+export function documentoDelProcedimiento(cab, clave, esPlan) {
+  const docs = cab.huella?.documentos || [];
+  const suyo = (d) => d.ruta.endsWith(`/skills/${clave}/SKILL.md`);
+  if (clave && !esPlan) return docs.find(suyo) || null;
+  return docs.find((d) => d.ruta === 'AGENTS.md') || null;
+}
+
 export function construirVista({
   curada,
   cruda = null,
@@ -239,6 +248,17 @@ export function construirVista({
   const actividad = conformidad?.actividades?.[0] || null;
   const prescritos = actividad?.prescritos || [];
   const traducciones = proceso.traducciones?.[actividad?.skill] || {};
+  // La actividad es la del catalogo de proceso.json; la skill es la herramienta que la ejecuta
+  // (#230). Sale de los pasos marcados o, sin marcas, de la primera skill invocada.
+  const clave = actividad?.skill || (cab.actividades?.[0] || '').split(':').pop() || null;
+  const delCatalogo = clave ? proceso.actividades?.[clave] || null : null;
+  const esPlan = Boolean(delCatalogo?.sinSkill);
+  const docProcedimiento = documentoDelProcedimiento(cab, clave, esPlan);
+  const nombreProcedimiento = docProcedimiento
+    ? docProcedimiento.ruta === 'AGENTS.md'
+      ? 'AGENTS.md del repositorio'
+      : `${clave} · SKILL.md`
+    : null;
 
   const pasoVista = (p) => {
     if (p.procedencia !== 'marcado')
@@ -378,7 +398,7 @@ export function construirVista({
       }
     : { hay: false, grupos: [] };
 
-  const fase = cab.fase;
+  const fase = cab.fase ?? delCatalogo?.fase ?? null;
   const fases = (proceso.fases || []).map((f) => ({ ...f, actual: f.numero === fase }));
 
   const conformidadVista =
@@ -425,8 +445,20 @@ export function construirVista({
           ],
         };
 
-  const docCambio = deriva?.documentos?.find((d) => d.cambio === true);
+  // Los documentos de la huella que hoy tienen otra version. El procedimiento solo figura como
+  // cambiado si es el de la actividad; un SKILL.md que la sesion apenas leyo se nombra por su
+  // ruta, sin llamarlo «el procedimiento».
+  const cambiados = (deriva?.documentos || []).filter((d) => d.cambio === true);
+  const rutaProcedimiento = docProcedimiento?.ruta;
+  const procedimientoCambio = cambiados.some((d) => d.ruta === rutaProcedimiento);
+  const nombreDoc = (r) => ruta(r).split('/').slice(-2).join('/');
   const momentos = [cab.inicio, cab.fin].filter(Boolean);
+  const herramienta = esPlan
+    ? 'sin skill: el agente siguió el plan del issue'
+    : clave
+      ? `ejecutada con la skill ${clave}` +
+        (cab.huella?.plugin ? ` del plugin sdlc-ia ${cab.huella.plugin}` : '')
+      : '';
   const vista = {
     titulo: tarea.titulo
       ? `${tarea.titulo}`
@@ -441,10 +473,10 @@ export function construirVista({
           : 'dueño: [sin configurar en proceso.json]',
       },
       actividad: {
-        nombre: actividad?.skill
-          ? `Skill ${actividad.skill}`
-          : cab.actividades?.[0] || '[sin actividad declarada]',
-        rol: 'rol: orquestador IA',
+        nombre: delCatalogo?.nombre || (clave ? `Skill ${clave}` : '[sin actividad declarada]'),
+        rol:
+          `rol: ${delCatalogo?.rol || 'orquestador IA'}` + (herramienta ? ` · ${herramienta}` : ''),
+        herramienta,
       },
       tarea: {
         nombre: cab.tarea === 'sin-tarea' ? 'Sin tarea' : `Issue #${cab.tarea}`,
@@ -456,18 +488,23 @@ export function construirVista({
     },
     documentacion: {
       manual: proceso.manual || '[manual sin configurar]',
-      procedimiento: actividad?.instructivo
+      procedimiento: docProcedimiento
         ? {
-            nombre: `${actividad.skill} · SKILL.md`,
+            nombre: nombreProcedimiento,
             version: procedimiento.fecha
               ? `versión del ${dia(procedimiento.fecha)}`
               : 'versión del HEAD base',
-            cambio: Boolean(docCambio),
+            cambio: procedimientoCambio,
           }
         : { nombre: '[el registro no trae el procedimiento]', version: '', cambio: false },
-      instructivo: actividad?.prescritos
-        ? `${actividad.skill} · sus ${actividad.prescritos.length} pasos`
-        : '[sin instructivo]',
+      instructivo: !actividad?.prescritos
+        ? '[sin instructivo]'
+        : esPlan
+          ? `Plan del ${actividad.instructivo.ruta} · sus ${actividad.prescritos.length} pasos` +
+            (actividad.instructivo.actualizado
+              ? ` · versión del ${dia(actividad.instructivo.actualizado)}`
+              : '')
+          : `${actividad.skill} · sus ${actividad.prescritos.length} pasos`,
       instructivoEstado: actividad?.prescritos
         ? `se siguieron ${new Set(actividad.ejecutados).size} de ${actividad.prescritos.length}`
         : '',
@@ -490,8 +527,8 @@ export function construirVista({
     conformidad: conformidadVista,
     versiones: {
       vigentes: [
-        actividad?.instructivo
-          ? `procedimiento ${actividad.skill}` +
+        nombreProcedimiento
+          ? `procedimiento ${nombreProcedimiento}` +
             (procedimiento.fecha ? ` del ${dia(procedimiento.fecha)}` : '')
           : null,
         cab.huella?.plugin ? `plugin ${cab.huella.plugin}` : null,
@@ -500,10 +537,13 @@ export function construirVista({
       ]
         .filter(Boolean)
         .join(' · '),
-      cambio: docCambio
-        ? 'Hoy hay una versión más nueva del procedimiento. Una diferencia al verificar ' +
-          'puede venir de ahí y no de un error.'
-        : '',
+      cambio: !cambiados.length
+        ? ''
+        : procedimientoCambio
+          ? 'Hoy hay una versión más nueva del procedimiento. Una diferencia al verificar ' +
+            'puede venir de ahí y no de un error.'
+          : 'Hoy hay una versión más nueva de ' +
+            `${cambiados.map((d) => nombreDoc(d.ruta)).join(', ')}, que la sesión consultó.`,
     },
     pestanas: construirPestanas({ curada, indice, cab, agentes }),
   };

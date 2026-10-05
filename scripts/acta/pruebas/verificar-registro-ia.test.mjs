@@ -7,13 +7,14 @@
 // (--sin-motor): su corrida en Docker la prueban reejecutar-acta.test.mjs y el CI de cada PR.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { compilarYCerrar } from '../cerrar-acta.mjs';
 import { citar } from '../citar-acta.mjs';
 import { compilar } from '../compilar-acta.mjs';
 import { identidadDelEntorno } from '../normalizar.mjs';
-import { cortarEnCurso } from '../registrar-sesion.mjs';
+import { cortarEnCurso, guardarPlanDelIssue } from '../registrar-sesion.mjs';
 import { git } from '../git.mjs';
 import { verificarRegistro } from '../verificar-registro-ia.mjs';
 import { carpetaTemporal, fabrica, sesionParaElMotor } from './fabrica.mjs';
@@ -169,4 +170,19 @@ test('redaccion: la identidad de quien trabajo sale del acta, no del contenido d
   assert.equal(escribir.entrada.content, 'contacto: ana@example.com\n',
     'el contenido del archivo lo publica el commit; redactarlo romperia el motor');
   assert.equal(reset.entrada.command, 'git reset HEAD~1');
+});
+
+test('registrar: guarda el plan del issue con su fecha y el sha256 de su texto (#230)', () => {
+  const carpeta = carpetaTemporal('plan');
+  const leerIssue = (n) => ({ number: Number(n), title: 'Un plan',
+    updatedAt: '2026-10-04T12:00:00Z',
+    body: '## Fase 1 · Algo\r\n' });
+  const destino = guardarPlanDelIssue({ carpeta, tarea: '10', leerIssue });
+  const plan = JSON.parse(fs.readFileSync(destino, 'utf8'));
+  assert.equal(plan.cuerpo, '## Fase 1 · Algo\n', 'los saltos de linea quedan como en git');
+  assert.equal(plan.sha256,
+    crypto.createHash('sha256').update('## Fase 1 · Algo\n').digest('hex'));
+  assert.equal(plan.actualizado, '2026-10-04T12:00:00Z');
+  assert.equal(guardarPlanDelIssue({ carpeta, tarea: 'sin-tarea', leerIssue }), null);
+  assert.equal(guardarPlanDelIssue({ carpeta, tarea: '11', leerIssue: () => null }), null);
 });

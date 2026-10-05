@@ -421,3 +421,51 @@ export function sesionParaElVisor() {
   }
   return { raiz: repo.raiz, cruda, curada: cruda.replace('.cruda.', '.curada.') };
 }
+
+// Una sesion que trabaja el plan del issue #10 sin ninguna skill (#230): marca sus pasos con
+// plan-de-issue, si `marcar`, y deja junto al acta el plan que guarda registrar-sesion.mjs. El
+// repo trae su AGENTS.md, que es el procedimiento de una sesion sin skill.
+export const PLAN_DEL_10 = '# Plan\n\n## Fase 1 · Catalogo de actividades\n\nTexto.\n\n' +
+  '## Fase 2 · La ficha separa actividad y herramienta\n\n```\n## Fase 9 · un ejemplo\n```\n';
+
+export const marcaDelPlan = (letra, fase = 3) =>
+  `[sdlc-ia:step skill=plan-de-issue step=${letra} method-phase=${fase}]`;
+
+export function sesionDelPlan({ marcar = true, conPlan = true } = {}) {
+  const repo = repoQueAvanza({ 'AGENTS.md': '# Reglas\n', 'a.txt': 'uno\n' });
+  const head = git(['rev-parse', 'HEAD'], { cwd: repo.raiz }).trim();
+  const a0 = repo.arbol();
+  const a1 = repo.cambiar({ 'a.txt': 'dos\n' });
+  const f = fabrica()
+    .prompt('ejecuta el plan del issue #10')
+    .texto(marcar ? `${marcaDelPlan(1)}\nEmpiezo por el catalogo.` : 'Empiezo por el catalogo.')
+    .llamada('tu0', 'Read', { file_path: 'a.txt' })
+    .resultado('tu0', '1\tuno')
+    .texto(marcar ? marcaDelPlan(2) : 'Sigo.')
+    .llamada('tu1', 'Edit', { file_path: 'a.txt', old_string: 'uno', new_string: 'dos' })
+    .resultado('tu1', 'ok');
+  const captura = [
+    { evento: 'SessionStart', head, arbol: a0, momento: enCaptura(0, 0) },
+    { evento: 'PreToolUse', toolUseId: 'tu0', arbol: null, momento: enCaptura(0, 2) },
+    { evento: 'PostToolUse', toolUseId: 'tu0', arbol: null, momento: enCaptura(0, 2) },
+    { evento: 'PreToolUse', toolUseId: 'tu1', arbol: a0, momento: enCaptura(0, 4) },
+    { evento: 'PostToolUse', toolUseId: 'tu1', arbol: a1, momento: enCaptura(0, 4) },
+    { evento: 'SessionEnd', arbol: a1, momento: enCaptura(0, 6) },
+  ];
+  const transcript = f.escribir(carpetaTemporal('sesion'));
+  const [registros] = [...compilar({ transcript, captura, raizRepo: repo.raiz }).actas.values()];
+  const carpeta = path.join(repo.raiz, '.ia', 'registros', '10');
+  fs.mkdirSync(carpeta, { recursive: true });
+  const cruda = path.join(carpeta, 'sesion-1.acta.cruda.jsonl');
+  fs.writeFileSync(cruda, serializar(registros));
+  const silencio = { log: () => {}, error: () => {} };
+  if (curarYEscribir({ cruda, raizRepo: repo.raiz, log: silencio }) !== 0) {
+    throw new Error('la sesion del plan no se cura');
+  }
+  if (conPlan) {
+    fs.writeFileSync(path.join(carpeta, 'plan-del-issue.json'), JSON.stringify({
+      numero: 10, titulo: 'Actividad declarada', actualizado: '2026-10-04T12:00:00Z',
+      sha256: 'x', cuerpo: PLAN_DEL_10 }));
+  }
+  return { raiz: repo.raiz, cruda, curada: cruda.replace('.cruda.', '.curada.') };
+}

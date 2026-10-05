@@ -205,7 +205,11 @@ interpreta como HTML. La página vive en `visor/visor.css` y `visor/visor.js`; e
 copia dentro del HTML.
 
 **Lo que configura la empresa**, en `proceso.json`: el nombre del proceso, su dueño, el manual,
-los gates de cada fase y la traducción de los pasos de cada skill. Lo que no está configurado se
+los gates de cada fase, el catálogo de actividades y la traducción de los pasos de cada skill. La
+actividad es la del catálogo, con su fase y su rol; la skill es la herramienta que la ejecuta y se
+nombra aparte («ejecutada con la skill debt-triage»). Sin skill, la actividad es «Implementar el
+plan de un issue», el procedimiento es `AGENTS.md` y el instructivo es el plan guardado en
+`plan-del-issue.json` (#230). Lo que no está configurado se
 muestra como un campo a completar, nunca inventado. La persona asignada y el título salen del
 issue en GitHub (`gh issue view`); con `--sin-red` o `--asignado` no se consulta.
 
