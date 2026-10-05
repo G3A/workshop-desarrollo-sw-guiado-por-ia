@@ -22,6 +22,7 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { archivoDeEvidencia } from './compilar-acta.mjs';
 import { conformidad } from './conformidad.mjs';
 import { derivaHuella } from './deriva-huella.mjs';
 import { git, raizDelRepo } from './git.mjs';
@@ -119,7 +120,27 @@ export function recolectar({
     procedimiento,
     commits,
     nombreActa: path.basename(curada),
+    archivosDeEvidencia: archivosDeEvidencia(registros, path.dirname(curada)),
   };
+}
+
+// Las evidencias incluidas, como data: URI, para que el HTML siga autocontenido (#230).
+const TIPOS_MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp',
+  gif: 'image/gif', zip: 'application/zip', webm: 'video/webm' };
+
+function archivosDeEvidencia(registros, carpeta) {
+  const archivos = {};
+  for (const a of registros.filter((r) => r.elemento === 'accion')) {
+    for (const e of a.evidencias || []) {
+      if (!e.incluida || archivos[e.sha256]) continue;
+      const nombre = archivoDeEvidencia(e);
+      const ruta = path.join(carpeta, 'evidencias', nombre);
+      if (!fs.existsSync(ruta)) continue;
+      const mime = TIPOS_MIME[nombre.split('.').pop()] || 'application/octet-stream';
+      archivos[e.sha256] = `data:${mime};base64,${fs.readFileSync(ruta).toString('base64')}`;
+    }
+  }
+  return archivos;
 }
 
 export function generarHtml(vista) {

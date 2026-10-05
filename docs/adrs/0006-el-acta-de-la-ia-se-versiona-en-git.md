@@ -59,6 +59,19 @@ fallar el sensor. En el contenedor no hay red, ni Maven, ni Docker, y la mayorí
 divergencias son del entorno, no del registro. La integridad del registro la sostienen las
 acciones aplicadas y la cadena de árboles, y esas sí bloquean.
 
+**Evidencia de Playwright (#230).** Junto al acta va también `evidencias/<sha256>.<ext>`: las
+capturas, los `trace` y los videos que la sesión produjo. Salen de dos fuentes:
+
+- lo que aparece o cambia en `test-results/`, la carpeta por defecto de Playwright Test,
+  mientras corre una acción. El hook lo detecta por la fecha y lo copia a
+  `.ia/captura/evidencias/`, porque la corrida siguiente de Playwright borra la carpeta;
+- las imágenes que devuelve una herramienta en su resultado, como el screenshot de un
+  navegador. Vienen en el transcript.
+
+El acta guarda de cada una el nombre, el tipo, el tamaño y el sha256. El archivo se versiona si
+cabe en dos topes: **2 MB por archivo y 20 MB por acta**, en el orden de la sesión. Lo que no cabe
+queda nombrado, con su hash y el motivo, y el visor dice «no se incluyó».
+
 ## Consecuencias
 
 - **A favor**: la PR muestra qué hizo la IA y el CI comprueba que eso llega a su diff. Revisar una
@@ -67,8 +80,10 @@ acciones aplicadas y la cadena de árboles, y esas sí bloquean.
   comandos y contenido leído durante la sesión. La filtran gitleaks y la redacción de rutas y de
   variables con nombre de secreto. Ninguno de los dos filtros sabe qué es privado para una
   persona: antes de commitear un acta, quien la registra la lee.
-- **En contra**: el repo crece cerca de 2 MB por sesión larga. Si molesta, la opción 2 sigue
-  disponible para las crudas, con la curada y el pack en git.
+- **En contra**: una captura no se redacta. Muestra lo que había en la pantalla, y los filtros
+  de texto no la ven: quien registra el acta revisa también sus evidencias.
+- **En contra**: el repo crece cerca de 2 MB por sesión larga, más las evidencias, hasta 20 MB.
+  Si molesta, la opción 2 sigue disponible para las crudas, con la curada y el pack en git.
 - **En contra**: la sesión tiene que registrarse antes de abrir la PR. El hook de `SessionEnd`
   llega tarde para el commit que la cita, y por eso existe `registrar-sesion.mjs`.
 - **Qué haría reconsiderar**: un repo privado, donde publicar deja de ser el riesgo, o que el

@@ -5,7 +5,9 @@
 //
 // Agrega una linea a .ia/captura/<sesion>.jsonl con lo que el transcript no guarda: el HEAD y el
 // hash del arbol, antes y despues de cada accion, y cada PermissionRequest (#222, fase 5): el
-// dialogo de permiso que la persona tuvo delante. El hook no responde nada, asi que no decide.
+// dialogo de permiso que la persona tuvo delante. Despues de una accion, tambien las capturas y
+// los trace que Playwright dejo en test-results/ mientras corria (#230), copiados a
+// .ia/captura/evidencias/ con su sha256. El hook no responde nada, asi que no decide.
 // En SessionEnd compila el acta cruda, la cura y reescribe el indice de cada tarea que toco.
 //
 // Cuatro decisiones que no son de estilo:
@@ -24,7 +26,8 @@
 //    acta de ese cierre, no la captura.
 import fs from 'node:fs';
 import path from 'node:path';
-import { SIN_ARBOL, arbolActual, head, huellaDeEntrada, raizDelRepo } from './nucleo-captura.mjs';
+import { SIN_ARBOL, arbolActual, evidenciasNuevas, head, huellaDeEntrada, momentoDelPre,
+  raizDelRepo } from './nucleo-captura.mjs';
 
 function leerEntrada() {
   try {
@@ -63,6 +66,13 @@ async function principal() {
       ...(evento === 'PreToolUse' ? { entrada: huellaDeEntrada(e.tool_input) } : {}),
       arbol: SIN_ARBOL.has(herramienta) ? null : arbolActual(raiz),
     };
+    // Las capturas y los trace que Playwright dejo mientras corria la accion (#230, frente 3).
+    if (evento !== 'PreToolUse' && !SIN_ARBOL.has(herramienta)) {
+      const desde = momentoDelPre(archivo, registro.toolUseId);
+      const evidencias = desde
+        ? evidenciasNuevas(raiz, desde, path.join(carpeta, 'evidencias')) : [];
+      if (evidencias.length) registro.evidencias = evidencias;
+    }
   } else if (evento === 'PermissionRequest') {
     registro = {
       ...registro,

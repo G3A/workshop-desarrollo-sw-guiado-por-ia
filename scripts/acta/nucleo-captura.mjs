@@ -112,3 +112,81 @@ export function arbolActual(raiz) {
     fs.rmSync(tmp, { force: true });
   }
 }
+
+// Evidencia de Playwright (#230, frente 3). La carpeta convenida es la que Playwright Test usa por
+// defecto para sus capturas, trace y videos. Lo que aparece o cambia ahi mientras corre una
+// accion es evidencia de esa accion: se decide por la fecha, no por el comando que se corrio.
+export const CARPETA_DE_EVIDENCIA = 'test-results';
+export const TOPE_POR_ARCHIVO = 2 * 1024 * 1024;
+const EXTENSIONES_DE_EVIDENCIA = /\.(png|jpe?g|webp|zip|webm)$/i;
+const MAXIMO_POR_ACCION = 50;
+
+function archivosBajo(carpeta) {
+  const lista = [];
+  const pila = [carpeta];
+  while (pila.length && lista.length < 1000) {
+    const actual = pila.pop();
+    let entradas;
+    try {
+      entradas = fs.readdirSync(actual, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const e of entradas) {
+      const ruta = path.join(actual, e.name);
+      if (e.isDirectory()) pila.push(ruta);
+      else if (e.isFile() && EXTENSIONES_DE_EVIDENCIA.test(e.name)) lista.push(ruta);
+    }
+  }
+  return lista;
+}
+
+// Las evidencias que la accion dejo desde `desde` (el momento de su PreToolUse). Copia las que
+// caben en el tope a `destino`, con su sha256 como nombre, porque la siguiente corrida de
+// Playwright borra la carpeta; de las demas registra el nombre, el tamano y el hash.
+export function evidenciasNuevas(raiz, desde, destino) {
+  const limite = Date.parse(desde);
+  if (!Number.isFinite(limite)) return [];
+  const evidencias = [];
+  for (const ruta of archivosBajo(path.join(raiz, CARPETA_DE_EVIDENCIA))) {
+    if (evidencias.length >= MAXIMO_POR_ACCION) break;
+    let stat;
+    try {
+      stat = fs.statSync(ruta);
+    } catch {
+      continue;
+    }
+    if (stat.mtimeMs < limite) continue;
+    const contenido = fs.readFileSync(ruta);
+    const sha256 = crypto.createHash('sha256').update(contenido).digest('hex');
+    const copiada = stat.size <= TOPE_POR_ARCHIVO;
+    if (copiada) {
+      fs.mkdirSync(destino, { recursive: true });
+      fs.writeFileSync(path.join(destino, sha256), contenido);
+    }
+    evidencias.push({
+      origen: 'carpeta',
+      ruta: path.relative(raiz, ruta).split(path.sep).join('/'),
+      sha256,
+      bytes: stat.size,
+      copiada,
+    });
+  }
+  return evidencias.sort((a, b) => a.ruta.localeCompare(b.ruta));
+}
+
+// El momento del PreToolUse de una llamada, leido de la captura de la sesion.
+export function momentoDelPre(archivoCaptura, toolUseId) {
+  if (!toolUseId || !fs.existsSync(archivoCaptura)) return null;
+  const lineas = fs.readFileSync(archivoCaptura, 'utf8').trimEnd().split('\n');
+  for (let i = lineas.length - 1; i >= 0; i--) {
+    if (!lineas[i].includes(toolUseId)) continue;
+    try {
+      const r = JSON.parse(lineas[i]);
+      if (r.evento === 'PreToolUse' && r.toolUseId === toolUseId) return r.momento;
+    } catch {
+      /* una linea rota no es la que se busca */
+    }
+  }
+  return null;
+}

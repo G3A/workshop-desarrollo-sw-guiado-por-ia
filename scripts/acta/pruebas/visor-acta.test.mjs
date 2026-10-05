@@ -12,8 +12,10 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { generarHtml, recolectar } from '../visor-acta.mjs';
+import { evidenciasDe } from '../registrar-sesion.mjs';
 import { construirVista, textosVisibles } from '../vista-acta.mjs';
-import { carpetaTemporal, sesionDelPlan, sesionParaElVisor } from './fabrica.mjs';
+import { carpetaTemporal, sesionConCapturas, sesionDelPlan, sesionParaElVisor }
+  from './fabrica.mjs';
 
 const RAIZ = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 
@@ -301,4 +303,80 @@ test('conformidad: las vueltas de un bucle y los references que faltan, en palab
   const { notas } = construirVista({ ...entradas, conformidad: conBucle }).conformidad;
   assert.ok(notas.includes('2 vueltas del paso I al G, como el instructivo lo manda.'), notas);
   assert.ok(notas.some((n) => /^El acta no trae build-loop\.md/.test(n)), notas);
+});
+
+// --- Capturas de Playwright (#230, frente 3; diseno F1) ------------------------------------------
+
+function vistaConCapturas() {
+  const s = sesionConCapturas();
+  return construirVista(recolectar({ curada: s.curada, raizRepo: s.raiz, sinRed: true }));
+}
+
+test('capturas: la accion las nombra, con tamano, hash y archivo; lo que no cabe se dice', () => {
+  const vista = vistaConCapturas();
+  const [prueba, screenshot] = vista.acciones;
+  assert.equal(prueba.etiquetaEvidencias, '3 capturas');
+  assert.deepEqual(prueba.evidencias.map((e) => [e.nombre, e.tamano, Boolean(e.src)]), [
+    ['test-failed-1.png', '70 B', true],
+    ['trace.zip', '20 B', true],
+    ['video.webm', '3,0 MB', false],
+  ]);
+  assert.match(prueba.evidencias[0].src, /^data:image\/png;base64,/);
+  assert.match(prueba.evidencias[1].src, /^data:application\/zip;base64,/);
+  assert.equal(prueba.evidencias[2].aviso, 'pasa del tope de 2 MB por archivo: no se incluyó.');
+  assert.match(prueba.evidencias[0].origen, /test-results\/ mientras corría la acción/);
+  assert.match(screenshot.evidencias[0].origen, /la herramienta en su resultado/);
+  for (const t of textosVisibles(vista)) assert.doesNotMatch(t, /base64|[0-9a-f]{64}/);
+});
+
+test('en Chromium: la captura se ve en el panel, se amplia, y el trace se descarga', async (t) => {
+  const playwright = cargarPlaywright();
+  if (!playwright) {
+    t.skip('Playwright no esta instalado');
+    return;
+  }
+  const archivo = path.join(carpetaTemporal('visor'), 'visor.html');
+  fs.writeFileSync(archivo, generarHtml(vistaConCapturas()));
+  let navegador;
+  try {
+    navegador = await playwright.chromium.launch();
+  } catch (e) {
+    t.skip(`Chromium no arranca: ${e.message.split('\n')[0]}`);
+    return;
+  }
+  try {
+    const pagina = await navegador.newPage({ viewport: { width: 1440, height: 1000 } });
+    const errores = [];
+    pagina.on('pageerror', (e) => errores.push(e.message));
+    pagina.on('request', (r) => {
+      if (!r.url().startsWith('file:') && !r.url().startsWith('data:')) errores.push(r.url());
+    });
+    await pagina.goto(pathToFileURL(archivo).href);
+    await pagina.waitForSelector('#ficha .nivel');
+    // El paso de la accion ya esta abierto: es el de la accion seleccionada.
+    assert.match(await pagina.locator('.fila[data-orden="1"]').innerText(), /3 capturas/);
+    await pagina.locator('.fila[data-orden="1"]').click();
+    const panel = pagina.locator('.ev.capt');
+    assert.match(await panel.innerText(), /capturas de la acción[\s\S]*test-failed-1\.png · 70 B/i);
+    assert.equal(await panel.locator('img.captura').evaluate((i) => i.naturalWidth), 1,
+      'la imagen carga desde el HTML, sin red');
+    assert.equal(await panel.getByRole('link', { name: 'descargar' }).getAttribute('download'),
+      'trace.zip');
+    assert.match(await panel.innerText(), /npx playwright show-trace trace\.zip/);
+    assert.match(await panel.innerText(), /video\.webm · 3,0 MB[\s\S]*no se incluyó/);
+    await panel.getByRole('button', { name: 'Ampliar' }).click();
+    assert.equal(await pagina.locator('dialog.ampliada').isVisible(), true);
+    await pagina.locator('dialog.ampliada').getByRole('button', { name: 'Cerrar' }).click();
+    assert.equal(await pagina.locator('dialog.ampliada').count(), 0);
+    assert.deepEqual(errores, []);
+  } finally {
+    await navegador.close();
+  }
+});
+
+test('registrar: las evidencias incluidas van en stage con el acta, y las que no, no', () => {
+  const s = sesionConCapturas();
+  const carpeta = path.join(path.dirname(s.cruda), 'evidencias');
+  assert.deepEqual(evidenciasDe(s.cruda).sort(),
+    [path.join(carpeta, `${s.sha.captura}.png`), path.join(carpeta, `${s.sha.trace}.zip`)].sort());
 });
