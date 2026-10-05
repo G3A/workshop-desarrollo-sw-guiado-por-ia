@@ -425,7 +425,13 @@ export function construirVista({
           ],
         };
 
-  const docCambio = deriva?.documentos?.find((d) => d.cambio === true);
+  // Los documentos de la huella que hoy tienen otra version. El procedimiento solo figura como
+  // cambiado si es el de la actividad; un SKILL.md que la sesion apenas leyo se nombra por su
+  // ruta, sin llamarlo «el procedimiento».
+  const cambiados = (deriva?.documentos || []).filter((d) => d.cambio === true);
+  const rutaProcedimiento = actividad?.instructivo?.ruta;
+  const procedimientoCambio = cambiados.some((d) => d.ruta === rutaProcedimiento);
+  const nombreDoc = (r) => ruta(r).split('/').slice(-2).join('/');
   const momentos = [cab.inicio, cab.fin].filter(Boolean);
   const vista = {
     titulo: tarea.titulo
@@ -462,7 +468,7 @@ export function construirVista({
             version: procedimiento.fecha
               ? `versión del ${dia(procedimiento.fecha)}`
               : 'versión del HEAD base',
-            cambio: Boolean(docCambio),
+            cambio: procedimientoCambio,
           }
         : { nombre: '[el registro no trae el procedimiento]', version: '', cambio: false },
       instructivo: actividad?.prescritos
@@ -500,10 +506,13 @@ export function construirVista({
       ]
         .filter(Boolean)
         .join(' · '),
-      cambio: docCambio
-        ? 'Hoy hay una versión más nueva del procedimiento. Una diferencia al verificar ' +
-          'puede venir de ahí y no de un error.'
-        : '',
+      cambio: !cambiados.length
+        ? ''
+        : procedimientoCambio
+          ? 'Hoy hay una versión más nueva del procedimiento. Una diferencia al verificar ' +
+            'puede venir de ahí y no de un error.'
+          : 'Hoy hay una versión más nueva de ' +
+            `${cambiados.map((d) => nombreDoc(d.ruta)).join(', ')}, que la sesión consultó.`,
     },
     pestanas: construirPestanas({ curada, indice, cab, agentes }),
   };

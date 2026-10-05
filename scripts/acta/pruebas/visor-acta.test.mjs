@@ -244,3 +244,17 @@ test('en Chromium: ficha, seleccion, intentos, pestanas y ningun id a la vista',
     await navegador.close();
   }
 });
+
+test('control documental: nombra el documento que cambió; procedimiento es solo el suyo', () => {
+  const { entradas } = vistaDeLaSesion();
+  const otro = { ruta: 'x/skills/otra-skill/SKILL.md', cambio: true };
+  const propio = { ruta: entradas.conformidad.actividades[0].instructivo.ruta, cambio: true };
+  const consultado = construirVista({ ...entradas, deriva: { documentos: [otro] } });
+  assert.equal(consultado.documentacion.procedimiento.cambio, false);
+  assert.equal(consultado.versiones.cambio,
+    'Hoy hay una versión más nueva de otra-skill/SKILL.md, que la sesión consultó.');
+  const delProcedimiento = construirVista({ ...entradas, deriva: { documentos: [propio] } });
+  assert.equal(delProcedimiento.documentacion.procedimiento.cambio, true);
+  assert.match(delProcedimiento.versiones.cambio,
+    /^Hoy hay una versión más nueva del procedimiento/);
+});
