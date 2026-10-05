@@ -129,6 +129,20 @@ export function esRechazoDePermiso(texto) {
   return RECHAZO.some((r) => r.test(texto || ''));
 }
 
+// El permiso que nadie concedio porque no habia persona: `claude -p` o el SDK sin quien responda.
+// Claude Code 2.1.287 decia «haven't granted it yet»; la 2.1.288 dice «This command requires
+// approval» y variantes, todas vistas en la primera sesion real del #230 (frente 4).
+const SIN_PERSONA = [
+  /haven't granted it yet/i,
+  /requires? approval/i,
+  /needs approval/i,
+  /can't be checked before it runs/i,
+];
+
+export function esPermisoSinPersona(texto) {
+  return SIN_PERSONA.some((r) => r.test(texto || ''));
+}
+
 // Las herramientas cuyo «rechazo» no es un permiso negado: la persona descarto una pregunta o un
 // plan (#222, fase 5). En las sesiones de este equipo, la mayoria de los rechazos eran de
 // AskUserQuestion, y el compilador los contaba como permisos.
