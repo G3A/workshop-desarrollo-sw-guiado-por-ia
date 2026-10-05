@@ -810,6 +810,19 @@ test('marcadores: el turno se parte en los pasos que la skill marco, con su fase
     'el marcador no es parte de la decision');
 });
 
+test('marcadores: un texto que explica el protocolo, sin la skill invocada, no marca pasos', () => {
+  const f = fabrica()
+    .prompt('Explícame el protocolo de marcadores')
+    .texto(`Así se ve uno:\n${marca(2)}\nY la skill lo escribe al empezar cada paso.`)
+    .llamada('tu1', 'Bash', { command: 'cat docs/protocolo-de-marcadores-de-paso.md' })
+    .resultado('tu1', '# Protocolo');
+  const { actas, avisos } = compilarFabrica(f);
+  const acta = unicaActa({ actas });
+  assert.deepEqual(de(acta, 'paso').map((p) => p.procedencia), ['ausente']);
+  assert.equal(acta[0].fase, null);
+  assert.ok(avisos.some((a) => /sin que la skill se invocara antes/.test(a)), avisos.join());
+});
+
 test('marcadores: dos fases distintas dejan el acta sin fase, con un aviso', () => {
   const f = sesionMarcada().texto(marca(4, 3))
     .llamada('tu5', 'Edit', { file_path: 'a.java', old_string: 'A', new_string: 'A2' })

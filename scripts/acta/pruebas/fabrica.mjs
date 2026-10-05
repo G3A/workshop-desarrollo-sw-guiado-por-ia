@@ -7,9 +7,11 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { compilar, serializar } from '../compilar-acta.mjs';
 import { curarYEscribir } from '../curar-acta.mjs';
 import { arbolActual, git } from '../git.mjs';
+import { huellaDeEntrada } from '../nucleo-captura.mjs';
 import { leerActa } from '../validar-acta.mjs';
 
 export const RAIZ_FICTICIA = 'D:\\Repo\\proyecto';
@@ -351,4 +353,71 @@ export function sesionMarcada(opciones) {
     .texto(marca(3))
     .llamada('tu4', 'Read', { file_path: 'b.java' })
     .resultado('tu4', '1\tclass B {}');
+}
+
+// Una sesion para el visor (#222, fase 6) con cada caso que tiene que distinguir: una accion sin
+// paso, pasos marcados por debt-triage con su SKILL.md real, una lectura externa (fixture), un
+// intento fallido antes del Edit bueno, un efecto de hook, un rojo esperado y un git push con el
+// permiso aprobado. Pasa por el compilador y la curacion de verdad; devuelve las rutas del acta.
+export const SKILL_DEBT_TRIAGE = 'instrumentacion-java-ia/sdlc-ia/skills/debt-triage/SKILL.md';
+
+export function sesionParaElVisor() {
+  const raizMonorepo = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+  const repo = repoQueAvanza({ 'Tarifa.java': 'x * 1.19\n',
+    [SKILL_DEBT_TRIAGE]: fs.readFileSync(path.join(raizMonorepo, SKILL_DEBT_TRIAGE), 'utf8') });
+  const head = git(['rev-parse', 'HEAD'], { cwd: repo.raiz }).trim();
+  const a0 = repo.arbol();
+  const a1 = repo.cambiar({ 'Tarifa.java': 'x * IVA\n' });
+  const a2 = repo.cambiar({ 'Tarifa.java': 'x * IVA; // formateado\n' });
+  const marca = marcaDePaso;
+  const push = { command: 'git push -u origin feat/10-deuda' };
+  const f = fabrica()
+    .prompt('<command-name>/sdlc-ia:debt-triage</command-name><command-args></command-args>')
+    .llamada('tu0', 'Bash', { command: 'git status --short' })
+    .resultado('tu0', '')
+    .texto(`${marca(1)}\nBusco el analizador que ya corre en el repo.`)
+    .llamada('tu1', 'Read', { file_path: 'Tarifa.java' })
+    .resultado('tu1', '1\tx * 1.19')
+    .texto(marca(2))
+    .llamada('tu2', 'Bash', { command: 'gh issue list --label deuda' })
+    .resultado('tu2', 'sin issues abiertos')
+    .prompt('Solo la regla MagicNumber')
+    .texto(`${marca(3)}\nLeo cada llamada antes de decidir.`)
+    .llamada('tu3', 'Edit', { file_path: 'Tarifa.java', old_string: '* 1.20', new_string: '* IVA' })
+    .resultado('tu3', '<tool_use_error>String to replace not found in file.</tool_use_error>',
+      { error: true })
+    .llamada('tu4', 'Edit', { file_path: 'Tarifa.java', old_string: '* 1.19', new_string: '* IVA' })
+    .resultado('tu4', 'ok')
+    .llamada('tu5', 'Bash', { command: './mvnw -q test  # rojo-esperado: ' +
+      'la prueba nueva falla antes del arreglo' })
+    .resultado('tu5', 'Tests run: 1, Failures: 1', { error: true })
+    .llamada('tu6', 'Bash', push)
+    .resultado('tu6', 'rama publicada');
+  const ev = (evento, toolUseId, arbol, seg, extra = {}) => ({ evento, toolUseId, arbol,
+    momento: enCaptura(0, seg), ...extra });
+  const captura = [
+    { evento: 'SessionStart', head, arbol: a0, momento: enCaptura(0, 0) },
+    ev('PreToolUse', 'tu0', a0, 2), ev('PostToolUse', 'tu0', a0, 2),
+    ev('PreToolUse', 'tu1', null, 5), ev('PostToolUse', 'tu1', null, 5),
+    ev('PreToolUse', 'tu2', a0, 8), ev('PostToolUse', 'tu2', a0, 8),
+    ev('PreToolUse', 'tu3', a0, 12), ev('PostToolUseFailure', 'tu3', a0, 12),
+    ev('PreToolUse', 'tu4', a0, 14), ev('PostToolUse', 'tu4', a1, 14),
+    ev('PreToolUse', 'tu5', a2, 16), ev('PostToolUseFailure', 'tu5', a2, 16),
+    ev('PreToolUse', 'tu6', a2, 18, { herramienta: 'Bash', entrada: huellaDeEntrada(push) }),
+    { evento: 'PermissionRequest', herramienta: 'Bash', entrada: huellaDeEntrada(push),
+      modo: 'default', momento: enCaptura(0, 18) },
+    ev('PostToolUse', 'tu6', a2, 18),
+    { evento: 'SessionEnd', arbol: a2, momento: enCaptura(0, 20) },
+  ];
+  const transcript = f.escribir(carpetaTemporal('sesion'));
+  const [registros] = [...compilar({ transcript, captura, raizRepo: repo.raiz }).actas.values()];
+  const carpeta = path.join(repo.raiz, '.ia', 'registros', '10');
+  fs.mkdirSync(carpeta, { recursive: true });
+  const cruda = path.join(carpeta, 'sesion-1.acta.cruda.jsonl');
+  fs.writeFileSync(cruda, serializar(registros));
+  const silencio = { log: () => {}, error: () => {} };
+  if (curarYEscribir({ cruda, raizRepo: repo.raiz, log: silencio }) !== 0) {
+    throw new Error('la sesion para el visor no se cura');
+  }
+  return { raiz: repo.raiz, cruda, curada: cruda.replace('.cruda.', '.curada.') };
 }

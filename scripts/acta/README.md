@@ -5,8 +5,8 @@ El registro de lo que hizo la IA en una sesión de Claude Code, según el
 [modelo conceptual](../../docs/modelo-conceptual-registro-ia.md). Esta carpeta trae la primera
 pieza, el **acta cruda** (#216), la **curada** que se deriva de ella (#218), el **índice de la
 tarea**, el **motor** que re-ejecuta la curada en Docker, la **conformidad** con los pasos que
-las skills marcan, el trailer `Registro-IA:` con su sensor del CI y la exportación a OCEL 2.0 y
-PROV-O (#222). El visor es una fase siguiente del #222.
+las skills marcan, el trailer `Registro-IA:` con su sensor del CI, la exportación a OCEL 2.0 y
+PROV-O y el **visor** para auditorías (#222).
 
 ## Cómo funciona
 
@@ -54,12 +54,14 @@ node scripts/acta/registrar-sesion.mjs [--sesion <id>] [--sin-stage]
 node scripts/acta/verificar-registro-ia.mjs --rango <A..B> [--cuerpo-pr <archivo>] [--sin-motor]
 node scripts/acta/deriva-huella.mjs <acta> [--hasta <commit>] [--modelo <id>]
 node scripts/acta/exportar-acta.mjs <acta> --formato ocel|prov [--salida <archivo>]
+node scripts/acta/visor-acta.mjs <acta.curada.jsonl> [--reporte <r.json>] [--sin-red] [--salida <f>]
 node --test scripts/acta/pruebas/compilar-acta.test.mjs scripts/acta/pruebas/capturar.test.mjs
 node --test scripts/acta/pruebas/curar-acta.test.mjs scripts/acta/pruebas/verificar-arbol.test.mjs
 node --test scripts/acta/pruebas/indexar-tarea.test.mjs scripts/acta/pruebas/ejecutar-acta.test.mjs
 node --test scripts/acta/pruebas/reejecutar-acta.test.mjs scripts/acta/pruebas/conformidad.test.mjs
 node --test scripts/acta/pruebas/verificar-registro-ia.test.mjs
 node --test scripts/acta/pruebas/deriva-huella.test.mjs scripts/acta/pruebas/exportar-acta.test.mjs
+node --test scripts/acta/pruebas/visor-acta.test.mjs
 ```
 
 `curar-acta.mjs` se corre desde dentro del repo: lee de él los blobs para verificar el árbol.
@@ -174,6 +176,41 @@ escenario de la fábrica, crudo y curado.
 
 El análisis entre actas queda para cuando haya unas 20: con menos, los patrones no significan nada
 (ADR-0005).
+
+## El visor
+
+`visor-acta.mjs` escribe un HTML autocontenido —sin red ni fuentes externas— que muestra la
+sesión como evidencia para una auditoría. Sigue el diseño E5, elegido entre mockups, y su fuente es
+[`jerarquia-proceso-actividad-tarea.md`](../../docs/jerarquia-proceso-actividad-tarea.md):
+
+- **Ficha de trazabilidad** de la acción seleccionada. Muestra el eje del trabajo (proceso,
+  actividad, tarea, paso y acción, con quién responde en cada nivel) y, justo debajo, el eje de la
+  documentación (manual, procedimiento, instructivo y registro), cada documento bajo el nivel que
+  describe.
+- **Eje del tiempo**: las 7 fases del ciclo de vida, con el gate de la fase en curso y, adentro, la
+  sesión en el orden en que ocurrió.
+- **Alcance de la verificación**: cuánto se re-ejecutó, aplicó o comparó, cuánto se tomó del
+  registro sin verificar y cuánto no es reproducible. Sin reporte del motor
+  (`<sesión>.acta.reporte.json`), todo dice «registrada, sin verificar».
+- **La tarea paso a paso**, con el porqué de cada paso, los intentos fallidos, las intervenciones
+  de la persona y, por acción, la verificación, la conformidad con el instructivo y el control de
+  la información documentada (ISO 9001, 7.5.3).
+- **Vistas de la tarea**: sesiones, archivos y quién los cambió, quién hizo cada cosa, y las pruebas
+  que debían fallar.
+
+Se lee en lenguaje común: «Turno 2», «Paso 3 de 5 · Triage each group», «Acción 9». Los ids del
+archivo aparecen solo en el bloque «Así está en el archivo del acta», y una prueba lo exige. Todo el
+contenido del acta entra a la página como datos y se pinta como texto: un comando grabado nunca se
+interpreta como HTML. La página vive en `visor/visor.css` y `visor/visor.js`; el generador los
+copia dentro del HTML.
+
+**Lo que configura la empresa**, en `proceso.json`: el nombre del proceso, su dueño, el manual,
+los gates de cada fase y la traducción de los pasos de cada skill. Lo que no está configurado se
+muestra como un campo a completar, nunca inventado. La persona asignada y el título salen del
+issue en GitHub (`gh issue view`); con `--sin-red` o `--asignado` no se consulta.
+
+Las capturas de Playwright que menciona el ADR-0005 no se incrustan todavía: el acta no las
+registra.
 
 ## Intervenciones
 

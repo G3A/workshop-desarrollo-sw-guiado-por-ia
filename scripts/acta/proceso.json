@@ -1,0 +1,23 @@
+{
+  "proceso": "Desarrollo de software asistido por IA",
+  "dueno": null,
+  "manual": "Playbook del método sdlc-ia y ADR-0005, el registro de la IA",
+  "fases": [
+    { "numero": 0, "nombre": "Fundamentos", "gate": null },
+    { "numero": 1, "nombre": "Cultura de IA", "gate": null },
+    { "numero": 2, "nombre": "Preparación del terreno", "gate": null },
+    { "numero": 3, "nombre": "Ciclo por feature", "gate": null },
+    { "numero": 4, "nombre": "Retroalimentación", "gate": null },
+    { "numero": 5, "nombre": "Métricas y reporte", "gate": null },
+    { "numero": 6, "nombre": "Adopción por etapas", "gate": null }
+  ],
+  "traducciones": {
+    "debt-triage": {
+      "1": "Buscar el analizador",
+      "2": "Traer y agrupar los hallazgos",
+      "3": "Triar cada grupo",
+      "4": "Proponer, pedir aprobación y escribir",
+      "5": "Verificar y reportar"
+    }
+  }
+}
