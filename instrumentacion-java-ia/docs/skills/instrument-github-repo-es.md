@@ -28,6 +28,21 @@ No recibe argumentos.
 | Ruleset en la rama de integración | No hay merge sin el check en verde y una revisión |
 | Ruleset en la rama de liberación, solo si el repositorio tiene una | Lo mismo, con el método de merge que las liberaciones necesitan |
 
+## Marcadores de paso
+
+La skill declara la **fase 2 del método** (preparación del terreno) y marca sus pasos para el
+registro de la IA (#230). Al empezar cada fase, y al retomarla después de una respuesta tuya,
+escribe una línea sola como esta:
+
+```text
+[sdlc-ia:step skill=instrument-github-repo step=2 method-phase=2]
+```
+
+Con esa línea, el acta de la sesión sabe a qué fase de esta skill pertenece cada acción, y
+`scripts/acta/conformidad.mjs` puede decir qué fases se omitieron, repitieron o desordenaron. Sin
+ella, el registro no adivina. El protocolo completo está en
+[`docs/protocolo-de-marcadores-de-paso.md`](../../../docs/protocolo-de-marcadores-de-paso.md).
+
 ## Fases principales
 
 1. **Descubrimiento silencioso** — resuelve la topología de ramas leyendo `AGENTS.md` antes que

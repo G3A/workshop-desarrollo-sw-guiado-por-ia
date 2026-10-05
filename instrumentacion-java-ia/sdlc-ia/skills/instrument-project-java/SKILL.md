@@ -28,6 +28,17 @@ You install thirteen controls, prove each one fails when it should, and record t
 | 12 | Test suite separation | `maven-failsafe-plugin`, `make test` / `make verify` | Fast and slow tests running as one, so neither can be required |
 | 13 | Quality gate (SonarQube) | `sonar-maven-plugin`, `sonar.qualitygate.wait`, `sonar` CI job | New code merging below the team's own bar; `debt-triage` finding no analyzer to triage |
 
+## Step markers
+
+This skill belongs to **method phase 2** (preparing the ground). The session record reads which
+phase of this file each action belongs to from a marker line you write — it never guesses:
+
+- When you start each Phase below, before its first tool call, write this line on its own,
+  with the Phase number: `[sdlc-ia:step skill=instrument-project-java step=2 method-phase=2]`.
+- When you resume after the user replies, write the marker of the Phase you are in again.
+- Going back to an earlier Phase gets its marker too.
+- Write it exactly like that, one per line, and nothing else on the line. Subagents don't write it.
+
 ## Philosophy
 
 - **Never hardcode a version.** Read JDK/Maven from the repo's own wrapper and POM; resolve

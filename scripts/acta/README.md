@@ -251,10 +251,10 @@ sus subagentes en `<sesión>/subagents/`. Los comandos son los mismos en PowerSh
   #218, que recompilada con #222 sigue sin curarse por las acciones a236 a a239. No hay de dónde
   recuperar sus árboles; la causa, el hook que no cargaba, ya no se repite.
 
-- **Pasos del instructivo de casi todas las skills.** Solo `debt-triage` marca sus pasos
-  ([protocolo](../../docs/protocolo-de-marcadores-de-paso.md)). En las demás, cada paso es el turno
-  completo, con procedencia `ausente` (PC-04), la fase queda en `null` y
-  `conformidad.mjs` responde «sin datos».
+- **Los pasos que viven en los `references/`.** Las nueve skills marcan sus `Phase N`
+  ([protocolo](../../docs/protocolo-de-marcadores-de-paso.md)), pero los `Step A` a `K` de
+  `github-plan-build` están en sus `references/`, que la conformidad no lee todavía: la Phase 4
+  los cubre entera.
 - **Permisos que resolvió otro hook.** Si un hook responde un `PermissionRequest` antes que la
   persona, el acta no lo sabe y lo cuenta como aprobación de la persona. En este repo ningún hook
   responde pedidos de permiso.

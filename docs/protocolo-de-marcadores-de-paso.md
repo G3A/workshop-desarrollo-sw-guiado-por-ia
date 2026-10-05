@@ -14,7 +14,9 @@ Una línea sola en el texto de la skill, con este formato exacto:
 
 - `skill`: el nombre de la carpeta de la skill.
 - `step`: el número de un encabezado `Phase N` o la letra, una sola mayúscula, de un `Step X`
-  de su `SKILL.md`, tal como está escrito en el encabezado.
+  de su `SKILL.md`, tal como está escrito en el encabezado. Si el `SKILL.md` no tiene esos
+  encabezados, el de una fila de su tabla de fases, cuya primera columna es `Phase` o `Step`
+  (`| 1 — Discover (silent) | …`).
 - `method-phase`: la fase del playbook que la skill declara, de 0 a 6. Es la misma en todos los
   marcadores de la skill; no se deduce del paso.
 
@@ -67,9 +69,22 @@ omitidos: inferirlos metería una heurística en el registro (PC-04).
 
 | Skill | Fase del método | Pasos |
 |---|---|---|
+| `agent-context-java` | 2 · Preparación del terreno | Phase 1 a 6 |
 | `debt-triage` | 2 · Preparación del terreno | Phase 1 a 5 |
+| `instrument-agent-java` | 2 · Preparación del terreno | Phase 1 a 6 |
+| `instrument-github-repo` | 2 · Preparación del terreno | Phase 1 a 6 |
+| `instrument-project-java` | 2 · Preparación del terreno | Phase 1 a 5 |
+| `legacy-test-harness` | 2 · Preparación del terreno | Phase 1 a 8 |
+| `github-plan-build` | 3 · Ciclo por feature | Phase 0 a 4 |
+| `requirement-to-spec-java` | 3 · Ciclo por feature | Phase 1 a 6, en la tabla de fases |
+| `impact-metrics` | 5 · Métricas y reporte | Phase 1 a 6 |
 
-Las otras ocho se suman una por una.
+Las nueve marcan sus pasos desde #230. La fase del método de cada una es la de su actividad en el
+catálogo de `scripts/acta/proceso.json`, y una prueba de `conformidad.test.mjs` exige que el
+marcador de cada `SKILL.md` la declare y que `proceso.json` traduzca exactamente sus pasos.
+
+Los `Step A` a `K` del ciclo de construcción de `github-plan-build` viven en sus
+`references/`, que la conformidad todavía no lee: por ahora el marcador de la Phase 4 los cubre.
 
 ## El plan de un issue, sin skill
 
