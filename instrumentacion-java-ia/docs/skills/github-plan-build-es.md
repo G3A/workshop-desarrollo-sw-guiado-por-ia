@@ -34,6 +34,24 @@ que sabe manejar, no una condición para funcionar.
   Si eliges detenerte, no hay push, ni PR, ni comentario en el issue: te deja los comandos exactos
   para seguir a mano. Sin este argumento, el push no pide confirmación.
 
+## Marcadores de paso
+
+La skill declara la **fase 3 del método** (ciclo por feature) y marca sus pasos para el
+registro de la IA (#230). Al empezar cada fase, y al retomarla después de una respuesta tuya,
+escribe una línea sola como esta:
+
+```text
+[sdlc-ia:step skill=github-plan-build step=1 method-phase=3]
+```
+
+Los pasos del ciclo de construcción, dentro de la fase 4, todavía no llevan marcador propio:
+los cubre el de la fase 4.
+
+Con esa línea, el acta de la sesión sabe a qué fase de esta skill pertenece cada acción, y
+`scripts/acta/conformidad.mjs` puede decir qué fases se omitieron, repitieron o desordenaron. Sin
+ella, el registro no adivina. El protocolo completo está en
+[`docs/protocolo-de-marcadores-de-paso.md`](../../../docs/protocolo-de-marcadores-de-paso.md).
+
 ## Resumen de las fases
 
 1. **Resolver el acceso** — confirma que la CLI `gh` está autenticada y que el repositorio

@@ -17,6 +17,17 @@ You MUST NOT write application code, install dependencies, or run destructive co
 outputs are Markdown files at the project root, under `docs/`, and — for the three files an
 external reader loads — at the repository root. Phase 1a resolves which is which.
 
+## Step markers
+
+This skill belongs to **method phase 2** (preparing the ground). The session record reads which
+phase of this file each action belongs to from a marker line you write — it never guesses:
+
+- When you start each Phase below, before its first tool call, write this line on its own,
+  with the Phase number: `[sdlc-ia:step skill=agent-context-java step=2 method-phase=2]`.
+- When you resume after the user replies, write the marker of the Phase you are in again.
+- Going back to an earlier Phase gets its marker too.
+- Write it exactly like that, one per line, and nothing else on the line. Subagents don't write it.
+
 ## Philosophy (hold these in mind throughout)
 
 - **AGENTS.md is a table of contents, not an encyclopedia.** Keep it under ~80 lines.

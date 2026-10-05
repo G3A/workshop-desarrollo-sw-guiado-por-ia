@@ -17,6 +17,16 @@ from that folder (see the README, "Actualizar cuando sale una versión nueva", a
 
 ### Added
 
+- **The other eight skills mark their steps for the session record** (#230). Each `SKILL.md`
+  gets a "Step markers" section that declares its method phase — 2 for `agent-context-java`,
+  `instrument-agent-java`, `instrument-github-repo`, `instrument-project-java` and
+  `legacy-test-harness`; 3 for `github-plan-build` and `requirement-to-spec-java`; 5 for
+  `impact-metrics` — and writes `[sdlc-ia:step skill=<name> step=<Phase> method-phase=<N>]` when it
+  starts each Phase and when it resumes after the user replies. `requirement-to-spec-java` lists
+  its phases in a table, which the conformity now reads. The Steps A–K of the
+  `github-plan-build` build loop live in its `references/` and get no marker of their own yet.
+  Each Spanish doc, its visor node and its playbook box say the same.
+
 - **`debt-triage` marks its steps for the session record** (#222, phase 4). It declares method
   phase 2 and writes `[sdlc-ia:step skill=debt-triage step=<Phase> method-phase=2]` on its own
   line when it starts each Phase, and again when it resumes after the user replies. The acta

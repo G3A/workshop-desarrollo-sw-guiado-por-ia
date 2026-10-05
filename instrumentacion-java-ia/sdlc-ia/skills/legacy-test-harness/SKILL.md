@@ -32,6 +32,17 @@ throughout:
    first non-trivial shell command. Every command this skill runs has to work the same in
    PowerShell 5.1, PowerShell 7 and bash.
 
+## Step markers
+
+This skill belongs to **method phase 2** (preparing the ground). The session record reads which
+phase of this file each action belongs to from a marker line you write — it never guesses:
+
+- When you start each Phase below, before its first tool call, write this line on its own,
+  with the Phase number: `[sdlc-ia:step skill=legacy-test-harness step=2 method-phase=2]`.
+- When you resume after the user replies, write the marker of the Phase you are in again.
+- Going back to an earlier Phase gets its marker too.
+- Write it exactly like that, one per line, and nothing else on the line. Subagents don't write it.
+
 ## Philosophy
 
 - **Map before you touch.** A seam map built without running anything is cheap to be wrong about; a

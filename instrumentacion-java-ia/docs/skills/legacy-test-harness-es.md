@@ -43,6 +43,21 @@ Cada capa tiene **dos varas distintas**, y confundirlas es como una corrida apru
 con el censo a medias: la **meta** es el censo (o el tramo acordado), y el **piso** es el mínimo de
 calidad de esa capa. Cumplir el piso con el censo a medias no pasa el gate.
 
+## Marcadores de paso
+
+La skill declara la **fase 2 del método** (preparación del terreno) y marca sus pasos para el
+registro de la IA (#230). Al empezar cada fase, y al retomarla después de una respuesta tuya,
+escribe una línea sola como esta:
+
+```text
+[sdlc-ia:step skill=legacy-test-harness step=2 method-phase=2]
+```
+
+Con esa línea, el acta de la sesión sabe a qué fase de esta skill pertenece cada acción, y
+`scripts/acta/conformidad.mjs` puede decir qué fases se omitieron, repitieron o desordenaron. Sin
+ella, el registro no adivina. El protocolo completo está en
+[`docs/protocolo-de-marcadores-de-paso.md`](../../../docs/protocolo-de-marcadores-de-paso.md).
+
 ## Las ocho fases
 
 1. **Huella** — detecta el/los stack(s), la herramienta de build y el framework de pruebas por

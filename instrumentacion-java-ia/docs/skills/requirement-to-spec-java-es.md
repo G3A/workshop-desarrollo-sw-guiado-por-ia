@@ -24,6 +24,21 @@ ramas y abre PRs, por diseño, una vez que un plan quedó aprobado).
 /sdlc-ia:requirement-to-spec-java <ruta al documento de requisitos>
 ```
 
+## Marcadores de paso
+
+La skill declara la **fase 3 del método** (ciclo por feature) y marca sus pasos para el
+registro de la IA (#230). Al empezar cada fase, y al retomarla después de una respuesta tuya,
+escribe una línea sola como esta:
+
+```text
+[sdlc-ia:step skill=requirement-to-spec-java step=2 method-phase=3]
+```
+
+Con esa línea, el acta de la sesión sabe a qué fase de esta skill pertenece cada acción, y
+`scripts/acta/conformidad.mjs` puede decir qué fases se omitieron, repitieron o desordenaron. Sin
+ella, el registro no adivina. El protocolo completo está en
+[`docs/protocolo-de-marcadores-de-paso.md`](../../../docs/protocolo-de-marcadores-de-paso.md).
+
 ## Las seis fases
 
 1. **Descubrimiento silencioso** — convierte el documento a Markdown si hace falta (vía `pandoc`,

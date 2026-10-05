@@ -34,10 +34,25 @@ const RUTA_SKILL = /(^|\/)skills\/([^/]+)\/SKILL\.md$/;
 // Un numero o UNA mayuscula: «## Step markers» es un encabezado sobre los marcadores, no un paso.
 const ENCABEZADO = /^#{2,4}\s*`?(Phase|Step)\s+([0-9]+|[A-Z])\b`?\s*(?:[—:-]+\s*)?(.*)$/gm;
 
-// Los pasos prescritos de un instructivo, en orden.
+// Una fila de la tabla de fases, como en requirement-to-spec-java: «| 1 — Discover (silent) | …».
+const FILA_DE_FASE = /^\|\s*([0-9]+|[A-Z])\s*[—:-]+\s*([^|]+?)\s*\|/;
+
+// Los pasos prescritos de un instructivo, en orden: sus encabezados Phase/Step o, si no tiene,
+// las filas de la tabla cuya primera columna es «Phase» o «Step» (#230).
 export function pasosPrescritos(texto) {
-  return [...String(texto).matchAll(ENCABEZADO)]
+  const encabezados = [...String(texto).matchAll(ENCABEZADO)]
     .map((m, i) => ({ letra: m[2], titulo: m[3].trim(), orden: i + 1 }));
+  if (encabezados.length) return encabezados;
+  const lineas = String(texto).split(/\r?\n/);
+  const inicio = lineas.findIndex((l) => /^\|\s*(Phase|Step)\s*\|/.test(l));
+  if (inicio < 0) return [];
+  const pasos = [];
+  for (const l of lineas.slice(inicio + 2)) {
+    if (!l.startsWith('|')) break;
+    const m = FILA_DE_FASE.exec(l);
+    if (m) pasos.push({ letra: m[1], titulo: m[2], orden: pasos.length + 1 });
+  }
+  return pasos;
 }
 
 // Los pasos del plan de un issue (#230): sus encabezados numerados, con o sin la palabra

@@ -31,6 +31,17 @@ Two artifacts, in this order:
 
 MCP first, hooks second. MCP only adds capability; hooks take it away.
 
+## Step markers
+
+This skill belongs to **method phase 2** (preparing the ground). The session record reads which
+phase of this file each action belongs to from a marker line you write — it never guesses:
+
+- When you start each Phase below, before its first tool call, write this line on its own,
+  with the Phase number: `[sdlc-ia:step skill=instrument-agent-java step=2 method-phase=2]`.
+- When you resume after the user replies, write the marker of the Phase you are in again.
+- Going back to an earlier Phase gets its marker too.
+- Write it exactly like that, one per line, and nothing else on the line. Subagents don't write it.
+
 ## The catalogue
 
 Nine hooks. **1 and 2 are the default**; 3 to 9 are offered, and 6, 7, 8 and 9 only when the
