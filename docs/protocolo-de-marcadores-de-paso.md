@@ -58,6 +58,7 @@ hoy:
 - **Fuera de orden**: un paso que llega después de otro posterior en el instructivo.
 - **No prescritos**: un `step` que el instructivo no tiene.
 - **Acciones sin paso**: las de los pasos `ausente` (PC-06).
+- **Iteraciones**: las vueltas por un bucle que el instructivo declara (ver abajo).
 
 Los hechos se reportan, no se juzgan: volver de la Phase 5 a la 3 es lo que `debt-triage` manda
 cuando falla su gate.
@@ -83,8 +84,35 @@ Las nueve marcan sus pasos desde #230. La fase del método de cada una es la de 
 catálogo de `scripts/acta/proceso.json`, y una prueba de `conformidad.test.mjs` exige que el
 marcador de cada `SKILL.md` la declare y que `proceso.json` traduzca exactamente sus pasos.
 
-Los `Step A` a `K` del ciclo de construcción de `github-plan-build` viven en sus
-`references/`, que la conformidad todavía no lee: por ahora el marcador de la Phase 4 los cubre.
+## Pasos en los `references/`
+
+Un `SKILL.md` puede delegar pasos en sus `references/`: los `Step A` a `K` de
+`github-plan-build` están en `build-loop.md` y `build-loop-execute.md` (#230). La huella registra
+siempre los `references/` de cada skill invocada, en la versión del HEAD base, aunque la sesión no
+los lea, y la conformidad los toma de ahí con estas reglas:
+
+1. **Solo cuentan los `Step <LETRA>`.** Un `Phase N` en un reference repite el mapa del
+   `SKILL.md` (lo hacen `legacy-test-harness` y `requirement-to-spec-java`), y un `Step 1` choca
+   con la Phase 1 (`claim-validation.md` de `agent-context-java`). Ninguno de los dos es un paso
+   aparte.
+2. **Van anidados bajo la Phase cuya sección nombra el archivo**, justo después de ella y en el
+   orden en que la sección lo nombra. En `github-plan-build` queda 0, 1, 2, 3, 4, A, …, K.
+3. **Si el acta no trae un reference que la sección nombra**, se dice en `referenciasFaltantes`
+   y sus pasos no se inventan.
+
+## Bucles declarados
+
+Un regreso que el instructivo manda no es un error. El `SKILL.md` lo declara en una línea:
+
+```text
+- **Loop:** from Step I back to Step G — a red CI sends you to fix it, re-run the gates…
+```
+
+Volver de un paso entre `G` e `I` a `G` es una vuelta del bucle: se cuenta en `iteraciones`, y
+pasar otra vez por G, H e I durante esa vuelta no es repetirlos ni salir de orden. Un regreso que el
+instructivo no declara sigue siendo «repetido» y «fuera de orden»: el registro no supone que fue a
+propósito. Hoy solo `github-plan-build` declara un bucle; el regreso de la Phase 5 a la 3 de
+`debt-triage` se reporta como hecho, sin declarar.
 
 ## El plan de un issue, sin skill
 

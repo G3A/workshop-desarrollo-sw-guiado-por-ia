@@ -31,6 +31,7 @@ import { leerActa } from './validar-acta.mjs';
 import { BLOQUE_DE_CODIGO, PLAN_DE_ISSUE } from './compilar-acta.mjs';
 
 const RUTA_SKILL = /(^|\/)skills\/([^/]+)\/SKILL\.md$/;
+const RUTA_REFERENCIA = /(^|\/)skills\/([^/]+)\/references\/([^/]+\.md)$/;
 // Un numero o UNA mayuscula: «## Step markers» es un encabezado sobre los marcadores, no un paso.
 const ENCABEZADO = /^#{2,4}\s*`?(Phase|Step)\s+([0-9]+|[A-Z])\b`?\s*(?:[—:-]+\s*)?(.*)$/gm;
 
@@ -65,6 +66,49 @@ export function pasosDelPlan(texto) {
     .map((m, i) => ({ letra: m[1], titulo: m[2].trim(), orden: i + 1 }));
 }
 
+// Los pasos que el SKILL.md delega en sus references/ (#230). Solo cuentan los `Step <LETRA>`: un
+// `Phase N` de un reference repite el mapa del SKILL.md, y un `Step 1` chocaria con la Phase 1. Van
+// anidados bajo la Phase cuya seccion nombra el archivo, en el orden en que los nombra.
+const STEP_CON_LETRA = /^#{2,4}\s*`?Step\s+([A-Z])\b`?\s*(?:[—:-]+\s*)?(.*)$/gm;
+const SECCION_DE_FASE = /^## `?Phase\s+([0-9]+)\b[^\n]*\n([\s\S]*?)(?=^## |(?![\s\S]))/gm;
+
+// Un regreso que el instructivo manda, declarado en el SKILL.md: «**Loop:** from Step I back to
+// Step G». Volver asi no es repetir ni salir de orden: es una iteracion.
+const PASO = '(?:Step|Phase) ([0-9]+|[A-Z])';
+const BUCLE = new RegExp(`\\*\\*Loop:\\*\\* from ${PASO} back to ${PASO}\\b`, 'g');
+
+export function bucles(textoSkill) {
+  return [...String(textoSkill).matchAll(BUCLE)].map((m) => ({ desde: m[1], hacia: m[2] }));
+}
+
+export function pasosDeLaSkill(textoSkill, leerReferencia = () => null) {
+  const fases = pasosPrescritos(textoSkill);
+  const anidados = new Map();
+  const faltan = [];
+  for (const m of String(textoSkill).matchAll(SECCION_DE_FASE)) {
+    const nombrados = [...m[2].matchAll(/references\/([\w.-]+\.md)/g)].map((x) => x[1]);
+    const archivos = [...new Set(nombrados)];
+    const pasos = [];
+    for (const archivo of archivos) {
+      const texto = leerReferencia(archivo);
+      if (texto === null) {
+        faltan.push(archivo);
+        continue;
+      }
+      for (const s of String(texto).matchAll(STEP_CON_LETRA)) {
+        pasos.push({ letra: s[1], titulo: s[2].trim(), dentroDe: m[1], archivo });
+      }
+    }
+    if (pasos.length) anidados.set(m[1], pasos);
+  }
+  const todos = [];
+  for (const f of fases) {
+    todos.push(f);
+    for (const p of anidados.get(f.letra) || []) todos.push(p);
+  }
+  return { pasos: todos.map((p, i) => ({ ...p, orden: i + 1 })), faltan };
+}
+
 function textoDelBlob(raizRepo, hash) {
   if (!raizRepo || !hash) return null;
   return git(['cat-file', 'blob', hash], { cwd: raizRepo, permitirFallo: true });
@@ -86,9 +130,12 @@ export function conformidad(registros, { raizRepo = null, planDelIssue = null } 
     .filter((r) => r.elemento === 'accion' && ausentes.has(r.paso)).map((a) => a.id);
 
   const instructivos = new Map();
+  const referencias = new Map();
   for (const d of cabecera.huella?.documentos || []) {
     const m = RUTA_SKILL.exec(d.ruta);
     if (m) instructivos.set(m[2], d);
+    const r = RUTA_REFERENCIA.exec(d.ruta);
+    if (r) referencias.set(`${r[2]}/${r[3]}`, d);
   }
 
   const skills = [...new Set(marcados.map((p) => p.pasoPrescrito.skill))].sort();
@@ -117,16 +164,41 @@ export function conformidad(registros, { raizRepo = null, planDelIssue = null } 
           : doc ? 'el blob del instructivo no esta en el repo'
             : 'la huella del acta no registra su instructivo' };
     }
-    const prescritos = esPlan ? pasosDelPlan(texto) : pasosPrescritos(texto);
+    const leerReferencia = (archivo) => {
+      const d = referencias.get(`${skill}/${archivo}`);
+      return d ? textoDelBlob(raizRepo, d.hash) : null;
+    };
+    const deLaSkill = esPlan ? { pasos: pasosDelPlan(texto), faltan: [] }
+      : pasosDeLaSkill(texto, leerReferencia);
+    const prescritos = deLaSkill.pasos;
+    const declarados = esPlan ? [] : bucles(texto);
     const orden = new Map(prescritos.map((p) => [p.letra, p.orden]));
     const vistos = new Set(ejecutados);
-    const repetidos = [...vistos].filter((l) => ejecutados.filter((x) => x === l).length > 1);
+    // Una vuelta por un bucle declarado: de un paso entre «hacia» y «desde» se vuelve a «hacia».
+    // Mientras dure la vuelta, pasar otra vez por esos pasos no es repetirlos.
+    const repetidos = new Set();
     const fueraDeOrden = [];
+    const iteraciones = new Map();
+    const yaVistos = new Set();
     let maximo = 0;
+    let vuelta = null;
     ejecutados.forEach((letra, i) => {
       const n = orden.get(letra);
       if (n === undefined) return;
+      if (vuelta && (n < vuelta.de || n > vuelta.a)) vuelta = null;
+      const bucle = n < maximo && declarados.find((b) => b.hacia === letra &&
+        orden.get(ejecutados[i - 1]) <= orden.get(b.desde) &&
+        orden.get(ejecutados[i - 1]) >= n);
+      if (bucle) {
+        const clave = `${bucle.desde}>${bucle.hacia}`;
+        iteraciones.set(clave, (iteraciones.get(clave) || 0) + 1);
+        vuelta = { de: n, a: orden.get(bucle.desde) };
+        maximo = n;
+        return;
+      }
+      if (yaVistos.has(letra) && !vuelta) repetidos.add(letra);
       if (n < maximo) fueraDeOrden.push({ letra, despuesDe: ejecutados[i - 1] });
+      yaVistos.add(letra);
       maximo = Math.max(maximo, n);
     });
     return {
@@ -135,8 +207,13 @@ export function conformidad(registros, { raizRepo = null, planDelIssue = null } 
       ejecutados,
       prescritos,
       omitidos: prescritos.map((p) => p.letra).filter((l) => !vistos.has(l)),
-      repetidos,
+      repetidos: [...repetidos],
       fueraDeOrden,
+      iteraciones: [...iteraciones].map(([k, veces]) => {
+        const [desde, hacia] = k.split('>');
+        return { desde, hacia, veces };
+      }),
+      referenciasFaltantes: deLaSkill.faltan,
       noPrescritos: [...vistos].filter((l) => !orden.has(l)),
       motivo: null,
     };

@@ -291,3 +291,14 @@ test('sin plan guardado falta el instructivo; sin marcas, la actividad no se adi
   assert.equal(sinMarcas.documentacion.procedimiento.nombre, 'AGENTS.md del repositorio',
     'AGENTS.md se carga en toda sesion: es un hecho, no una inferencia');
 });
+
+test('conformidad: las vueltas de un bucle y los references que faltan, en palabras', () => {
+  const { entradas } = vistaDeLaSesion();
+  const [actividad] = entradas.conformidad.actividades;
+  const conBucle = { ...entradas.conformidad, actividades: [{ ...actividad,
+    iteraciones: [{ desde: 'I', hacia: 'G', veces: 2 }],
+    referenciasFaltantes: ['build-loop.md'] }] };
+  const { notas } = construirVista({ ...entradas, conformidad: conBucle }).conformidad;
+  assert.ok(notas.includes('2 vueltas del paso I al G, como el instructivo lo manda.'), notas);
+  assert.ok(notas.some((n) => /^El acta no trae build-loop\.md/.test(n)), notas);
+});

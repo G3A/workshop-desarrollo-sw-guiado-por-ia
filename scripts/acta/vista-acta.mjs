@@ -413,6 +413,17 @@ export function construirVista({
             };
           }),
           notas: [
+            ...(actividad.iteraciones || []).map(
+              (b) =>
+                `${plural(b.veces, 'vuelta', 'vueltas')} del paso ${b.desde} al ${b.hacia}, ` +
+                'como el instructivo lo manda.',
+            ),
+            ...((actividad.referenciasFaltantes || []).length
+              ? [
+                  `El acta no trae ${actividad.referenciasFaltantes.join(', ')}: los pasos ` +
+                    'que el instructivo delega ahí no se comparan.',
+                ]
+              : []),
             ...(actividad.repetidos.length
               ? [
                   `Se volvió a ${plural(actividad.repetidos.length, 'paso', 'pasos')} ` +

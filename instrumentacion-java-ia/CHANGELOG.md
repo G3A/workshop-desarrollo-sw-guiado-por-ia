@@ -17,6 +17,13 @@ from that folder (see the README, "Actualizar cuando sale una versión nueva", a
 
 ### Added
 
+- **`github-plan-build` marks the Steps A–K of its build loop** (#230). Inside Phase 4 each Step
+  gets its own marker with the Step letter, and the `SKILL.md` declares its one legitimate loop —
+  `**Loop:** from Step I back to Step G`, a red CI — so the session record counts each round as
+  an iteration instead of a repeated, out-of-order step. The acta now records every `references/`
+  file of an invoked skill, and the conformity reads the `Step <letter>` headings there, nested
+  under the Phase whose section names the file.
+
 - **The other eight skills mark their steps for the session record** (#230). Each `SKILL.md`
   gets a "Step markers" section that declares its method phase — 2 for `agent-context-java`,
   `instrument-agent-java`, `instrument-github-repo`, `instrument-project-java` and

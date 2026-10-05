@@ -695,6 +695,12 @@ function documentosUsados(raizRepo, commit, skills, acciones) {
   for (const s of skills) {
     const nombre = s.split(':').pop();
     rutas.add(`${RUTA_PLUGIN}/skills/${nombre}/SKILL.md`);
+    // Sus references/ van siempre, los haya leido la sesion o no: la conformidad lee de ahi los
+    // pasos que el SKILL.md delega, en la version que la huella registra (#230).
+    const carpeta = `${RUTA_PLUGIN}/skills/${nombre}/references/`;
+    const ls = git(['ls-tree', '--name-only', commit, '--', carpeta],
+      { cwd: raizRepo, permitirFallo: true });
+    for (const r of (ls || '').split('\n').filter((x) => x.endsWith('.md'))) rutas.add(r);
   }
   for (const a of acciones) {
     if (a.herramienta !== 'Read' || !a.entrada.file_path) continue;

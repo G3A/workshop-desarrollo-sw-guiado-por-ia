@@ -37,7 +37,18 @@
       "1": "Leer el issue y resolver el vínculo del estado",
       "2": "Preparar el entorno de git",
       "3": "Presentar el resumen del issue",
-      "4": "Ejecutar el ciclo de construcción"
+      "4": "Ejecutar el ciclo de construcción",
+      "A": "Preguntar a fondo a la persona",
+      "B": "Explorar",
+      "C": "Redactar el plan",
+      "D": "Revisión adversarial",
+      "E": "Punto de aprobación (condicional)",
+      "F": "Implementar, con la prueba primero",
+      "G": "Gates",
+      "H": "Commit, push y abrir el PR",
+      "I": "Esperar el CI en verde y atender los comentarios de revisión",
+      "J": "Cerrar",
+      "K": "Enrutar la lección"
     },
     "impact-metrics": {
       "1": "Descubrir (en silencio)",
