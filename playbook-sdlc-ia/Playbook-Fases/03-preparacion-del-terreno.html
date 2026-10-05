@@ -415,7 +415,7 @@
     <h2>Triaja la deuda que ya estaba</h2>
     <p><code>/sdlc-ia:debt-triage</code>. Sumar un agente a un repositorio con deuda sin atender no la resuelve: la multiplica. La skill agrupa los hallazgos abiertos <strong>por regla, no por archivo</strong> —la misma regla disparando 40 veces suele compartir una sola línea de razonamiento— y a cada uno le pone un veredicto con su motivo: <strong>real</strong>, <strong>falso positivo</strong> o <strong>riesgo aceptado</strong>.</p>
     <p>Nunca aplica el auto-fix de la herramienta a ciegas, y nunca cambia comportamiento sin red: un hallazgo real en código sin ninguna prueba cerca queda mejor como issue archivado que como un cambio silencioso.</p>
-    <p>Es la primera skill que <strong>marca sus pasos</strong> para el registro de la IA: al empezar cada fase escribe una línea <code>[sdlc-ia:step skill=debt-triage step=N method-phase=2]</code>, y así el acta sabe a qué fase de la skill pertenece cada acción y puede decir cuáles se omitieron o se repitieron.</p>
+    <p>Es la primera skill que <strong>marca sus pasos</strong> para el registro de la IA: al empezar cada fase escribe una línea <code>[sdlc-ia:step skill=debt-triage step=N method-phase=2]</code>, y así el acta sabe a qué fase de la skill pertenece cada acción y puede decir cuáles se omitieron o se repitieron. Cuando falla una fila de su gate y vuelve de la fase 5 a la 3, esa vuelta se cuenta como una iteración del bucle que la skill declara, no como una fase repetida.</p>
     <div class="fuente"><b>Fuente:</b> <code>debt-triage/SKILL.md</code>; visor, nodo «Pagar deuda técnica existente» (<code>ds</code>).</div>
   </section>
 

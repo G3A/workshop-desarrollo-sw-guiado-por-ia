@@ -111,8 +111,8 @@ Un regreso que el instructivo manda no es un error. El `SKILL.md` lo declara en 
 Volver de un paso entre `G` e `I` a `G` es una vuelta del bucle: se cuenta en `iteraciones`, y
 pasar otra vez por G, H e I durante esa vuelta no es repetirlos ni salir de orden. Un regreso que el
 instructivo no declara sigue siendo «repetido» y «fuera de orden»: el registro no supone que fue a
-propósito. Hoy solo `github-plan-build` declara un bucle; el regreso de la Phase 5 a la 3 de
-`debt-triage` se reporta como hecho, sin declarar.
+propósito. Hoy declaran un bucle dos skills: `github-plan-build`, de la `I` a la `G`, y
+`debt-triage`, de la Phase 5 a la 3, cuando falla una fila de su gate (#235).
 
 ## El plan de un issue, sin skill
 

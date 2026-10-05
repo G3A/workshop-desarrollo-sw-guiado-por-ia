@@ -17,6 +17,11 @@ from that folder (see the README, "Actualizar cuando sale una versión nueva", a
 
 ### Added
 
+- **`debt-triage` declares its loop from Phase 5 back to Phase 3** (#235). A failed gate row
+  sends you back to Phase 3 for the findings it names; the "Step markers" section now says so
+  with `**Loop:** from Phase 5 back to Phase 3`, so the session record counts each round as an
+  iteration instead of reporting Phase 3 as repeated and out of order.
+
 - **`github-plan-build` marks the Steps A–K of its build loop** (#230). Inside Phase 4 each Step
   gets its own marker with the Step letter, and the `SKILL.md` declares its one legitimate loop —
   `**Loop:** from Step I back to Step G`, a red CI — so the session record counts each round as

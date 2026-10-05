@@ -33,7 +33,9 @@ phase of this file each action belongs to from a marker line you write — it ne
 - When you start each Phase below, before its first tool call, write this line on its own,
   with the Phase number: `[sdlc-ia:step skill=debt-triage step=2 method-phase=2]`.
 - When you resume after the user replies, write the marker of the Phase you are in again.
-- Going back to an earlier Phase (a failed gate row sends you to Phase 3) gets its marker too.
+- **Loop:** from Phase 5 back to Phase 3 — a failed gate row sends you to fix the findings it
+  names. Write the markers of Phases 3, 4 and 5 again on each round: the record counts it as an
+  iteration of the loop, not as a repeated step.
 - Write it exactly like that, one per line, and nothing else on the line. Subagents don't write it.
 
 ## Philosophy
