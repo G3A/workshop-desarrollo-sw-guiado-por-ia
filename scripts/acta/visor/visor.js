@@ -360,7 +360,7 @@
           el('summary', null, [
             el('b', { text: pasoTexto(p) }),
             p.traduccion ? el('span', { class: 'codigo', text: '«' + p.traduccion + '»' }) : null,
-            p.marcado ? el('span', { class: 'chip', text: 'lo marcó la skill' }) : null,
+            p.marcado ? el('span', { class: 'chip', text: p.quienMarco }) : null,
             el('span', { class: 'nota', text: p.n + (p.n === 1 ? ' acción' : ' acciones') }),
           ]),
         );

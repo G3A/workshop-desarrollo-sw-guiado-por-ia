@@ -25,6 +25,7 @@
 //
 // Codigos de salida: 0 reporte escrito, 2 uso incorrecto.
 import fs from 'node:fs';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { git, raizDelRepo } from './git.mjs';
 import { leerActa } from './validar-acta.mjs';
@@ -227,7 +228,13 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     console.error('Uso: node scripts/acta/conformidad.mjs <acta.cruda.jsonl | acta.curada.jsonl>');
     process.exitCode = 2;
   } else {
-    const reporte = conformidad(leerActa(acta), { raizRepo: raizDelRepo(process.cwd()) });
+    // El plan del issue, si registrar-sesion.mjs lo guardo junto al acta (#238): sin el, una
+    // sesion sin skill no tiene contra que comparar sus pasos.
+    const rutaPlan = path.join(path.dirname(acta), 'plan-del-issue.json');
+    const planDelIssue = fs.existsSync(rutaPlan)
+      ? JSON.parse(fs.readFileSync(rutaPlan, 'utf8')) : null;
+    const reporte = conformidad(leerActa(acta),
+      { raizRepo: raizDelRepo(process.cwd()), planDelIssue });
     process.stdout.write(JSON.stringify(reporte, null, 2) + '\n');
   }
 }

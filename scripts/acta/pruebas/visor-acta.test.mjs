@@ -380,3 +380,10 @@ test('registrar: las evidencias incluidas van en stage con el acta, y las que no
   assert.deepEqual(evidenciasDe(s.cruda).sort(),
     [path.join(carpeta, `${s.sha.captura}.png`), path.join(carpeta, `${s.sha.trace}.zip`)].sort());
 });
+
+test('quien marco el paso: el agente en el plan de un issue, la skill en los demas (#238)', () => {
+  const marcados = (v) => v.turnos.flatMap((t) => t.pasos).filter((p) => p.marcado)
+    .map((p) => p.quienMarco);
+  assert.deepEqual([...new Set(marcados(vistaDelPlan()))], ['lo marcó el agente']);
+  assert.deepEqual([...new Set(marcados(vistaDeLaSesion().vista))], ['lo marcó la skill']);
+});
