@@ -18,6 +18,7 @@
 //    verificar»; lo que salio del fixture dice «tomada del registro»; nada que no se re-ejecuto
 //    dice «re-ejecutada» (PC-13).
 import { ENVOLTORIOS } from './clasificar.mjs';
+import { PLAN_DE_ISSUE } from './compilar-acta.mjs';
 
 const MESES = [
   'enero',
@@ -312,6 +313,8 @@ export function construirVista({
       literal: pres?.titulo || '',
       traduccion: traducciones[p.pasoPrescrito.letra] || '',
       marcado: true,
+      quienMarco:
+        p.pasoPrescrito.skill === PLAN_DE_ISSUE ? 'lo marcó el agente' : 'lo marcó la skill',
       corto: `Paso ${k}`,
     };
   };

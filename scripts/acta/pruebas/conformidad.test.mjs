@@ -6,6 +6,7 @@
 // de ahi. Si la skill cambia sus fases, estas pruebas lo ven.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -220,4 +221,14 @@ test('references: si faltan en el repo, se dice cuales y no se inventan pasos', 
   const { actividad } = actaDeGithubPlanBuild(FASES, { conReferencias: false });
   assert.deepEqual(actividad.prescritos.map((p) => p.letra), FASES);
   assert.deepEqual(actividad.referenciasFaltantes, REFS_GPB);
+});
+
+test('CLI: lee el plan del issue que registrar-sesion.mjs dejo junto al acta (#238)', () => {
+  const { curada, raiz } = sesionDelPlan();
+  const cli = path.join(RAIZ, 'scripts', 'acta', 'conformidad.mjs');
+  const r = spawnSync(process.execPath, [cli, curada], { cwd: raiz, encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr);
+  const [a] = JSON.parse(r.stdout).actividades;
+  assert.equal(a.instructivo.ruta, 'issue #10');
+  assert.deepEqual(a.prescritos.map((p) => p.letra), ['1', '2']);
 });
