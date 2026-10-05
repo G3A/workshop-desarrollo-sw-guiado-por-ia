@@ -243,6 +243,74 @@
     );
     return c;
   }
+  // Diseno F1 (#230, frente 3): las capturas de la accion, con su nombre, tamano y hash.
+  function corto(sha) {
+    return 'sha256 ' + sha.slice(0, 4) + '…' + sha.slice(-4);
+  }
+  function ampliar(e) {
+    var d = el('dialog', { class: 'ampliada', 'aria-label': e.nombre }, [
+      el('img', { src: e.src, alt: 'Captura ' + e.nombre }),
+      el('button', {
+        type: 'button',
+        class: 'b-sec',
+        text: 'Cerrar',
+        onclick: function () {
+          d.close();
+          d.remove();
+        },
+      }),
+    ]);
+    document.body.appendChild(d);
+    d.showModal();
+  }
+  function capturas(a) {
+    var c = el('div', { class: 'ev capt' }, [
+      el('div', { class: 'ev-t' }, [
+        el('b', { text: 'Capturas de la acción' }),
+        el('span', { class: 'fuente f-ejec', text: 'registro de ejecución' }),
+      ]),
+    ]);
+    a.evidencias.forEach(function (e) {
+      var datos = e.nombre + ' · ' + e.tamano + ' · ' + corto(e.sha256);
+      if (e.aviso) {
+        c.appendChild(el('span', { class: 'aviso-ev', text: datos + ' — ' + e.aviso }));
+      } else if (e.tipo === 'imagen') {
+        c.appendChild(el('img', { class: 'captura', src: e.src, alt: 'Captura ' + e.nombre }));
+        c.appendChild(
+          el('div', { class: 'ev-t' }, [
+            el('span', { text: datos }),
+            el('button', {
+              type: 'button',
+              class: 'b-sec',
+              text: 'Ampliar',
+              onclick: function () {
+                ampliar(e);
+              },
+            }),
+          ]),
+        );
+      } else {
+        c.appendChild(
+          el('span', null, [
+            datos + ' · ',
+            el('a', { href: e.src, download: e.nombre, text: 'descargar' }),
+          ]),
+        );
+        if (e.tipo === 'trace')
+          c.appendChild(
+            el('small', { text: 'Se abre fuera del visor: npx playwright show-trace ' + e.nombre }),
+          );
+      }
+    });
+    var origenes = [];
+    a.evidencias.forEach(function (e) {
+      if (e.origen && origenes.indexOf(e.origen) < 0) origenes.push(e.origen);
+    });
+    origenes.forEach(function (o) {
+      c.appendChild(el('small', { class: 'origen-ev', text: o }));
+    });
+    return c;
+  }
   function filaAccion(i) {
     var a = V.acciones[i];
     return el(
@@ -261,6 +329,9 @@
           a.texto,
           a.codigo ? el('span', { class: 'codigo', text: ' · ' + a.codigo }) : null,
           a.nota ? el('span', { class: 'codigo', text: ' — ' + a.nota }) : null,
+          a.etiquetaEvidencias
+            ? el('span', { class: 'etiqueta-ev', text: a.etiquetaEvidencias })
+            : null,
         ]),
         el('span', { text: a.agente }),
         el('span', { class: 'e-' + a.estado.clase, text: a.estado.texto }),
@@ -332,6 +403,7 @@
     var ev = el('aside', { 'aria-label': 'Evidencia de la acción seleccionada' });
     if (a) {
       ev.appendChild(el('b', { text: 'Evidencia · acción ' + a.orden }));
+      if (a.evidencias.length) ev.appendChild(capturas(a));
       var v = el('div', { class: 'ev verif' + (a.estado.clase === 'ok' ? ' ok' : '') }, [
         el('div', { class: 'ev-t' }, [
           el('b', { text: 'Verificación independiente' }),

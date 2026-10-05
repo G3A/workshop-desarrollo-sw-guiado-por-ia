@@ -8,7 +8,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { git } from '../git.mjs';
-import { huellaDeEntrada } from '../nucleo-captura.mjs';
+import { TOPE_POR_ARCHIVO, huellaDeEntrada } from '../nucleo-captura.mjs';
 import { carpetaTemporal, fabrica, repoTemporal } from './fabrica.mjs';
 
 const HOOK = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'capturar.mjs');
@@ -184,4 +184,35 @@ test('captura: si la curacion no sale, avisa, no bloquea y no deja una curada vi
   assert.ok(fs.existsSync(path.join(raiz, '.ia', 'registros', '10', 's4.acta.cruda.jsonl')));
   assert.equal(fs.existsSync(vieja), false, 'la curada vieja no queda junto a la cruda nueva');
   assert.match(r.stderr, /la curacion de la tarea 10 termino con codigo 3; la cruda quedo/);
+});
+
+test('captura: lo que Playwright deja en test-results/ durante la accion, con su sha256', () => {
+  const raiz = repoTemporal({ 'a.md': 'uno\n' });
+  const comun = { session_id: 's1', cwd: raiz };
+  const carpeta = path.join(raiz, 'test-results', 'login');
+  fs.mkdirSync(carpeta, { recursive: true });
+  const vieja = path.join(carpeta, 'de-antes.png');
+  fs.writeFileSync(vieja, 'vieja');
+  const hace = new Date(Date.now() - 60000);
+  fs.utimesSync(vieja, hace, hace);
+  correrHook({ ...comun, hook_event_name: 'SessionStart', source: 'startup' });
+  correrHook({ ...comun, hook_event_name: 'PreToolUse', tool_name: 'Bash', tool_use_id: 'tu1',
+    tool_input: { command: 'npx playwright test login' } });
+  fs.writeFileSync(path.join(carpeta, 'test-failed-1.png'), 'png de prueba');
+  fs.writeFileSync(path.join(carpeta, 'trace.zip'), 'zip de prueba');
+  fs.writeFileSync(path.join(carpeta, 'notas.txt'), 'no es evidencia');
+  fs.writeFileSync(path.join(carpeta, 'video.webm'), Buffer.alloc(TOPE_POR_ARCHIVO + 1));
+  correrHook({ ...comun, hook_event_name: 'PostToolUse', tool_name: 'Bash', tool_use_id: 'tu1' });
+
+  const eventos = leer(path.join(raiz, '.ia', 'captura', 's1.jsonl'));
+  const post = eventos.find((e) => e.evento === 'PostToolUse');
+  assert.deepEqual(post.evidencias.map((e) => [e.ruta, e.copiada]), [
+    ['test-results/login/test-failed-1.png', true],
+    ['test-results/login/trace.zip', true],
+    ['test-results/login/video.webm', false],
+  ], 'ni lo de antes de la accion ni lo que no es captura, trace o video');
+  const copiada = path.join(raiz, '.ia', 'captura', 'evidencias', post.evidencias[0].sha256);
+  assert.equal(fs.readFileSync(copiada, 'utf8'), 'png de prueba');
+  assert.equal(fs.existsSync(path.join(raiz, '.ia', 'captura', 'evidencias',
+    post.evidencias[2].sha256)), false, 'lo que pasa del tope no se copia');
 });

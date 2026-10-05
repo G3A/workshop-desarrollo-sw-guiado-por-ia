@@ -24,7 +24,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { compilarYCerrar, rutaHermana } from './cerrar-acta.mjs';
-import { leerCaptura, tareaDeRama } from './compilar-acta.mjs';
+import { archivoDeEvidencia, leerCaptura, tareaDeRama } from './compilar-acta.mjs';
 import { git, raizDelRepo } from './git.mjs';
 
 export function buscarTranscript(sesion, proyectos = path.join(os.homedir(), '.claude',
@@ -82,6 +82,19 @@ export function cortarEnCurso({ transcript, captura, destino }) {
 // de una sesion que trabaja el issue sin una skill. Se guarda junto al acta con la fecha de su
 // ultima edicion y el sha256 de su texto, y se versiona con ella. Sin red o sin issue, no se
 // guarda y la conformidad lo dice.
+// Las capturas y los trace incluidos en el acta (#230, frente 3): van en stage con ella.
+export function evidenciasDe(cruda) {
+  const carpeta = path.join(path.dirname(cruda), 'evidencias');
+  const rutas = new Set();
+  for (const linea of fs.readFileSync(cruda, 'utf8').split('\n')) {
+    if (!linea.includes('"evidencias"')) continue;
+    for (const e of JSON.parse(linea).evidencias || []) {
+      if (e.incluida) rutas.add(path.join(carpeta, archivoDeEvidencia(e)));
+    }
+  }
+  return [...rutas];
+}
+
 export function leerIssueDeGitHub(numero) {
   const campos = 'number,title,body,updatedAt';
   const r = spawnSync('gh', ['issue', 'view', String(numero), '--json', campos],
@@ -131,7 +144,7 @@ export function registrar({ sesion, raizRepo, stage = true, log = console, proye
     }
     const archivos = [cruda, rutaHermana(cruda, '.acta.curada.jsonl'),
       rutaHermana(cruda, '.acta.objetos.pack'), path.join(path.dirname(cruda), 'indice.json'),
-      path.join(path.dirname(cruda), 'plan-del-issue.json')]
+      path.join(path.dirname(cruda), 'plan-del-issue.json'), ...evidenciasDe(cruda)]
       .filter((f) => fs.existsSync(f)).map((f) => path.relative(raizRepo, f).replace(/\\/g, '/'));
     const curada = archivos.some((f) => f.endsWith('.acta.curada.jsonl'));
     if (stage) git(['add', '-f', '--', ...archivos], { cwd: raizRepo });

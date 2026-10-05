@@ -37,6 +37,7 @@
 //
 // Codigos de salida: 0 todo escrito, 1 un acta rompe una invariante, 2 uso incorrecto,
 // 3 gitleaks encontro un secreto, 4 no hay gitleaks para verificar.
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -93,6 +94,74 @@ function leerJsonl(archivo) {
   return { registros, ilegibles: ilegibles.n };
 }
 
+// Evidencia de una accion (#230, frente 3): una captura o un trace de Playwright, o una imagen que
+// devolvio una herramienta. El acta guarda su nombre, su tamano y su sha256; el archivo va aparte,
+// en evidencias/<sha256>.<ext> junto al acta, si cabe en los topes: 2 MB por archivo (lo decide
+// el hook, que copia solo lo que cabe) y 20 MB por acta (se decide aca, en el orden de la sesion).
+export const TOPE_POR_ACTA = 20 * 1024 * 1024;
+const TOPE_POR_ARCHIVO = 2 * 1024 * 1024;
+const TIPOS_DE_IMAGEN = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp',
+  'image/gif': 'gif' };
+
+function tipoDeEvidencia(nombre) {
+  if (/\.(png|jpe?g|webp|gif)$/i.test(nombre)) return 'imagen';
+  if (/\.zip$/i.test(nombre)) return 'trace';
+  if (/\.webm$/i.test(nombre)) return 'video';
+  return 'archivo';
+}
+
+function evidenciaDeCarpeta(e) {
+  return {
+    origen: 'carpeta',
+    nombre: String(e.ruta),
+    tipo: tipoDeEvidencia(String(e.ruta)),
+    sha256: e.sha256,
+    bytes: e.bytes,
+    incluida: e.copiada === true,
+    motivo: e.copiada === true ? null : 'pasa del tope de 2 MB por archivo',
+  };
+}
+
+function imagenesDe(contenido) {
+  if (!Array.isArray(contenido)) return [];
+  const imagenes = [];
+  for (const b of contenido) {
+    if (b?.type !== 'image' || b.source?.type !== 'base64' || !b.source.data) continue;
+    const bytes = Buffer.from(b.source.data, 'base64');
+    const sha256 = crypto.createHash('sha256').update(bytes).digest('hex');
+    const ext = TIPOS_DE_IMAGEN[b.source.media_type] || 'bin';
+    const cabe = bytes.length <= TOPE_POR_ARCHIVO;
+    imagenes.push({ sha256, contenido: bytes, evidencia: {
+      origen: 'herramienta', nombre: `imagen.${ext}`, tipo: 'imagen', sha256,
+      bytes: bytes.length, incluida: cabe,
+      motivo: cabe ? null : 'pasa del tope de 2 MB por archivo' } });
+  }
+  return imagenes;
+}
+
+function aplicarTopeDelActa(acciones) {
+  let total = 0;
+  const contadas = new Set();
+  for (const a of acciones) {
+    for (const e of a.evidencias || []) {
+      if (!e.incluida || contadas.has(e.sha256)) continue;
+      if (total + e.bytes > TOPE_POR_ACTA) {
+        e.incluida = false;
+        e.motivo = 'pasa del tope de 20 MB por acta';
+        continue;
+      }
+      total += e.bytes;
+      contadas.add(e.sha256);
+    }
+  }
+}
+
+// El nombre con que una evidencia incluida se guarda junto al acta.
+export function archivoDeEvidencia(e) {
+  const ext = (/\.([a-z0-9]+)$/i.exec(e.nombre) || [])[1] || 'bin';
+  return `${e.sha256}.${ext.toLowerCase()}`;
+}
+
 function textoDe(contenido) {
   if (typeof contenido === 'string') return contenido;
   if (!Array.isArray(contenido)) return '';
@@ -120,6 +189,7 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
   const carpeta = carpetaSesion || transcript.replace(/\.jsonl$/, '');
 
   const capturaPorUso = new Map();
+  const evidenciasDelTranscript = new Map();
   let inicioSesion = null;
   for (const c of captura) {
     if (c.evento === 'SessionStart' && !inicioSesion) inicioSesion = c;
@@ -127,6 +197,7 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
     const previo = capturaPorUso.get(c.toolUseId) || {};
     if (c.evento === 'PreToolUse') previo.antes = c.arbol || null;
     else previo.despues = c.arbol || null;
+    if (Array.isArray(c.evidencias)) previo.evidencias = c.evidencias;
     capturaPorUso.set(c.toolUseId, previo);
   }
   const headBase = inicioSesion?.head || null;
@@ -261,6 +332,7 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
       cambios: raizRepo ? cambiosEntre(raizRepo, antes, despues).map(norm.profundo) : [],
       subagente: null,
       tareaFondo: null,
+      evidencias: (cap.evidencias || []).map(evidenciaDeCarpeta),
     };
     acciones.push(accion);
     pasoConAcciones.add(pasoId);
@@ -283,6 +355,11 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
     accion.codigoReinterpretado = interpretacion;
     accion.resultado = texto;
     accion.error = bloque.is_error === true ? texto : null;
+    // Las imagenes que devolvio la herramienta, como el screenshot de un navegador (#230).
+    for (const img of imagenesDe(bloque.content)) {
+      evidenciasDelTranscript.set(img.sha256, img.contenido);
+      accion.evidencias.push(img.evidencia);
+    }
     const archivo = /tool-results[\\/]([\w.-]+)/.exec(texto);
     if (archivo && carpeta) {
       const ruta = path.join(carpeta, 'tool-results', archivo[1]);
@@ -602,6 +679,7 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
           cambios: raizRepo ? cambiosEntre(raizRepo, visto.arbol, c.arbol).map(norm.profundo) : [],
           subagente: null,
           tareaFondo: null,
+          evidencias: [],
           despuesDe: visto.accion?.id || null,
           antesDe: accion?.id || null,
         });
@@ -659,7 +737,7 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
   const finSesion = [...captura].reverse().find((c) => c.evento === 'SessionEnd' && c.arbol);
   return { actas: separarPorTarea({ sesion, turnos, pasos, acciones, decisiones, avisos,
     intervenciones, agentes, huella, headBase, inicioSesion,
-    arbolFinal: finSesion?.arbol || null }), avisos };
+    arbolFinal: finSesion?.arbol || null }), avisos, evidencias: evidenciasDelTranscript };
 }
 
 function versionDelPlugin(raizRepo, commit) {
@@ -774,6 +852,7 @@ function separarPorTarea(s) {
       fin: momentos[momentos.length - 1] || null,
       huella: s.huella,
     };
+    aplicarTopeDelActa(acciones);
     actas.set(tarea, [cabecera, ...agentes, ...turnos, ...pasos, ...decisiones, ...acciones,
       ...intervenciones]);
   }
@@ -822,8 +901,8 @@ export function compilarYEscribir({
   transcript, captura, salida, raizRepo = null, verificar = true, log = console, escritas = [],
   carpetaSesion = null,
 }) {
-  const { actas, avisos } = compilar({ transcript, captura: leerCaptura(captura), raizRepo,
-    carpetaSesion, identidad: identidadDeQuienCompila(raizRepo) });
+  const { actas, avisos, evidencias } = compilar({ transcript, captura: leerCaptura(captura),
+    raizRepo, carpetaSesion, identidad: identidadDeQuienCompila(raizRepo) });
   for (const a of avisos) log.error(`aviso: ${a}`);
   let codigo = 0;
   for (const [tarea, registros] of actas) {
@@ -854,10 +933,36 @@ export function compilarYEscribir({
     }
     fs.copyFileSync(tmp, destino);
     fs.rmSync(tmp, { force: true });
+    escribirEvidencias({ registros, carpeta: path.dirname(destino), evidencias,
+      copiadas: raizRepo ? path.join(raizRepo, '.ia', 'captura', 'evidencias') : null,
+      log });
     escritas.push(destino);
     log.log(`Acta de la tarea ${tarea}: ${destino}`);
   }
   return codigo;
+}
+
+// Las evidencias incluidas, en <carpeta del acta>/evidencias/<sha256>.<ext>. Salen del transcript
+// o de lo que el hook copio en .ia/captura/evidencias/ del repo (no junto a la captura, que
+// registrar-sesion.mjs corta en una copia temporal). Una que no esta en ninguno se avisa y el
+// acta queda igual: dice su hash, y el visor dice que el archivo no esta.
+function escribirEvidencias({ registros, carpeta, evidencias, copiadas, log }) {
+  for (const a of registros.filter((r) => r.elemento === 'accion')) {
+    for (const e of a.evidencias || []) {
+      if (!e.incluida) continue;
+      const destino = path.join(carpeta, 'evidencias', archivoDeEvidencia(e));
+      if (fs.existsSync(destino)) continue;
+      const origen = copiadas ? path.join(copiadas, e.sha256) : null;
+      const contenido = evidencias?.get(e.sha256) ||
+        (origen && fs.existsSync(origen) ? fs.readFileSync(origen) : null);
+      if (!contenido) {
+        log.error(`aviso: la evidencia ${e.nombre} (${e.sha256.slice(0, 12)}) no esta para copiar`);
+        continue;
+      }
+      fs.mkdirSync(path.dirname(destino), { recursive: true });
+      fs.writeFileSync(destino, contenido);
+    }
+  }
 }
 
 function argumentos(argv) {

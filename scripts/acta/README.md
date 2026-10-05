@@ -213,8 +213,25 @@ plan de un issue», el procedimiento es `AGENTS.md` y el instructivo es el plan 
 muestra como un campo a completar, nunca inventado. La persona asignada y el título salen del
 issue en GitHub (`gh issue view`); con `--sin-red` o `--asignado` no se consulta.
 
-Las capturas de Playwright que menciona el ADR-0005 no se incrustan todavía: el acta no las
-registra.
+**Las capturas de Playwright** (#230; diseño F1, elegido entre mockups) van en el panel de
+evidencia de la acción que las produjo: la imagen, con su nombre, su tamaño, su hash y el botón
+Ampliar, y el `trace` para descargar y abrir con `npx playwright show-trace`. La fila de la
+acción dice «2 capturas». Se incrustan como `data:` URI, así que el HTML sigue sin red.
+
+## Evidencia de Playwright
+
+Una acción tiene `evidencias`: `{ origen, nombre, tipo, sha256, bytes, incluida, motivo }`. Las
+toma de dos fuentes ([ADR-0006](../../docs/adrs/0006-el-acta-de-la-ia-se-versiona-en-git.md)):
+
+- `origen: "carpeta"`: lo que Playwright deja en `test-results/` mientras corre la acción, por
+  fecha y sin mirar el comando. El hook lo copia a `.ia/captura/evidencias/<sha256>` si pesa hasta
+  2 MB; de lo demás anota el nombre, el tamaño y el hash.
+- `origen: "herramienta"`: las imágenes del resultado de una herramienta, que vienen en el
+  transcript. En el texto del resultado quedan como `[imagen]`.
+
+Al escribir el acta, el compilador aplica el tope de 20 MB por acta y copia las incluidas a
+`.ia/registros/<tarea>/evidencias/<sha256>.<ext>`; `registrar-sesion.mjs` las deja en stage con
+ella. Una captura no se redacta: antes de commitear, quien registra la sesión la mira.
 
 ## Intervenciones
 

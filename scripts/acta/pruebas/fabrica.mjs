@@ -4,11 +4,12 @@
 // Reproduce la forma que escribe Claude Code 2.1.x (medida sobre sesiones de este repo, sin
 // copiar su contenido): una linea por bloque, `user` con el prompt como texto o con tool_result,
 // `assistant` con text o tool_use, y `toolUseResult` con el agentId de un subagente.
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { compilar, serializar } from '../compilar-acta.mjs';
+import { compilar, compilarYEscribir, serializar } from '../compilar-acta.mjs';
 import { curarYEscribir } from '../curar-acta.mjs';
 import { arbolActual, git } from '../git.mjs';
 import { huellaDeEntrada } from '../nucleo-captura.mjs';
@@ -468,4 +469,61 @@ export function sesionDelPlan({ marcar = true, conPlan = true } = {}) {
       sha256: 'x', cuerpo: PLAN_DEL_10 }));
   }
   return { raiz: repo.raiz, cruda, curada: cruda.replace('.cruda.', '.curada.') };
+}
+
+// Una sesion con evidencia de Playwright (#230, frente 3): una prueba que deja en test-results/
+// una captura, un trace y un video que pasa del tope, y un screenshot que devuelve una
+// herramienta. El hook ya copio a .ia/captura/evidencias/ lo que cabe; el acta se escribe con
+// compilarYEscribir, como al cerrar la sesion, y se cura.
+export const PNG_1X1 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAE' +
+  'hQGAhKmMIQAAAABJRU5ErkJggg==';
+
+const sha = (b) => crypto.createHash('sha256').update(b).digest('hex');
+
+export function sesionConCapturas() {
+  const repo = repoQueAvanza({ 'a.txt': 'uno\n' });
+  const head = git(['rev-parse', 'HEAD'], { cwd: repo.raiz }).trim();
+  const a0 = repo.arbol();
+  const captura = Buffer.from(PNG_1X1, 'base64');
+  const trace = Buffer.from('PK\u0003\u0004 trace de prueba');
+  const video = Buffer.alloc(3 * 1024 * 1024, 1);
+  const copiadas = path.join(repo.raiz, '.ia', 'captura', 'evidencias');
+  fs.mkdirSync(copiadas, { recursive: true });
+  fs.writeFileSync(path.join(copiadas, sha(captura)), captura);
+  fs.writeFileSync(path.join(copiadas, sha(trace)), trace);
+  const evidencia = (ruta, b, copiada = true) =>
+    ({ origen: 'carpeta', ruta, sha256: sha(b), bytes: b.length, copiada });
+  const f = fabrica()
+    .prompt('corre la prueba de login')
+    .llamada('tu1', 'Bash', { command: 'npx playwright test login' })
+    .resultado('tu1', '1 failed')
+    .llamada('tu2', 'mcp__playwright__browser_take_screenshot', {})
+    .resultado('tu2', [{ type: 'text', text: 'Took the screenshot' },
+      { type: 'image', source: { type: 'base64', media_type: 'image/png', data: PNG_1X1 } }]);
+  const eventos = [
+    { evento: 'SessionStart', head, arbol: a0, momento: enCaptura(0, 0) },
+    { evento: 'PreToolUse', toolUseId: 'tu1', arbol: a0, momento: enCaptura(0, 2) },
+    { evento: 'PostToolUse', toolUseId: 'tu1', arbol: a0, momento: enCaptura(0, 2), evidencias: [
+      evidencia('test-results/login/test-failed-1.png', captura),
+      evidencia('test-results/login/trace.zip', trace),
+      evidencia('test-results/login/video.webm', video, false)] },
+    { evento: 'PreToolUse', toolUseId: 'tu2', arbol: a0, momento: enCaptura(0, 4) },
+    { evento: 'PostToolUse', toolUseId: 'tu2', arbol: a0, momento: enCaptura(0, 4) },
+    { evento: 'SessionEnd', arbol: a0, momento: enCaptura(0, 6) },
+  ];
+  const archivoCaptura = path.join(repo.raiz, '.ia', 'captura', 'sesion-1.jsonl');
+  fs.writeFileSync(archivoCaptura, eventos.map((e) => JSON.stringify(e)).join('\n') + '\n');
+  const transcript = f.escribir(carpetaTemporal('sesion'));
+  const silencio = { log: () => {}, error: () => {} };
+  const salida = path.join(repo.raiz, '.ia', 'registros');
+  const escritas = [];
+  const codigo = compilarYEscribir({ transcript, captura: archivoCaptura, salida,
+    raizRepo: repo.raiz, verificar: false, log: silencio, escritas });
+  if (codigo !== 0 || escritas.length !== 1) throw new Error('la sesion con capturas no compila');
+  const [cruda] = escritas;
+  if (curarYEscribir({ cruda, raizRepo: repo.raiz, log: silencio }) !== 0) {
+    throw new Error('la sesion con capturas no se cura');
+  }
+  return { raiz: repo.raiz, cruda, curada: cruda.replace('.cruda.', '.curada.'),
+    sha: { captura: sha(captura), trace: sha(trace), video: sha(video) } };
 }

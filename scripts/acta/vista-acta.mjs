@@ -227,6 +227,41 @@ export function documentoDelProcedimiento(cab, clave, esPlan) {
   return docs.find((d) => d.ruta === 'AGENTS.md') || null;
 }
 
+// El tamano de un archivo, como lo lee una persona.
+export function tamano(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1).replace('.', ',')} MB`;
+}
+
+const ORIGEN_DE_EVIDENCIA = {
+  carpeta: 'La escribió Playwright en test-results/ mientras corría la acción.',
+  herramienta: 'La devolvió la herramienta en su resultado.',
+};
+
+// Las evidencias de una accion (#230, frente 3; diseno F1). `archivos` lleva, por sha256, el
+// contenido como data: URI, para que el HTML siga sin red.
+function evidenciasVista(lista, archivos) {
+  return (lista || []).map((e) => {
+    const nombre = String(e.nombre).split('/').pop();
+    const src = e.incluida ? archivos[e.sha256] || null : null;
+    return {
+      nombre,
+      ruta: e.nombre,
+      tipo: e.tipo,
+      tamano: tamano(e.bytes),
+      sha256: e.sha256,
+      src,
+      origen: ORIGEN_DE_EVIDENCIA[e.origen] || '',
+      aviso: !e.incluida
+        ? `${e.motivo || 'no se incluyó'}: no se incluyó.`
+        : !src
+          ? 'El archivo no está junto al acta.'
+          : '',
+    };
+  });
+}
+
 export function construirVista({
   curada,
   cruda = null,
@@ -239,6 +274,7 @@ export function construirVista({
   procedimiento = {},
   commits = [],
   nombreActa = 'acta',
+  archivosDeEvidencia = {},
 }) {
   const de = (el) => curada.filter((r) => r.elemento === el);
   const cab = curada.find((r) => r.elemento === 'acta');
@@ -322,6 +358,10 @@ export function construirVista({
             registroLinea: linea.get(a.id) || null,
             salidaMotor: veredictos.get(a.id)?.salida
               ? corto(veredictos.get(a.id).salida, 400)
+              : '',
+            evidencias: evidenciasVista(a.evidencias, archivosDeEvidencia),
+            etiquetaEvidencias: a.evidencias?.length
+              ? plural(a.evidencias.length, 'captura', 'capturas')
               : '',
           };
           acciones.push(vista);
@@ -628,7 +668,8 @@ function construirPestanas({ curada, indice, cab, agentes }) {
 export function textosVisibles(v) {
   const salida = [];
   const recorrer = (x, clave) => {
-    if (clave === 'registro' || clave === 'registroLinea') return;
+    // El hash y el archivo de una evidencia son datos de integridad, como el registro crudo.
+    if (['registro', 'registroLinea', 'sha256', 'src'].includes(clave)) return;
     if (typeof x === 'string') salida.push(x);
     else if (Array.isArray(x)) x.forEach((y) => recorrer(y, null));
     else if (x && typeof x === 'object') for (const [k, y] of Object.entries(x)) recorrer(y, k);

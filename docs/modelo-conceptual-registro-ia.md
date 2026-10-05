@@ -223,7 +223,7 @@ Son las reglas que el compilador y la curación hacen cumplir. Si se rompe una, 
 | **Anexo de verificaciones negativas** | Cada rojo esperado, con el comando y el sensor o la prueba que demuestra. No se re-ejecuta | PC-16 |
 | **Huella de contexto** | Commit, ruta y hash de cada documento usado; versiones del plugin y de Claude Code; modelo; digest de la imagen | PC-14 |
 | **Cambio** | El diff de un archivo dentro de una acción. Al cerrar el acta, el compilador arma el índice inverso de archivo a acciones | PC-03 |
-| **Evidencia** | Una captura o un `trace` de Playwright, adjuntos a la acción que los produjo | — |
+| **Evidencia** | Una captura, un `trace` o un video de Playwright, o una imagen que devolvió una herramienta, adjuntos a la acción que los produjo, con su sha256. El archivo va en `evidencias/` junto al acta si cabe en los topes del ADR-0006 | — |
 | **Reporte del motor** | Árbol base, árbol final esperado, un veredicto por acción y la primera divergencia | PC-12, PC-13 |
 
 El visor nunca dice «ejecutado» de una acción que solo reprodujo su fixture. Sin reporte del

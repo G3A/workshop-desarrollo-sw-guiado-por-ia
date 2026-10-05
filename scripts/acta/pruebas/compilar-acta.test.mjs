@@ -9,12 +9,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { compilar, compilarYEscribir, serializar } from '../compilar-acta.mjs';
 import { CuracionDetenida, curar } from '../curar-acta.mjs';
+import { TOPE_POR_ACTA } from '../compilar-acta.mjs';
 import { validarActa } from '../validar-acta.mjs';
 import { claseDeterminismo } from '../clasificar.mjs';
 import { arbolActual, git } from '../git.mjs';
 import { huellaDeEntrada } from '../nucleo-captura.mjs';
 import { carpetaTemporal, enCaptura, fabrica, repoQueAvanza, repoTemporal,
-  marcaDePaso, marcaDelPlan, sesionConGrepQueOcultaUnFallo, sesionConHook, sesionConSubagente,
+  marcaDePaso, marcaDelPlan, sesionConCapturas, sesionConGrepQueOcultaUnFallo, sesionConHook,
+  sesionConSubagente,
   sesionMarcada,
   subagente,
 } from './fabrica.mjs';
@@ -888,4 +890,43 @@ test('huella: AGENTS.md y CLAUDE.md van siempre, son el procedimiento sin skill 
   const captura = [{ evento: 'SessionStart', head, arbol: repo.arbol(), momento: enCaptura(0, 0) }];
   const acta = unicaActa(compilarFabrica(f, { captura, raizRepo: repo.raiz }));
   assert.deepEqual(acta[0].huella.documentos.map((d) => d.ruta), ['AGENTS.md', 'CLAUDE.md']);
+});
+
+// --- Evidencia de Playwright (#230, frente 3) ----------------------------------------------
+
+test('evidencia: test-results/ y la imagen de una herramienta, con su hash, junto al acta', () => {
+  const { cruda, curada, sha } = sesionConCapturas();
+  const acciones = (archivo) => fs.readFileSync(archivo, 'utf8').trim().split('\n')
+    .map(JSON.parse).filter((r) => r.elemento === 'accion');
+  const [prueba, screenshot] = acciones(cruda);
+  assert.deepEqual(prueba.evidencias.map((e) => [e.nombre, e.tipo, e.incluida]), [
+    ['test-results/login/test-failed-1.png', 'imagen', true],
+    ['test-results/login/trace.zip', 'trace', true],
+    ['test-results/login/video.webm', 'video', false],
+  ]);
+  assert.equal(prueba.evidencias[2].motivo, 'pasa del tope de 2 MB por archivo');
+  assert.deepEqual(screenshot.evidencias.map((e) => [e.origen, e.tipo, e.sha256]),
+    [['herramienta', 'imagen', sha.captura]]);
+  assert.match(screenshot.resultado, /\[imagen\]/, 'el texto del resultado no lleva el base64');
+  const carpeta = path.join(path.dirname(cruda), 'evidencias');
+  assert.deepEqual(fs.readdirSync(carpeta).sort(),
+    [`${sha.trace}.zip`, `${sha.captura}.png`].sort(), 'el video no se copia');
+  assert.deepEqual(acciones(curada).map((a) => a.evidencias.length), [3, 1],
+    'la curada conserva la evidencia');
+});
+
+test('evidencia: lo que pasa de 20 MB por acta queda nombrado y sin incluir', () => {
+  const f = fabrica().prompt('pruebas')
+    .llamada('tu1', 'Bash', { command: 'npx playwright test' }).resultado('tu1', 'ok');
+  const grande = (n) => ({ origen: 'carpeta', ruta: `test-results/${n}.zip`,
+    sha256: n.repeat(64).slice(0, 64), bytes: TOPE_POR_ACTA / 2 + 1, copiada: true });
+  const captura = [
+    { evento: 'PreToolUse', toolUseId: 'tu1', arbol: null, momento: enCaptura(0, 1) },
+    { evento: 'PostToolUse', toolUseId: 'tu1', arbol: null, momento: enCaptura(0, 2),
+      evidencias: [grande('a'), grande('b')] },
+  ];
+  const acta = unicaActa(compilarFabrica(f, { captura }));
+  const [accion] = de(acta, 'accion');
+  assert.deepEqual(accion.evidencias.map((e) => [e.incluida, e.motivo]),
+    [[true, null], [false, 'pasa del tope de 20 MB por acta']]);
 });
