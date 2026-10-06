@@ -241,7 +241,7 @@ footer { margin-top: 48px; color: var(--muted); font-size: 0.85rem; }
 
   <h3>Los hooks de Claude Code</h3>
   <div class="prose">
-    <p>Un <strong>hook</strong> es un comando que Claude Code ejecuta solo cuando ocurre un evento de la sesión. Se declaran en <code>.claude/settings.json</code>. Claude Code le pasa al comando un JSON por la entrada estándar con los datos del evento (id de sesión, herramienta, entrada, modo de permisos, ruta del transcript).</p>
+    <p>Un <strong>hook</strong> es un comando que Claude Code ejecuta solo cuando ocurre un evento de la sesión. Se declaran en <code>.claude/settings.json</code> del proyecto o en el <code>hooks/hooks.json</code> de un plugin. Los del acta están en los dos: el plugin <code>sdlc-ia</code> los lleva a cualquier repo que lo use, y este monorepo los declara en su <code>settings.json</code> para probar la copia de trabajo; cuando están los dos, el del plugin cede (ADR-0007). Claude Code le pasa al comando un JSON por la entrada estándar con los datos del evento (id de sesión, herramienta, entrada, modo de permisos, ruta del transcript).</p>
     <p>El acta usa un único script, <code>instrumentacion-java-ia/sdlc-ia/acta/capturar.mjs</code>, registrado en seis eventos con el matcher <code>*</code> (todas las herramientas). Cada evento agrega una línea a <code>.ia/captura/&lt;sesión&gt;.jsonl</code>. Nunca responde ni bloquea: siempre sale con código 0, porque «un registro que rompe el trabajo que registra termina desinstalado».</p>
   </div>
   <div class="callout det">
