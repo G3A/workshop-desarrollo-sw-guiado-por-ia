@@ -70,6 +70,11 @@ const FUERA = [
   'base-conocimiento/eval-100-preguntas/',
 ];
 
+// Lo que vuelve a entrar aunque su carpeta este en FUERA. El acta de la IA se mudo al plugin en
+// #247 para viajar con el, pero su codigo y su README siguen en espanol y en 100: dejarlos fuera
+// por la mudanza seria perder la medicion sin decidirlo.
+const DENTRO = ['instrumentacion-java-ia/sdlc-ia/acta/'];
+
 // Archivos que ya excedian cuando este sensor nacio, con el maximo que tenian ese dia. Congelados:
 // pueden mejorar --y entonces el sensor pide bajar el numero-- pero no empeorar. Medido en la punta
 // de dev del 2026-09-18, con las tres excepciones estructurales ya aplicadas.
@@ -225,7 +230,7 @@ function verificar() {
     .split('\0')
     .filter(Boolean)
     .map(r => r.normalize('NFC'))
-    .filter(r => !FUERA.some(f => r.startsWith(f)));
+    .filter(r => DENTRO.some(d => r.startsWith(d)) || !FUERA.some(f => r.startsWith(f)));
 
   if (archivos.length < MINIMO_ARCHIVOS) {
     abortar(

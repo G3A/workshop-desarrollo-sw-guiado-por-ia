@@ -25,6 +25,10 @@ Contexto, Decisión, Consecuencias), una página, nombre `NNNN-slug-corto.md`.
   `git add -f`, junto a un pack de los árboles de la sesión. Todo commit asistido declara
   `Registro-IA:`, y el CI falla si el acta no llega a su diff. Enmienda el 0005: un comando
   ejecutado que diverge en el contenedor se avisa, no falla.
+- `0007-el-acta-viaja-con-el-plugin` — el acta se muda al plugin `sdlc-ia` y sus hooks la
+  registran en el repo donde se usa, no solo en este monorepo. Una sola copia; aquí la captura del
+  árbol de trabajo tiene precedencia sobre la del plugin, y la huella guarda los instructivos del
+  plugin instalado como blobs.
 - `0003-el-adr-como-fuente-de-datos-del-sensor-de-espejo` — la lista de divergencias deja de ser un
   acuerdo escrito: la lee `scripts/verificar-espejo.mjs` en el CI. Qué se espeja, qué difiere a
   propósito, qué es residuo pendiente de limpieza, y qué bloquea el job frente a qué solo avisa.

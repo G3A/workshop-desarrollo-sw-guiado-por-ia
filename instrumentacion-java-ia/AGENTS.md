@@ -1,7 +1,8 @@
 # AGENTS.md — instrumentacion-java-ia (plugin `sdlc-ia`)
 
-Plugin de Claude Code con nueve skills. Las convenciones del monorepo (ramas, commits, idioma)
-están en el `AGENTS.md` de la raíz; este archivo cubre solo lo propio del plugin.
+Plugin de Claude Code con nueve skills y el acta de la IA (`sdlc-ia/acta/`, ADR-0007). Las
+convenciones del monorepo (ramas, commits, idioma) están en el `AGENTS.md` de la raíz; este archivo
+cubre solo lo propio del plugin.
 
 ## Regla dura: versión y actualización
 
@@ -31,7 +32,7 @@ están en el `AGENTS.md` de la raíz; este archivo cubre solo lo propio del plug
   español. Se actualizan juntos en el mismo PR.
 - Todo comando que una skill le pide ejecutar al agente funciona igual en Windows PowerShell 5.1,
   PowerShell 7 y bash (sección «Shell» del `README.md`). Las excepciones deliberadas son los hooks
-  de `instrument-agent-java` (bash) y el workflow de CI (Ubuntu).
+  de `instrument-agent-java` (bash), el workflow de CI (Ubuntu) y el acta (Node, en español).
 - Si una skill cambia de comportamiento, el nodo del visor `proceso-operacional-con-ia` que la
   cita cambia en el mismo PR (`grep` del nombre de la skill en `comandos.json`).
 - Este plugin escribe solo GitHub Actions como CI y GitHub Issues como tracker; otra plataforma se

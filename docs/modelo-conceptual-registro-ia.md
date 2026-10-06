@@ -262,11 +262,12 @@ El acta usa sus propios nombres, pero se tiene que poder exportar sin pérdida a
 | Paso → paso prescrito, subagente → orquestador, turno → sesión → tarea | Relación objeto-objeto (`realiza`, `en_nombre_de`, `pertenece_a`, `contribuye_a`) |
 | Éxito, clase de determinismo | Atributos del evento. El veredicto vive en el reporte del motor, no en el acta |
 
-La exportación (`scripts/acta/exportar-acta.mjs`, #222) es sin pérdida porque cada nodo que viene
-de un elemento del acta lleva ese elemento exacto en un atributo `registro`: ningún estándar tiene
-dónde poner los diffs, los intentos previos o la huella. Las preguntas de PC-05, PC-06 y PC-15 se
-responden con minería de procesos sobre la exportación OCEL. El análisis entre actas se difiere
-hasta tener unas 20; la exportación entra desde la primera versión.
+La exportación (`instrumentacion-java-ia/sdlc-ia/acta/exportar-acta.mjs`, #222) es sin pérdida
+porque cada nodo que viene de un elemento del acta lleva ese elemento exacto en un atributo
+`registro`: ningún estándar tiene dónde poner los diffs, los intentos previos o la huella. Las
+preguntas de PC-05, PC-06 y PC-15 se responden con minería de procesos sobre la exportación OCEL.
+El análisis entre actas se difiere hasta tener unas 20; la exportación entra desde la primera
+versión.
 
 ## 7. Matriz de preguntas de competencia
 
@@ -301,7 +302,7 @@ y sensores en verde) y no por hash.
   `tool_use_id`. La captura lo empareja por la herramienta y el hash de la entrada. Ningún evento
   dice que la persona aprobó: se afirma cuando hubo pedido y la herramienta corrió.
   `PermissionDenied` es del modo `auto` y no es una persona. El detalle está en
-  [`scripts/acta/README.md`](../scripts/acta/README.md#intervenciones).
+  [el README del acta](../instrumentacion-java-ia/sdlc-ia/acta/README.md#intervenciones).
 - **Marcadores de paso (PC-04 y PC-05).** Desde #222 el protocolo existe y `debt-triage` lo
   emite. Las otras ocho skills todavía no: sus pasos quedan con `procedencia = ausente` y la
   conformidad responde «sin datos». Cada skill que se suma toca su `SKILL.md`, el visor y el

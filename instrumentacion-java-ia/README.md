@@ -33,6 +33,29 @@ repositorio. Decir sin más que "hoy solo cubre .NET" ya no describe el plugin c
 | [`debt-triage`](docs/skills/debt-triage-es.md) | Triaja con criterio los hallazgos que un analizador estático ya reportó (Sonar, CodeQL, Checkstyle...) — nunca instala un sensor nuevo ni aplica un auto-fix a ciegas. |
 | [`legacy-test-harness`](docs/skills/legacy-test-harness-es.md) | Acondiciona un repo legacy y hace crecer pruebas reales en 5 capas sobre código que ya está en producción. Censa los actores y mapea costuras al estilo Feathers antes de tocar nada; corre en modo plan y no escribe hasta tu aprobación. |
 
+## El acta de la IA
+
+Además de las skills, el plugin trae el **acta**: el registro de lo que hizo la IA en cada sesión
+(ADR-0005 a ADR-0007 en la raíz del monorepo). Sus hooks (`sdlc-ia/hooks/hooks.json`) capturan el
+árbol de git antes y después de cada acción, y al cerrar la sesión compilan, curan e indexan el
+acta en el repo donde se trabajó:
+
+```text
+.ia/captura/<sesión>.jsonl                      lo que capturan los hooks
+.ia/registros/<tarea>/<sesión>.acta.cruda.jsonl  todo lo que pasó, con los fallos
+.ia/registros/<tarea>/<sesión>.acta.curada.jsonl lo que se puede re-ejecutar sin el modelo
+.ia/registros/<tarea>/indice.json                qué acción cambió cada archivo
+```
+
+La tarea sale del número de la rama (`feat/42-...` → `42`). La captura escribe `.ia/.gitignore`,
+así que nada de eso entra a git sin querer; versionar un acta es a propósito, con `git add -f`.
+Corre en todo repositorio git donde el plugin esté habilitado; para excluir uno, deshabilita el
+plugin en ese proyecto con `/plugin`. Necesita Node >= 18, git y gitleaks en el `PATH`: sin
+gitleaks el acta no se escribe, porque podría llevar un secreto leído en la sesión.
+
+El código vive en [`sdlc-ia/acta/`](sdlc-ia/acta/README.md), en español como el resto del
+monorepo.
+
 ## Alcance deliberado
 
 Esta es la versión **pública, sin marca de ninguna empresa**, centrada en GitHub y GitHub

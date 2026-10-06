@@ -13,6 +13,25 @@ its version says (verified with Claude Code 2.1.282, #209). Updating on any mach
 `update.ps1` / `update.sh` at the plugin root, which pulls and checks that the CLI loads the plugin
 from that folder (see the README, "Actualizar cuando sale una versión nueva", and `AGENTS.md`).
 
+## [unreleased]
+
+### Added
+
+- **The AI session record (acta) travels with the plugin** (#247, ADR-0007). It moved from the
+  monorepo's `scripts/acta/` into `sdlc-ia/acta/`, and `sdlc-ia/hooks/hooks.json` registers its
+  capture on the six session events. Any git repository where the plugin is enabled now gets its
+  own acta in `.ia/registros/<task>/` at the end of each session: raw, curated, object pack and
+  task index. Its fingerprint reads the skill instructions from the installed plugin and stores
+  them as blobs, so the conformance check works there too. The capture writes `.ia/.gitignore`,
+  so nothing is published by accident. Requires Node >= 18, git and gitleaks on the `PATH`.
+- A repository that declares its own capture in `.claude/settings.json`, like this monorepo,
+  keeps it: the plugin's hook steps aside, and each event is recorded once.
+
+### Fixed
+
+- **The capture recorded every tree as `null`** once a repository versioned its first acta
+  (#244). `git check-ignore` now runs with `--no-index`.
+
 ## [0.5.0] — 2026-10-05
 
 ### Added
