@@ -50,15 +50,27 @@ test('captura: arbol antes y despues de una edicion, nada para una lectura', () 
   assert.equal(lectura.agenteId, 'ab12');
 });
 
-// Las dos formas del repo: uno que no conoce .ia/ y otro que la ignora, como este monorepo. La
-// segunda fallo en vivo: git rechaza el pathspec de exclusion sobre una ruta ignorada, y la
-// captura dejaba el arbol en null sin que ninguna prueba lo viera.
-for (const [nombre, archivos] of [
-  ['sin ignorar', { 'a.md': 'uno\n' }],
-  ['ignorada', { 'a.md': 'uno\n', '.gitignore': '.ia/\n' }],
+// Las tres formas del repo: uno que no conoce .ia/, otro que la ignora, y otro que la ignora y ya
+// versiona un acta, como este monorepo desde #237. La segunda fallo en vivo: git rechaza el
+// pathspec de exclusion sobre una ruta ignorada, y la captura dejaba el arbol en null sin que
+// ninguna prueba lo viera. La tercera fallo igual (#244): con un archivo versionado adentro,
+// `git check-ignore` sin --no-index ya no dice que .ia este ignorada.
+const versionarActa = (raiz) => {
+  const acta = path.join(raiz, '.ia', 'registros', '1', 's0.acta.cruda.jsonl');
+  fs.mkdirSync(path.dirname(acta), { recursive: true });
+  fs.writeFileSync(acta, '{}\n');
+  git(['add', '-f', '.ia'], { cwd: raiz });
+  git(['commit', '-q', '-m', 'acta'], { cwd: raiz });
+};
+for (const [nombre, archivos, preparar] of [
+  ['sin ignorar', { 'a.md': 'uno\n' }, () => {}],
+  ['ignorada', { 'a.md': 'uno\n', '.gitignore': '.ia/\n' }, () => {}],
+  ['ignorada y con un acta versionada', { 'a.md': 'uno\n', '.gitignore': '.ia/\n' },
+    versionarActa],
 ]) {
   test(`captura: escribir en .ia/ no cambia el hash del arbol (${nombre})`, () => {
     const raiz = repoTemporal(archivos);
+    preparar(raiz);
     const comun = { session_id: 's2', cwd: raiz, tool_name: 'Bash' };
     correrHook({ ...comun, hook_event_name: 'PreToolUse', tool_use_id: 'tu1' });
     correrHook({ ...comun, hook_event_name: 'PostToolUse', tool_use_id: 'tu1' });
