@@ -89,6 +89,9 @@ test('captura desde el plugin: registra en un repo sin captura propia, cede en u
     const sinPropia = repoTemporal({ 'a.md': 'uno\n' });
     assert.equal(correrHook(entrada(sinPropia), HOOK, ['--desde-plugin']).status, 0);
     assert.ok(fs.existsSync(path.join(sinPropia, '.ia', 'captura', 's3.jsonl')));
+    // Un repo que no conoce .ia/ no la ve en `git status`: la captura la ignora sola.
+    assert.equal(git(['status', '--porcelain'], { cwd: sinPropia }).trim(), '',
+      'la captura quedo a la vista de un git add -A');
 
     const conPropia = repoTemporal({ 'a.md': 'uno\n', '.claude/settings.json':
       '{"hooks":{"SessionStart":[{"hooks":[{"command":"node acta/capturar.mjs"}]}]}}' });

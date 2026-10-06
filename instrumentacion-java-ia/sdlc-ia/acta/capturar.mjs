@@ -49,6 +49,11 @@ async function principal() {
   if (process.argv.includes('--desde-plugin') && proyectoDeclaraCaptura(raiz)) return;
   const carpeta = path.join(raiz, '.ia', 'captura');
   fs.mkdirSync(carpeta, { recursive: true });
+  // En un repo que solo instala el plugin, nadie puso .ia/ en el .gitignore (#247): sin esto, un
+  // `git add -A` publicaria la captura y las actas, con sus prompts y salidas. La carpeta se ignora
+  // a si misma, y versionar un acta sigue siendo a proposito, con `git add -f` (ADR-0006).
+  const ignorar = path.join(raiz, '.ia', '.gitignore');
+  if (!fs.existsSync(ignorar)) fs.writeFileSync(ignorar, '*\n');
   const archivo = path.join(carpeta, `${e.session_id}.jsonl`);
   const evento = e.hook_event_name;
   const momento = new Date().toISOString();
