@@ -16,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/acta/capturar.mjs\"",
+            "command": "node \"$CLAUDE_PROJECT_DIR/instrumentacion-java-ia/sdlc-ia/acta/capturar.mjs\"",
             "timeout": 20
           }
         ]
@@ -75,7 +75,7 @@
           },
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/acta/capturar.mjs\"",
+            "command": "node \"$CLAUDE_PROJECT_DIR/instrumentacion-java-ia/sdlc-ia/acta/capturar.mjs\"",
             "timeout": 20
           }
         ]
@@ -103,7 +103,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/acta/capturar.mjs\"",
+            "command": "node \"$CLAUDE_PROJECT_DIR/instrumentacion-java-ia/sdlc-ia/acta/capturar.mjs\"",
             "timeout": 20
           }
         ]
@@ -115,7 +115,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/acta/capturar.mjs\"",
+            "command": "node \"$CLAUDE_PROJECT_DIR/instrumentacion-java-ia/sdlc-ia/acta/capturar.mjs\"",
             "timeout": 20
           }
         ]
@@ -127,7 +127,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/acta/capturar.mjs\"",
+            "command": "node \"$CLAUDE_PROJECT_DIR/instrumentacion-java-ia/sdlc-ia/acta/capturar.mjs\"",
             "timeout": 20
           }
         ]
@@ -138,7 +138,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/acta/capturar.mjs\"",
+            "command": "node \"$CLAUDE_PROJECT_DIR/instrumentacion-java-ia/sdlc-ia/acta/capturar.mjs\"",
             "timeout": 300
           }
         ]

@@ -1,7 +1,7 @@
 // Curacion del acta (#218, ADR-0005 punto 3), desde la raiz del repo:
 //
-//   node scripts/acta/curar-acta.mjs <acta.cruda.jsonl> [--salida <acta.curada.jsonl>]
-//   node scripts/acta/curar-acta.mjs <acta.cruda.jsonl> --comprobar <acta.curada.jsonl>
+//   node $ACTA/curar-acta.mjs <acta.cruda.jsonl> [--salida <acta.curada.jsonl>]
+//   node $ACTA/curar-acta.mjs <acta.cruda.jsonl> --comprobar <acta.curada.jsonl>
 //
 // Deriva el acta curada de la cruda y la escribe junto a ella, como <sesion>.acta.curada.jsonl.
 // La curada es lo que re-ejecuta el motor: solo lo que salio bien.
@@ -336,7 +336,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       (opcion === '--salida' && otra) || (opcion === '--comprobar' && otra && fs.existsSync(otra)));
   const raizRepo = raizDelRepo(process.cwd());
   if (!usoValido) {
-    console.error('Uso: node scripts/acta/curar-acta.mjs <acta.cruda.jsonl> ' +
+    console.error('Uso: node $ACTA/curar-acta.mjs <acta.cruda.jsonl> ' +
       '[--salida <acta.curada.jsonl> | --comprobar <acta.curada.jsonl>]');
     process.exitCode = 2;
   } else if (opcion === '--comprobar') {

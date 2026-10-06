@@ -1,4 +1,4 @@
-// Pruebas del hook de captura (#216): node --test scripts/acta/pruebas/capturar.test.mjs
+// Pruebas del hook de captura (#216): node --test $ACTA/pruebas/capturar.test.mjs
 //
 // El hook se corre como lo corre Claude Code: un proceso aparte con el JSON del evento en stdin.
 import { test } from 'node:test';

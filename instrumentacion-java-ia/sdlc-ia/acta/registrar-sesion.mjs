@@ -1,6 +1,6 @@
 // Registra el acta de la sesion EN CURSO, para commitearla (#222, fase 3), desde la raiz del repo:
 //
-//   node scripts/acta/registrar-sesion.mjs [--sesion <id>] [--sin-stage]
+//   node $ACTA/registrar-sesion.mjs [--sesion <id>] [--sin-stage]
 //
 // El hook compila el acta al cerrar la sesion, pero el commit que la cita se hace antes, durante
 // la sesion. Este script compila lo que va de ella, la cura, empaca sus objetos, reescribe el
@@ -163,7 +163,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const conocidos = new Set(['--sesion', '--sin-stage', sesion]);
   const raizRepo = raizDelRepo(process.cwd());
   if (!sesion || !raizRepo || args.some((a) => !conocidos.has(a))) {
-    console.error('Uso: node scripts/acta/registrar-sesion.mjs [--sesion <id>] [--sin-stage]');
+    console.error('Uso: node $ACTA/registrar-sesion.mjs [--sesion <id>] [--sin-stage]');
     console.error('Sin --sesion, usa CLAUDE_CODE_SESSION_ID: corre dentro de Claude Code.');
     process.exitCode = 2;
   } else {

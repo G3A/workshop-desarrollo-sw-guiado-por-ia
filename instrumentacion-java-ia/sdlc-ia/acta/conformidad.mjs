@@ -1,7 +1,7 @@
 // Conformidad de un acta con sus instructivos (#222, fase 4; PC-04, PC-05 y PC-06), desde la raiz
 // del repo:
 //
-//   node scripts/acta/conformidad.mjs <acta.cruda.jsonl | acta.curada.jsonl>
+//   node $ACTA/conformidad.mjs <acta.cruda.jsonl | acta.curada.jsonl>
 //
 // Compara la secuencia de pasos que las skills marcaron (docs/protocolo-de-marcadores-de-paso.md)
 // con la que prescribe cada instructivo, en la version que la huella del acta registro, y escribe
@@ -225,7 +225,7 @@ export function conformidad(registros, { raizRepo = null, planDelIssue = null } 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const [acta, ...resto] = process.argv.slice(2);
   if (!acta || resto.length || !fs.existsSync(acta)) {
-    console.error('Uso: node scripts/acta/conformidad.mjs <acta.cruda.jsonl | acta.curada.jsonl>');
+    console.error('Uso: node $ACTA/conformidad.mjs <acta.cruda.jsonl | acta.curada.jsonl>');
     process.exitCode = 2;
   } else {
     // El plan del issue, si registrar-sesion.mjs lo guardo junto al acta (#238): sin el, una

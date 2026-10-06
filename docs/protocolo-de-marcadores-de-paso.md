@@ -41,17 +41,18 @@ quita el marcador de ese texto.
 
 ## Qué hace el compilador
 
-`scripts/acta/compilar-acta.mjs` abre un paso `marcado` por cada marcador, con
-`pasoPrescrito: { skill, letra }` y `faseDeclarada`. Lo que el turno hizo antes del primer marcador
-queda en un paso `ausente`, el primero del turno; el mismo paso marcado dos veces seguidas en un
-turno es uno solo. El acta lleva la fase cuando todos sus pasos declaran la misma; si declaran
-varias, queda en `null` y se avisa. El índice de la tarea lista en `fases` las de todas sus actas.
+`instrumentacion-java-ia/sdlc-ia/acta/compilar-acta.mjs` abre un paso `marcado` por cada
+marcador, con `pasoPrescrito: { skill, letra }` y `faseDeclarada`. Lo que el turno hizo antes del
+primer marcador queda en un paso `ausente`, el primero del turno; el mismo paso marcado dos veces
+seguidas en un turno es uno solo. El acta lleva la fase cuando todos sus pasos declaran la misma;
+si declaran varias, queda en `null` y se avisa. El índice de la tarea lista en `fases` las de todas
+sus actas.
 
 ## Qué responde la conformidad
 
-`node scripts/acta/conformidad.mjs <acta>` compara la secuencia marcada con los encabezados
-`Phase N` y `Step X` del `SKILL.md`, leídos del blob que la huella registró y no del archivo de
-hoy:
+`node instrumentacion-java-ia/sdlc-ia/acta/conformidad.mjs <acta>` compara la secuencia marcada
+con los encabezados `Phase N` y `Step X` del `SKILL.md`, leídos del blob que la huella registró y
+no del archivo de hoy:
 
 - **Omitidos**: pasos prescritos que no se marcaron.
 - **Repetidos**: volver a un paso después de pasar por otro. Retomar el mismo paso no es repetirlo.
@@ -81,8 +82,9 @@ omitidos: inferirlos metería una heurística en el registro (PC-04).
 | `impact-metrics` | 5 · Métricas y reporte | Phase 1 a 6 |
 
 Las nueve marcan sus pasos desde #230. La fase del método de cada una es la de su actividad en el
-catálogo de `scripts/acta/proceso.json`, y una prueba de `conformidad.test.mjs` exige que el
-marcador de cada `SKILL.md` la declare y que `proceso.json` traduzca exactamente sus pasos.
+catálogo de `instrumentacion-java-ia/sdlc-ia/acta/proceso.json`, y una prueba de
+`conformidad.test.mjs` exige que el marcador de cada `SKILL.md` la declare y que `proceso.json`
+traduzca exactamente sus pasos.
 
 ## Pasos en los `references/`
 
@@ -123,7 +125,7 @@ invocada solo si el turno es de una tarea con número (la rama `feat/<N>-...`).
 
 | Nivel | Qué es en una sesión sin skill |
 |---|---|
-| Actividad | «Implementar el plan de un issue», del catálogo de `scripts/acta/proceso.json` |
+| Actividad | «Implementar el plan de un issue», del catálogo de `instrumentacion-java-ia/sdlc-ia/acta/proceso.json` |
 | Procedimiento | `AGENTS.md` (y `CLAUDE.md`), en la versión que la huella registra siempre |
 | Instructivo | el plan del issue, que `registrar-sesion.mjs` guarda en `plan-del-issue.json` con su fecha y su sha256 |
 

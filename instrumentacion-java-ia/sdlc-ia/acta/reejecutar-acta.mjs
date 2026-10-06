@@ -1,6 +1,6 @@
 // Motor de re-ejecucion del acta (#222, fase 2; ADR-0005 punto 4), desde la raiz del repo:
 //
-//   node scripts/acta/reejecutar-acta.mjs <acta.curada.jsonl> [--reporte <archivo>]
+//   node $ACTA/reejecutar-acta.mjs <acta.curada.jsonl> [--reporte <archivo>]
 //        [--imagen <imagen>] [--tiempo <segundos por accion>]
 //
 // Re-ejecuta la curada en un contenedor, sin el modelo, y escribe el reporte junto a ella como
@@ -155,7 +155,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const a = argumentos(process.argv.slice(2));
   if (!a.curada || a.desconocido || !a.curada.endsWith(SUFIJO_CURADA) ||
     !fs.existsSync(a.curada) || !(a.tiempo > 0)) {
-    console.error('Uso: node scripts/acta/reejecutar-acta.mjs <acta.curada.jsonl> ' +
+    console.error('Uso: node $ACTA/reejecutar-acta.mjs <acta.curada.jsonl> ' +
       '[--reporte <archivo>] [--imagen <imagen>] [--tiempo <segundos por accion>]');
     process.exitCode = 2;
   } else {

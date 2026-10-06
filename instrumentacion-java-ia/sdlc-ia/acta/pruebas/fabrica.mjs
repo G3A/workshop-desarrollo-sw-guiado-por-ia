@@ -363,7 +363,8 @@ export function sesionMarcada(opciones) {
 export const SKILL_DEBT_TRIAGE = 'instrumentacion-java-ia/sdlc-ia/skills/debt-triage/SKILL.md';
 
 export function sesionParaElVisor() {
-  const raizMonorepo = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+  const raizMonorepo = path.join(path.dirname(fileURLToPath(import.meta.url)),
+    '..', '..', '..', '..');
   const repo = repoQueAvanza({ 'Tarifa.java': 'x * 1.19\n',
     [SKILL_DEBT_TRIAGE]: fs.readFileSync(path.join(raizMonorepo, SKILL_DEBT_TRIAGE), 'utf8') });
   const head = git(['rev-parse', 'HEAD'], { cwd: repo.raiz }).trim();

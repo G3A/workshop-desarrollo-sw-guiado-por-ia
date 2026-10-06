@@ -1,5 +1,5 @@
 // Pruebas del trailer Registro-IA y su sensor (#222, fase 3; ADR-0006):
-//   node --test scripts/acta/pruebas/verificar-registro-ia.test.mjs
+//   node --test $ACTA/pruebas/verificar-registro-ia.test.mjs
 //
 // La sesion para el motor se registra dentro de su repo de prueba, sus cambios y su acta se
 // commitean con el trailer, y el sensor corre sobre un CLON: ahi no estan los arboles que la
@@ -128,7 +128,7 @@ test('registrar: corta la llamada en curso, la que corre el registro, y su captu
     .prompt('Registra')
     .llamada('tu1', 'Bash', { command: 'npm test' })
     .resultado('tu1', 'ok')
-    .llamada('tu2', 'Bash', { command: 'node scripts/acta/registrar-sesion.mjs' });
+    .llamada('tu2', 'Bash', { command: 'node $ACTA/registrar-sesion.mjs' });
   const carpeta = carpetaTemporal('sesion');
   const transcript = f.escribir(carpeta);
   const captura = path.join(carpeta, 'captura.jsonl');

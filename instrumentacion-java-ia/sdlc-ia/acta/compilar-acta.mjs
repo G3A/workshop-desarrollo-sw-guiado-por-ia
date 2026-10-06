@@ -1,6 +1,6 @@
 // Compilador del acta cruda (#216, ADR-0005), desde la raiz del repo:
 //
-//   node scripts/acta/compilar-acta.mjs --transcript <sesion.jsonl>
+//   node $ACTA/compilar-acta.mjs --transcript <sesion.jsonl>
 //        [--captura <captura.jsonl>] [--salida <carpeta>] [--sin-verificar-secretos]
 //
 // Toma el transcript principal de Claude Code y los de sus subagentes
@@ -52,7 +52,7 @@ import { blobEn, cambiosEntre, git, leerEnCommit, raizDelRepo, versionDe } from 
 
 const RAMA_CON_TAREA = /^[a-z]+\/(\d+)-/;
 const RUTA_PLUGIN = 'instrumentacion-java-ia/sdlc-ia';
-const RUTA_DOCKERFILE = 'scripts/acta/motor/Dockerfile';
+const RUTA_DOCKERFILE = 'instrumentacion-java-ia/sdlc-ia/acta/motor/Dockerfile';
 const DOC_DE_SKILL = /(^|\/)skills\/[^/]+\/(SKILL\.md|references\/[^/]+\.md)$/;
 const PROFUNDIDAD_MAXIMA = 5;
 
@@ -995,7 +995,7 @@ function argumentos(argv) {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const a = argumentos(process.argv.slice(2));
   if (!a.transcript || a.desconocido || !fs.existsSync(a.transcript)) {
-    console.error('Uso: node scripts/acta/compilar-acta.mjs --transcript <sesion.jsonl> ' +
+    console.error('Uso: node $ACTA/compilar-acta.mjs --transcript <sesion.jsonl> ' +
       '[--captura <captura.jsonl>] [--salida <carpeta>] [--sin-verificar-secretos]');
     process.exitCode = 2;
   } else {

@@ -1,5 +1,5 @@
 // Pruebas del motor dentro de Docker (#222, fase 2):
-//   node --test scripts/acta/pruebas/reejecutar-acta.test.mjs
+//   node --test $ACTA/pruebas/reejecutar-acta.test.mjs
 //
 // Corren la CLI como la corre una persona: construyen la imagen si falta (la primera vez tarda un
 // par de minutos y necesita red) y re-ejecutan la curada en el contenedor. Sin Docker se saltan,

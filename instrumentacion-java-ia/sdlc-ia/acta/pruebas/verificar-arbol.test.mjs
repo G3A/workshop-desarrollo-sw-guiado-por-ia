@@ -1,5 +1,5 @@
 // Pruebas de la validacion del arbol final (#218). Desde la raiz:
-//   node --test scripts/acta/pruebas/verificar-arbol.test.mjs
+//   node --test $ACTA/pruebas/verificar-arbol.test.mjs
 //
 // Cada escenario usa un repo real de prueba (repoQueAvanza): la verificacion lee blobs y escribe
 // arboles intermedios, y eso solo se prueba contra objetos de verdad.

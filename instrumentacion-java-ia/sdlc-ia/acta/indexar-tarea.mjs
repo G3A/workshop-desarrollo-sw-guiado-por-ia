@@ -1,6 +1,6 @@
 // Indice de una tarea (#222; PC-02 y PC-03), desde la raiz del repo:
 //
-//   node scripts/acta/indexar-tarea.mjs <.ia/registros/<tarea>>
+//   node $ACTA/indexar-tarea.mjs <.ia/registros/<tarea>>
 //
 // Escribe <carpeta>/indice.json con las actas crudas de la tarea, una por sesion: su inicio, su
 // fin, sus ramas, el sha256 de sus bytes y si tiene curada. Responde PC-02 sin abrir ninguna acta,
@@ -101,7 +101,7 @@ export function indexarYEscribir(carpeta, { log = console } = {}) {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const [carpeta, ...resto] = process.argv.slice(2);
   if (!carpeta || resto.length || !fs.existsSync(carpeta) || !fs.statSync(carpeta).isDirectory()) {
-    console.error('Uso: node scripts/acta/indexar-tarea.mjs <.ia/registros/<tarea>>');
+    console.error('Uso: node $ACTA/indexar-tarea.mjs <.ia/registros/<tarea>>');
     process.exitCode = 2;
   } else {
     console.log(`Indice de la tarea: ${indexarYEscribir(carpeta)}`);

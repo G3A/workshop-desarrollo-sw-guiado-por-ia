@@ -48,7 +48,7 @@ respuesta tuya, escribe una línea sola como esta:
 ```
 
 Con esa línea, el acta de la sesión sabe a qué fase de esta skill pertenece cada acción, y
-`scripts/acta/conformidad.mjs` puede decir qué fases se omitieron, repitieron o desordenaron. Sin
+`instrumentacion-java-ia/sdlc-ia/acta/conformidad.mjs` puede decir qué fases se omitieron, repitieron o desordenaron. Sin
 ella, el registro no adivina.
 
 El único regreso que la skill manda está declarado en su `SKILL.md` como bucle: `**Loop:** from

@@ -2,7 +2,7 @@
 //
 // Funcion pura. Recibe la curada y, si los hay, la cruda, el reporte del motor, la conformidad, el
 // indice de la tarea, la deriva de la huella y la configuracion del proceso
-// (scripts/acta/proceso.json), y devuelve todo lo que el visor muestra, ya redactado.
+// (proceso.json, junto a este archivo), y devuelve todo lo que el visor muestra, ya redactado.
 //
 // Tres reglas que no son de estilo (docs/jerarquia-proceso-actividad-tarea.md, ADR-0005):
 //

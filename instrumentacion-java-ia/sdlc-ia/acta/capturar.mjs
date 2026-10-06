@@ -1,7 +1,7 @@
 // Hook de captura del acta (#216). Lo llaman SessionStart, PreToolUse, PostToolUse,
 // PostToolUseFailure y SessionEnd desde .claude/settings.json:
 //
-//   node "$CLAUDE_PROJECT_DIR/scripts/acta/capturar.mjs"
+//   node "$CLAUDE_PROJECT_DIR/instrumentacion-java-ia/sdlc-ia/acta/capturar.mjs"
 //
 // Agrega una linea a .ia/captura/<sesion>.jsonl con lo que el transcript no guarda: el HEAD y el
 // hash del arbol, antes y despues de cada accion, y cada PermissionRequest (#222, fase 5): el

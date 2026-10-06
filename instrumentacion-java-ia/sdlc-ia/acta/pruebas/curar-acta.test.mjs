@@ -1,5 +1,5 @@
 // Pruebas de la curacion del acta (#218). Desde la raiz:
-//   node --test scripts/acta/pruebas/curar-acta.test.mjs
+//   node --test $ACTA/pruebas/curar-acta.test.mjs
 //
 // Cada escenario es un transcript sintetico (fabrica.mjs) que se compila a la cruda y se cura.
 // Las invariantes I6 e I7 se prueban en las dos direcciones: la curada las cumple, y una curada

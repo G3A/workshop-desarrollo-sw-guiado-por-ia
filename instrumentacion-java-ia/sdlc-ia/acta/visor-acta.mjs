@@ -1,6 +1,6 @@
 // Visor del acta (#222, fase 6; diseno E5), desde la raiz del repo:
 //
-//   node scripts/acta/visor-acta.mjs <acta.curada.jsonl> [--reporte <reporte.json>]
+//   node $ACTA/visor-acta.mjs <acta.curada.jsonl> [--reporte <reporte.json>]
 //        [--asignado <persona>] [--sin-red] [--salida <archivo.html>]
 //
 // Escribe un HTML autocontenido —sin red, sin fuentes externas— que muestra la sesion como
@@ -11,7 +11,8 @@
 // Lo que junta, ademas de la curada: su cruda (los intentos fallidos), el reporte del motor
 // (<sesion>.acta.reporte.json, si existe), la conformidad con el instructivo, el indice de la
 // tarea, la deriva de la huella, la fecha del procedimiento, los commits que citan el acta con
-// Registro-IA, la configuracion del proceso (scripts/acta/proceso.json) y, salvo con --sin-red, el
+// Registro-IA, la configuracion del proceso (proceso.json, junto a este archivo) y, salvo con
+// --sin-red, el
 // titulo y la persona asignada del issue en GitHub (`gh issue view`).
 //
 // Todo el contenido del acta entra al HTML como DATOS (JSON con `<` escapado) y la pagina lo pinta
@@ -200,7 +201,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const [curada] = args;
   if (!curada || !curada.endsWith(SUFIJO) || !fs.existsSync(curada)) {
     console.error(
-      'Uso: node scripts/acta/visor-acta.mjs <acta.curada.jsonl> [--reporte <reporte.json>] ' +
+      'Uso: node $ACTA/visor-acta.mjs <acta.curada.jsonl> [--reporte <reporte.json>] ' +
         '[--asignado <persona>] [--sin-red] [--salida <archivo.html>]',
     );
     process.exitCode = 2;

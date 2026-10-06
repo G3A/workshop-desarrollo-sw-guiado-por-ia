@@ -38,10 +38,10 @@ contexto:
   un segundo y no salen a la red; el del playbook, solo en CI; y el del espejo, **solo en CI porque
   sí sale** —un hook que sale a la red bloquea `git push` cuando falla el wifi—. A mano es
   `node scripts/verificar-espejo.mjs` desde la raíz; sin `GITHUB_TOKEN` usa la API anónima, que
-  permite 60 peticiones por hora. Desde #216, `scripts/acta/` registra lo que hace la IA: un hook
-  captura el árbol antes y después de cada acción, y al cerrar la sesión compila el acta cruda en
-  `.ia/registros/`, que no se versiona; desde #218 también la cura, verificada contra el árbol.
-  Detalle en `scripts/acta/README.md` y en el ADR-0005.
+  permite 60 peticiones por hora. Desde #216 el acta registra lo que hace la IA: un hook captura el
+  árbol antes y después de cada acción, y al cerrar la sesión compila el acta en `.ia/registros/` y
+  la cura. Desde #247 vive en el plugin, `instrumentacion-java-ia/sdlc-ia/acta/`, para escribirse
+  también en los repos que lo usan. Detalle en su `README.md` y en los ADR-0005 a 0007.
 - `REVIEW.md` — qué mirar en un diff ya escrito (lo lee el servicio de Code Review; no repite las
   reglas de generación de los `AGENTS.md`). `EXPERIMENTS.md` — el acuerdo sobre qué puede fallar
   con el agente; sus pendientes los completa el equipo.
@@ -89,8 +89,8 @@ contexto:
   `fixup!`/`squash!`.
 - **El commit asistido cita su acta** (ADR-0006): `Registro-IA: <ruta de la curada>` o
   `Registro-IA: ninguno: <motivo>`. Dentro de Claude Code lo pone el hook `commit-msg`. Antes de
-  abrir la PR, `node scripts/acta/registrar-sesion.mjs` deja el acta en stage para commitearla, y
-  el cuerpo de la PR repite cada trailer. El CI falla si el acta no llega al diff del commit.
+  abrir la PR, `registrar-sesion.mjs` (en la carpeta del acta) la deja en stage para commitearla,
+  y el cuerpo de la PR repite cada trailer. El CI falla si el acta no llega al diff del commit.
 - **Al trabajar el plan de un issue sin una skill**, al empezar cada fase del plan escribe en su
   propia línea, fuera de un bloque de código, `[sdlc-ia:step skill=plan-de-issue step=<N>
   method-phase=3]`, con `<N>` el número de la fase. Así el acta declara la actividad y su paso, y

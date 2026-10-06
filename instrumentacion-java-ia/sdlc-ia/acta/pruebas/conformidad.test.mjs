@@ -1,5 +1,5 @@
 // Pruebas de la conformidad del acta (#222, fase 4):
-//   node --test scripts/acta/pruebas/conformidad.test.mjs
+//   node --test $ACTA/pruebas/conformidad.test.mjs
 //
 // De punta a punta con el instructivo REAL de debt-triage: el repo de prueba lleva una copia de su
 // SKILL.md tal como esta en este commit, la huella lo registra por su blob, y la conformidad lo lee
@@ -20,7 +20,7 @@ import { carpetaTemporal, fabrica, marcaDePaso, PLAN_DEL_10, repoTemporal, sesio
 import { leerActa } from '../validar-acta.mjs';
 
 const RUTA = 'instrumentacion-java-ia/sdlc-ia/skills/debt-triage/SKILL.md';
-const RAIZ = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+const RAIZ = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
 const INSTRUCTIVO = fs.readFileSync(path.join(RAIZ, RUTA), 'utf8');
 
 function actaCon(f, { conInstructivo = true } = {}) {
@@ -132,7 +132,8 @@ test('plan de un issue: el instructivo es el plan guardado, con su fecha y su sh
 // plugin esta en el catalogo, su SKILL.md tiene pasos que la conformidad lee, el marcador declara
 // la fase del metodo que dice el catalogo, y la traduccion cubre esos pasos, ni uno mas ni menos.
 test('proceso.json y los SKILL.md: marcador, fase del metodo y traduccion de cada paso', () => {
-  const proceso = JSON.parse(fs.readFileSync(path.join(RAIZ, 'scripts/acta/proceso.json'), 'utf8'));
+  const proceso = JSON.parse(fs.readFileSync(
+    path.join(RAIZ, 'instrumentacion-java-ia/sdlc-ia/acta/proceso.json'), 'utf8'));
   const skills = path.join(RAIZ, 'instrumentacion-java-ia/sdlc-ia/skills');
   const enDisco = fs.readdirSync(skills).sort();
   const delCatalogo = Object.keys(proceso.actividades)
@@ -225,7 +226,7 @@ test('references: si faltan en el repo, se dice cuales y no se inventan pasos', 
 
 test('CLI: lee el plan del issue que registrar-sesion.mjs dejo junto al acta (#238)', () => {
   const { curada, raiz } = sesionDelPlan();
-  const cli = path.join(RAIZ, 'scripts', 'acta', 'conformidad.mjs');
+  const cli = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'conformidad.mjs');
   const r = spawnSync(process.execPath, [cli, curada], { cwd: raiz, encoding: 'utf8' });
   assert.equal(r.status, 0, r.stderr);
   const [a] = JSON.parse(r.stdout).actividades;

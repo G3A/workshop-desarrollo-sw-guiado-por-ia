@@ -39,7 +39,7 @@ escribe una línea sola como esta:
 ```
 
 Con esa línea, el acta de la sesión sabe a qué fase de esta skill pertenece cada acción, y
-`scripts/acta/conformidad.mjs` puede decir qué fases se omitieron, repitieron o desordenaron. Sin
+`instrumentacion-java-ia/sdlc-ia/acta/conformidad.mjs` puede decir qué fases se omitieron, repitieron o desordenaron. Sin
 ella, el registro no adivina. El protocolo completo está en
 [`docs/protocolo-de-marcadores-de-paso.md`](../../../docs/protocolo-de-marcadores-de-paso.md).
 

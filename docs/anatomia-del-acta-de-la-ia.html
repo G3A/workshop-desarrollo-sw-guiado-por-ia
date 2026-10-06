@@ -126,11 +126,11 @@ footer { margin-top: 48px; color: var(--muted); font-size: 0.85rem; }
 <div class="wrap">
 
 <header class="top">
-  <div class="eyebrow">Registro de la IA · scripts/acta · ADR-0005 y ADR-0006</div>
+  <div class="eyebrow">Registro de la IA · instrumentacion-java-ia/sdlc-ia/acta · ADR-0005 y ADR-0006</div>
   <h1>Anatomía del acta de la IA</h1>
   <p class="lede" style="font-weight:600">¿Qué del acta es determinista y qué depende del modelo?</p>
   <p class="lede">El acta se arma con código determinista, sin llamar nunca a un modelo. Con el mismo transcript y la misma captura sale idéntica, byte a byte. El modelo decide <em>qué pasó</em> en la sesión, y el acta lo registra sin interpretarlo. Este informe recorre cada parte, el mecanismo que la hace determinista y los puntos donde entra el modelo.</p>
-  <p class="meta">Fuentes: <code>scripts/acta/README.md</code>, <code>docs/modelo-conceptual-registro-ia.md</code>, <code>docs/protocolo-de-marcadores-de-paso.md</code>, ADR-0005 y el código de <code>compilar-acta.mjs</code>, <code>curar-acta.mjs</code>, <code>clasificar.mjs</code> y <code>normalizar.mjs</code>. Estado del repo: rama <code>dev</code>, commit <code>fb2db54</code>.</p>
+  <p class="meta">Fuentes: <code>instrumentacion-java-ia/sdlc-ia/acta/README.md</code>, <code>docs/modelo-conceptual-registro-ia.md</code>, <code>docs/protocolo-de-marcadores-de-paso.md</code>, ADR-0005 y el código de <code>compilar-acta.mjs</code>, <code>curar-acta.mjs</code>, <code>clasificar.mjs</code> y <code>normalizar.mjs</code>. Estado del repo: rama <code>dev</code>, commit <code>fb2db54</code>.</p>
   <div class="legend" aria-label="Leyenda">
     <span><i class="sw det"></i>Código determinista</span>
     <span><i class="sw mod"></i>Depende del modelo</span>
@@ -156,7 +156,7 @@ footer { margin-top: 48px; color: var(--muted); font-size: 0.85rem; }
   <div class="eyebrow">1 · Veredicto</div>
   <h2>La frontera pasa entre los hechos y su registro</h2>
   <div class="prose">
-    <p>En <code>scripts/acta/</code> no hay ninguna llamada a un LLM: no se usa la API de Anthropic, ni Ollama, ni <code>claude -p</code> para generar contenido. Las únicas menciones de <code>claude -p</code> sirven para reconocer los permisos que nadie concedió en una sesión sin persona.</p>
+    <p>En <code>instrumentacion-java-ia/sdlc-ia/acta/</code> no hay ninguna llamada a un LLM: no se usa la API de Anthropic, ni Ollama, ni <code>claude -p</code> para generar contenido. Las únicas menciones de <code>claude -p</code> sirven para reconocer los permisos que nadie concedió en una sesión sin persona.</p>
     <p>La razón la da el ADR-0005: <strong>un LLM no es determinista</strong>. Ni la temperatura, ni la versión del modelo, ni lo que devuelven la red y los MCP quedan fijos entre corridas. Por eso el modelo puede ser el <em>objeto</em> del registro, pero nunca participa en armarlo.</p>
   </div>
   <div class="verdict">
@@ -242,7 +242,7 @@ footer { margin-top: 48px; color: var(--muted); font-size: 0.85rem; }
   <h3>Los hooks de Claude Code</h3>
   <div class="prose">
     <p>Un <strong>hook</strong> es un comando que Claude Code ejecuta solo cuando ocurre un evento de la sesión. Se declaran en <code>.claude/settings.json</code>. Claude Code le pasa al comando un JSON por la entrada estándar con los datos del evento (id de sesión, herramienta, entrada, modo de permisos, ruta del transcript).</p>
-    <p>El acta usa un único script, <code>scripts/acta/capturar.mjs</code>, registrado en seis eventos con el matcher <code>*</code> (todas las herramientas). Cada evento agrega una línea a <code>.ia/captura/&lt;sesión&gt;.jsonl</code>. Nunca responde ni bloquea: siempre sale con código 0, porque «un registro que rompe el trabajo que registra termina desinstalado».</p>
+    <p>El acta usa un único script, <code>instrumentacion-java-ia/sdlc-ia/acta/capturar.mjs</code>, registrado en seis eventos con el matcher <code>*</code> (todas las herramientas). Cada evento agrega una línea a <code>.ia/captura/&lt;sesión&gt;.jsonl</code>. Nunca responde ni bloquea: siempre sale con código 0, porque «un registro que rompe el trabajo que registra termina desinstalado».</p>
   </div>
   <div class="callout det">
     <p><strong>Cómo leer las columnas nuevas.</strong> <em>Clase</em> dice si el hook es <span class="tag det">determinista</span> (con la misma entrada y el mismo estado del repo da el mismo resultado, sin modelo ni red) o <span class="tag mod">no determinista</span> (su resultado o su orden pueden cambiar entre dos corridas iguales). <em>Quién lo dispara</em> separa dos cosas: quién emite el evento (Claude Code, git o GitHub Actions) y qué lo provoca (la persona, el modelo o una configuración).</p>
@@ -288,7 +288,7 @@ footer { margin-top: 48px; color: var(--muted); font-size: 0.85rem; }
     <tbody>
       <tr><td><code>citar-acta.mjs</code></td><td>Hook <code>commit-msg</code>, vía <code>lefthook.yml</code></td><td><span class="tag det">determinista</span></td><td>git, en cada <code>git commit</code>; el commit lo hace <strong>el modelo</strong> (con su herramienta Bash o PowerShell) o <strong>la persona</strong>. Solo actúa si existe <code>CLAUDE_CODE_SESSION_ID</code></td><td>Si el commit declara <code>Asistido-por-IA:</code>, agrega <code>Registro-IA: .ia/registros/&lt;tarea&gt;/&lt;sesión&gt;.acta.curada.jsonl</code>. La ruta sale de la rama y de la sesión. Nunca bloquea el commit</td></tr>
       <tr><td><code>verificar-pie-ia.mjs</code></td><td>Hook <code>commit-msg</code></td><td><span class="tag det">determinista</span></td><td>git, en cada <code>git commit</code> de <strong>la persona</strong> o <strong>el modelo</strong>; corre después de <code>citar-acta</code></td><td>Exige que el commit declare <code>Asistido-por-IA: &lt;modelo&gt;</code> o <code>Sin-IA:</code></td></tr>
-      <tr><td>Pruebas de <code>scripts/acta/pruebas/</code></td><td>Hook <code>pre-push</code></td><td><span class="tag det">determinista</span></td><td>git, en cada <code>git push</code> de <strong>la persona</strong> o <strong>el modelo</strong></td><td>Corre las pruebas del compilador, la curación, el motor, la conformidad, la exportación y el visor antes de subir. Una de ellas comprueba que compilar dos veces da los mismos bytes</td></tr>
+      <tr><td>Pruebas de <code>instrumentacion-java-ia/sdlc-ia/acta/pruebas/</code></td><td>Hook <code>pre-push</code></td><td><span class="tag det">determinista</span></td><td>git, en cada <code>git push</code> de <strong>la persona</strong> o <strong>el modelo</strong></td><td>Corre las pruebas del compilador, la curación, el motor, la conformidad, la exportación y el visor antes de subir. Una de ellas comprueba que compilar dos veces da los mismos bytes</td></tr>
       <tr><td><code>verificar-registro-ia.mjs</code></td><td>CI (<code>.github/workflows/ci.yml</code>), en las PR a <code>dev</code></td><td><span class="tag det">determinista</span></td><td><strong>GitHub Actions</strong>, al abrir o actualizar una PR hacia <code>dev</code></td><td>Falla si un commit asistido no declara su acta, si el acta no está en la PR, si la curada no sale de su cruda o si el árbol del commit no sale del acta. Lo que el motor re-ejecuta con bash o pwsh puede variar, por eso esas divergencias solo se avisan y no fallan la PR (ADR-0006)</td></tr>
     </tbody>
   </table></div>
@@ -301,7 +301,7 @@ footer { margin-top: 48px; color: var(--muted); font-size: 0.85rem; }
       <tr><td>git</td><td><code>rev-parse</code> para <code>HEAD</code> y raíz; <code>add -A</code> + <code>write-tree</code> sobre un <strong>índice temporal</strong> para el hash del árbol; blobs para verificar la cadena; pack de objetos; <code>git apply</code> en el motor</td><td>El índice temporal no toca lo que el usuario tiene en stage, y el hash del índice no varía con <code>core.autocrlf</code>. <code>.ia/</code> se excluye del hash para que registrar no cambie el árbol que se registra</td></tr>
       <tr><td>gitleaks</td><td><code>gitleaks dir &lt;acta&gt; --redact</code> antes de escribir el acta</td><td>El repo es público y el acta trae prompts, salidas y contenido leído. Sin gitleaks, el acta no se escribe</td></tr>
       <tr><td>Docker</td><td>Contenedor del motor: <code>--network none</code>, <code>--read-only</code>, usuario no root, límites y tmpfs</td><td>Ejecuta los comandos grabados sin riesgo para la máquina y siempre en el mismo entorno</td></tr>
-      <tr><td>Imagen del motor</td><td><code>scripts/acta/motor/Dockerfile</code>: base <code>node</code> fijada por digest, git y <code>pwsh</code> descargado con verificación de sha256</td><td>El digest fija la imagen byte a byte. <code>pwsh</code> permite re-ejecutar comandos de PowerShell en Linux</td></tr>
+      <tr><td>Imagen del motor</td><td><code>instrumentacion-java-ia/sdlc-ia/acta/motor/Dockerfile</code>: base <code>node</code> fijada por digest, git y <code>pwsh</code> descargado con verificación de sha256</td><td>El digest fija la imagen byte a byte. <code>pwsh</code> permite re-ejecutar comandos de PowerShell en Linux</td></tr>
       <tr><td>bash y pwsh</td><td>Dentro del contenedor, para re-ejecutar los Bash y PowerShell grabados</td><td>Cada comando corre con el mismo intérprete con que se grabó</td></tr>
       <tr><td>Playwright</td><td>No lo ejecuta el acta: sus capturas y <code>trace</code> en <code>test-results/</code> se adjuntan como evidencia</td><td>Se decide por la fecha del archivo, no por el comando que lo generó</td></tr>
       <tr><td>GitHub CLI (<code>gh</code>)</td><td>El visor consulta el título y la persona asignada del issue; <code>registrar-sesion.mjs</code> guarda el plan del issue</td><td>Con <code>--sin-red</code> no se consulta</td></tr>
@@ -411,10 +411,10 @@ footer { margin-top: 48px; color: var(--muted); font-size: 0.85rem; }
   <h3>Ejemplo: la misma ruta en dos máquinas</h3>
   <div class="xform">
     <div><div class="lbl">En el transcript (Windows, Git Bash)</div><pre><code>D:\GitHub_public\workshop\scripts\acta\x.mjs
-/d/GitHub_public/workshop/scripts/acta/x.mjs
+/d/GitHub_public/workshop/instrumentacion-java-ia/sdlc-ia/acta/x.mjs
 C:\Users\&lt;usuario&gt;\.claude\settings.json</code></pre></div>
-    <div><div class="lbl">En el acta</div><pre><code>./scripts/acta/x.mjs
-./scripts/acta/x.mjs
+    <div><div class="lbl">En el acta</div><pre><code>./instrumentacion-java-ia/sdlc-ia/acta/x.mjs
+./instrumentacion-java-ia/sdlc-ia/acta/x.mjs
 ~/.claude/settings.json</code></pre></div>
   </div>
   <p class="prose">Hay una excepción deliberada: en los campos con contenido de archivos (lo que escribe un Edit y el diff de un cambio) solo se normalizan las rutas. Si se redactara más, la curación y el motor ya no podrían volver a aplicar el Edit sobre el blob real.</p>
@@ -547,24 +547,24 @@ C:\Users\&lt;usuario&gt;\.claude\settings.json</code></pre></div>
   <h2>Comandos para verificar el determinismo</h2>
   <p class="prose">Funcionan igual en PowerShell y en bash. Se corren desde la raíz del repo.</p>
   <h3>Compilar dos veces y comparar</h3>
-  <pre><code>node scripts/acta/compilar-acta.mjs --transcript &lt;sesión.jsonl&gt; --salida &lt;carpeta-1&gt;
-node scripts/acta/compilar-acta.mjs --transcript &lt;sesión.jsonl&gt; --salida &lt;carpeta-2&gt;
+  <pre><code>node instrumentacion-java-ia/sdlc-ia/acta/compilar-acta.mjs --transcript &lt;sesión.jsonl&gt; --salida &lt;carpeta-1&gt;
+node instrumentacion-java-ia/sdlc-ia/acta/compilar-acta.mjs --transcript &lt;sesión.jsonl&gt; --salida &lt;carpeta-2&gt;
 git diff --no-index &lt;carpeta-1&gt; &lt;carpeta-2&gt;</code></pre>
   <h3>Re-derivar la curada y exigir igualdad byte a byte</h3>
-  <pre><code>node scripts/acta/curar-acta.mjs &lt;acta.cruda.jsonl&gt; --comprobar &lt;acta.curada.jsonl&gt;</code></pre>
+  <pre><code>node instrumentacion-java-ia/sdlc-ia/acta/curar-acta.mjs &lt;acta.cruda.jsonl&gt; --comprobar &lt;acta.curada.jsonl&gt;</code></pre>
   <h3>Validar invariantes y re-ejecutar sin el modelo</h3>
-  <pre><code>node scripts/acta/validar-acta.mjs &lt;acta.cruda.jsonl&gt;
-node scripts/acta/reejecutar-acta.mjs &lt;acta.curada.jsonl&gt;</code></pre>
+  <pre><code>node instrumentacion-java-ia/sdlc-ia/acta/validar-acta.mjs &lt;acta.cruda.jsonl&gt;
+node instrumentacion-java-ia/sdlc-ia/acta/reejecutar-acta.mjs &lt;acta.curada.jsonl&gt;</code></pre>
   <h3>Ver qué parte dependió de los marcadores del modelo</h3>
-  <pre><code>node scripts/acta/conformidad.mjs &lt;acta.curada.jsonl&gt;</code></pre>
+  <pre><code>node instrumentacion-java-ia/sdlc-ia/acta/conformidad.mjs &lt;acta.curada.jsonl&gt;</code></pre>
   <h3>Las pruebas que fijan el comportamiento</h3>
-  <pre><code>node --test scripts/acta/pruebas/compilar-acta.test.mjs scripts/acta/pruebas/curar-acta.test.mjs
-node --test scripts/acta/pruebas/conformidad.test.mjs scripts/acta/pruebas/exportar-acta.test.mjs</code></pre>
+  <pre><code>node --test instrumentacion-java-ia/sdlc-ia/acta/pruebas/compilar-acta.test.mjs instrumentacion-java-ia/sdlc-ia/acta/pruebas/curar-acta.test.mjs
+node --test instrumentacion-java-ia/sdlc-ia/acta/pruebas/conformidad.test.mjs instrumentacion-java-ia/sdlc-ia/acta/pruebas/exportar-acta.test.mjs</code></pre>
 </section>
 
 <footer>
-  <p><strong>Cómo se hizo este informe.</strong> Se leyeron con búsquedas de texto y lectura de archivos <code>scripts/acta/README.md</code>, <code>docs/modelo-conceptual-registro-ia.md</code>, <code>docs/protocolo-de-marcadores-de-paso.md</code>, el ADR-0005, <code>.claude/settings.json</code>, <code>lefthook.yml</code>, <code>motor/Dockerfile</code> y el código de <code>capturar.mjs</code>, <code>nucleo-captura.mjs</code>, <code>compilar-acta.mjs</code>, <code>curar-acta.mjs</code>, <code>clasificar.mjs</code>, <code>normalizar.mjs</code>, <code>citar-acta.mjs</code> y <code>registrar-sesion.mjs</code>, más un acta real de <code>.ia/registros/235/</code>. Se buscó en <code>scripts/acta/</code> cualquier llamada a un modelo y no hay ninguna. No se ejecutaron los comandos de la sección 12.</p>
-  Basado en el estado de <code>dev</code> al 6 de octubre de 2026 (commit <code>fb2db54</code>). Para el detalle, consulta <code>scripts/acta/README.md</code> y <code>docs/modelo-conceptual-registro-ia.md</code>.
+  <p><strong>Cómo se hizo este informe.</strong> Se leyeron con búsquedas de texto y lectura de archivos <code>instrumentacion-java-ia/sdlc-ia/acta/README.md</code>, <code>docs/modelo-conceptual-registro-ia.md</code>, <code>docs/protocolo-de-marcadores-de-paso.md</code>, el ADR-0005, <code>.claude/settings.json</code>, <code>lefthook.yml</code>, <code>motor/Dockerfile</code> y el código de <code>capturar.mjs</code>, <code>nucleo-captura.mjs</code>, <code>compilar-acta.mjs</code>, <code>curar-acta.mjs</code>, <code>clasificar.mjs</code>, <code>normalizar.mjs</code>, <code>citar-acta.mjs</code> y <code>registrar-sesion.mjs</code>, más un acta real de <code>.ia/registros/235/</code>. Se buscó en <code>instrumentacion-java-ia/sdlc-ia/acta/</code> cualquier llamada a un modelo y no hay ninguna. No se ejecutaron los comandos de la sección 12.</p>
+  Basado en el estado de <code>dev</code> al 6 de octubre de 2026 (commit <code>fb2db54</code>). Para el detalle, consulta <code>instrumentacion-java-ia/sdlc-ia/acta/README.md</code> y <code>docs/modelo-conceptual-registro-ia.md</code>.
 </footer>
 
 </div>

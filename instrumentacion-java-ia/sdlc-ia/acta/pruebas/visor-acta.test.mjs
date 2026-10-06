@@ -1,5 +1,5 @@
 // Pruebas del visor del acta (#222, fase 6; diseno E5):
-//   node --test scripts/acta/pruebas/visor-acta.test.mjs
+//   node --test $ACTA/pruebas/visor-acta.test.mjs
 //
 // Dos partes. El modelo de vista sobre una sesion sintetica que pasa por el compilador y la
 // curacion de verdad, con el SKILL.md real de debt-triage: lenguaje comun, los tres ejes y que
@@ -17,7 +17,7 @@ import { construirVista, textosVisibles } from '../vista-acta.mjs';
 import { carpetaTemporal, sesionConCapturas, sesionDelPlan, sesionParaElVisor }
   from './fabrica.mjs';
 
-const RAIZ = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+const RAIZ = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
 
 // Un reporte del motor sintetico con un modo por accion, como lo escribe reejecutar-acta.mjs.
 function reporteDe(curada) {

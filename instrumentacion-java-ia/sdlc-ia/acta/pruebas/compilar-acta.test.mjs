@@ -1,4 +1,4 @@
-// Pruebas del compilador del acta (#216). Desde la raiz: node --test scripts/acta/pruebas/
+// Pruebas del compilador del acta (#216). Desde la raiz: node --test $ACTA/pruebas/
 //
 // Cada escenario del issue es un transcript sintetico (fabrica.mjs). Las invariantes se prueban
 // en las dos direcciones: el acta compilada las cumple, y un acta sembrada con cada rotura sale
@@ -328,7 +328,8 @@ test('captura: los arboles antes y despues dan los cambios por archivo y la huel
     'a.md': 'uno\n',
     [skill]: '# demo\n',
     'instrumentacion-java-ia/sdlc-ia/.claude-plugin/plugin.json': '{"version":"9.9.9"}',
-    'scripts/acta/motor/Dockerfile': `FROM node@sha256:${'ab'.repeat(32)}\nUSER node\n`,
+    'instrumentacion-java-ia/sdlc-ia/acta/motor/Dockerfile':
+        `FROM node@sha256:${'ab'.repeat(32)}\nUSER node\n`,
   });
   const headBase = git(['rev-parse', 'HEAD'], { cwd: raiz }).trim();
   const antes = arbolActual(raiz);

@@ -22,7 +22,7 @@
 // Y el anexo de verificaciones negativas: solo la curada lo tiene, ningun rojo esperado queda en
 // la secuencia y, con la cruda, el anexo trae exactamente sus acciones marcadas, con su resultado.
 //
-// Uso: node scripts/acta/validar-acta.mjs <acta.cruda.jsonl | acta.curada.jsonl>
+// Uso: node $ACTA/validar-acta.mjs <acta.cruda.jsonl | acta.curada.jsonl>
 // Con una curada, busca la cruda de la que deriva en la misma carpeta para validar I7.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -276,7 +276,7 @@ export function leerActa(archivo) {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const archivo = process.argv[2];
   if (!archivo) {
-    console.error('Uso: node scripts/acta/validar-acta.mjs <acta.cruda.jsonl | ' +
+    console.error('Uso: node $ACTA/validar-acta.mjs <acta.cruda.jsonl | ' +
       'acta.curada.jsonl>');
     process.exitCode = 2;
   } else {

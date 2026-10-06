@@ -1,6 +1,6 @@
 // Que cambio en la huella de un acta desde que se produjo (#222, fase 3; PC-14), desde la raiz:
 //
-//   node scripts/acta/deriva-huella.mjs <acta> [--hasta <commit>] [--modelo <id>]
+//   node $ACTA/deriva-huella.mjs <acta> [--hasta <commit>] [--modelo <id>]
 //        [--claude-code <version>]
 //
 // Compara la huella del acta (en su HEAD base) con el estado en `--hasta` (HEAD por defecto):
@@ -22,7 +22,7 @@ import { git, raizDelRepo } from './git.mjs';
 import { leerActa } from './validar-acta.mjs';
 
 const PLUGIN = 'instrumentacion-java-ia/sdlc-ia/.claude-plugin/plugin.json';
-const DOCKERFILE = 'scripts/acta/motor/Dockerfile';
+const DOCKERFILE = 'instrumentacion-java-ia/sdlc-ia/acta/motor/Dockerfile';
 
 const comparar = (antes, ahora) => ({ antes, ahora,
   cambio: antes === null || ahora === null ? null : JSON.stringify(antes) !==
@@ -86,7 +86,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const acta = args[0];
   const raiz = raizDelRepo(process.cwd());
   if (!acta || !fs.existsSync(acta) || !raiz) {
-    console.error('Uso: node scripts/acta/deriva-huella.mjs <acta> [--hasta <commit>] ' +
+    console.error('Uso: node $ACTA/deriva-huella.mjs <acta> [--hasta <commit>] ' +
       '[--modelo <id>] [--claude-code <version>]');
     process.exitCode = 2;
   } else {

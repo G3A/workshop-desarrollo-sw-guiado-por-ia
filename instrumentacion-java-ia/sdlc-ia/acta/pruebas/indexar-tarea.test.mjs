@@ -1,4 +1,4 @@
-// Pruebas del indice de una tarea (#222): node --test scripts/acta/pruebas/indexar-tarea.test.mjs
+// Pruebas del indice de una tarea (#222): node --test $ACTA/pruebas/indexar-tarea.test.mjs
 //
 // Las actas salen del compilador sobre transcripts sinteticos (fabrica.mjs), con sus diffs
 // contra un repo de prueba: el indice inverso se mide sobre los cambios que el compilador arma.

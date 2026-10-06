@@ -1,5 +1,5 @@
 // Pruebas de la deriva de la huella (#222, fase 3; PC-14):
-//   node --test scripts/acta/pruebas/deriva-huella.test.mjs
+//   node --test $ACTA/pruebas/deriva-huella.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -10,7 +10,7 @@ import { repoTemporal } from './fabrica.mjs';
 
 const PLUGIN = 'instrumentacion-java-ia/sdlc-ia/.claude-plugin/plugin.json';
 const SKILL = 'instrumentacion-java-ia/sdlc-ia/skills/demo/SKILL.md';
-const DOCKERFILE = 'scripts/acta/motor/Dockerfile';
+const DOCKERFILE = 'instrumentacion-java-ia/sdlc-ia/acta/motor/Dockerfile';
 const BASE = `node@sha256:${'ab'.repeat(32)}`;
 
 test('deriva: dice que cambio desde el HEAD base del acta, y que no se puede saber', () => {

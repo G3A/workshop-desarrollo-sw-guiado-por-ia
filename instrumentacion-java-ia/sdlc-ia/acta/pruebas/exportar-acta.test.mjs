@@ -1,5 +1,5 @@
 // Pruebas de la exportacion a OCEL 2.0 y PROV-O (#222, fase 7; PC-15):
-//   node --test scripts/acta/pruebas/exportar-acta.test.mjs
+//   node --test $ACTA/pruebas/exportar-acta.test.mjs
 //
 // Sin perdida: cada escenario de la fabrica, crudo y curado, sale y vuelve byte a byte por los dos
 // formatos. Y cada formato tiene la forma de su estandar: tipos declarados, relaciones que apuntan

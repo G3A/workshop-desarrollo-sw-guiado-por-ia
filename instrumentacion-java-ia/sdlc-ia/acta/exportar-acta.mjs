@@ -1,6 +1,6 @@
 // Exportacion del acta a OCEL 2.0 y a W3C PROV-O (#222, fase 7; PC-15), desde la raiz del repo:
 //
-//   node scripts/acta/exportar-acta.mjs <acta> --formato ocel|prov [--salida <archivo>]
+//   node $ACTA/exportar-acta.mjs <acta> --formato ocel|prov [--salida <archivo>]
 //
 // OCEL 2.0 (JSON, https://www.ocel-standard.org): cada accion es un evento cuyo tipo es su
 // herramienta, y cada intervencion es un evento `intervencion`. Tarea, sesion, acta, turno, paso,
@@ -206,7 +206,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const [acta] = args;
   const formato = opcion('--formato');
   if (!acta || !fs.existsSync(acta) || !['ocel', 'prov'].includes(formato)) {
-    console.error('Uso: node scripts/acta/exportar-acta.mjs <acta> --formato ocel|prov ' +
+    console.error('Uso: node $ACTA/exportar-acta.mjs <acta> --formato ocel|prov ' +
       '[--salida <archivo>]');
     process.exitCode = 2;
   } else {

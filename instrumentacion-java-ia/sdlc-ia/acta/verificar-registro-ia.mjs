@@ -1,6 +1,6 @@
 // Sensor del trailer Registro-IA (#222, fase 3; ADR-0006), desde la raiz del repo:
 //
-//   node scripts/acta/verificar-registro-ia.mjs --rango <A..B> [--cuerpo-pr <archivo>]
+//   node $ACTA/verificar-registro-ia.mjs --rango <A..B> [--cuerpo-pr <archivo>]
 //        [--sin-motor]
 //
 // Cada commit del rango que declara `Asistido-por-IA:` cita su acta con `Registro-IA:`: la ruta de
@@ -189,7 +189,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const a = argumentos(process.argv.slice(2));
   const raiz = raizDelRepo(process.cwd());
   if (!a.rango || a.desconocido || !raiz || (a.cuerpoPr && !fs.existsSync(a.cuerpoPr))) {
-    console.error('Uso: node scripts/acta/verificar-registro-ia.mjs --rango <A..B> ' +
+    console.error('Uso: node $ACTA/verificar-registro-ia.mjs --rango <A..B> ' +
       '[--cuerpo-pr <archivo>] [--sin-motor]');
     process.exitCode = 2;
   } else {

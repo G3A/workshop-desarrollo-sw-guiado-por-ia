@@ -1,8 +1,8 @@
 # Acta de la IA
 
 El registro de lo que hizo la IA en una sesión de Claude Code, según el
-[ADR-0005](../../docs/adrs/0005-re-ejecutar-el-registro-de-la-ia-sin-el-modelo.md) y el
-[modelo conceptual](../../docs/modelo-conceptual-registro-ia.md). Esta carpeta trae la primera
+[ADR-0005](../../../docs/adrs/0005-re-ejecutar-el-registro-de-la-ia-sin-el-modelo.md) y el
+[modelo conceptual](../../../docs/modelo-conceptual-registro-ia.md). Esta carpeta trae la primera
 pieza, el **acta cruda** (#216), la **curada** que se deriva de ella (#218), el **índice de la
 tarea**, el **motor** que re-ejecuta la curada en Docker, la **conformidad** con los pasos que
 las skills marcan, el trailer `Registro-IA:` con su sensor del CI, la exportación a OCEL 2.0 y
@@ -42,26 +42,35 @@ acta», más abajo.
 
 ## A mano
 
+`$ACTA` es la carpeta del acta. En este monorepo es `instrumentacion-java-ia/sdlc-ia/acta`; en un
+repo que usa el plugin, la carpeta `acta` del plugin instalado. Se define una vez y los comandos se
+escriben igual en los dos shells:
+
 ```text
-node scripts/acta/compilar-acta.mjs --transcript <sesión.jsonl> [--salida <carpeta>]
-node scripts/acta/curar-acta.mjs <acta.cruda.jsonl> [--salida <acta.curada.jsonl>]
-node scripts/acta/curar-acta.mjs <acta.cruda.jsonl> --comprobar <acta.curada.jsonl>
-node scripts/acta/validar-acta.mjs <acta.cruda.jsonl | acta.curada.jsonl>
-node scripts/acta/indexar-tarea.mjs <.ia/registros/<tarea>>
-node scripts/acta/reejecutar-acta.mjs <acta.curada.jsonl> [--reporte <archivo>] [--tiempo <s>]
-node scripts/acta/conformidad.mjs <acta.cruda.jsonl | acta.curada.jsonl>
-node scripts/acta/registrar-sesion.mjs [--sesion <id>] [--sin-stage]
-node scripts/acta/verificar-registro-ia.mjs --rango <A..B> [--cuerpo-pr <archivo>] [--sin-motor]
-node scripts/acta/deriva-huella.mjs <acta> [--hasta <commit>] [--modelo <id>]
-node scripts/acta/exportar-acta.mjs <acta> --formato ocel|prov [--salida <archivo>]
-node scripts/acta/visor-acta.mjs <acta.curada.jsonl> [--reporte <r.json>] [--sin-red] [--salida <f>]
-node --test scripts/acta/pruebas/compilar-acta.test.mjs scripts/acta/pruebas/capturar.test.mjs
-node --test scripts/acta/pruebas/curar-acta.test.mjs scripts/acta/pruebas/verificar-arbol.test.mjs
-node --test scripts/acta/pruebas/indexar-tarea.test.mjs scripts/acta/pruebas/ejecutar-acta.test.mjs
-node --test scripts/acta/pruebas/reejecutar-acta.test.mjs scripts/acta/pruebas/conformidad.test.mjs
-node --test scripts/acta/pruebas/verificar-registro-ia.test.mjs
-node --test scripts/acta/pruebas/deriva-huella.test.mjs scripts/acta/pruebas/exportar-acta.test.mjs
-node --test scripts/acta/pruebas/visor-acta.test.mjs
+ACTA=instrumentacion-java-ia/sdlc-ia/acta          # bash
+$ACTA = 'instrumentacion-java-ia/sdlc-ia/acta'     # PowerShell
+```
+
+```text
+node $ACTA/compilar-acta.mjs --transcript <sesión.jsonl> [--salida <carpeta>]
+node $ACTA/curar-acta.mjs <acta.cruda.jsonl> [--salida <acta.curada.jsonl>]
+node $ACTA/curar-acta.mjs <acta.cruda.jsonl> --comprobar <acta.curada.jsonl>
+node $ACTA/validar-acta.mjs <acta.cruda.jsonl | acta.curada.jsonl>
+node $ACTA/indexar-tarea.mjs <.ia/registros/<tarea>>
+node $ACTA/reejecutar-acta.mjs <acta.curada.jsonl> [--reporte <archivo>] [--tiempo <s>]
+node $ACTA/conformidad.mjs <acta.cruda.jsonl | acta.curada.jsonl>
+node $ACTA/registrar-sesion.mjs [--sesion <id>] [--sin-stage]
+node $ACTA/verificar-registro-ia.mjs --rango <A..B> [--cuerpo-pr <archivo>] [--sin-motor]
+node $ACTA/deriva-huella.mjs <acta> [--hasta <commit>] [--modelo <id>]
+node $ACTA/exportar-acta.mjs <acta> --formato ocel|prov [--salida <archivo>]
+node $ACTA/visor-acta.mjs <acta.curada.jsonl> [--reporte <r.json>] [--sin-red] [--salida <f>]
+node --test $ACTA/pruebas/compilar-acta.test.mjs $ACTA/pruebas/capturar.test.mjs
+node --test $ACTA/pruebas/curar-acta.test.mjs $ACTA/pruebas/verificar-arbol.test.mjs
+node --test $ACTA/pruebas/indexar-tarea.test.mjs $ACTA/pruebas/ejecutar-acta.test.mjs
+node --test $ACTA/pruebas/reejecutar-acta.test.mjs $ACTA/pruebas/conformidad.test.mjs
+node --test $ACTA/pruebas/verificar-registro-ia.test.mjs
+node --test $ACTA/pruebas/deriva-huella.test.mjs $ACTA/pruebas/exportar-acta.test.mjs
+node --test $ACTA/pruebas/visor-acta.test.mjs
 ```
 
 `curar-acta.mjs` se corre desde dentro del repo: lee de él los blobs para verificar el árbol.
@@ -124,14 +133,14 @@ comando omitido.
 
 ## Versionar el acta
 
-El [ADR-0006](../../docs/adrs/0006-el-acta-de-la-ia-se-versiona-en-git.md) decide que el acta va en
-git, y cómo. El flujo de una PR asistida:
+El [ADR-0006](../../../docs/adrs/0006-el-acta-de-la-ia-se-versiona-en-git.md) decide que el acta
+va en git, y cómo. El flujo de una PR asistida:
 
 1. **Commitear el trabajo.** Dentro de Claude Code, el hook `commit-msg` (`citar-acta.mjs`)
    agrega `Registro-IA: .ia/registros/<tarea>/<sesión>.acta.curada.jsonl` debajo de
    `Asistido-por-IA:`. Usa `CLAUDE_CODE_SESSION_ID`, que Claude Code exporta a sus comandos.
    Fuera de Claude Code, el trailer se escribe a mano; sin acta, `Registro-IA: ninguno: <motivo>`.
-2. **Registrar la sesión.** `node scripts/acta/registrar-sesion.mjs` compila lo que va de la
+2. **Registrar la sesión.** `node $ACTA/registrar-sesion.mjs` compila lo que va de la
    sesión, cortando la llamada en curso, la cura, empaca sus objetos, reescribe el índice y deja en
    stage con `git add -f` la cruda, la curada, `<sesión>.acta.objetos.pack` y `indice.json`.
    **Antes de commitearlos, léelos:** este repo es público, y el acta trae prompts, salidas y
@@ -161,7 +170,7 @@ dentro de Claude Code muestra `CLAUDE_CODE_MESSAGING_TOKEN`, y gitleaks no lo re
 
 `exportar-acta.mjs` escribe el acta en [OCEL 2.0](https://www.ocel-standard.org) (JSON) o en
 [W3C PROV-O](https://www.w3.org/TR/prov-o/) (JSON-LD), con la correspondencia de la sección 6 del
-[modelo conceptual](../../docs/modelo-conceptual-registro-ia.md):
+[modelo conceptual](../../../docs/modelo-conceptual-registro-ia.md):
 
 - **OCEL:** cada acción es un evento con el tipo de su herramienta, y cada intervención, un evento
   `intervencion`. Tarea, sesión, turno, paso, paso prescrito, decisión, archivo y agente son
@@ -181,7 +190,7 @@ El análisis entre actas queda para cuando haya unas 20: con menos, los patrones
 
 `visor-acta.mjs` escribe un HTML autocontenido —sin red ni fuentes externas— que muestra la
 sesión como evidencia para una auditoría. Sigue el diseño E5, elegido entre mockups, y su fuente es
-[`jerarquia-proceso-actividad-tarea.md`](../../docs/jerarquia-proceso-actividad-tarea.md):
+[`jerarquia-proceso-actividad-tarea.md`](../../../docs/jerarquia-proceso-actividad-tarea.md):
 
 - **Ficha de trazabilidad** de la acción seleccionada. Muestra el eje del trabajo (proceso,
   actividad, tarea, paso y acción, con quién responde en cada nivel) y, justo debajo, el eje de la
@@ -221,7 +230,7 @@ acción dice «2 capturas». Se incrustan como `data:` URI, así que el HTML sig
 ## Evidencia de Playwright
 
 Una acción tiene `evidencias`: `{ origen, nombre, tipo, sha256, bytes, incluida, motivo }`. Las
-toma de dos fuentes ([ADR-0006](../../docs/adrs/0006-el-acta-de-la-ia-se-versiona-en-git.md)):
+toma de dos fuentes ([ADR-0006](../../../docs/adrs/0006-el-acta-de-la-ia-se-versiona-en-git.md)):
 
 - `origen: "carpeta"`: lo que Playwright deja en `test-results/` mientras corre la acción, por
   fecha y sin mirar el comando. El hook lo copia a `.ia/captura/evidencias/<sha256>` si pesa hasta

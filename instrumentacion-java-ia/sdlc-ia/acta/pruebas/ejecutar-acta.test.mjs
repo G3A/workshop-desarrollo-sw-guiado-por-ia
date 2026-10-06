@@ -1,5 +1,5 @@
 // Pruebas del ejecutor del motor (#222, fase 2), sin Docker:
-//   node --test scripts/acta/pruebas/ejecutar-acta.test.mjs
+//   node --test $ACTA/pruebas/ejecutar-acta.test.mjs
 //
 // El ejecutor corre aqui en el host, sobre un repo armado desde el mismo pack que viaja al
 // contenedor. La corrida dentro de Docker la prueba reejecutar-acta.test.mjs.

@@ -38,8 +38,8 @@ La persona responsable del repo eligió la opción 1.
 motor, que el CI regenera y dependen de la imagen construida.
 
 `.ia/` sigue en `.gitignore`. El acta entra con `git add -f`, que hace
-`scripts/acta/registrar-sesion.mjs`: así un `git add -A` no publica todas las sesiones, solo la
-que se registra a propósito.
+`instrumentacion-java-ia/sdlc-ia/acta/registrar-sesion.mjs`: así un `git add -A` no publica todas
+las sesiones, solo la que se registra a propósito.
 
 **El trailer.** Todo commit con `Asistido-por-IA:` lleva `Registro-IA: <ruta de la curada>` o
 `Registro-IA: ninguno: <motivo>`. Como con el pie de asistencia, se exige declarar, no tener acta.
@@ -47,7 +47,7 @@ El hook `commit-msg` lo agrega solo cuando el commit lo hace Claude Code, que ex
 `CLAUDE_CODE_SESSION_ID`. El cuerpo de la PR repite cada trailer, porque el merge a `dev` es por
 squash con ese cuerpo como mensaje.
 
-**El sensor del CI** (`scripts/acta/verificar-registro-ia.mjs`) falla si:
+**El sensor del CI** (`instrumentacion-java-ia/sdlc-ia/acta/verificar-registro-ia.mjs`) falla si:
 
 - el acta citada no está en la PR;
 - la curada no es la que sale de su cruda (invariante 8);

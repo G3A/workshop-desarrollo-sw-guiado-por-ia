@@ -1,5 +1,5 @@
 // Hook commit-msg que cita el acta de la sesion (#222, fase 3; ADR-0006):
-//   node scripts/acta/citar-acta.mjs <archivo-del-mensaje>
+//   node $ACTA/citar-acta.mjs <archivo-del-mensaje>
 //
 // Si el commit lo hace Claude Code (CLAUDE_CODE_SESSION_ID en el entorno, que Claude Code exporta
 // a sus comandos desde 2.1.x) y el mensaje declara `Asistido-por-IA:` sin `Registro-IA:`, agrega
