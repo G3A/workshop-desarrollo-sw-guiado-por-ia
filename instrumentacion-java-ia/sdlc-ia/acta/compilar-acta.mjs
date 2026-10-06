@@ -48,11 +48,15 @@ import { ENVOLTORIOS, MODOS_CON_PERSONA, SIN_PERMISO, claseDeterminismo, esPermi
   textoDelRechazo } from './clasificar.mjs';
 import { identidadDelEntorno, normalizador } from './normalizar.mjs';
 import { validarActa } from './validar-acta.mjs';
-import { blobEn, cambiosEntre, git, leerEnCommit, raizDelRepo, versionDe } from './git.mjs';
+import { blobEn, cambiosEntre, git, leerEnCommit, raizDelRepo, versionDe, versionEnDisco }
+  from './git.mjs';
 
 const RAMA_CON_TAREA = /^[a-z]+\/(\d+)-/;
 const RUTA_PLUGIN = 'instrumentacion-java-ia/sdlc-ia';
 const RUTA_DOCKERFILE = 'instrumentacion-java-ia/sdlc-ia/acta/motor/Dockerfile';
+// La carpeta del plugin del que forma parte este archivo. En un repo que instala el plugin, el
+// plugin no esta en git y la huella lee de aqui sus instructivos (#247, ADR-0007).
+export const RAIZ_PLUGIN = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DOC_DE_SKILL = /(^|\/)skills\/[^/]+\/(SKILL\.md|references\/[^/]+\.md)$/;
 const PROFUNDIDAD_MAXIMA = 5;
 
@@ -180,7 +184,7 @@ const entre = (texto, etiqueta) => {
 // El compilador como funcion pura sobre sus entradas. `raizRepo` es opcional: sin ella no hay
 // diffs ni versiones de documentos, pero el resto del acta se arma igual.
 export function compilar({ transcript, captura = [], raizRepo = null, carpetaSesion = null,
-  identidad = {} }) {
+  identidad = {}, raizPlugin = null }) {
   const avisos = [];
   const { registros: lineas, ilegibles } = leerJsonl(transcript);
   if (ilegibles) avisos.push(`${ilegibles} lineas del transcript no son JSON y se ignoraron`);
@@ -743,9 +747,9 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
   const huella = {
     claudeCode: [...versiones].sort(),
     modelos: [...modelos].sort(),
-    plugin: versionDelPlugin(raizRepo, headBase),
-    documentos: documentosUsados(raizRepo, headBase, skills, acciones),
-    imagen: imagenDelMotor(raizRepo, headBase),
+    plugin: versionDelPlugin(raizRepo, headBase, raizPlugin),
+    documentos: documentosUsados(raizRepo, headBase, skills, acciones, raizPlugin),
+    imagen: imagenDelMotor(raizRepo, headBase, raizPlugin),
   };
 
   const finSesion = [...captura].reverse().find((c) => c.evento === 'SessionEnd' && c.arbol);
@@ -754,10 +758,22 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
     arbolFinal: finSesion?.arbol || null }), avisos, evidencias: evidenciasDelTranscript };
 }
 
-function versionDelPlugin(raizRepo, commit) {
+// Cada archivo del plugin se busca primero en git, en el HEAD base: asi es en el monorepo que lo
+// desarrolla. Si no esta, se lee de la carpeta del plugin instalado, `raizPlugin`, y los
+// instructivos se guardan como blobs del repo: la conformidad los encuentra por hash igual (#247).
+function manifiestoInstalado(raizPlugin) {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(raizPlugin, '.claude-plugin', 'plugin.json'),
+      'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+function versionDelPlugin(raizRepo, commit, raizPlugin) {
   if (!raizRepo || !commit) return null;
   const texto = leerEnCommit(raizRepo, commit, `${RUTA_PLUGIN}/.claude-plugin/plugin.json`);
-  if (!texto) return null;
+  if (!texto) return raizPlugin ? manifiestoInstalado(raizPlugin)?.version || null : null;
   try {
     return JSON.parse(texto).version || null;
   } catch {
@@ -768,24 +784,55 @@ function versionDelPlugin(raizRepo, commit) {
 // La imagen con la que el motor re-ejecuta esta acta (#222, fase 2): el Dockerfile tal como
 // estaba en el HEAD base y el digest de su imagen de partida. El id de la imagen construida lo
 // guarda el reporte del motor, que es quien la construye.
-function imagenDelMotor(raizRepo, commit) {
+function imagenDelMotor(raizRepo, commit, raizPlugin) {
   if (!raizRepo || !commit) return null;
-  const dockerfile = versionDe(raizRepo, commit, RUTA_DOCKERFILE);
+  const enGit = versionDe(raizRepo, commit, RUTA_DOCKERFILE);
+  if (!enGit && !raizPlugin) return null;
+  const archivo = enGit ? null : path.join(raizPlugin, 'acta', 'motor', 'Dockerfile');
+  const dockerfile = enGit
+    || versionEnDisco(raizRepo, archivo, `${nombreDelPlugin(raizPlugin)}/acta/motor/Dockerfile`);
   if (!dockerfile) return null;
-  const desde = /^FROM\s+(\S+@sha256:[0-9a-f]{64})/m.exec(leerEnCommit(raizRepo, commit,
-    RUTA_DOCKERFILE) || '');
+  const texto = enGit ? leerEnCommit(raizRepo, commit, RUTA_DOCKERFILE)
+    : fs.readFileSync(archivo, 'utf8');
+  const desde = /^FROM\s+(\S+@sha256:[0-9a-f]{64})/m.exec(texto || '');
   return { dockerfile, base: desde ? desde[1] : null };
+}
+
+const nombreDelPlugin = (raizPlugin) => manifiestoInstalado(raizPlugin)?.name || 'sdlc-ia';
+
+// Los instructivos de una skill en el plugin instalado: su SKILL.md y sus references/, con la ruta
+// que tienen dentro del plugin (`sdlc-ia/skills/<skill>/...`).
+function instructivosInstalados(raizRepo, raizPlugin, skill) {
+  const carpeta = path.join(raizPlugin, 'skills', skill);
+  const prefijo = `${nombreDelPlugin(raizPlugin)}/skills/${skill}`;
+  let references = [];
+  try {
+    references = fs.readdirSync(path.join(carpeta, 'references'))
+      .filter((r) => r.endsWith('.md')).sort();
+  } catch {
+    /* una skill sin references/ */
+  }
+  return [
+    versionEnDisco(raizRepo, path.join(carpeta, 'SKILL.md'), `${prefijo}/SKILL.md`),
+    ...references.map((r) => versionEnDisco(raizRepo, path.join(carpeta, 'references', r),
+      `${prefijo}/references/${r}`)),
+  ].filter(Boolean);
 }
 
 // AGENTS.md y CLAUDE.md de la raiz son el procedimiento de toda sesion: Claude Code los carga al
 // arrancar, haya o no una skill. Se registran siempre en la version del HEAD base (#230).
 const PROCEDIMIENTO_DEL_REPO = ['AGENTS.md', 'CLAUDE.md'];
 
-function documentosUsados(raizRepo, commit, skills, acciones) {
+function documentosUsados(raizRepo, commit, skills, acciones, raizPlugin) {
   if (!raizRepo || !commit) return [];
   const rutas = new Set(PROCEDIMIENTO_DEL_REPO);
+  const instalados = [];
   for (const s of skills) {
     const nombre = s.split(':').pop();
+    if (!versionDe(raizRepo, commit, `${RUTA_PLUGIN}/skills/${nombre}/SKILL.md`)) {
+      if (raizPlugin) instalados.push(...instructivosInstalados(raizRepo, raizPlugin, nombre));
+      continue;
+    }
     rutas.add(`${RUTA_PLUGIN}/skills/${nombre}/SKILL.md`);
     // Sus references/ van siempre, los haya leido la sesion o no: la conformidad lee de ahi los
     // pasos que el SKILL.md delega, en la version que la huella registra (#230).
@@ -799,7 +846,8 @@ function documentosUsados(raizRepo, commit, skills, acciones) {
     const ruta = String(a.entrada.file_path).replace(/\\/g, '/').replace(/^\.\//, '');
     if (DOC_DE_SKILL.test(ruta) && !ruta.startsWith('~')) rutas.add(ruta);
   }
-  return [...rutas].sort().map((r) => versionDe(raizRepo, commit, r)).filter(Boolean);
+  return [...[...rutas].map((r) => versionDe(raizRepo, commit, r)).filter(Boolean),
+    ...instalados].sort((a, b) => (a.ruta < b.ruta ? -1 : a.ruta > b.ruta ? 1 : 0));
 }
 
 function porMomento(lista) {
@@ -913,10 +961,10 @@ export function leerCaptura(archivo) {
 // en `escritas` la ruta de cada acta que escribio: el hook las cura despues.
 export function compilarYEscribir({
   transcript, captura, salida, raizRepo = null, verificar = true, log = console, escritas = [],
-  carpetaSesion = null,
+  carpetaSesion = null, raizPlugin = null,
 }) {
   const { actas, avisos, evidencias } = compilar({ transcript, captura: leerCaptura(captura),
-    raizRepo, carpetaSesion, identidad: identidadDeQuienCompila(raizRepo) });
+    raizRepo, carpetaSesion, identidad: identidadDeQuienCompila(raizRepo), raizPlugin });
   for (const a of avisos) log.error(`aviso: ${a}`);
   let codigo = 0;
   for (const [tarea, registros] of actas) {
@@ -1004,6 +1052,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const salida = a.salida || path.join(raiz, '.ia', 'registros');
     const captura = a.captura || path.join(raiz, '.ia', 'captura', `${sesion}.jsonl`);
     process.exitCode = compilarYEscribir({ transcript: a.transcript, captura, salida,
-      raizRepo: raizDelRepo(process.cwd()), verificar: a.verificar });
+      raizRepo: raizDelRepo(process.cwd()), verificar: a.verificar, raizPlugin: RAIZ_PLUGIN });
   }
 }

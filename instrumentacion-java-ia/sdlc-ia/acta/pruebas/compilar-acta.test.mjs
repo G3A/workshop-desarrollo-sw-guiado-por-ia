@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { compilar, compilarYEscribir, serializar } from '../compilar-acta.mjs';
+import { empacarObjetos } from '../cerrar-acta.mjs';
 import { CuracionDetenida, curar } from '../curar-acta.mjs';
 import { TOPE_POR_ACTA } from '../compilar-acta.mjs';
 import { validarActa } from '../validar-acta.mjs';
@@ -368,6 +369,65 @@ test('captura: los arboles antes y despues dan los cambios por archivo y la huel
   assert.equal(cabecera.huella.imagen.dockerfile.commit, headBase);
   assert.match(cabecera.huella.imagen.dockerfile.hash, /^[0-9a-f]{40}$/);
   assert.equal(cabecera.huella.imagen.base, `node@sha256:${'ab'.repeat(32)}`);
+});
+
+// Un repo que instala el plugin y no lo tiene en git (#247, ADR-0007). La huella lee los
+// instructivos de la carpeta del plugin, los guarda como blobs del repo y el pack los lleva: en un
+// clon, la conformidad los lee por hash igual que en el monorepo.
+test('huella: con el plugin instalado fuera de git, sus instructivos viajan como blobs', () => {
+  const plugin = carpetaTemporal('plugin');
+  const escribir = (ruta, texto) => {
+    fs.mkdirSync(path.dirname(path.join(plugin, ruta)), { recursive: true });
+    fs.writeFileSync(path.join(plugin, ruta), texto);
+  };
+  escribir('.claude-plugin/plugin.json', '{"name":"sdlc-ia","version":"1.2.3"}');
+  escribir('skills/demo/SKILL.md', '# demo\n\n## Phase 1\n');
+  escribir('skills/demo/references/pasos.md', '## Step A\n');
+  escribir('acta/motor/Dockerfile', `FROM node@sha256:${'cd'.repeat(32)}\n`);
+
+  const raiz = repoTemporal({ 'a.md': 'uno\n' });
+  const headBase = git(['rev-parse', 'HEAD'], { cwd: raiz }).trim();
+  const antes = arbolActual(raiz);
+  fs.writeFileSync(path.join(raiz, 'a.md'), 'dos\n');
+  const despues = arbolActual(raiz);
+  const f = fabrica()
+    .prompt('/sdlc-ia:demo 10')
+    .llamada('tu0', 'Skill', { skill: 'sdlc-ia:demo' })
+    .resultado('tu0', 'ok')
+    .llamada('tu1', 'Edit', { file_path: 'a.md', old_string: 'uno', new_string: 'dos' })
+    .resultado('tu1', 'ok');
+  const captura = [
+    { evento: 'SessionStart', head: headBase, arbol: antes },
+    { evento: 'PreToolUse', toolUseId: 'tu1', arbol: antes },
+    { evento: 'PostToolUse', toolUseId: 'tu1', arbol: despues },
+  ];
+  const acta = unicaActa(compilarFabrica(f, { captura, raizRepo: raiz, raizPlugin: plugin }));
+  assert.deepEqual(validarActa(acta), []);
+  const { huella } = acta[0];
+  assert.equal(huella.plugin, '1.2.3');
+  const instructivos = huella.documentos.filter((d) => d.ruta.startsWith('sdlc-ia/'));
+  assert.deepEqual(instructivos.map((d) => d.ruta),
+    ['sdlc-ia/skills/demo/SKILL.md', 'sdlc-ia/skills/demo/references/pasos.md']);
+  for (const d of instructivos) {
+    assert.equal(d.commit, null, 'un instructivo instalado no sale de ningun commit');
+    assert.equal(git(['cat-file', 'blob', d.hash], { cwd: raiz }),
+      fs.readFileSync(path.join(plugin, d.ruta.replace(/^sdlc-ia\//, '')), 'utf8'));
+  }
+  assert.equal(huella.imagen.base, `node@sha256:${'cd'.repeat(32)}`);
+  assert.equal(huella.imagen.dockerfile.commit, null);
+
+  // El pack lleva los blobs sueltos: un repo vacio que lo desempaca los tiene.
+  const cruda = path.join(raiz, '.ia', 'registros', '10', 'sesion-1.acta.cruda.jsonl');
+  fs.mkdirSync(path.dirname(cruda), { recursive: true });
+  fs.writeFileSync(cruda, serializar(acta));
+  const pack = empacarObjetos({ cruda, raizRepo: raiz });
+  const vacio = carpetaTemporal('clon');
+  git(['init', '-q'], { cwd: vacio });
+  git(['unpack-objects', '-q'], { cwd: vacio, input: fs.readFileSync(pack) });
+  for (const hash of [...instructivos, huella.imagen.dockerfile].map((d) => d.hash)) {
+    assert.ok(git(['cat-file', '-e', hash], { cwd: vacio, permitirFallo: true }) !== null,
+      `el pack no lleva ${hash}`);
+  }
 });
 
 // --- Efectos entre acciones (#218) ------------------------------------------------------------

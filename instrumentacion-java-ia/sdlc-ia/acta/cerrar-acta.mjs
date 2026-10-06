@@ -10,7 +10,7 @@
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { compilarYEscribir } from './compilar-acta.mjs';
+import { RAIZ_PLUGIN, compilarYEscribir } from './compilar-acta.mjs';
 import { curarYEscribir } from './curar-acta.mjs';
 import { git, objetosQueFaltan } from './git.mjs';
 import { indexarYEscribir } from './indexar-tarea.mjs';
@@ -42,7 +42,11 @@ export function empacarObjetos({ cruda, raizRepo }) {
   const objetos = (args, input) => new Set(git(['rev-list', '--objects', ...args],
     { cwd: raizRepo, input }).split('\n').filter(Boolean).map((l) => l.split(' ')[0]));
   const yaEstan = objetos([cabecera.headBase]);
-  const nuevos = [...objetos(['--stdin'], lista.join('\n') + '\n')]
+  // Los instructivos del plugin instalado no salen de ningun commit (#247): la huella los guardo
+  // como blobs sueltos, y viajan en el pack para que la conformidad los lea en un clon.
+  const sueltos = [...(cabecera.huella?.documentos || []), cabecera.huella?.imagen?.dockerfile]
+    .filter((d) => d?.hash && !d.commit).map((d) => d.hash);
+  const nuevos = [...new Set([...objetos(['--stdin'], lista.join('\n') + '\n'), ...sueltos])]
     .filter((o) => !yaEstan.has(o)).sort();
   const destino = rutaHermana(cruda, '.acta.objetos.pack');
   const env = { ...process.env };
@@ -89,7 +93,7 @@ export function compilarYCerrar({ transcript, captura, raizRepo, log, carpetaSes
   verificar = true }) {
   const escritas = [];
   const codigo = compilarYEscribir({ transcript, captura, salida: path.join(raizRepo, '.ia',
-    'registros'), raizRepo, log, escritas, carpetaSesion, verificar });
+    'registros'), raizRepo, log, escritas, carpetaSesion, verificar, raizPlugin: RAIZ_PLUGIN });
   cerrarActas({ escritas, raizRepo, log });
   return { codigo, escritas };
 }

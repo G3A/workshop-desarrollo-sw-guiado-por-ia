@@ -38,6 +38,16 @@ export function versionDe(raiz, commit, ruta) {
   return { ruta, commit: ultimo ? ultimo.trim() : null, hash: blob.trim() };
 }
 
+// Un archivo que no esta en git, como un instructivo del plugin instalado en un repo que lo usa
+// (#247, ADR-0007). Se escribe como blob, sin filtros de fin de linea, para que la conformidad lo
+// lea por hash igual que uno versionado y el pack del acta lo lleve. Sin commit: no salio de uno.
+export function versionEnDisco(raiz, archivo, ruta) {
+  if (!fs.existsSync(archivo)) return null;
+  const hash = git(['hash-object', '-w', '--no-filters', archivo], { cwd: raiz,
+    permitirFallo: true });
+  return hash ? { ruta, commit: null, hash: hash.trim() } : null;
+}
+
 // El hash del blob de una ruta dentro de un arbol. Null si la ruta no existe en ese arbol.
 export function blobEn(raiz, arbol, ruta) {
   const r = git(['rev-parse', '--verify', '--quiet', `${arbol}:${ruta}`], {
