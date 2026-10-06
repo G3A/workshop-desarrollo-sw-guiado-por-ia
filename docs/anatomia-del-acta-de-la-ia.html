@@ -1,0 +1,572 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Anatomía del acta de la IA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+/* Layout: columna de lectura de informe técnico; tablas y el flujo del pipeline salen a ancho completo.
+   Dos colores semánticos gobiernan todo el informe: verde-azulado = código determinista, ocre = depende del modelo. */
+:root {
+  --bg: #f6f7f8;
+  --surface: #ffffff;
+  --fg: #1b2328;
+  --muted: #5a666e;
+  --line: #d9dfe3;
+  --det: #0f6b63;         /* determinista */
+  --det-soft: #e2f1ee;
+  --mod: #9a5b00;         /* depende del modelo */
+  --mod-soft: #fbefdb;
+  --ext: #6b4fa0;         /* externo / no verificable */
+  --ext-soft: #eee8f7;
+  --code-bg: #eef1f3;
+  --f-display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12171a; --surface: #192024; --fg: #e3e8eb; --muted: #97a3aa; --line: #2c363c;
+    --det: #5cc7b9; --det-soft: #15302d; --mod: #e5a84b; --mod-soft: #33280f;
+    --ext: #b39ae0; --ext-soft: #272035; --code-bg: #20292e; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12171a; --surface: #192024; --fg: #e3e8eb; --muted: #97a3aa; --line: #2c363c;
+  --det: #5cc7b9; --det-soft: #15302d; --mod: #e5a84b; --mod-soft: #33280f;
+  --ext: #b39ae0; --ext-soft: #272035; --code-bg: #20292e; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font: 16px/1.6 var(--f-body); }
+.wrap { max-width: 1040px; margin: 0 auto; padding-inline: 20px; padding-block: 40px 80px; }
+.prose { max-width: 70ch; }
+h1, h2, h3 { font-family: var(--f-display); line-height: 1.15; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(2rem, 5vw, 3rem); font-weight: 700; letter-spacing: -0.01em; }
+h2 { font-size: 1.7rem; font-weight: 600; margin-block: 0 14px; }
+h3 { font-size: 1.2rem; font-weight: 600; margin-block: 22px 8px; }
+p { margin: 0 0 12px; }
+a { color: var(--det); }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--det); outline-offset: 2px; }
+code, .mono { font-family: var(--f-mono); font-size: 0.86em; }
+code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; overflow-wrap: anywhere; }
+pre { background: var(--code-bg); padding: 14px 16px; border-radius: 6px; overflow-x: auto; font: 0.84rem/1.55 var(--f-mono); margin: 0 0 14px; }
+pre code { background: none; padding: 0; }
+.eyebrow { font: 600 0.75rem var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+section { padding-block: 44px 8px; border-top: 1px solid var(--line); margin-top: 36px; }
+header.top { display: grid; gap: 14px; padding-bottom: 8px; }
+.lede { font-size: 1.15rem; color: var(--fg); max-width: 66ch; }
+.meta { color: var(--muted); font-size: 0.9rem; }
+
+/* Leyenda y etiquetas */
+.legend { display: flex; flex-wrap: wrap; gap: 10px 22px; margin-top: 6px; font-size: 0.9rem; }
+.legend span { display: inline-flex; align-items: center; gap: 8px; }
+.sw { width: 12px; height: 12px; border-radius: 2px; display: inline-block; }
+.sw.det { background: var(--det); } .sw.mod { background: var(--mod); } .sw.ext { background: var(--ext); }
+.tag { display: inline-block; font: 600 0.72rem var(--f-mono); letter-spacing: 0.04em; padding: 2px 7px; border-radius: 3px; white-space: nowrap; }
+.tag.det { background: var(--det-soft); color: var(--det); }
+.tag.mod { background: var(--mod-soft); color: var(--mod); }
+.tag.ext { background: var(--ext-soft); color: var(--ext); }
+
+/* Veredicto */
+.verdict { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-top: 26px; }
+.vcard { background: var(--surface); border: 1px solid var(--line); border-top: 4px solid var(--det); padding: 18px 20px; border-radius: 4px; min-width: 0; }
+.vcard.mod { border-top-color: var(--mod); }
+.vcard h3 { margin-top: 0; }
+.vcard ul { margin: 8px 0 0; padding-left: 18px; }
+.vcard li { margin-bottom: 4px; }
+
+/* Pipeline */
+.pipe { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-top: 18px; counter-reset: etapa; }
+.stage { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--det); padding: 12px 14px; border-radius: 3px; min-width: 0; }
+.stage.mod { border-left-color: var(--mod); }
+.stage .n { font: 600 0.72rem var(--f-mono); color: var(--muted); }
+.stage h4 { font: 600 1.02rem var(--f-display); margin: 2px 0 4px; }
+.stage p { font-size: 0.86rem; color: var(--muted); margin: 0 0 6px; }
+.stage .file { font: 0.75rem var(--f-mono); color: var(--fg); overflow-wrap: anywhere; }
+
+/* Tablas */
+.tbl { overflow-x: auto; margin: 14px 0 18px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+th, td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+th { font: 600 0.76rem var(--f-mono); text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); background: var(--bg); }
+tr:last-child td { border-bottom: 0; }
+td:first-child { font-weight: 600; }
+
+/* Técnicas */
+.techs { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; margin-top: 12px; }
+.tech { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 16px 18px; min-width: 0; }
+.tech h4 { font: 600 1.05rem var(--f-display); margin: 0 0 6px; }
+.tech p { font-size: 0.92rem; margin-bottom: 8px; }
+.tech .src { font: 0.76rem var(--f-mono); color: var(--muted); overflow-wrap: anywhere; }
+
+.callout { border-left: 4px solid var(--mod); background: var(--mod-soft); padding: 14px 18px; border-radius: 0 4px 4px 0; margin: 16px 0; }
+.callout.det { border-left-color: var(--det); background: var(--det-soft); }
+.callout p:last-child { margin-bottom: 0; }
+
+ol.inv { padding-left: 22px; }
+ol.inv li { margin-bottom: 6px; }
+
+nav.toc { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.88rem; margin-top: 18px; }
+nav.toc a { text-decoration: none; border-bottom: 1px solid var(--line); color: var(--fg); }
+nav.toc a:hover { border-color: var(--det); }
+
+/* Ejemplo de transformación */
+.xform { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+.xform > div { min-width: 0; }
+.xform .lbl { font: 600 0.75rem var(--f-mono); color: var(--muted); margin-bottom: 4px; }
+footer { margin-top: 48px; color: var(--muted); font-size: 0.85rem; }
+@media (max-width: 520px) { .wrap { padding-inline: 16px; } h2 { font-size: 1.45rem; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<header class="top">
+  <div class="eyebrow">Registro de la IA · scripts/acta · ADR-0005 y ADR-0006</div>
+  <h1>Anatomía del acta de la IA</h1>
+  <p class="lede" style="font-weight:600">¿Qué del acta es determinista y qué depende del modelo?</p>
+  <p class="lede">El acta se arma con código determinista, sin llamar nunca a un modelo. Con el mismo transcript y la misma captura sale idéntica, byte a byte. El modelo decide <em>qué pasó</em> en la sesión, y el acta lo registra sin interpretarlo. Este informe recorre cada parte, el mecanismo que la hace determinista y los puntos donde entra el modelo.</p>
+  <p class="meta">Fuentes: <code>scripts/acta/README.md</code>, <code>docs/modelo-conceptual-registro-ia.md</code>, <code>docs/protocolo-de-marcadores-de-paso.md</code>, ADR-0005 y el código de <code>compilar-acta.mjs</code>, <code>curar-acta.mjs</code>, <code>clasificar.mjs</code> y <code>normalizar.mjs</code>. Estado del repo: rama <code>dev</code>, commit <code>fb2db54</code>.</p>
+  <div class="legend" aria-label="Leyenda">
+    <span><i class="sw det"></i>Código determinista</span>
+    <span><i class="sw mod"></i>Depende del modelo</span>
+    <span><i class="sw ext"></i>Externo: se graba, no se verifica</span>
+  </div>
+  <nav class="toc" aria-label="Contenido">
+    <a href="#veredicto">Veredicto</a>
+    <a href="#transcript">Qué es el transcript</a>
+    <a href="#herramientas">Herramientas</a>
+    <a href="#pipeline">El recorrido</a>
+    <a href="#partes">Parte por parte</a>
+    <a href="#tecnicas">Cómo se logra</a>
+    <a href="#curada">La curada</a>
+    <a href="#acciones">Clases de acción</a>
+    <a href="#modelo">Dónde entra el modelo</a>
+    <a href="#guardas">Guardas</a>
+    <a href="#limites">Límites</a>
+    <a href="#comprobar">Compruébalo tú</a>
+  </nav>
+</header>
+
+<section id="veredicto">
+  <div class="eyebrow">1 · Veredicto</div>
+  <h2>La frontera pasa entre los hechos y su registro</h2>
+  <div class="prose">
+    <p>En <code>scripts/acta/</code> no hay ninguna llamada a un LLM: no se usa la API de Anthropic, ni Ollama, ni <code>claude -p</code> para generar contenido. Las únicas menciones de <code>claude -p</code> sirven para reconocer los permisos que nadie concedió en una sesión sin persona.</p>
+    <p>La razón la da el ADR-0005: <strong>un LLM no es determinista</strong>. Ni la temperatura, ni la versión del modelo, ni lo que devuelven la red y los MCP quedan fijos entre corridas. Por eso el modelo puede ser el <em>objeto</em> del registro, pero nunca participa en armarlo.</p>
+  </div>
+  <div class="verdict">
+    <div class="vcard">
+      <span class="tag det">DETERMINISTA</span>
+      <h3>Cómo se construye el acta</h3>
+      <ul>
+        <li>Captura por hooks: <code>HEAD</code> y hash del árbol antes y después de cada acción</li>
+        <li>Compilación del acta cruda</li>
+        <li>Curación, una función pura de la cruda</li>
+        <li>Índice de la tarea</li>
+        <li>Clasificación de determinismo de cada acción</li>
+        <li>Detección de intervenciones</li>
+        <li>Motor de re-ejecución y sus veredictos</li>
+        <li>Conformidad, visor y exportación OCEL / PROV-O</li>
+      </ul>
+    </div>
+    <div class="vcard mod">
+      <span class="tag mod">DEPENDE DEL MODELO</span>
+      <h3>Qué contiene el acta</h3>
+      <ul>
+        <li>Qué herramientas se llamaron, en qué orden y con qué entradas</li>
+        <li>Cuántos intentos fallidos hubo</li>
+        <li>El texto de las decisiones (PC-07), copiado tal cual</li>
+        <li>Si los pasos quedan <code>marcado</code> o <code>ausente</code>: depende de que la skill emita el marcador</li>
+        <li>Por herencia, lo que la conformidad puede responder</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="transcript">
+  <div class="eyebrow">2 · Qué es el transcript</div>
+  <h2>El archivo donde Claude Code anota la conversación</h2>
+  <div class="prose">
+    <p>El <strong>transcript</strong> es el archivo en el que Claude Code guarda, mientras ocurre, todo lo que pasa en una sesión: cada prompt de la persona, cada texto que escribe el modelo, cada herramienta que llama con sus parámetros y cada resultado que recibe. No lo inventa el acta: Claude Code lo escribe siempre, para poder retomar una sesión con <code>--resume</code>.</p>
+    <p>Es la <strong>fuente principal</strong> del acta. Por eso aparece en tantas partes: casi todo lo que el acta dice de una sesión sale de leer ese archivo.</p>
+  </div>
+  <div class="tbl"><table>
+    <thead><tr><th>Dato</th><th>Valor</th></tr></thead>
+    <tbody>
+      <tr><td>Dónde vive</td><td><code>~/.claude/projects/&lt;proyecto&gt;/&lt;id-de-sesión&gt;.jsonl</code>, en la carpeta del usuario, fuera del repo</td></tr>
+      <tr><td>Subagentes</td><td>Cada subagente tiene su propio transcript en <code>&lt;id-de-sesión&gt;/subagents/agent-&lt;id&gt;.jsonl</code></td></tr>
+      <tr><td>Formato</td><td>JSONL: una línea por evento, y cada línea es un objeto JSON completo</td></tr>
+      <tr><td>Quién lo escribe</td><td>Claude Code, a medida que avanza la sesión</td></tr>
+      <tr><td>Cómo lo encuentra el acta</td><td>Al cerrar, el hook <code>SessionEnd</code> recibe la ruta en <code>transcript_path</code>. Durante la sesión, <code>registrar-sesion.mjs</code> la busca con <code>CLAUDE_CODE_SESSION_ID</code></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Cómo se ve una línea (simplificada)</h3>
+  <p class="prose">Tres líneas de un transcript real, recortadas a los campos que lee el compilador:</p>
+  <pre><code>{"type":"user","gitBranch":"feat/235-bucle-debt-triage","message":{"content":"ejecuta el plan del issue #235…"}}
+{"type":"assistant","version":"2.1.287","message":{"model":"claude-…","content":[
+   {"type":"text","text":"Edito el SKILL.md y el CHANGELOG."},
+   {"type":"tool_use","id":"toolu_01…","name":"Edit","input":{"file_path":"…","old_string":"…","new_string":"…"}}]}}
+{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"toolu_01…","is_error":false,"content":"…"}]}}</code></pre>
+
+  <h3>Qué saca el compilador de cada parte</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>En el transcript</th><th>En el acta</th></tr></thead>
+    <tbody>
+      <tr><td>Línea <code>user</code> con texto</td><td>Un <strong>turno</strong>, con su prompt</td></tr>
+      <tr><td>Bloque <code>text</code> del asistente</td><td>Una <strong>decisión</strong>; si trae un marcador <code>[sdlc-ia:step …]</code>, además abre un <strong>paso</strong></td></tr>
+      <tr><td>Bloque <code>tool_use</code></td><td>Una <strong>acción</strong>: herramienta, entrada y agente</td></tr>
+      <tr><td>Bloque <code>tool_result</code></td><td>El resultado de la acción y su <code>exito</code>, que sale de <code>is_error</code></td></tr>
+      <tr><td><code>gitBranch</code></td><td>La <strong>tarea</strong> (el número del issue en la rama)</td></tr>
+      <tr><td><code>version</code> y <code>message.model</code></td><td>La versión de Claude Code y el modelo, en la <strong>huella de contexto</strong></td></tr>
+      <tr><td><code>[Request interrupted by user]</code>, rechazos, comandos con <code>!</code></td><td><strong>Intervenciones</strong> de la persona</td></tr>
+      <tr><td>Líneas <code>isSidechain</code></td><td>Se saltan aquí; las acciones de cada subagente se leen de su propio transcript</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout det">
+    <p><strong>Lo que el transcript no tiene</strong>, y por eso hacen falta los hooks de la sección siguiente: el estado de git antes y después de cada acción, el diálogo de permiso que vio la persona, los archivos que Playwright dejó en disco y el código de salida crudo de un comando. El transcript dice qué pidió el modelo; los hooks dicen qué le pasó al repositorio.</p>
+  </div>
+  <p class="prose">Una consecuencia: el compilador depende del formato del transcript, que define Claude Code y puede cambiar entre versiones. Por eso la huella guarda la versión de Claude Code, y un cambio de formato rompe el compilador de forma visible (ADR-0005).</p>
+</section>
+
+<section id="herramientas">
+  <div class="eyebrow">3 · Herramientas</div>
+  <h2>Qué herramientas usa el mecanismo y para qué</h2>
+
+  <h3>Los hooks de Claude Code</h3>
+  <div class="prose">
+    <p>Un <strong>hook</strong> es un comando que Claude Code ejecuta solo cuando ocurre un evento de la sesión. Se declaran en <code>.claude/settings.json</code>. Claude Code le pasa al comando un JSON por la entrada estándar con los datos del evento (id de sesión, herramienta, entrada, modo de permisos, ruta del transcript).</p>
+    <p>El acta usa un único script, <code>scripts/acta/capturar.mjs</code>, registrado en seis eventos con el matcher <code>*</code> (todas las herramientas). Cada evento agrega una línea a <code>.ia/captura/&lt;sesión&gt;.jsonl</code>. Nunca responde ni bloquea: siempre sale con código 0, porque «un registro que rompe el trabajo que registra termina desinstalado».</p>
+  </div>
+  <div class="callout det">
+    <p><strong>Cómo leer las columnas nuevas.</strong> <em>Clase</em> dice si el hook es <span class="tag det">determinista</span> (con la misma entrada y el mismo estado del repo da el mismo resultado, sin modelo ni red) o <span class="tag mod">no determinista</span> (su resultado o su orden pueden cambiar entre dos corridas iguales). <em>Quién lo dispara</em> separa dos cosas: quién emite el evento (Claude Code, git o GitHub Actions) y qué lo provoca (la persona, el modelo o una configuración).</p>
+    <p>Ojo con una distinción: un hook puede ser determinista aunque <em>lo dispare</em> el modelo. Lo que no controla el hook es <em>cuándo</em> ni <em>cuántas veces</em> se dispara; eso lo decide la sesión.</p>
+  </div>
+  <div class="tbl"><table>
+    <thead><tr><th>Evento</th><th>Clase</th><th>Quién lo dispara</th><th>Cuándo se dispara</th><th>Qué guarda</th><th>Por qué hace falta</th></tr></thead>
+    <tbody>
+      <tr><td><code>SessionStart</code></td><td><span class="tag det">determinista</span></td><td>Claude Code; lo provoca <strong>la persona</strong> al abrir la sesión o retomarla con <code>--resume</code></td><td>Al abrir o retomar la sesión</td><td><code>HEAD</code> y hash del árbol</td><td>Es el punto de partida: da el <code>headBase</code> y el <code>arbolBase</code>. Sin él no hay contra qué medir la primera acción, ni de dónde leer las versiones de los instructivos para la huella</td></tr>
+      <tr><td><code>PreToolUse</code></td><td><span class="tag det">determinista</span></td><td>Claude Code; lo provoca <strong>el modelo</strong> (orquestador o subagente) cada vez que decide usar una herramienta</td><td>Justo antes de cada herramienta</td><td><code>tool_use_id</code>, herramienta, agente, sha256 de la entrada y árbol <em>antes</em></td><td>El árbol antes deja ver lo que un hook cambió entre dos acciones. El hash de la entrada sirve para emparejar el pedido de permiso. Su hora marca desde cuándo buscar evidencias de Playwright</td></tr>
+      <tr><td><code>PermissionRequest</code></td><td><span class="tag det">determinista</span></td><td>Claude Code, según el <strong>modo de permisos</strong> y las reglas de <code>settings.json</code>, cuando la herramienta que eligió <strong>el modelo</strong> necesita aprobación. La respuesta la da <strong>la persona</strong></td><td>Cuando la herramienta pide permiso</td><td>Herramienta, sha256 de la entrada y modo de permisos</td><td>El transcript no registra el diálogo de permiso. Sin este evento no se puede afirmar <code>permiso_aprobado</code>. Como no trae <code>tool_use_id</code>, se empareja con el último <code>PreToolUse</code> de igual herramienta y entrada</td></tr>
+      <tr><td><code>PostToolUse</code></td><td><span class="tag det">determinista</span></td><td>Claude Code, al terminar bien una herramienta que pidió <strong>el modelo</strong></td><td>Después de una herramienta que terminó bien</td><td>Árbol <em>después</em> y evidencias de <code>test-results/</code></td><td>Mide qué cambió la acción en el repo. Es la base de la cadena de árboles que verifican la curación y el motor</td></tr>
+      <tr><td><code>PostToolUseFailure</code></td><td><span class="tag det">determinista</span></td><td>Claude Code, al fallar una herramienta que pidió <strong>el modelo</strong></td><td>Después de una herramienta que falló</td><td>Lo mismo que <code>PostToolUse</code></td><td>Un comando que falla puede dejar archivos a medias. Sin el árbol después, ese residuo no se ve y la curación no sabe si puede excluir el fallo</td></tr>
+      <tr><td><code>SessionEnd</code></td><td><span class="tag det">determinista</span></td><td>Claude Code; lo provoca <strong>la persona</strong> (<code>/exit</code>, <code>/clear</code>, cerrar la terminal) o el fin de una corrida <code>claude -p</code></td><td>Al cerrar la sesión (tiempo límite 300 s)</td><td>Árbol final y motivo de cierre; además dispara compilar, curar e indexar</td><td>El árbol final es la meta que la curada debe alcanzar. También muestra lo que un hook cambió después de la última acción. Es el único momento en que el transcript está completo</td></tr>
+    </tbody>
+  </table></div>
+  <p class="prose">Los seis son deterministas porque <code>capturar.mjs</code> solo calcula hashes con git y copia datos del evento; no consulta red ni modelo. El único dato que varía entre dos corridas es <code>momento</code>, la hora del evento, y se guarda como un hecho, no como un resultado del cálculo.</p>
+  <div class="prose">
+    <p><strong>Por qué antes y después, y no solo después.</strong> Los hooks de un mismo evento corren en paralelo. El <code>PostToolUse</code> de la captura puede tomar el árbol antes de que <code>format-on-edit.sh</code> termine de formatear. El <code>PreToolUse</code> de la acción siguiente sí incluye ese formateo. La diferencia entre los dos es justo el efecto del hook, y el compilador la registra como una acción <code>hook</code>.</p>
+    <p><strong>Por qué las lecturas no capturan árbol.</strong> <code>Read</code>, <code>Grep</code>, <code>Glob</code>, <code>WebSearch</code>, <code>WebFetch</code> y otras no cambian el repo, y cada hash cuesta unos 70 ms. Quedan con el árbol en <code>null</code>.</p>
+    <p><strong>Por qué un núcleo aparte.</strong> En cada evento, <code>capturar.mjs</code> solo carga <code>nucleo-captura.mjs</code>, que usa únicamente módulos de Node. El compilador y la curación se cargan al cerrar. Así, si la sesión deja roto el compilador, se pierde el acta de ese cierre pero no la captura.</p>
+  </div>
+
+  <h3>Otros hooks de Claude Code en el repo</h3>
+  <p class="prose">Están en el mismo <code>settings.json</code> pero no son del acta. El acta no depende de ellos, aunque sí registra lo que cambian en el árbol, como el formateo.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Hook</th><th>Evento</th><th>Clase</th><th>Quién lo dispara</th><th>Para qué</th></tr></thead>
+    <tbody>
+      <tr><td><code>dependency-sweep.sh</code></td><td><code>SessionStart</code> (<code>startup|resume</code>)</td><td><span class="tag mod">no determinista</span></td><td>Claude Code; lo provoca <strong>la persona</strong> al abrir o retomar</td><td>Reporta dependencias desactualizadas con <code>mvn versions:display-dependency-updates</code>. Consulta Maven Central por red: el mismo repo da otro resultado el día en que sale una versión nueva</td></tr>
+      <tr><td><code>secret-read-guard.sh</code></td><td><code>PreToolUse</code> (Bash, PowerShell, Read)</td><td><span class="tag det">determinista</span></td><td>Claude Code; lo provoca <strong>el modelo</strong> al leer o ejecutar</td><td>Bloquea leer archivos de credenciales (<code>.env</code>, <code>.pem</code>, <code>id_rsa</code>…). Reglas fijas por expresión regular</td></tr>
+      <tr><td><code>block-dangerous-bash.sh</code></td><td><code>PreToolUse</code> (Bash)</td><td><span class="tag det">determinista</span></td><td>Claude Code; lo provoca <strong>el modelo</strong> al ejecutar un comando</td><td>Bloquea comandos peligrosos, como borrar fuera del repo o tocar <code>main</code> y <code>dev</code>. Reglas fijas sobre el texto del comando</td></tr>
+      <tr><td><code>block-dangerous-powershell.sh</code></td><td><code>PreToolUse</code> (PowerShell)</td><td><span class="tag det">determinista</span></td><td>Claude Code; lo provoca <strong>el modelo</strong></td><td>Lo mismo, con las reglas de PowerShell</td></tr>
+      <tr><td><code>generated-files-guard.sh</code></td><td><code>PreToolUse</code> (Edit, Write, MultiEdit)</td><td><span class="tag det">determinista</span></td><td>Claude Code; lo provoca <strong>el modelo</strong> al editar</td><td>Impide editar una migración de Flyway ya existente</td></tr>
+      <tr><td><code>audit-log.sh</code></td><td><code>PreToolUse</code> (todas), asíncrono</td><td><span class="tag mod">no determinista</span></td><td>Claude Code; lo provoca <strong>el modelo</strong></td><td>Bitácora local en <code>logs/audit.log</code>. Corre en <code>async</code>, así que el orden de sus líneas no está garantizado, y rota a los 5 MiB. Es la razón por la que el ADR-0005 creó el acta en vez de usarla</td></tr>
+      <tr><td><code>format-on-edit.sh</code></td><td><code>PostToolUse</code> (Edit, Write, MultiEdit)</td><td><span class="tag det">determinista</span></td><td>Claude Code; lo provoca <strong>el modelo</strong> al editar un <code>.java</code></td><td>Formatea con Spotless. El mismo archivo da el mismo formato, pero corre en paralelo con la captura: por eso el acta mide antes y después</td></tr>
+      <tr><td><code>version-pin-guard.sh</code></td><td><code>PostToolUse</code> (Edit, Write, MultiEdit)</td><td><span class="tag det">determinista</span></td><td>Claude Code; lo provoca <strong>el modelo</strong> al editar un <code>pom.xml</code></td><td>Avisa si una dependencia lleva versión literal fuera de <code>dependencyManagement</code></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Hooks de git y CI</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Herramienta</th><th>Dónde</th><th>Clase</th><th>Quién lo dispara</th><th>Para qué</th></tr></thead>
+    <tbody>
+      <tr><td><code>citar-acta.mjs</code></td><td>Hook <code>commit-msg</code>, vía <code>lefthook.yml</code></td><td><span class="tag det">determinista</span></td><td>git, en cada <code>git commit</code>; el commit lo hace <strong>el modelo</strong> (con su herramienta Bash o PowerShell) o <strong>la persona</strong>. Solo actúa si existe <code>CLAUDE_CODE_SESSION_ID</code></td><td>Si el commit declara <code>Asistido-por-IA:</code>, agrega <code>Registro-IA: .ia/registros/&lt;tarea&gt;/&lt;sesión&gt;.acta.curada.jsonl</code>. La ruta sale de la rama y de la sesión. Nunca bloquea el commit</td></tr>
+      <tr><td><code>verificar-pie-ia.mjs</code></td><td>Hook <code>commit-msg</code></td><td><span class="tag det">determinista</span></td><td>git, en cada <code>git commit</code> de <strong>la persona</strong> o <strong>el modelo</strong>; corre después de <code>citar-acta</code></td><td>Exige que el commit declare <code>Asistido-por-IA: &lt;modelo&gt;</code> o <code>Sin-IA:</code></td></tr>
+      <tr><td>Pruebas de <code>scripts/acta/pruebas/</code></td><td>Hook <code>pre-push</code></td><td><span class="tag det">determinista</span></td><td>git, en cada <code>git push</code> de <strong>la persona</strong> o <strong>el modelo</strong></td><td>Corre las pruebas del compilador, la curación, el motor, la conformidad, la exportación y el visor antes de subir. Una de ellas comprueba que compilar dos veces da los mismos bytes</td></tr>
+      <tr><td><code>verificar-registro-ia.mjs</code></td><td>CI (<code>.github/workflows/ci.yml</code>), en las PR a <code>dev</code></td><td><span class="tag det">determinista</span></td><td><strong>GitHub Actions</strong>, al abrir o actualizar una PR hacia <code>dev</code></td><td>Falla si un commit asistido no declara su acta, si el acta no está en la PR, si la curada no sale de su cruda o si el árbol del commit no sale del acta. Lo que el motor re-ejecuta con bash o pwsh puede variar, por eso esas divergencias solo se avisan y no fallan la PR (ADR-0006)</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Programas externos</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Herramienta</th><th>Para qué se usa</th><th>Por qué esa</th></tr></thead>
+    <tbody>
+      <tr><td>Node.js</td><td>Todos los scripts del acta (<code>.mjs</code>)</td><td>Corre igual en Windows y Linux, y el núcleo de captura solo usa módulos de Node</td></tr>
+      <tr><td>git</td><td><code>rev-parse</code> para <code>HEAD</code> y raíz; <code>add -A</code> + <code>write-tree</code> sobre un <strong>índice temporal</strong> para el hash del árbol; blobs para verificar la cadena; pack de objetos; <code>git apply</code> en el motor</td><td>El índice temporal no toca lo que el usuario tiene en stage, y el hash del índice no varía con <code>core.autocrlf</code>. <code>.ia/</code> se excluye del hash para que registrar no cambie el árbol que se registra</td></tr>
+      <tr><td>gitleaks</td><td><code>gitleaks dir &lt;acta&gt; --redact</code> antes de escribir el acta</td><td>El repo es público y el acta trae prompts, salidas y contenido leído. Sin gitleaks, el acta no se escribe</td></tr>
+      <tr><td>Docker</td><td>Contenedor del motor: <code>--network none</code>, <code>--read-only</code>, usuario no root, límites y tmpfs</td><td>Ejecuta los comandos grabados sin riesgo para la máquina y siempre en el mismo entorno</td></tr>
+      <tr><td>Imagen del motor</td><td><code>scripts/acta/motor/Dockerfile</code>: base <code>node</code> fijada por digest, git y <code>pwsh</code> descargado con verificación de sha256</td><td>El digest fija la imagen byte a byte. <code>pwsh</code> permite re-ejecutar comandos de PowerShell en Linux</td></tr>
+      <tr><td>bash y pwsh</td><td>Dentro del contenedor, para re-ejecutar los Bash y PowerShell grabados</td><td>Cada comando corre con el mismo intérprete con que se grabó</td></tr>
+      <tr><td>Playwright</td><td>No lo ejecuta el acta: sus capturas y <code>trace</code> en <code>test-results/</code> se adjuntan como evidencia</td><td>Se decide por la fecha del archivo, no por el comando que lo generó</td></tr>
+      <tr><td>GitHub CLI (<code>gh</code>)</td><td>El visor consulta el título y la persona asignada del issue; <code>registrar-sesion.mjs</code> guarda el plan del issue</td><td>Con <code>--sin-red</code> no se consulta</td></tr>
+      <tr><td>lefthook</td><td>Instala y ordena los hooks de git</td><td>Es el gestor de hooks del monorepo</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="pipeline">
+  <div class="eyebrow">4 · El recorrido</div>
+  <h2>De la sesión al CI, etapa por etapa</h2>
+  <p class="prose">El modelo solo actúa en la primera etapa. Desde ahí, cada etapa es un programa de Node que lee archivos y escribe archivos, sin red, salvo la construcción de la imagen del motor.</p>
+  <div class="pipe">
+    <div class="stage mod"><div class="n">Etapa 0</div><h4>La sesión</h4><p>El modelo elige acciones, escribe texto y emite (o no) los marcadores de paso.</p><div class="file">transcript .jsonl de Claude Code</div></div>
+    <div class="stage"><div class="n">Etapa 1</div><h4>Captura</h4><p>Hooks en SessionStart, PreToolUse, PermissionRequest, PostToolUse(Failure) y SessionEnd. Nunca bloquean.</p><div class="file">capturar.mjs → nucleo-captura.mjs</div></div>
+    <div class="stage"><div class="n">Etapa 2</div><h4>Compilación</h4><p>Transcript + subagentes + captura → acta cruda, una por tarea.</p><div class="file">compilar-acta.mjs</div></div>
+    <div class="stage"><div class="n">Etapa 3</div><h4>Verificación</h4><p>Invariantes del modelo y gitleaks. Si algo falla, no se escribe.</p><div class="file">validar-acta.mjs · gitleaks</div></div>
+    <div class="stage"><div class="n">Etapa 4</div><h4>Curación</h4><p>Solo éxitos y residuos, y la comprobación de que la cadena llega al árbol final.</p><div class="file">curar-acta.mjs · verificar-arbol.mjs</div></div>
+    <div class="stage"><div class="n">Etapa 5</div><h4>Índice</h4><p>Actas de la tarea e índice inverso archivo → acción. No lleva la hora.</p><div class="file">indexar-tarea.mjs</div></div>
+    <div class="stage"><div class="n">Etapa 6</div><h4>Registro en git</h4><p>Trailer <code>Registro-IA:</code>, pack de objetos y stage del acta.</p><div class="file">citar-acta.mjs · registrar-sesion.mjs</div></div>
+    <div class="stage"><div class="n">Etapa 7</div><h4>Motor</h4><p>Re-ejecuta la curada en Docker sin red. Da un veredicto por acción.</p><div class="file">reejecutar-acta.mjs · ejecutar-acta.mjs</div></div>
+    <div class="stage"><div class="n">Etapa 8</div><h4>Sensor del CI</h4><p>Falla si el commit no declara su acta o el árbol no sale de ella.</p><div class="file">verificar-registro-ia.mjs</div></div>
+    <div class="stage"><div class="n">Etapa 9</div><h4>Lectura</h4><p>Conformidad, visor HTML autocontenido, OCEL 2.0 y PROV-O sin pérdida.</p><div class="file">conformidad.mjs · visor-acta.mjs · exportar-acta.mjs</div></div>
+  </div>
+</section>
+
+<section id="partes">
+  <div class="eyebrow">5 · Parte por parte</div>
+  <h2>Cada elemento del acta: de dónde sale y quién lo decide</h2>
+  <p class="prose">Los elementos son los del modelo conceptual (sección 3 y 5). La columna «Mecanismo» dice qué impide que el elemento varíe entre dos compilaciones.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Elemento</th><th>Origen del dato</th><th>Construcción</th><th>Contenido</th><th>Mecanismo</th></tr></thead>
+    <tbody>
+      <tr><td>Sesión</td><td>Transcript principal</td><td><span class="tag det">det</span></td><td><span class="tag mod">modelo</span></td><td>Una sesión produce un acta por tarea; la tarea sale de la rama <code>&lt;tipo&gt;/&lt;N&gt;-slug</code> (invariante 2)</td></tr>
+      <tr><td>Turno</td><td>Transcript</td><td><span class="tag det">det</span></td><td><span class="tag det">persona</span></td><td>Un turno = un prompt del usuario y todo lo que disparó. Lo marca la estructura del transcript</td></tr>
+      <tr><td>Paso</td><td>Marcador de la skill o turno completo</td><td><span class="tag det">det</span></td><td><span class="tag mod">modelo</span></td><td>Regla fija: cada marcador abre un paso; sin marcador, el paso es el turno con procedencia <code>ausente</code>. No se infiere</td></tr>
+      <tr><td>Acción</td><td>Transcripts y hooks</td><td><span class="tag det">det</span></td><td><span class="tag mod">modelo</span></td><td>Ids secuenciales, orden de aparición, claves en orden fijo</td></tr>
+      <tr><td>Éxito de la acción</td><td><code>is_error</code> del resultado</td><td><span class="tag det">det</span></td><td><span class="tag det">hecho</span></td><td>No se lee la salida. Si Claude Code reinterpretó el código de salida, queda <code>null</code> y <code>codigoReinterpretado</code></td></tr>
+      <tr><td>Árbol antes / después</td><td>Hook de captura</td><td><span class="tag det">det</span></td><td><span class="tag det">hecho</span></td><td><code>git write-tree</code> del índice, no del árbol de trabajo, para que <code>core.autocrlf</code> no cambie el hash</td></tr>
+      <tr><td>Decisión</td><td>Texto del asistente</td><td><span class="tag det">det</span></td><td><span class="tag mod">modelo</span></td><td>Se copia textual; solo se quitan los marcadores y se redactan secretos y rutas</td></tr>
+      <tr><td>Intervención</td><td>Transcript y PermissionRequest</td><td><span class="tag det">det</span></td><td><span class="tag det">persona</span></td><td>Cada tipo sale de un hecho registrado, nunca de leer el texto</td></tr>
+      <tr><td>Agente</td><td>Transcript y hooks</td><td><span class="tag det">det</span></td><td><span class="tag det">hecho</span></td><td>Tipo (<code>persona</code>, <code>automatismo</code>, <code>ia</code>) y rol con valores cerrados</td></tr>
+      <tr><td>Clase de determinismo</td><td><code>clasificar.mjs</code></td><td><span class="tag det">det</span></td><td><span class="tag det">regla</span></td><td>Tablas y expresiones regulares fijas por herramienta y comando</td></tr>
+      <tr><td>Intentos previos</td><td>Acciones fallidas de la cruda</td><td><span class="tag det">det</span></td><td><span class="tag det">regla</span></td><td>Misma herramienta y mismo archivo o comando, desde el éxito anterior (invariante 7)</td></tr>
+      <tr><td>Huella de contexto</td><td>Captura y git</td><td><span class="tag det">det</span></td><td><span class="tag det">hecho</span></td><td>Commit, ruta y hash de cada instructivo; versión del plugin y del Dockerfile del motor</td></tr>
+      <tr><td>Fase del acta</td><td>Marcadores</td><td><span class="tag det">det</span></td><td><span class="tag mod">modelo</span></td><td>Se fija si todos los pasos marcados declaran la misma; si no, <code>null</code> con aviso</td></tr>
+      <tr><td>Acta curada</td><td>Acta cruda + blobs del repo</td><td><span class="tag det">det</span></td><td><span class="tag det">derivada</span></td><td>Función pura; <code>derivadaDe</code> guarda el sha256 de la cruda (invariante 8)</td></tr>
+      <tr><td>Índice de la tarea</td><td>Actas crudas</td><td><span class="tag det">det</span></td><td><span class="tag det">derivado</span></td><td>No lleva la hora de indexado</td></tr>
+      <tr><td>Reporte del motor</td><td>Re-ejecución en Docker</td><td><span class="tag det">det</span></td><td><span class="tag det">medido</span></td><td>Imagen fijada por digest, <code>--network none</code>, árbol en tmpfs</td></tr>
+      <tr><td>Evidencias de Playwright</td><td><code>test-results/</code> y resultados de herramienta</td><td><span class="tag det">det</span></td><td><span class="tag det">hecho</span></td><td>Se identifican por sha256; tope de 20 MB por acta</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="tecnicas">
+  <div class="eyebrow">6 · Cómo se logra</div>
+  <h2>Las técnicas que hacen determinista la compilación</h2>
+  <p class="prose">El encabezado de <code>compilar-acta.mjs</code> lo dice en su primera decisión: «la misma entrada produce el mismo archivo, byte a byte». Lo exige la re-ejecución, que compara hashes, y lo verifica una prueba. Estas son las piezas que lo sostienen.</p>
+  <div class="techs">
+    <div class="tech">
+      <h4>Identificadores secuenciales</h4>
+      <p>Las acciones se numeran por orden de aparición (<code>a1</code>, <code>a2</code>…). No hay UUID ni marcas aleatorias que cambien entre corridas.</p>
+      <div class="src">compilar-acta.mjs · decisión 1</div>
+    </div>
+    <div class="tech">
+      <h4>Orden estable y claves en orden fijo</h4>
+      <p>Cada línea JSON se serializa con sus claves siempre en la misma secuencia, y los elementos siguen el orden del transcript. Dos serializaciones del mismo dato dan los mismos bytes.</p>
+      <div class="src">compilar-acta.mjs · decisión 1</div>
+    </div>
+    <div class="tech">
+      <h4>Sin la hora de compilación</h4>
+      <p>Ni la cruda, ni la curada, ni el índice llevan la hora en que se generaron. Solo guardan las horas que vienen del transcript, que son hechos de la sesión.</p>
+      <div class="src">compilar-acta.mjs · curar-acta.mjs · indexar-tarea.mjs</div>
+    </div>
+    <div class="tech">
+      <h4>Rutas normalizadas</h4>
+      <p>La raíz del repo pasa a <code>.</code> y la carpeta del usuario a <code>~</code>. Se reconocen las cuatro formas de una ruta: <code>D:\x</code>, <code>D:/x</code>, <code>/d/x</code> y la escapada en JSON. Así, la misma sesión compilada en otra máquina da el mismo archivo y no publica el nombre del usuario.</p>
+      <div class="src">normalizar.mjs</div>
+    </div>
+    <div class="tech">
+      <h4>Hash del índice, no del árbol de trabajo</h4>
+      <p>El árbol se mide con <code>git write-tree</code>. El árbol de trabajo varía con <code>core.autocrlf</code> entre Windows y Linux; el índice no.</p>
+      <div class="src">ADR-0005 · punto 1</div>
+    </div>
+    <div class="tech">
+      <h4>Ninguna heurística</h4>
+      <p>El éxito sale de <code>is_error</code>, nunca de buscar «Error:» en la salida. Si el código de salida se reinterpretó (el 1 de un <code>| grep</code>), el éxito queda en <code>null</code>: no se sabe y no se adivina.</p>
+      <div class="src">compilar-acta.mjs · nota sobre #219</div>
+    </div>
+    <div class="tech">
+      <h4>Intervenciones por hechos</h4>
+      <p>Un comando con <code>!</code>, el texto exacto <code>[Request interrupted by user]</code>, un <code>PermissionRequest</code> emparejado por herramienta y hash de la entrada. El clasificador del modo <code>auto</code> no cuenta como persona.</p>
+      <div class="src">README · Intervenciones · clasificar.mjs</div>
+    </div>
+    <div class="tech">
+      <h4>Valores cerrados</h4>
+      <p><code>procedencia</code>, <code>claseDeterminismo</code>, <code>Agente.tipo</code>, <code>Intervencion.tipo</code> y <code>Veredicto.valor</code> solo admiten una lista fija. <code>validar-acta.mjs</code> rechaza cualquier otro valor.</p>
+      <div class="src">modelo conceptual · Valores cerrados</div>
+    </div>
+    <div class="tech">
+      <h4>Un captor que no puede romperse</h4>
+      <p>En cada evento el hook solo carga <code>nucleo-captura.mjs</code>, que no importa nada del repo. En #218, una acción dejó un error de sintaxis en un módulo importado y cuatro acciones quedaron sin captura. Hoy eso no puede repetirse.</p>
+      <div class="src">README · Cómo funciona, punto 1</div>
+    </div>
+  </div>
+
+  <h3>Ejemplo: la misma ruta en dos máquinas</h3>
+  <div class="xform">
+    <div><div class="lbl">En el transcript (Windows, Git Bash)</div><pre><code>D:\GitHub_public\workshop\scripts\acta\x.mjs
+/d/GitHub_public/workshop/scripts/acta/x.mjs
+C:\Users\&lt;usuario&gt;\.claude\settings.json</code></pre></div>
+    <div><div class="lbl">En el acta</div><pre><code>./scripts/acta/x.mjs
+./scripts/acta/x.mjs
+~/.claude/settings.json</code></pre></div>
+  </div>
+  <p class="prose">Hay una excepción deliberada: en los campos con contenido de archivos (lo que escribe un Edit y el diff de un cambio) solo se normalizan las rutas. Si se redactara más, la curación y el motor ya no podrían volver a aplicar el Edit sobre el blob real.</p>
+</section>
+
+<section id="curada">
+  <div class="eyebrow">7 · La curada</div>
+  <h2>Una función pura de la cruda, comprobable byte a byte</h2>
+  <div class="prose">
+    <p>La invariante 8 dice que la curada se deriva de la cruda con una función determinista y que no se edita a mano. Tres mecanismos lo garantizan:</p>
+    <ol class="inv">
+      <li><strong>Recorrido que conserva el orden</strong> de la cruda: entran las acciones exitosas de todos los agentes, con su id original, y salen los pasos y turnos que quedan vacíos.</li>
+      <li><strong>Sello de procedencia:</strong> la cabecera guarda en <code>derivadaDe</code> el sha256 de los bytes de la cruda. Si la cruda cambia un byte, la curada deja de corresponder.</li>
+      <li><strong>Re-derivación:</strong> <code>curar-acta.mjs --comprobar</code> vuelve a derivar la curada desde la cruda y el repo y falla si no coincide byte a byte. El sensor del CI usa esta comprobación.</li>
+    </ol>
+    <h3>Las reglas que podrían parecer juicio y no lo son</h3>
+  </div>
+  <div class="tbl"><table>
+    <thead><tr><th>Caso</th><th>Regla fija</th></tr></thead>
+    <tbody>
+      <tr><td>Un fallo que cambió el árbol</td><td>Entra como acción <code>residuo</code> con su diff. Si no hay árbol para verificarlo y pudo escribir, la curación se detiene (código 3)</td></tr>
+      <tr><td>Código reinterpretado</td><td><code>exito = null</code> en la cruda; en la curada se trata como fallo</td></tr>
+      <tr><td>Un hook que escribió entre dos acciones</td><td>Acción <code>hook</code> con su diff y agente <code>hook:sin-identificar</code>. La cadena de árboles no puede tener huecos</td></tr>
+      <tr><td>Subagente</td><td><code>integrado</code> si lo que cambió sigue en el árbol final; si no, <code>descartado</code> y sale de la curada</td></tr>
+      <tr><td>Rojo esperado</td><td>Un comando que termina con <code># rojo-esperado: &lt;qué demuestra&gt;</code> va al anexo de verificaciones negativas. Lo declara quien escribe el comando, no se deduce</td></tr>
+      <tr><td>Cadena de árboles</td><td><code>verificar-arbol.mjs</code> aplica en memoria cada Edit y Write sobre los blobs del repo y exige llegar al árbol de <code>SessionEnd</code>. Sin repo no se cura</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="acciones">
+  <div class="eyebrow">8 · Clases de acción</div>
+  <h2>Qué se puede re-ejecutar y cómo se juzga</h2>
+  <p class="prose"><code>claseDeterminismo()</code> en <code>clasificar.mjs</code> asigna una de cuatro clases con reglas literales: conjuntos de herramientas, expresiones regulares sobre el comando (<code>gh</code>, <code>curl</code>, <code>git push</code>, <code>npm install</code>…) y los verbos de las herramientas MCP. Un verbo MCP que no está en la lista de lectura cuenta como escritura. En caso de duda, la clase es la más conservadora.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Clase</th><th>Ejemplos</th><th>En el motor</th><th>Veredictos posibles</th></tr></thead>
+    <tbody>
+      <tr><td><span class="tag det">pura</span></td><td>Edit, Write, MultiEdit, residuos, hooks</td><td><code>aplicada</code>: se aplica (o <code>git apply</code> del diff) y se compara el árbol</td><td>igual · diverge</td></tr>
+      <tr><td><span class="tag det">local</span></td><td><code>mvn test</code>, sensores, <code>git diff</code>, Read, Grep</td><td><code>ejecutada</code> con bash o pwsh en el directorio original; Read, <code>comparada</code> línea por línea</td><td>igual · equivalente · diverge · no_verificable (127)</td></tr>
+      <tr><td><span class="tag ext">externa_lectura</span></td><td>WebSearch, WebFetch, MCP de consulta</td><td><code>fixture</code>: no se ejecuta; el árbol sale del registro</td><td>siempre no_verificable</td></tr>
+      <tr><td><span class="tag ext">efecto_externo</span></td><td><code>git push</code>, <code>gh pr create</code>, MCP que escribe, publicar un artifact</td><td><code>omitida</code>: nunca se ejecuta (invariante 9)</td><td>siempre no_verificable</td></tr>
+    </tbody>
+  </table></div>
+  <div class="prose">
+    <p>El contenedor es lo que hace repetible la ejecución: la imagen se fija por digest, la red se apaga con <code>--network none</code>, el sistema de archivos es <code>--read-only</code>, el usuario no es root, hay límites de memoria, CPU y procesos y el árbol vive en un tmpfs. El repo entra como un pack de git con el <code>headBase</code> y todos los árboles del acta.</p>
+    <p>Algunos comandos se marcan como no re-ejecutables por regla: los que corren en segundo plano, los que usan <code>~</code> y los de Windows PowerShell 5.1 que no existen en <code>pwsh</code> de Linux (registro de Windows, <code>Get-Service</code>, COM, <code>-Encoding Default</code>, rutas con letra de unidad, un <code>.exe</code>).</p>
+    <p>Tras una divergencia, el motor restaura el árbol del registro y sigue, así que cada divergencia se mide desde el árbol que la acción tuvo en la sesión. Medido sobre la fase 1 del #222: 55 acciones en unos 26 s, 45 verificadas, las 18 ediciones iguales y una divergencia legítima.</p>
+  </div>
+</section>
+
+<section id="modelo">
+  <div class="eyebrow">9 · Dónde entra el modelo</div>
+  <h2>Los cuatro puntos donde el resultado depende del modelo</h2>
+  <div class="prose">
+    <h3><span class="tag mod">1</span> Los hechos de la sesión</h3>
+    <p>Qué herramientas eligió, en qué orden, con qué entradas, cuántas veces falló y si lanzó subagentes. Es la materia prima. Dos sesiones con el mismo prompt producen actas distintas, y cada una es fiel a su sesión. El ADR-0005 descartó reenviar los prompts al modelo para «re-ejecutar»: eso produce otra sesión parecida, no la misma.</p>
+
+    <h3><span class="tag mod">2</span> El texto de las decisiones</h3>
+    <p>La decisión es el texto que el asistente escribió antes de una o más acciones, y responde PC-07 («¿por qué eligió esta acción?»). El compilador la copia; no la resume ni la reescribe. Las únicas transformaciones son deterministas: quitar los marcadores de paso, normalizar rutas y redactar secretos.</p>
+
+    <h3><span class="tag mod">3</span> La división en pasos</h3>
+    <p>Una skill le dice al acta en qué paso de su instructivo está escribiendo una línea con formato exacto:</p>
+  </div>
+  <pre><code>[sdlc-ia:step skill=debt-triage step=2 method-phase=2]</code></pre>
+  <div class="prose">
+    <p>Lo emite el modelo mientras sigue la skill: al empezar cada paso, antes de su primera herramienta, y otra vez al retomar después de una respuesta de la persona. Los subagentes no marcan. Las nueve skills de <code>sdlc-ia</code> lo emiten desde #230, y una sesión sin skill que implementa el plan de un issue usa <code>skill=plan-de-issue</code>.</p>
+    <p>El compilador lo lee con una regla fija: acepta el marcador solo o entre backticks, y cualquier otra variante no es un marcador. Uno dentro de un bloque de código es un ejemplo y no cuenta.</p>
+  </div>
+  <div class="callout">
+    <p><strong>Lo que el protocolo no garantiza:</strong> que el modelo no olvide un marcador. Si lo olvida, esas acciones quedan en un paso <code>ausente</code> y la conformidad las muestra como acciones sin paso. Después no se corrigen ni se infiere el paso que faltó. La decisión es deliberada: una heurística metería no determinismo en el registro (PC-04).</p>
+  </div>
+  <div class="prose">
+    <h3><span class="tag mod">4</span> La conformidad y la fase</h3>
+    <p><code>conformidad.mjs</code> compara la secuencia marcada con los encabezados <code>Phase N</code> y <code>Step X</code> del <code>SKILL.md</code>, leídos del blob que registró la huella y no del archivo de hoy. Reporta pasos omitidos, repetidos, fuera de orden y no prescritos, acciones sin paso e iteraciones de bucles declarados. La comparación es determinista; la secuencia que compara la produjo el modelo. Sin marcadores, la respuesta es «sin datos», no una lista inventada.</p>
+    <p>La fase del acta también sale de los marcadores: se fija si todos los pasos marcados declaran la misma y queda en <code>null</code> si no.</p>
+  </div>
+</section>
+
+<section id="guardas">
+  <div class="eyebrow">10 · Guardas</div>
+  <h2>Por qué un acta inválida no llega a escribirse</h2>
+  <div class="prose">
+    <p>El compilador y la curación hacen cumplir nueve invariantes. Si se rompe una, el acta no se emite:</p>
+    <ol class="inv">
+      <li>Una acción pertenece a un solo paso; un paso, a un solo turno; un turno, a una sola sesión.</li>
+      <li>Una sesión pertenece a una sola tarea; si toca dos, se parte en dos actas.</li>
+      <li>Las acciones de un subagente pertenecen al paso de la llamada <code>Agent</code> que lo lanzó.</li>
+      <li>Una acción en segundo plano pertenece al paso que la lanzó.</li>
+      <li>Sin marcador, el paso es el turno completo y su procedencia es <code>ausente</code>.</li>
+      <li>En la curada, toda acción tiene <code>exito = true</code> y todo paso tiene al menos una acción.</li>
+      <li>Los intentos previos apuntan a fallos de la cruda con la misma herramienta y el mismo objetivo.</li>
+      <li>La curada se deriva de la cruda con una función determinista.</li>
+      <li>Una acción <code>efecto_externo</code> siempre tiene veredicto <code>no_verificable</code>.</li>
+    </ol>
+  </div>
+  <div class="tbl"><table>
+    <thead><tr><th>Guarda</th><th>Qué hace</th><th>Si falla</th></tr></thead>
+    <tbody>
+      <tr><td>gitleaks</td><td>Revisa el acta antes de dejarla en su lugar</td><td>No se escribe (código 3). Sin gitleaks en el PATH tampoco (código 4)</td></tr>
+      <tr><td>Redacción de secretos</td><td>Redacta el valor de <code>*TOKEN*</code>, <code>*SECRET*</code>, <code>*PASSWORD*</code>, <code>*API_KEY*</code> en la forma <code>NOMBRE=valor</code></td><td>Regla fija; cubre lo que gitleaks no reconoce, como <code>CLAUDE_CODE_MESSAGING_TOKEN</code></td></tr>
+      <tr><td>Identidad</td><td>Carpeta del usuario a <code>~</code>; nombre y email de git redactados</td><td>Regla fija en <code>normalizar.mjs</code></td></tr>
+      <tr><td>Sensor del CI</td><td>Comprueba trailer, presencia del acta, I8, contenido de cada archivo y acciones aplicadas</td><td>Falla la PR. Un comando ejecutado que diverge solo se avisa (ADR-0006)</td></tr>
+      <tr><td>Huella de contexto</td><td>Registra la versión del plugin y de Claude Code, el modelo y los instructivos</td><td>Un cambio de formato del transcript rompe el compilador de forma visible</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="limites">
+  <div class="eyebrow">11 · Límites</div>
+  <h2>Lo que el determinismo no cubre</h2>
+  <div class="callout det">
+    <p><strong>Reproduce, no replica.</strong> El motor prueba la integridad del registro y que lo local se reproduce. No prueba que otro agente, o el mismo modelo otra vez, llegaría al mismo resultado siguiendo el instructivo. Esa es la PC-17, y queda fuera del modelo a propósito: medirla exige usar el modelo, y entonces ya no hay determinismo. Si algún día se mide, va como experimento en <code>EXPERIMENTS.md</code> y se compara por equivalencia (pruebas y sensores en verde), no por hash.</p>
+  </div>
+  <div class="tbl"><table>
+    <thead><tr><th>Hueco</th><th>Consecuencia</th></tr></thead>
+    <tbody>
+      <tr><td>Eventos que la captura perdió</td><td>La acción queda con <code>capturada = null</code> y la curación se detiene en el hueco</td></tr>
+      <tr><td>Un hook que responde un permiso</td><td>El acta lo cuenta como aprobación de la persona. En este repo ningún hook lo hace</td></tr>
+      <tr><td>«No volver a preguntar»</td><td>Las llamadas siguientes no dejan intervención: la persona decidió una sola vez</td></tr>
+      <tr><td>Comandos con <code>!</code></td><td>Los hooks no corren para ellos: la acción queda sin hash de árbol</td></tr>
+      <tr><td>Fallos dentro de un pipe</td><td>Sin <code>pipefail</code>, <code>a | tail</code> devuelve el código de <code>tail</code> y el fallo de <code>a</code> no deja rastro</td></tr>
+      <tr><td>Infraestructura en el motor</td><td>No se monta el socket de Docker: Testcontainers falla en el sandbox. <code>--con-infra</code> queda pendiente</td></tr>
+      <tr><td>Formato del transcript</td><td>Depende de Claude Code y puede cambiar entre versiones</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="comprobar">
+  <div class="eyebrow">12 · Compruébalo tú</div>
+  <h2>Comandos para verificar el determinismo</h2>
+  <p class="prose">Funcionan igual en PowerShell y en bash. Se corren desde la raíz del repo.</p>
+  <h3>Compilar dos veces y comparar</h3>
+  <pre><code>node scripts/acta/compilar-acta.mjs --transcript &lt;sesión.jsonl&gt; --salida &lt;carpeta-1&gt;
+node scripts/acta/compilar-acta.mjs --transcript &lt;sesión.jsonl&gt; --salida &lt;carpeta-2&gt;
+git diff --no-index &lt;carpeta-1&gt; &lt;carpeta-2&gt;</code></pre>
+  <h3>Re-derivar la curada y exigir igualdad byte a byte</h3>
+  <pre><code>node scripts/acta/curar-acta.mjs &lt;acta.cruda.jsonl&gt; --comprobar &lt;acta.curada.jsonl&gt;</code></pre>
+  <h3>Validar invariantes y re-ejecutar sin el modelo</h3>
+  <pre><code>node scripts/acta/validar-acta.mjs &lt;acta.cruda.jsonl&gt;
+node scripts/acta/reejecutar-acta.mjs &lt;acta.curada.jsonl&gt;</code></pre>
+  <h3>Ver qué parte dependió de los marcadores del modelo</h3>
+  <pre><code>node scripts/acta/conformidad.mjs &lt;acta.curada.jsonl&gt;</code></pre>
+  <h3>Las pruebas que fijan el comportamiento</h3>
+  <pre><code>node --test scripts/acta/pruebas/compilar-acta.test.mjs scripts/acta/pruebas/curar-acta.test.mjs
+node --test scripts/acta/pruebas/conformidad.test.mjs scripts/acta/pruebas/exportar-acta.test.mjs</code></pre>
+</section>
+
+<footer>
+  <p><strong>Cómo se hizo este informe.</strong> Se leyeron con búsquedas de texto y lectura de archivos <code>scripts/acta/README.md</code>, <code>docs/modelo-conceptual-registro-ia.md</code>, <code>docs/protocolo-de-marcadores-de-paso.md</code>, el ADR-0005, <code>.claude/settings.json</code>, <code>lefthook.yml</code>, <code>motor/Dockerfile</code> y el código de <code>capturar.mjs</code>, <code>nucleo-captura.mjs</code>, <code>compilar-acta.mjs</code>, <code>curar-acta.mjs</code>, <code>clasificar.mjs</code>, <code>normalizar.mjs</code>, <code>citar-acta.mjs</code> y <code>registrar-sesion.mjs</code>, más un acta real de <code>.ia/registros/235/</code>. Se buscó en <code>scripts/acta/</code> cualquier llamada a un modelo y no hay ninguna. No se ejecutaron los comandos de la sección 12.</p>
+  Basado en el estado de <code>dev</code> al 6 de octubre de 2026 (commit <code>fb2db54</code>). Para el detalle, consulta <code>scripts/acta/README.md</code> y <code>docs/modelo-conceptual-registro-ia.md</code>.
+</footer>
+
+</div>
+</body>
+</html>
