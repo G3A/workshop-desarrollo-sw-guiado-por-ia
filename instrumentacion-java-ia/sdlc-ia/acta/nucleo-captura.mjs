@@ -71,6 +71,21 @@ export function raizDelRepo(cwd) {
   return r ? r.trim() : null;
 }
 
+// Si el proyecto registra su propia captura en .claude/settings.json o settings.local.json (#247,
+// ADR-0007). Claude Code corre un hook del plugin y uno del proyecto aunque sean el mismo: sin esta
+// pregunta, el monorepo que desarrolla el acta registraria cada evento dos veces. Gana el del
+// proyecto, porque apunta a la copia del arbol de trabajo, la que se esta probando.
+export function proyectoDeclaraCaptura(raiz) {
+  return ['settings.json', 'settings.local.json'].some((nombre) => {
+    try {
+      return fs.readFileSync(path.join(raiz, '.claude', nombre), 'utf8')
+        .includes('acta/capturar.mjs');
+    } catch {
+      return false;
+    }
+  });
+}
+
 export function head(raiz) {
   const r = git(['rev-parse', 'HEAD'], { cwd: raiz, permitirFallo: true });
   return r ? r.trim() : null;

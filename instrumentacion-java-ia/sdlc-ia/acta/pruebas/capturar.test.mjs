@@ -13,12 +13,12 @@ import { carpetaTemporal, fabrica, repoTemporal } from './fabrica.mjs';
 
 const HOOK = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'capturar.mjs');
 
-function correrHook(entrada, hook = HOOK) {
+function correrHook(entrada, hook = HOOK, args = []) {
   const env = { ...process.env };
   delete env.GIT_DIR;
   delete env.GIT_WORK_TREE;
   delete env.GIT_INDEX_FILE;
-  return spawnSync(process.execPath, [hook], {
+  return spawnSync(process.execPath, [hook, ...args], {
     input: typeof entrada === 'string' ? entrada : JSON.stringify(entrada),
     env,
     encoding: 'utf8',
@@ -79,6 +79,46 @@ for (const [nombre, archivos, preparar] of [
     assert.equal(a.arbol, b.arbol);
   });
 }
+
+// El hook del plugin (#247, ADR-0007). En un repo que solo instala el plugin captura; en uno que
+// declara su propia captura, como el monorepo que desarrolla el acta, cede: Claude Code corre los
+// dos hooks aunque sean el mismo, y cada evento quedaria dos veces.
+test('captura desde el plugin: registra en un repo sin captura propia, cede en uno que la tiene',
+  () => {
+    const entrada = (raiz) => ({ session_id: 's3', cwd: raiz, hook_event_name: 'SessionStart' });
+    const sinPropia = repoTemporal({ 'a.md': 'uno\n' });
+    assert.equal(correrHook(entrada(sinPropia), HOOK, ['--desde-plugin']).status, 0);
+    assert.ok(fs.existsSync(path.join(sinPropia, '.ia', 'captura', 's3.jsonl')));
+
+    const conPropia = repoTemporal({ 'a.md': 'uno\n', '.claude/settings.json':
+      '{"hooks":{"SessionStart":[{"hooks":[{"command":"node acta/capturar.mjs"}]}]}}' });
+    assert.equal(correrHook(entrada(conPropia), HOOK, ['--desde-plugin']).status, 0);
+    assert.ok(!fs.existsSync(path.join(conPropia, '.ia', 'captura', 's3.jsonl')),
+      'el hook del plugin no cede ante la captura del proyecto');
+    correrHook(entrada(conPropia));
+    assert.ok(fs.existsSync(path.join(conPropia, '.ia', 'captura', 's3.jsonl')),
+      'la captura del proyecto, sin el flag, si registra');
+  });
+
+// Las dos declaraciones de la captura tienen que decir lo mismo: los seis eventos, con los mismos
+// tiempos. Si una suma un evento y la otra no, el acta de un repo con el plugin y la de este
+// monorepo dejarian de ser comparables, sin que nada fallara.
+test('captura: el hooks.json del plugin y el settings.json del monorepo registran lo mismo', () => {
+  const raiz = path.join(path.dirname(HOOK), '..', '..', '..');
+  const capturas = (archivo, esCaptura) => {
+    const { hooks } = JSON.parse(fs.readFileSync(archivo, 'utf8'));
+    return Object.fromEntries(Object.entries(hooks).flatMap(([evento, grupos]) =>
+      grupos.flatMap((g) => g.hooks).filter(esCaptura).map((h) => [evento, h.timeout])));
+  };
+  const delPlugin = capturas(path.join(raiz, 'instrumentacion-java-ia', 'sdlc-ia', 'hooks',
+    'hooks.json'), (h) => (h.args || []).some((a) => a.endsWith('/acta/capturar.mjs')) &&
+    h.args.includes('--desde-plugin'));
+  const delMonorepo = capturas(path.join(raiz, '.claude', 'settings.json'),
+    (h) => String(h.command).includes('acta/capturar.mjs'));
+  assert.deepEqual(Object.keys(delPlugin).sort(), ['PermissionRequest', 'PostToolUse',
+    'PostToolUseFailure', 'PreToolUse', 'SessionEnd', 'SessionStart']);
+  assert.deepEqual(delPlugin, delMonorepo);
+});
 
 // La perdida de eventos de la sesion de #218 (#222). Una accion dejo curar-acta.mjs con un salto
 // de linea dentro de un literal, y capturar.mjs, que lo importaba, no cargaba: de a236 a a239 no

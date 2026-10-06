@@ -1,7 +1,11 @@
-// Hook de captura del acta (#216). Lo llaman SessionStart, PreToolUse, PostToolUse,
-// PostToolUseFailure y SessionEnd desde .claude/settings.json:
+// Hook de captura del acta (#216). Lo llaman SessionStart, PreToolUse, PermissionRequest,
+// PostToolUse, PostToolUseFailure y SessionEnd, desde dos lugares (#247, ADR-0007):
 //
-//   node "$CLAUDE_PROJECT_DIR/instrumentacion-java-ia/sdlc-ia/acta/capturar.mjs"
+//   - hooks/hooks.json del plugin sdlc-ia, en cualquier repo que lo use, con --desde-plugin;
+//   - .claude/settings.json del monorepo que desarrolla el acta, sin el flag.
+//
+// Con --desde-plugin cede si el proyecto ya declara su propia captura: un evento se registra una
+// sola vez.
 //
 // Agrega una linea a .ia/captura/<sesion>.jsonl con lo que el transcript no guarda: el HEAD y el
 // hash del arbol, antes y despues de cada accion, y cada PermissionRequest (#222, fase 5): el
@@ -27,7 +31,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { SIN_ARBOL, arbolActual, evidenciasNuevas, head, huellaDeEntrada, momentoDelPre,
-  raizDelRepo } from './nucleo-captura.mjs';
+  proyectoDeclaraCaptura, raizDelRepo } from './nucleo-captura.mjs';
 
 function leerEntrada() {
   try {
@@ -42,6 +46,7 @@ async function principal() {
   if (!e || !e.session_id || !e.hook_event_name) return;
   const raiz = raizDelRepo(e.cwd || process.cwd());
   if (!raiz) return;
+  if (process.argv.includes('--desde-plugin') && proyectoDeclaraCaptura(raiz)) return;
   const carpeta = path.join(raiz, '.ia', 'captura');
   fs.mkdirSync(carpeta, { recursive: true });
   const archivo = path.join(carpeta, `${e.session_id}.jsonl`);
