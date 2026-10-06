@@ -96,8 +96,10 @@ export function arbolActual(raiz) {
     // .ia/ queda fuera aunque el repo no la ignore: la captura escribe ahi en cada accion, y
     // si entrara en el hash, el arbol cambiaria por el solo hecho de registrarlo. Si el repo ya
     // la ignora, el pathspec de exclusion NO se pasa: git lo trata como agregar una ruta
-    // ignorada y termina con codigo 1.
-    const ignorada = git(['check-ignore', '-q', '.ia'], { cwd: raiz, permitirFallo: true });
+    // ignorada y termina con codigo 1. Con --no-index (#244): sin el, check-ignore mira el
+    // indice, y una .ia/ ignorada que ya versiona un acta no sale como ignorada.
+    const ignorada = git(['check-ignore', '-q', '--no-index', '.ia'],
+      { cwd: raiz, permitirFallo: true });
     const rutas = ignorada === null ? ['--', '.', ':(exclude).ia'] : [];
     git(['add', '-A', ...rutas], { cwd: raiz, env: { GIT_INDEX_FILE: tmp } });
     // Y lo que de .ia/ ya esta versionado tambien sale (#222, fase 3): git sigue los archivos
