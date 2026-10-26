@@ -2,7 +2,7 @@
   "tarea": "255",
   "fases": [],
   "inicio": "2026-10-26T21:21:36.227Z",
-  "fin": "2026-10-26T23:13:49.529Z",
+  "fin": "2026-10-26T23:34:16.330Z",
   "ramas": [
     "docs/255-presentacion-para-el-curso"
   ],
@@ -10,14 +10,14 @@
     {
       "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
       "cruda": "088bbd20-cd5e-44fd-857a-a49c0c74f609.acta.cruda.jsonl",
-      "sha256": "0f67ddbc6a3bc3b38e07cbb6d85d322d7e1238561c7cb7a92eb2e9d33f778e58",
+      "sha256": "f602b16c110f84a7a674e97d9bdac8ed4a2979a1cff74701c204941c4fd23481",
       "curada": "088bbd20-cd5e-44fd-857a-a49c0c74f609.acta.curada.jsonl",
       "ramas": [
         "docs/255-presentacion-para-el-curso"
       ],
       "fase": null,
       "inicio": "2026-10-26T21:21:36.227Z",
-      "fin": "2026-10-26T23:13:49.529Z"
+      "fin": "2026-10-26T23:34:16.330Z"
     }
   ],
   "archivos": {
@@ -389,6 +389,11 @@
       {
         "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
         "accion": "a333",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a344",
         "agente": "orquestador"
       }
     ],
