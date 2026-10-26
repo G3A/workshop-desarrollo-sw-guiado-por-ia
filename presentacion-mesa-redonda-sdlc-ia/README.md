@@ -32,5 +32,5 @@ y abre `http://localhost:8124/index.html`.
 
 ## Duración
 
-Las notas suman unas 970 palabras: entre 7,5 y 8,5 minutos leídas en voz alta. Para medirlo otra
+Las notas suman unas 1000 palabras: entre 7,7 y 8,7 minutos leídas en voz alta. Para medirlo otra
 vez, cuenta las palabras después de cada `Note:` y divide por 115 a 130 palabras por minuto.

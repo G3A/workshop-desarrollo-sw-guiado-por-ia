@@ -238,16 +238,18 @@ de la IA que acaban de ver no viene de Arkandia: la construimos aquí.
 |---|---|---|
 | El curador no reconocía «manual approval» ni una sesión retomada | Código del acta + pruebas | ✅ hecho en #253 |
 | El sensor de espejo no distinguía el acta | Sensor + ADR-0003 | ✅ hecho, con su rojo |
+| La redacción dejaba pasar mi identidad escrita como regex | Código del acta + pruebas | ✅ hecho en #253 |
 | El rojo de TDD debe llevar `# rojo-esperado` | Regla de la skill | Propuesta |
 | En `-p` la skill debe detenerse en el plan | Paso E de `github-plan-build` | Propuesta |
 | El CI del sandbox no verifica el acta | Sensor en `ci.yml` | Propuesta |
 
 Note:
-El último paso de la skill no aplica lecciones: las propone y dice dónde van. Dos ya están
+El último paso de la skill no aplica lecciones: las propone y dice dónde van. Tres ya están
 aplicadas en la PR del número doscientos cincuenta y tres, cada una con su prueba en rojo primero.
-Las otras tres quedan como propuestas: que el rojo de TDD lleve su marca, que la skill no se salte
-el plan cuando no hay persona, y que el CI del sandbox verifique el acta como ya lo hace el del
-monorepo.
+La tercera me tocó de cerca: al registrar el acta de esta charla, mi propio comando de revisión
+iba a publicar mi email. Las otras tres quedan como propuestas: que el rojo de TDD lleve su
+marca, que la skill no se salte el plan cuando no hay persona, y que el CI del sandbox verifique
+el acta como ya lo hace el del monorepo.
 
 ---
 
@@ -255,7 +257,7 @@ monorepo.
 
 - **Varias miradas eligen mejor** que una, sobre todo cuando cambian de opinión con datos.
 - **La IA trabajó y yo decidí**: plan, permisos y merge.
-- **El acta no es burocracia**: encontró cinco problemas reales en una sola sesión.
+- **El acta no es burocracia**: destapó media docena de problemas reales en una sola sesión.
 
 <small>Todo es reproducible: [issue #52](https://github.com/G3A/base-conocimiento-sandbox/issues/52)
 · [PR #53](https://github.com/G3A/base-conocimiento-sandbox/pull/53) · acta en
@@ -264,5 +266,5 @@ monorepo.
 Note:
 Me llevo tres cosas. Que siete miradas eligieron mejor que yo solo, y lo mejor fue verlas cambiar
 de opinión con datos. Que la IA hizo el trabajo y yo tomé las decisiones, y que eso quedó escrito.
-Y que el acta no es burocracia: en una sola sesión encontró cinco problemas que ninguna prueba
-sintética había visto. Gracias. Todo lo que mostré está enlazado para que lo revisen.
+Y que el acta no es burocracia: en una sola sesión destapó media docena de problemas que
+ninguna prueba sintética había visto. Gracias. Todo lo que mostré está enlazado para que lo revisen.
