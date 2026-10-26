@@ -82,6 +82,10 @@ distintos el 100 % de los archivos. **Y va anclado con `^`**: sin el ancla,
 `base-conocimiento/docs/plans/plan-base-conocimiento.md` —que existe— se convierte en
 `docs/plans/plan-.md`, una ruta que no existe en ningún lado.
 
+**`.ia/` queda fuera, de los dos lados.** Es el acta de la IA del repo donde trabajó la IA
+(ADR-0006 y ADR-0007): una sesión en el sandbox versiona su acta allá y no tiene par en
+`base-conocimiento/`. El sensor la descarta antes de comparar (#253).
+
 **El clon local puede estar atrasado.** Por eso la receta dice `origin/dev` y no `dev`, y por eso va
 precedida de un `git fetch`; para una pregunta puntual —«¿el sandbox tiene este archivo?»— es más
 directo preguntarle al remoto:
