@@ -43,7 +43,7 @@ const CONTENIDO = new Set(['content', 'old_string', 'new_string', 'new_source', 
 
 // La identidad de quien trabajo (#222, fase 3): su cuenta del sistema, su dominio y su email de
 // git no entran al acta, que se publica. Cada valor se cambia por <usuario> o <email>, sin
-// distinguir mayusculas; `cortos` son expresiones, para el nombre 8.3 de su carpeta (GUSTAV~1).
+// distinguir mayusculas; `cortos` son expresiones, para el nombre 8.3 de su carpeta (ANAPER~1).
 // Cada signo admite barras delante: un grep que busca la identidad la escribe como regex
 // escapada (`ana\.perez`), y asi tambien se publicaba (#253).
 const conEscapes = (x) => [...x]
