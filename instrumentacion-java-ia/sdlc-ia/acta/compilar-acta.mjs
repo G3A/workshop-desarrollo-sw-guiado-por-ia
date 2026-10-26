@@ -752,7 +752,10 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
     imagen: imagenDelMotor(raizRepo, headBase, raizPlugin),
   };
 
-  const finSesion = [...captura].reverse().find((c) => c.evento === 'SessionEnd' && c.arbol);
+  // El final es el SessionEnd que cierra la captura. Uno con trabajo despues es el de una sesion
+  // que se retomo con `--resume` y sigue abierta (#253).
+  const ultimo = [...captura].reverse().find((c) => c.arbol);
+  const finSesion = ultimo?.evento === 'SessionEnd' ? ultimo : null;
   return { actas: separarPorTarea({ sesion, turnos, pasos, acciones, decisiones, avisos,
     intervenciones, agentes, huella, headBase, inicioSesion,
     arbolFinal: finSesion?.arbol || null }), avisos, evidencias: evidenciasDelTranscript };

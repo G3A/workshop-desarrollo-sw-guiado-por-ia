@@ -618,6 +618,32 @@ test('arbol final: el de SessionEnd, solo en el acta de la ultima accion con arb
   assert.equal(sinCierre.get('11')[0].arbolFinal, null, 'sin SessionEnd con arbol no hay final');
 });
 
+// Una sesion retomada con `claude --resume` deja el SessionEnd de su primera parte en medio de la
+// captura. En la sesion de G3A/base-conocimiento-sandbox#52 (#253) ese arbol era el del plan, y
+// la curacion se detuvo diciendo que la sesion terminaba antes que su propio trabajo.
+test('arbol final: un SessionEnd seguido de mas trabajo no es el final', () => {
+  const f = fabrica()
+    .prompt('Planifica')
+    .llamada('tu1', 'Write', { file_path: 'a.md', content: 'a' })
+    .resultado('tu1', 'ok')
+    .prompt('Retomo: implementa')
+    .llamada('tu2', 'Write', { file_path: 'b.md', content: 'b' })
+    .resultado('tu2', 'ok');
+  const captura = [
+    { evento: 'PreToolUse', toolUseId: 'tu1', arbol: 'x0' },
+    { evento: 'PostToolUse', toolUseId: 'tu1', arbol: 'x1' },
+    { evento: 'SessionEnd', arbol: 'x1' },
+    { evento: 'SessionStart', arbol: 'x1' },
+    { evento: 'PreToolUse', toolUseId: 'tu2', arbol: 'x1' },
+    { evento: 'PostToolUse', toolUseId: 'tu2', arbol: 'x2' },
+  ];
+  const retomada = compilarFabrica(f, { captura }).actas;
+  assert.equal(retomada.get('10')[0].arbolFinal, null, 'la sesion sigue abierta');
+  const cerrada = compilarFabrica(f, { captura: [...captura,
+    { evento: 'SessionEnd', arbol: 'x2' }] }).actas;
+  assert.equal(cerrada.get('10')[0].arbolFinal, 'x2');
+});
+
 // --- Integracion de subagentes (#218) ---------------------------------------------------------
 
 const integracionDe = (acta) => de(acta, 'agente').find((a) => a.id === 'subagente:ab12')
@@ -1013,4 +1039,21 @@ test('permiso sin persona: un comando negado por claude -p no es aprobado y no c
   assert.ok(avisos.some((x) => /permiso de a1 no lo concedio nadie/.test(x)), avisos.join());
   assert.deepEqual(de(acta, 'accion').map((x) => x.capturada), [false, true]);
   assert.ok(!avisos.some((x) => /perdio eventos/.test(x)), 'el negado no es un evento perdido');
+});
+
+// Claude Code 2.1.310 lo dice con otra palabra en el medio. En la sesion de
+// G3A/base-conocimiento-sandbox#52 (#253) el comando quedo como un fallo que pudo escribir, y la
+// curacion se detuvo en el.
+test('permiso sin persona: «requires manual approval» tampoco corrio', () => {
+  const a = { command: 'Get-Content lefthook.yml | Select-String -Pattern rojo' };
+  const f = fabrica().prompt('Lee')
+    .llamada('tu1', 'PowerShell', a)
+    .resultado('tu1', 'select-string may receive a path from an upstream pipeline command whose ' +
+      'output cannot be statically validated and requires manual approval', { error: true });
+  const { actas, avisos } = compilarFabrica(f, {
+    captura: pedido('tu1', 'PowerShell', a, 2, 'acceptEdits'),
+  });
+  const acta = unicaActa({ actas });
+  assert.ok(avisos.some((x) => /permiso de a1 no lo concedio nadie/.test(x)), avisos.join());
+  assert.deepEqual(de(acta, 'accion').map((x) => x.capturada), [false]);
 });

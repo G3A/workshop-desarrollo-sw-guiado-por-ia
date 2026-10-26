@@ -31,6 +31,11 @@ from that folder (see the README, "Actualizar cuando sale una versión nueva", a
 
 - **The capture recorded every tree as `null`** once a repository versioned its first acta
   (#244). `git check-ignore` now runs with `--no-index`.
+- **Two curation stops found in the first acta of a repository that uses the plugin** (#253, in
+  `G3A/base-conocimiento-sandbox#52`). A command `claude -p` denied with "requires manual
+  approval" (Claude Code 2.1.310) counted as a failure that could have written; it is now a
+  permission nobody granted. And a session resumed with `claude --resume` took the `SessionEnd` of
+  its first part as its final tree; only a `SessionEnd` that closes the capture counts now.
 
 ## [0.5.0] — 2026-10-05
 

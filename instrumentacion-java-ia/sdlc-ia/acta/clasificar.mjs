@@ -131,10 +131,11 @@ export function esRechazoDePermiso(texto) {
 
 // El permiso que nadie concedio porque no habia persona: `claude -p` o el SDK sin quien responda.
 // Claude Code 2.1.287 decia «haven't granted it yet»; la 2.1.288 dice «This command requires
-// approval» y variantes, todas vistas en la primera sesion real del #230 (frente 4).
+// approval» y variantes, todas vistas en la primera sesion real del #230 (frente 4). La 2.1.310
+// agrega «requires manual approval» para un pipeline que no puede validar (#253).
 const SIN_PERSONA = [
   /haven't granted it yet/i,
-  /requires? approval/i,
+  /requires? (manual )?approval/i,
   /needs approval/i,
   /can't be checked before it runs/i,
 ];
