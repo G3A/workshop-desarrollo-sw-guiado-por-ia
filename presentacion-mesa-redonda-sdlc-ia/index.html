@@ -2,34 +2,80 @@
 <html lang="es">
   <head>
     <meta charset="utf-8" />
-    <title>Mesa redonda sdlc-ia</title>
+    <title>Del curso a la práctica</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="./dist/reset.css" />
     <link rel="stylesheet" href="./dist/reveal.css" />
     <link rel="stylesheet" href="./dist/theme/black.css" id="theme" />
     <style>
-      .reveal h1 {
-        font-size: 2.1em;
+      :root {
+        --r-background-color: #fafaf8;
+        --r-main-color: #1d1d1f;
+        --r-heading-color: #111;
+        --r-link-color: #0b7a5f;
+        --r-link-color-hover: #08604a;
+        --r-main-font-size: 30px;
+        --r-heading-font-weight: 700;
+        --r-heading-text-transform: none;
+        --tenue: #5b5b66;
+        --f3: #4f6fd8;
+        --borde: #e2e2e6;
       }
-      .reveal h2 {
-        font-size: 1.5em;
+      .reveal h1 { font-size: 2.1em; letter-spacing: -0.02em; }
+      .reveal h2 { font-size: 1.45em; letter-spacing: -0.01em; margin-bottom: 0.5em; }
+      .reveal p, .reveal li { line-height: 1.4; }
+      .reveal small, .reveal .tenue { color: var(--tenue); }
+      .reveal img {
+        border: 1px solid var(--borde);
+        border-radius: 10px;
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+        margin: 0;
+        max-width: 100%;
       }
-      .reveal pre code {
-        max-height: 430px;
-        font-size: 0.85em;
+      .reveal pre { box-shadow: none; }
+      .reveal pre code { font-size: 0.8em; border-radius: 8px; max-height: 400px; }
+      .reveal table { font-size: 0.72em; }
+      .reveal table td, .reveal table th { padding: 0.45em 0.6em; }
+      .reveal table th { color: var(--tenue); }
+      .dos { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; }
+      .dos.ancha-izq { grid-template-columns: 1.4fr 1fr; }
+      .dos.ancha-der { grid-template-columns: 1fr 1.5fr; }
+      .rejilla { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+      .rejilla img { max-height: 300px; width: auto; object-fit: contain; }
+      .dos img { max-height: 620px; width: auto; }
+      .rejilla figure, .dos figure { margin: 0; }
+      figcaption { font-size: 0.5em; color: var(--tenue); margin-top: 6px; text-align: left; }
+      .paso {
+        display: inline-block;
+        font-size: 0.45em;
+        font-weight: 700;
+        padding: 4px 12px;
+        border-radius: 999px;
+        background: var(--f3);
+        color: #fff;
+        letter-spacing: 0.04em;
+        vertical-align: middle;
+        margin-bottom: 10px;
       }
-      .reveal table {
+      .paso.f0 { background: #b45309; } .paso.f2 { background: #0f766e; }
+      .paso.f4 { background: #15803d; } .paso.cursiva { background: #5b5b66; }
+      .franja { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 18px 0; }
+      .franja span {
         font-size: 0.5em;
+        padding: 8px 12px;
+        border-radius: 8px;
+        background: #e8edfc;
+        border: 1px solid #b9c6f3;
+        color: #1d2b5c;
       }
-      .reveal small {
-        color: #aaa;
-      }
-      .reveal .rojo {
-        color: #ff6b6b;
-      }
-      .reveal .verde {
-        color: #6bdf8f;
-      }
+      .franja span.yo { background: #fff4e0; border-color: #f0c47a; color: #6b4300; }
+      .franja b { font-size: 1.05em; }
+      .grande { font-size: 1.25em; }
+      .lista-corta li { margin-bottom: 0.35em; }
+      .cifra { font-size: 2em; font-weight: 800; color: #0b7a5f; line-height: 1; }
+      .cifras { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-top: 24px; }
+      .cifras div { background: #fff; border: 1px solid var(--borde); border-radius: 12px; padding: 16px; }
+      .cifras small { font-size: 0.5em; display: block; margin-top: 6px; }
     </style>
   </head>
   <body>
@@ -55,10 +101,10 @@
         progress: true,
         slideNumber: "c/t",
         center: false,
-        width: 1100,
-        height: 900,
-        margin: 0.06,
-        transition: "slide",
+        width: 1280,
+        height: 860,
+        margin: 0.04,
+        transition: "fade",
         plugins: [RevealMarkdown, RevealNotes],
       });
     </script>
