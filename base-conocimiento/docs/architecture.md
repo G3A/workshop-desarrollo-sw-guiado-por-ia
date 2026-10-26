@@ -158,7 +158,9 @@ prefijo de URI, no por el módulo que la expone.
    para sintetizar como para que `VerificadorGrounding` tenga contexto que evaluar; se salta solo si
    la etapa 4 ya dio `INSUFICIENTE`).
 6. **Sintetizador** redacta en streaming, citando con `[n]` y señalando contradicciones en la
-   propia prosa.
+   propia prosa. En el camino bloqueante (`/api/ask`, Teams), **ValidadorDeCitas** marca en
+   `advertencias` cada `[n]` fuera de `1..k`, de forma determinista y sin otra llamada al LLM
+   (issue #52); el streaming todavía no valida.
 7. **QueryLogRepositorio** registra pregunta, plan, herramientas, candidatos, respuesta y citas —
    incluida la traza de un rechazo por umbral o por el verificador de grounding.
 
