@@ -1,0 +1,306 @@
+{
+  "tarea": "253",
+  "fases": [],
+  "inicio": "2026-10-26T18:02:37.405Z",
+  "fin": "2026-10-26T20:44:07.426Z",
+  "ramas": [
+    "docs/253-presentacion-mesa-redonda"
+  ],
+  "actas": [
+    {
+      "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+      "cruda": "088bbd20-cd5e-44fd-857a-a49c0c74f609.acta.cruda.jsonl",
+      "sha256": "32d9e0a4312c181d65aa06eaca7224f3be3bc91ed104696e4a179519551e6395",
+      "curada": "088bbd20-cd5e-44fd-857a-a49c0c74f609.acta.curada.jsonl",
+      "ramas": [
+        "docs/253-presentacion-mesa-redonda"
+      ],
+      "fase": null,
+      "inicio": "2026-10-26T18:02:37.405Z",
+      "fin": "2026-10-26T20:44:07.426Z"
+    }
+  ],
+  "archivos": {
+    "base-conocimiento/docs/architecture.md": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a115",
+        "agente": "orquestador"
+      }
+    ],
+    "base-conocimiento/docs/plans/plan-base-conocimiento.md": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a115",
+        "agente": "orquestador"
+      }
+    ],
+    "base-conocimiento/docs/plans/plan-issue-52-validador-de-citas.md": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a115",
+        "agente": "orquestador"
+      }
+    ],
+    "base-conocimiento/src/main/java/co/g3a/baseconocimiento/compartido/Dominio.java": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a115",
+        "agente": "orquestador"
+      }
+    ],
+    "base-conocimiento/src/main/java/co/g3a/baseconocimiento/orquestacion/Orquestador.java": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a115",
+        "agente": "orquestador"
+      }
+    ],
+    "base-conocimiento/src/main/java/co/g3a/baseconocimiento/orquestacion/ValidadorDeCitas.java": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a115",
+        "agente": "orquestador"
+      }
+    ],
+    "base-conocimiento/src/main/java/co/g3a/baseconocimiento/teams/TarjetaAdaptativa.java": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a115",
+        "agente": "orquestador"
+      }
+    ],
+    "base-conocimiento/src/test/java/co/g3a/baseconocimiento/orquestacion/OrquestadorTest.java": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a115",
+        "agente": "orquestador"
+      }
+    ],
+    "base-conocimiento/src/test/java/co/g3a/baseconocimiento/orquestacion/ValidadorDeCitasTest.java": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a115",
+        "agente": "orquestador"
+      }
+    ],
+    "docs/adrs/0003-el-adr-como-fuente-de-datos-del-sensor-de-espejo.md": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a58",
+        "agente": "orquestador"
+      }
+    ],
+    "instrumentacion-java-ia/CHANGELOG.md": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a99",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a150",
+        "agente": "orquestador"
+      }
+    ],
+    "instrumentacion-java-ia/sdlc-ia/acta/README.md": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a149",
+        "agente": "orquestador"
+      }
+    ],
+    "instrumentacion-java-ia/sdlc-ia/acta/clasificar.mjs": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a80",
+        "agente": "orquestador"
+      }
+    ],
+    "instrumentacion-java-ia/sdlc-ia/acta/compilar-acta.mjs": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a94",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a146",
+        "agente": "orquestador"
+      }
+    ],
+    "instrumentacion-java-ia/sdlc-ia/acta/normalizar.mjs": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a144",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a145",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a167",
+        "agente": "orquestador"
+      }
+    ],
+    "instrumentacion-java-ia/sdlc-ia/acta/pruebas/compilar-acta.test.mjs": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a78",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a92",
+        "agente": "orquestador"
+      }
+    ],
+    "instrumentacion-java-ia/sdlc-ia/acta/pruebas/verificar-registro-ia.test.mjs": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a142",
+        "agente": "orquestador"
+      }
+    ],
+    "presentacion-mesa-redonda-sdlc-ia/README.md": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a125",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a162",
+        "agente": "orquestador"
+      }
+    ],
+    "presentacion-mesa-redonda-sdlc-ia/contenido.md": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a122",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a124",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a133",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a154",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a155",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a156",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a157",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a161",
+        "agente": "orquestador"
+      }
+    ],
+    "presentacion-mesa-redonda-sdlc-ia/dist/plugin/markdown.js": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a62",
+        "agente": "orquestador"
+      }
+    ],
+    "presentacion-mesa-redonda-sdlc-ia/dist/plugin/notes.js": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a62",
+        "agente": "orquestador"
+      }
+    ],
+    "presentacion-mesa-redonda-sdlc-ia/dist/reset.css": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a62",
+        "agente": "orquestador"
+      }
+    ],
+    "presentacion-mesa-redonda-sdlc-ia/dist/reveal.css": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a62",
+        "agente": "orquestador"
+      }
+    ],
+    "presentacion-mesa-redonda-sdlc-ia/dist/reveal.js": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a62",
+        "agente": "orquestador"
+      }
+    ],
+    "presentacion-mesa-redonda-sdlc-ia/dist/theme/black.css": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a62",
+        "agente": "orquestador"
+      }
+    ],
+    "presentacion-mesa-redonda-sdlc-ia/index.html": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a63",
+        "agente": "orquestador"
+      }
+    ],
+    "presentacion-mesa-redonda-sdlc-ia/mesa-redonda.md": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a64",
+        "agente": "orquestador"
+      }
+    ],
+    "scripts/verificar-espejo.mjs": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a54",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a55",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a56",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a57",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a59",
+        "agente": "orquestador"
+      }
+    ]
+  }
+}
