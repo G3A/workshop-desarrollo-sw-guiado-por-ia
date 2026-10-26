@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help up gpu-up gpu-check gpu-resumen docling-reciclar cache-reciclar jdk-check up-bonsai down-bonsai up-ministral down-ministral up-qwen35 down-qwen35 up-qwen36 down-qwen36 up-nemotron down-nemotron up-granite41 down-granite41 up-phi4mini down-phi4mini up-qwen25 down-qwen25 down restart logs ps build test verify pull-models pull-reranker pull-bonsai-gguf pull-ministral pull-qwen35 pull-qwen36 pull-nemotron pull-granite41 pull-phi4mini pull-qwen25 pin-embeddings-cpu seed vault-init ingest ingest-repos ingest-teams ingest-azdo psql health verificar capturar-error clean format lint secrets check ci hooks
+.PHONY: help up gpu-up gpu-check gpu-resumen docling-reciclar cache-reciclar jdk-check up-bonsai down-bonsai up-ministral down-ministral up-qwen35 down-qwen35 up-qwen36 down-qwen36 up-nemotron down-nemotron up-granite41 down-granite41 up-phi4mini down-phi4mini up-qwen25 down-qwen25 down restart logs ps build test verify pull-models pull-reranker pull-bonsai-gguf pull-ministral pull-qwen35 pull-qwen36 pull-nemotron pull-granite41 pull-phi4mini pull-qwen25 pin-embeddings-cpu seed vault-init ingest ingest-repos ingest-teams ingest-azdo psql health verificar capturar-error clean format lint test-js secrets check ci hooks
 
 
 
@@ -771,13 +771,19 @@ format:  ## Apply code formatting (Spotless)
 lint:  ## Verify code style and static rules (gate: Spotless + Checkstyle)
 	sh ./mvnw -q spotless:check checkstyle:check
 
+# Las pruebas del JavaScript de la UI (issue #54): node:test, sin dependencias ni package.json.
+# Exige node en el PATH; en CI es el que trae ubuntu-latest (ci.yml no instala uno). El glob va sin
+# comillas a proposito: lo expande sh, asi no depende de que la version de node acepte globs.
+test-js:  ## Corre las pruebas del JavaScript de la UI (node --test)
+	node --test src/test/js/*.test.js
+
 secrets:  ## Scan the working tree for committed secrets
 	gitleaks detect --no-banner --redact
 
-check: lint build test  ## Single local confidence signal
+check: lint build test test-js  ## Single local confidence signal
 	@echo "OK -- the repo is green"
 
-ci: lint build test secrets  ## What the CI pipeline runs
+ci: lint build test test-js secrets  ## What the CI pipeline runs
 	@echo "OK -- CI gates passed"
 
 hooks:  ## Install git hooks (Lefthook)

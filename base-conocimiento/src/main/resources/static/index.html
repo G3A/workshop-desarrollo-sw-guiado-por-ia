@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Base de Conocimiento</title>
+<!-- Resaltado de codigo (issue #54): una paleta por tema, vendorizada (sin red). -->
+<link rel="stylesheet" href="vendor/highlight/github.min.css" media="(prefers-color-scheme: light)">
+<link rel="stylesheet" href="vendor/highlight/github-dark.min.css" media="(prefers-color-scheme: dark)">
 <style>
   :root {
     color-scheme: light dark;
@@ -20,6 +23,7 @@
     --error: #d1352b;
     --advertencia: #b45309;
     --sombra: 0 2px 10px rgba(0, 0, 0, 0.06);
+    --bg-codigo: #f6f8fa;
   }
   @media (prefers-color-scheme: dark) {
     :root {
@@ -36,6 +40,7 @@
       --error: #f2867a;
       --advertencia: #f5b24a;
       --sombra: 0 2px 14px rgba(0, 0, 0, 0.35);
+      --bg-codigo: var(--bg-elevado);
     }
   }
 
@@ -643,6 +648,80 @@
   }
   .turno-respuesta:empty { display: none; }
 
+  /* ---------- Bloques de codigo en la respuesta (issue #54, alternativa B) ----------
+     Todo lo que no es codigo (numero de linea, rotulo, "Copiado") sale por CSS:
+     asi ni el innerText ni una seleccion a mano lo levantan, solo el codigo. */
+  .bloque-codigo {
+    position: relative;
+    margin: 0.6rem 0;
+    border: 1px solid var(--borde);
+    border-radius: 10px;
+    background: var(--bg-codigo);
+  }
+  .bloque-codigo pre { margin: 0; padding: 0.85rem 0; overflow-x: auto; }
+  .bloque-codigo pre code.hljs {
+    display: block;
+    padding: 0 1rem 0 0;
+    overflow: visible;
+    background: transparent;
+    font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    white-space: pre;
+    counter-reset: linea;
+  }
+  .bloque-codigo .linea { counter-increment: linea; }
+  .bloque-codigo .linea::before {
+    content: counter(linea);
+    display: inline-block;
+    width: 3.2rem;
+    padding-right: 1rem;
+    text-align: right;
+    color: var(--texto-atenuado);
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .acciones-codigo {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .acciones-codigo::before {
+    content: attr(data-lenguaje);
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--bg-hover);
+    color: var(--texto-atenuado);
+    font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+    font-size: 11px;
+    line-height: 1.4;
+  }
+  .acciones-codigo[data-lenguaje=""]::before { display: none; }
+  .boton-copiar-codigo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid var(--borde);
+    border-radius: 6px;
+    background: var(--bg-main);
+    color: var(--texto-atenuado);
+    cursor: pointer;
+  }
+  .boton-copiar-codigo[hidden] { display: none; }
+  .boton-copiar-codigo:hover, .boton-copiar-codigo:focus-visible { background: var(--bg-hover); color: var(--texto); }
+  .boton-copiar-codigo .icono-copiado { display: none; }
+  .boton-copiar-codigo.copiado { padding: 0 10px; border-color: var(--acento); color: var(--acento); }
+  .boton-copiar-codigo.copiado .icono-copiar { display: none; }
+  .boton-copiar-codigo.copiado .icono-copiado { display: block; }
+  .boton-copiar-codigo.copiado::after { content: "Copiado"; font-size: 12px; }
+
   .turno-feedback {
     margin-top: 0.6rem;
     display: flex;
@@ -1208,6 +1287,8 @@
   <script src="ayuda.js"></script>
   <script src="historial-db.js"></script>
   <script src="idiomas.js"></script>
+  <script src="vendor/highlight/highlight.min.js"></script>
+  <script src="codigo.js"></script>
   <script src="app.js"></script>
   <script>
     kbAyuda.inicializar("boton-ayuda", "modal-ayuda", "contenido-ayuda");

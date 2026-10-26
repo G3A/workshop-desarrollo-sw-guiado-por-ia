@@ -499,7 +499,7 @@
   }
 
   function renderizarStreamResuelto(conversacionId, turno, estado, proyecto) {
-    turno.respuesta.textContent = estado.texto || "";
+    fijarRespuesta(turno, estado.texto, true);
     const huboError = estado.estado === "error";
     turno.estado.textContent = huboError ? "La respuesta quedó incompleta." : "Respondido";
     turno.estado.classList.add(huboError ? "error" : "completado");
@@ -564,7 +564,7 @@
     turno.citas.innerHTML = registro.citas && registro.citas.length
       ? registro.citas.map((c, i) => itemCita(c, i + 1)).join("")
       : "<li>Sin citas.</li>";
-    turno.respuesta.textContent = registro.respuesta || "";
+    fijarRespuesta(turno, registro.respuesta, true);
     if (tipo !== "pregunta") {
       renderCobertura(turno, registro.cobertura || []);
       if (tipo === "preguntas" || tipo === "ideas") {
@@ -718,6 +718,149 @@
         `title="${etiqueta}" aria-label="${etiqueta}">⧉</button>`;
   }
 
+  // ---------- Bloques de codigo en la respuesta (issue #54) ----------
+  // La respuesta se guarda cruda en turno.respuestaTexto y se pinta partida en
+  // segmentos (codigo.js): el texto con textContent, cada bloque ``` como un
+  // bloque de codigo resaltado por highlight.js. Ningun texto del modelo entra
+  // como HTML: innerHTML solo recibe la salida de hljs, que escapa todo lo que
+  // no es su propio <span class>, incluido el modo "plaintext".
+
+  // "terminado": la respuesta llega entera de una vez (historial, sondeo
+  // resuelto), no por tokens.
+  function fijarRespuesta(turno, texto, terminado) {
+    turno.respuestaTexto = texto || "";
+    if (terminado) {
+      turno.respuestaTerminada = true;
+    }
+    pintarRespuesta(turno);
+  }
+
+  function agregarARespuesta(turno, fragmento) {
+    turno.respuestaTexto += fragmento;
+    pintarRespuesta(turno);
+  }
+
+  // Ya no llegan mas tokens: un bloque que el modelo nunca cerro se da por
+  // cerrado (muestra su boton de copiar) y un cierre sin salto final cuenta.
+  function terminarRespuesta(turno) {
+    turno.respuestaTerminada = true;
+    pintarRespuesta(turno);
+  }
+
+  // Solo se repinta desde el primer segmento que cambio: con cada token cambia
+  // el ultimo, y lo anterior (incluida una seleccion o el scroll horizontal de
+  // un bloque ya cerrado) queda como estaba. Un bloque que sigue creciendo
+  // conserva su elemento y solo cambia su contenido.
+  function pintarRespuesta(turno) {
+    const contenedor = turno.respuesta;
+    if (!window.kbCodigo || !window.hljs) {
+      // Sin el parser o sin highlight.js (un 404, una cache vieja) la
+      // respuesta se ve como antes del issue #54, en texto plano, en vez de
+      // quedar en blanco.
+      contenedor.textContent = turno.respuestaTexto;
+      return;
+    }
+    const segmentos = kbCodigo.partir(turno.respuestaTexto, turno.respuestaTerminada);
+    const anteriores = turno.respuestaSegmentos;
+    let i = kbCodigo.primerSegmentoDistinto(anteriores, segmentos);
+    if (i < anteriores.length && i < segmentos.length && anteriores[i].tipo === segmentos[i].tipo) {
+      if (segmentos[i].tipo === "codigo") {
+        actualizarBloqueCodigo(contenedor.children[i], segmentos[i]);
+      } else {
+        contenedor.children[i].textContent = segmentos[i].texto;
+      }
+      i++;
+    }
+    while (contenedor.children.length > i) {
+      contenedor.lastElementChild.remove();
+    }
+    for (; i < segmentos.length; i++) {
+      contenedor.appendChild(nodoDeSegmento(segmentos[i]));
+    }
+    turno.respuestaSegmentos = segmentos;
+  }
+
+  const ICONO_COPIAR = '<svg class="icono-copiar" width="15" height="15" viewBox="0 0 24 24" fill="none" ' +
+      'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<rect x="9" y="9" width="12" height="12" rx="2"></rect><path d="M5 15V5a2 2 0 0 1 2-2h10"></path></svg>';
+  const ICONO_COPIADO = '<svg class="icono-copiado" width="14" height="14" viewBox="0 0 24 24" fill="none" ' +
+      'stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<path d="M20 6 9 17l-5-5"></path></svg>';
+
+  // El codigo exacto de cada bloque, para copiarlo: se copia el string del
+  // segmento, no lo que muestra el DOM.
+  const codigoDeBloque = new WeakMap();
+
+  function nodoDeSegmento(segmento) {
+    if (segmento.tipo === "texto") {
+      const texto = document.createElement("div");
+      texto.className = "texto-respuesta";
+      texto.textContent = segmento.texto;
+      return texto;
+    }
+    const bloque = document.createElement("div");
+    bloque.className = "bloque-codigo";
+    bloque.innerHTML =
+      '<div class="acciones-codigo" data-lenguaje="">' +
+      '<button type="button" class="boton-copiar-codigo" title="Copiar código" aria-label="Copiar código" hidden>' +
+      ICONO_COPIAR + ICONO_COPIADO + "</button>" +
+      "</div>" +
+      '<pre><code class="hljs"></code></pre>';
+    actualizarBloqueCodigo(bloque, segmento);
+    return bloque;
+  }
+
+  // Cada linea va en su <span class="linea"> (el numero sale por CSS, asi no
+  // se selecciona ni se copia), separadas por "\n" reales: el textContent y el
+  // innerText del bloque son el codigo tal cual, lineas vacias incluidas.
+  function actualizarBloqueCodigo(bloque, segmento) {
+    const resaltado = resaltar(segmento);
+    bloque.querySelector(".acciones-codigo").dataset.lenguaje = resaltado.rotulo;
+    // Mientras llega por streaming no hay que copiar: el bloque todavia crece.
+    bloque.querySelector(".boton-copiar-codigo").hidden = !segmento.cerrado;
+    bloque.querySelector("code").innerHTML = kbCodigo.dividirEnLineas(resaltado.html)
+      .map((linea) => '<span class="linea">' + linea + "</span>")
+      .join("\n");
+    codigoDeBloque.set(bloque, segmento.codigo);
+  }
+
+  // Con lenguaje declarado se resalta tambien mientras crece. Sin lenguaje se
+  // detecta solo con el bloque cerrado: highlightAuto prueba todos los
+  // lenguajes, y correrlo en cada token es caro y hace saltar el rotulo.
+  function resaltar(segmento) {
+    const plano = () => hljs.highlight(segmento.codigo, { language: "plaintext" }).value;
+    if (segmento.lenguaje && hljs.getLanguage(segmento.lenguaje)) {
+      return {
+        html: hljs.highlight(segmento.codigo, { language: segmento.lenguaje, ignoreIllegals: true }).value,
+        rotulo: segmento.lenguaje,
+      };
+    }
+    if (segmento.lenguaje || !segmento.cerrado) {
+      // Un lenguaje que hljs no trae va sin color, pero con su rotulo.
+      return { html: plano(), rotulo: segmento.lenguaje };
+    }
+    const detectado = kbCodigo.detectarLenguaje(hljs, segmento.codigo);
+    return { html: detectado.html, rotulo: detectado.lenguaje || "texto" };
+  }
+
+  async function copiarBloqueCodigo(boton) {
+    try {
+      await navigator.clipboard.writeText(codigoDeBloque.get(boton.closest(".bloque-codigo")) || "");
+      boton.classList.add("copiado");
+      boton.setAttribute("aria-label", "Código copiado");
+      boton.disabled = true;
+      setTimeout(() => {
+        boton.classList.remove("copiado");
+        boton.setAttribute("aria-label", "Copiar código");
+        boton.disabled = false;
+      }, 2000);
+    } catch (error) {
+      // Sin permiso de portapapeles o navegador viejo: mismo criterio que
+      // .boton-copiar, el usuario puede seguir seleccionando el codigo a mano
+      // (los numeros de linea no se seleccionan).
+    }
+  }
+
   // "file:///vault/..." identifica un archivo dentro del contenedor: el
   // navegador no puede navegar ahi (ni el esquema file:// abre desde una
   // pagina http, ni esa ruta existe fuera del servidor), por eso estas citas
@@ -837,6 +980,11 @@
       abrirModalDocumento(enlace.dataset.uri, enlace.dataset.titulo);
       return;
     }
+    const copiarCodigo = evento.target.closest(".boton-copiar-codigo");
+    if (copiarCodigo) {
+      copiarBloqueCodigo(copiarCodigo);
+      return;
+    }
     const copiar = evento.target.closest(".boton-copiar");
     if (!copiar) {
       return;
@@ -954,6 +1102,11 @@
       traduccion: turno.querySelector(".turno-traduccion"),
       previa: turno.querySelector(".turno-previa"),
       respuesta: turno.querySelector(".turno-respuesta"),
+      // El texto crudo de la respuesta, con sus cercas ``` (ver pintarRespuesta):
+      // lo que se guarda y lo que se traduce. "respuesta" solo lo muestra.
+      respuestaTexto: "",
+      respuestaTerminada: false,
+      respuestaSegmentos: [],
       citas: turno.querySelector(".turno-citas"),
       feedback: turno.querySelector(".turno-feedback"),
       botonFeedbackSi: turno.querySelector(".boton-feedback-si"),
@@ -1167,7 +1320,7 @@
     // conversacion esta visible ahora mismo: si esta desenganchada del DOM,
     // el texto se sigue acumulando igual, listo para cuando el usuario vuelva.
     fuente.addEventListener("token", (evento) => {
-      turno.respuesta.textContent += JSON.parse(evento.data);
+      agregarARespuesta(turno, JSON.parse(evento.data));
     });
 
     fuente.addEventListener("queryLogId", (evento) => {
@@ -1415,7 +1568,7 @@
     });
     fuente.addEventListener("token", (evento) => {
       marcarRedactando();
-      turno.respuesta.textContent += JSON.parse(evento.data);
+      agregarARespuesta(turno, JSON.parse(evento.data));
     });
     fuente.addEventListener("resultado", (evento) => {
       marcarRedactando();
@@ -1546,7 +1699,7 @@
       turno.estructurado.innerHTML = "";
       turno.estructurado.classList.add("oculto");
       if (datos && datos.mensaje) {
-        turno.respuesta.textContent = datos.mensaje;
+        fijarRespuesta(turno, datos.mensaje);
       }
       return;
     }
@@ -1908,7 +2061,7 @@
           detenerContador();
           turno.estado.textContent = "Traduciendo…";
         },
-        alToken: (fragmento) => { turno.respuesta.textContent += fragmento; },
+        alToken: (fragmento) => { agregarARespuesta(turno, fragmento); },
         alTerminar: (huboError, mensaje) => {
           detenerContador();
           if (huboError) {
@@ -2033,7 +2186,7 @@
   }
 
   function traducirTurno(turno, ambito, popover, idiomas) {
-    const texto = ambito === "pregunta" ? turno.textoBurbuja.textContent : turno.respuesta.textContent;
+    const texto = ambito === "pregunta" ? turno.textoBurbuja.textContent : turno.respuestaTexto;
     const error = popover.querySelector(".error-popover");
     const mostrarError = (mensaje) => {
       error.textContent = mensaje;
@@ -2214,6 +2367,11 @@
     }
     streamsActivos.delete(conversacionId);
     detenerContador();
+    // El fin del primer stream, el de las propuestas, no termina la respuesta:
+    // la de verdad llega en el segundo, sobre este mismo turno.
+    if (!turno.eligiendo) {
+      terminarRespuesta(turno);
+    }
     // Solo toca el boton si el usuario sigue mirando esta conversacion: si ya
     // se fue a otra, el estado del boton depende de ESA, no de la que termino.
     if (conversacionActualId === conversacionId) {
@@ -2240,7 +2398,7 @@
         pregunta: pregunta,
         proyecto: proyecto,
         reformulacion: turno.reformulacionTexto,
-        respuesta: turno.respuesta.textContent,
+        respuesta: turno.respuestaTexto,
         previa: turno.previaDatos,
         citas: turno.citasDatos,
         cobertura: turno.coberturaDatos,
