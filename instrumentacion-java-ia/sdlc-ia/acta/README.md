@@ -166,6 +166,11 @@ El compilador redacta además el valor de toda variable cuyo nombre dice que es 
 (`*TOKEN*`, `*SECRET*`, `*PASSWORD*`, `*API_KEY*`) en la forma `NOMBRE=valor`. Un `env`
 dentro de Claude Code muestra `CLAUDE_CODE_MESSAGING_TOKEN`, y gitleaks no lo reconoce.
 
+La identidad de quien compila (cuenta, dominio, carpeta del perfil y email de git) sale como
+`<usuario>` o `<email>`, también cuando aparece escrita como regex escapada (`ana\.perez`). Lo
+que el entorno no puede saber, como un email personal distinto del de git, va en `ACTA_REDACTAR`,
+separado por `;`, al correr `registrar-sesion.mjs` (#253).
+
 ## Exportar a OCEL 2.0 y PROV-O
 
 `exportar-acta.mjs` escribe el acta en [OCEL 2.0](https://www.ocel-standard.org) (JSON) o en

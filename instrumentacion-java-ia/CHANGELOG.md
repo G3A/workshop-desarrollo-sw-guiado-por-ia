@@ -36,6 +36,10 @@ from that folder (see the README, "Actualizar cuando sale una versión nueva", a
   approval" (Claude Code 2.1.310) counted as a failure that could have written; it is now a
   permission nobody granted. And a session resumed with `claude --resume` took the `SessionEnd` of
   its first part as its final tree; only a `SessionEnd` that closes the capture counts now.
+- **The acta published identity it could have redacted** (#253). The Windows domain is now
+  redacted on its own, every identity value also matches when written as an escaped regex
+  (`ana\.perez`), and `ACTA_REDACTAR` takes extra values separated by `;`, for what the
+  environment cannot know, such as a personal email that is not the git one.
 
 ## [0.5.0] — 2026-10-05
 

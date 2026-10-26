@@ -172,6 +172,21 @@ test('redaccion: la identidad de quien trabajo sale del acta, no del contenido d
   assert.equal(reset.entrada.command, 'git reset HEAD~1');
 });
 
+// En la sesion del #253 un grep que buscaba la identidad en un acta la escribio como regex
+// escapada (`ana\.perez`, `EMPRESA\+`), y el email personal no es el de git: los dos se publicaban.
+test('redaccion: el dominio solo, los valores escapados y los extra de ACTA_REDACTAR', () => {
+  const identidad = identidadDelEntorno({ email: 'ana@users.noreply.github.com',
+    usuario: 'ana.perez', dominio: 'EMPRESA', casa: 'AnaPerezGomez',
+    extra: ['ana@personal.com'] });
+  const f = fabrica().prompt('Busca')
+    .llamada('tu1', 'Bash', { command: 'grep -E "ana\\.perez|EMPRESA\\+|ana@personal\\.com" x' })
+    .resultado('tu1', 'ok');
+  const acta = [...compilar({ transcript: f.escribir(carpetaTemporal('s')), identidad })
+    .actas.values()][0];
+  const [grep] = acta.filter((x) => x.elemento === 'accion');
+  assert.equal(grep.entrada.command, 'grep -E "<usuario>|<usuario>\\+|<email>" x');
+});
+
 test('registrar: guarda el plan del issue con su fecha y el sha256 de su texto (#230)', () => {
   const carpeta = carpetaTemporal('plan');
   const leerIssue = (n) => ({ number: Number(n), title: 'Un plan',

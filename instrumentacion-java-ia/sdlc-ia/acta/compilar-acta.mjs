@@ -934,7 +934,8 @@ function identidadDeQuienCompila(raizRepo) {
   const email = raizRepo ? git(['config', 'user.email'], { cwd: raizRepo,
     permitirFallo: true }) : null;
   return identidadDelEntorno({ email: email ? email.trim() : null, usuario,
-    dominio: process.env.USERDOMAIN || null, casa: path.basename(os.homedir()) });
+    dominio: process.env.USERDOMAIN || null, casa: path.basename(os.homedir()),
+    extra: (process.env.ACTA_REDACTAR || '').split(';').map((x) => x.trim()).filter(Boolean) });
 }
 
 export function serializar(registros) {
