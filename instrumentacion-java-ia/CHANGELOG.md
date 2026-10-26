@@ -40,6 +40,10 @@ from that folder (see the README, "Actualizar cuando sale una versión nueva", a
   redacted on its own, every identity value also matches when written as an escaped regex
   (`ana\.perez`), and `ACTA_REDACTAR` takes extra values separated by `;`, for what the
   environment cannot know, such as a personal email that is not the git one.
+- **A tool call blocked by a `PreToolUse` hook stopped the curation** (#255, in
+  `G3A/base-conocimiento-sandbox#54`). The secret-read guard rejected two commands before they
+  ran, and the compiler counted them as failures that could have written. A
+  `PreToolUse:<tool> hook error:` result now means the tool never ran.
 
 ## [0.5.0] — 2026-10-05
 

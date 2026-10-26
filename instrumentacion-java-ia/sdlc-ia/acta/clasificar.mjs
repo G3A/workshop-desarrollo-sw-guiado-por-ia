@@ -144,6 +144,12 @@ export function esPermisoSinPersona(texto) {
   return SIN_PERSONA.some((r) => r.test(texto || ''));
 }
 
+// Un hook de PreToolUse que rechaza la llamada: la herramienta no llego a correr. Claude Code lo
+// devuelve como «PreToolUse:<herramienta> hook error: ...» (el guard de secretos, #255).
+export function esBloqueoDeHook(texto) {
+  return /^PreToolUse:\S+ hook error:/i.test(texto || '');
+}
+
 // Las herramientas cuyo «rechazo» no es un permiso negado: la persona descarto una pregunta o un
 // plan (#222, fase 5). En las sesiones de este equipo, la mayoria de los rechazos eran de
 // AskUserQuestion, y el compilador los contaba como permisos.
