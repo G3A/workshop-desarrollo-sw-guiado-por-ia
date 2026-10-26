@@ -9,8 +9,9 @@ import java.util.Map;
 
 /**
  * Construye la Adaptive Card 1.4 que Teams renderiza como respuesta: el texto sintetizado, las
- * advertencias del sintetizador si las hay, y una acción {@code Action.OpenUrl} por cada cita — el
- * equivalente en tarjeta de los enlaces clicables que F4 ya muestra en la UI web.
+ * advertencias de la respuesta si las hay (p. ej. una cita {@code [n]} fuera de rango), y una
+ * acción {@code Action.OpenUrl} por cada cita — el equivalente en tarjeta de los enlaces clicables
+ * que F4 ya muestra en la UI web.
  */
 final class TarjetaAdaptativa {
 

@@ -89,8 +89,9 @@ public final class Dominio {
   /**
    * Respuesta sintetizada.
    *
-   * @param advertencias evidencia contradictoria o desactualizada que el sintetizador debe declarar
-   *     en vez de dar falsa certeza
+   * @param advertencias lo que la persona debe saber para no darle falsa certeza a la respuesta;
+   *     hoy, en el camino bloqueante, cada cita {@code [n]} que no corresponde a ningún fragmento
+   *     del contexto. Las contradicciones entre fuentes van en el propio texto, no aquí
    * @param consultaReformulada la consulta que de verdad se usó para buscar, si el {@code
    *     Reformulador} la cambió; {@code null} si buscó con la pregunta tal cual (caso normal)
    */

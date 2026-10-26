@@ -168,14 +168,18 @@ class Orquestador {
           sintetizarBloqueante(pregunta, pre, Consultar.Preferencias.POR_DEFECTO.idioma());
 
       long latenciaMs = (System.nanoTime() - pre.inicioNanos()) / 1_000_000;
-      // advertencias queda vacio a proposito: el prompt de sintesis exige señalar
-      // contradicciones EN el texto de la respuesta (con [n] y prosa), no en un
-      // campo estructurado aparte -- eso pediria una segunda llamada al LLM solo
-      // para separar "respuesta" de "advertencia", en contra de que la sintesis
-      // sea en streaming.
+      // Las contradicciones NO van en advertencias: el prompt de sintesis exige
+      // señalarlas EN el texto (con [n] y prosa); separarlas pediria una segunda
+      // llamada al LLM. Lo que si va es lo determinista: una cita [n] fuera de
+      // 1..k (issue #52). Con respuesta fija no hubo sintesis ni nada que validar.
+      List<String> advertencias =
+          pre.respuestaFija() != null
+              ? List.of()
+              : ValidadorDeCitas.advertencias(
+                  ValidadorDeCitas.validar(textoRespuesta, pre.citas().size()));
       Respuesta respuesta =
           new Respuesta(
-              textoRespuesta, pre.citas(), List.of(), latenciaMs, pre.consultaReformulada());
+              textoRespuesta, pre.citas(), advertencias, latenciaMs, pre.consultaReformulada());
 
       // Etapa 7: registrar.
       long queryLogId =

@@ -43,11 +43,16 @@ const CONTENIDO = new Set(['content', 'old_string', 'new_string', 'new_source', 
 
 // La identidad de quien trabajo (#222, fase 3): su cuenta del sistema, su dominio y su email de
 // git no entran al acta, que se publica. Cada valor se cambia por <usuario> o <email>, sin
-// distinguir mayusculas; `cortos` son expresiones, para el nombre 8.3 de su carpeta (GUSTAV~1).
+// distinguir mayusculas; `cortos` son expresiones, para el nombre 8.3 de su carpeta (ANAPER~1).
+// Cada signo admite barras delante: un grep que busca la identidad la escribe como regex
+// escapada (`ana\.perez`), y asi tambien se publicaba (#253).
+const conEscapes = (x) => [...x]
+  .map((c) => (/[\p{L}\p{N}]/u.test(c) ? escapar(c) : `\\\\*${escapar(c)}`)).join('');
+
 function deIdentidad({ literales = [], cortos = [] } = {}) {
   const res = [...new Set(literales.filter((x) => x && x.length >= 4))]
     .sort((a, b) => b.length - a.length)
-    .map((x) => [new RegExp(escapar(x), 'gi'), x.includes('@') ? '<email>' : '<usuario>']);
+    .map((x) => [new RegExp(conEscapes(x), 'giu'), x.includes('@') ? '<email>' : '<usuario>']);
   return [...res, ...cortos.map((re) => [re, '<usuario>'])];
 }
 
@@ -79,9 +84,11 @@ export function normalizador(raiz, { identidad = {} } = {}) {
 }
 
 // La identidad del entorno donde se compila: la que el hook y registrar-sesion.mjs redactan.
+// `extra` es lo que el entorno no puede saber, como un email personal que no es el de git: llega
+// por ACTA_REDACTAR. El dominio tambien va solo, no unicamente pegado a la cuenta (#253).
 export function identidadDelEntorno({ email = null, usuario = null, dominio = null,
-  casa = null } = {}) {
-  const literales = [email, usuario, casa];
+  casa = null, extra = [] } = {}) {
+  const literales = [email, usuario, casa, dominio, ...extra];
   if (dominio && usuario) literales.push(`${dominio}+${usuario}`, `${dominio}\\${usuario}`);
   const corto = casa ? casa.replace(/[^A-Za-z0-9]/g, '').slice(0, 6) : '';
   return { literales, cortos: corto.length >= 4 ? [new RegExp(`\\b${corto}~[1-9]\\b`, 'gi')]

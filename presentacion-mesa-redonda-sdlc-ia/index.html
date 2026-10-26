@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>Mesa redonda sdlc-ia</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="./dist/reset.css" />
+    <link rel="stylesheet" href="./dist/reveal.css" />
+    <link rel="stylesheet" href="./dist/theme/black.css" id="theme" />
+    <style>
+      .reveal h1 {
+        font-size: 2.1em;
+      }
+      .reveal h2 {
+        font-size: 1.5em;
+      }
+      .reveal pre code {
+        max-height: 430px;
+        font-size: 0.85em;
+      }
+      .reveal table {
+        font-size: 0.5em;
+      }
+      .reveal small {
+        color: #aaa;
+      }
+      .reveal .rojo {
+        color: #ff6b6b;
+      }
+      .reveal .verde {
+        color: #6bdf8f;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="reveal">
+      <div class="slides">
+        <section
+          data-markdown="contenido.md"
+          data-separator="^\r?\n---\r?\n$"
+          data-separator-vertical="^\r?\n--\r?\n$"
+          data-separator-notes="^Note:"
+          data-charset="utf-8"
+        ></section>
+      </div>
+    </div>
+
+    <script src="./dist/reveal.js"></script>
+    <script src="./dist/plugin/markdown.js"></script>
+    <script src="./dist/plugin/notes.js"></script>
+    <script>
+      Reveal.initialize({
+        hash: true,
+        controls: true,
+        progress: true,
+        slideNumber: "c/t",
+        center: false,
+        width: 1100,
+        height: 900,
+        margin: 0.06,
+        transition: "slide",
+        plugins: [RevealMarkdown, RevealNotes],
+      });
+    </script>
+  </body>
+</html>

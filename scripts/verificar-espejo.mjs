@@ -17,7 +17,7 @@
 // esta mal, y eso es justo la senal. Duplicarla en este archivo seria la segunda copia que se
 // desincroniza, que es el defecto por el que el ADR-0002 ya habia descartado el claims-ledger.
 //
-// Ocho decisiones que no son de estilo:
+// Nueve decisiones que no son de estilo:
 //
 // 1. La clave de comparacion es (sha, mode), no solo sha. Con sha solo, un `chmod +x` de un lado
 //    sale VERDE con los dos arboles realmente distintos: mismo blob, uno arranca y el otro da
@@ -46,6 +46,10 @@
 //    a un archivo que difiere a proposito. Un criterio que esta aca y falta alla es rojo: lo agrego
 //    alguien de este repositorio y su autor lo puede espejar. Al reves solo avisa: bloquear por un
 //    criterio que agregaron alla frenaria a la siguiente PR de aca, que no toco nada.
+// 9. `.ia/` no se compara, en ninguno de los dos lados. Es el acta de la IA del repo donde
+//    trabajo la IA (ADR-0006 y ADR-0007 del monorepo): una sesion en el sandbox versiona su acta
+//    alla y nunca tiene su par en base-conocimiento/. Sin esto, la primera PR asistida del sandbox
+//    pondria en rojo la siguiente PR de aca con decenas de "solo en el sandbox" (#253).
 //
 // El sandbox es publico, asi que el fetch funciona sin token (60 peticiones/hora por IP). En CI hay
 // que cablear `env: GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}` en el paso: en Actions ese secreto
@@ -71,6 +75,8 @@ const PREFIJO = 'base-conocimiento/';
 const SANDBOX = 'G3A/base-conocimiento-sandbox';
 const RAMA_SANDBOX = 'dev';
 const MODOS = new Set(['100644', '100755']);
+// El acta de la IA de cada repo: decision 9 de la cabecera.
+const SIN_ESPEJO = '.ia/';
 // Por debajo de esto el sensor no esta viendo el repositorio que cree: aborta en vez de comparar.
 const MINIMO_ENTRADAS = 100;
 // Los dos archivos de la lista "solo en el sandbox" sobre los que el ADR afirma algo del CONTENIDO,
@@ -520,6 +526,7 @@ async function arbolSandbox() {
   for (const entrada of json.tree) {
     if (entrada.type !== 'blob') continue;
     const ruta = entrada.path.normalize('NFC');
+    if (ruta.startsWith(SIN_ESPEJO)) continue;
     arbol.set(ruta, { modo: entrada.mode, tipo: 'blob', sha: entrada.sha });
   }
   return arbol;
@@ -563,7 +570,9 @@ async function comparar() {
   const espejado = new Map();
   for (const [ruta, dato] of raizMonorepo) {
     if (!ruta.startsWith(PREFIJO)) continue;
-    espejado.set(ruta.slice(PREFIJO.length), dato);
+    const relativa = ruta.slice(PREFIJO.length);
+    if (relativa.startsWith(SIN_ESPEJO)) continue;
+    espejado.set(relativa, dato);
   }
 
   const arboles = [
