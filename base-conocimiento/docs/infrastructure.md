@@ -15,7 +15,7 @@
   porque las recetas son POSIX. Funciona igual desde PowerShell y desde Git Bash.
 
 El LLM es intercambiable por perfil (`make up-bonsai`, `up-ministral`, `up-qwen35`, …): son
-overrides de compose encadenados sobre `compose.yml`. La tabla completa de los siete perfiles, con
+overrides de compose encadenados sobre `compose.yml`. La tabla completa de los ocho perfiles, con
 su descarga y su modelo, está en el [README](../README.md#perfiles-de-modelo).
 
 ### Inicio rápido

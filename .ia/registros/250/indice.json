@@ -1,0 +1,58 @@
+{
+  "tarea": "250",
+  "fases": [],
+  "inicio": "2026-10-26T17:05:37.734Z",
+  "fin": "2026-10-26T17:12:33.574Z",
+  "ramas": [
+    "docs/250-sesion-28-qwen36",
+    "feat/250-perfil-qwen36-rtx3060"
+  ],
+  "actas": [
+    {
+      "sesion": "0120863c-0a87-4e9e-977e-c85986b99918",
+      "cruda": "0120863c-0a87-4e9e-977e-c85986b99918.acta.cruda.jsonl",
+      "sha256": "5ed427ecb6aa6c2e7777e69446f1e8034ad6e0426dd1959045739b0bb8d2326a",
+      "curada": "0120863c-0a87-4e9e-977e-c85986b99918.acta.curada.jsonl",
+      "ramas": [
+        "docs/250-sesion-28-qwen36",
+        "feat/250-perfil-qwen36-rtx3060"
+      ],
+      "fase": null,
+      "inicio": "2026-10-26T17:05:37.734Z",
+      "fin": "2026-10-26T17:12:33.574Z"
+    }
+  ],
+  "archivos": {
+    "base-conocimiento/docs/claims-ledger.md": [
+      {
+        "sesion": "0120863c-0a87-4e9e-977e-c85986b99918",
+        "accion": "a93",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "0120863c-0a87-4e9e-977e-c85986b99918",
+        "accion": "a95",
+        "agente": "orquestador"
+      }
+    ],
+    "base-conocimiento/docs/infrastructure.md": [
+      {
+        "sesion": "0120863c-0a87-4e9e-977e-c85986b99918",
+        "accion": "a96",
+        "agente": "orquestador"
+      }
+    ],
+    "base-conocimiento/docs/investigacion-vram-y-modelo-llm.md": [
+      {
+        "sesion": "0120863c-0a87-4e9e-977e-c85986b99918",
+        "accion": "a86",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "0120863c-0a87-4e9e-977e-c85986b99918",
+        "accion": "a87",
+        "agente": "orquestador"
+      }
+    ]
+  }
+}
