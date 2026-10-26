@@ -360,4 +360,5 @@ acta en <code>.ia/registros/54/</code></p>
 Note:
 Cierro con cuatro números: un issue de punta a punta, nueve pasos del proceso con su evidencia,
 cuatro rojos antes del verde y cero merges hechos por la IA. Todo está enlazado en esta
-diapositiva. Gracias, profe; quedo atento a tus preguntas.
+diapositiva. Gracias a Manuel y a David por todo lo que nos enseñaron en este workshop de
+desarrollo de software guiado por IA. Quedo atento a su retroalimentación.
