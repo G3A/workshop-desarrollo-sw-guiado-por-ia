@@ -475,6 +475,7 @@ que su `up`, para no dejar huérfanos) y descarga su modelo una sola vez con `ma
 | **Bonsai-8B** — default de `application.yml`, la mejor citación medida | `make pull-bonsai-gguf` (~1.16 GB) | `make up-bonsai` | `Bonsai-8B-Q1_0.gguf` vía `llama-server` | **Obligatoria** |
 | **Ministral 3B** — mejor precisión del piloto (85.3%) | `make pull-ministral` (~2 GB) | `make up-ministral` | `hf.co/mistralai/Ministral-3-3B-Instruct-2512-GGUF:Q4_K_M` | Opcional |
 | **Qwen3.5 4B** — experimental, con el fix de *thinking* integrado | `make pull-qwen35` (~3.4 GB) | `make up-qwen35` | `qwen3.5:4b` | Opcional |
+| **Qwen3.6 35B-A3B** — experimental, MoE para 6 GB de VRAM (RTX 3060); exige ~12 GB de RAM en WSL2 | `make pull-qwen36` (~12.3 GB) | `make up-qwen36` | `hf.co/unsloth/Qwen3.6-35B-A3B-GGUF:UD-Q2_K_XL` | Recomendada |
 | **Nemotron-mini 4B** — experimental, sin *thinking* | `make pull-nemotron` (~2.7 GB) | `make up-nemotron` | `nemotron-mini:4b` | Opcional |
 | **Granite 4.1 3B** — experimental | `make pull-granite41` (~2.1 GB) | `make up-granite41` | `granite4.1:3b` | Opcional |
 | **Phi-4 Mini 3.8B** — experimental | `make pull-phi4mini` (~2.5 GB) | `make up-phi4mini` | `phi4-mini:3.8b` | Opcional |
@@ -533,11 +534,11 @@ make up-bonsai       # Bonsai-8B   (antes: make pull-bonsai-gguf)
 El resto de variables del ejemplo (puertos, credenciales de Postgres, flags de Teams/Azure DevOps)
 coinciden con los valores por defecto de `compose.yml`, así que no pisan nada.
 
-Los perfiles servidos por Ollama (`up-ministral`, `up-qwen35`, `up-nemotron`, `up-granite41`,
-`up-phi4mini`, `up-qwen25`) encadenan `compose.gpu.yml` **solo si hay tarjeta**: sin ella, la
-reserva de dispositivo NVIDIA haría fallar el arranque entero aunque Ollama sepa caer a CPU
-perfectamente. `up-bonsai` es la excepción y siempre la exige — su `llama-server` se compila con
-CUDA y reserva la tarjeta completa.
+Los perfiles servidos por Ollama (`up-ministral`, `up-qwen35`, `up-qwen36`, `up-nemotron`,
+`up-granite41`, `up-phi4mini`, `up-qwen25`) encadenan `compose.gpu.yml` **solo si hay
+tarjeta**: sin ella, la reserva de dispositivo NVIDIA haría fallar el arranque entero aunque
+Ollama sepa caer a CPU perfectamente. `up-bonsai` es la excepción y siempre la exige — su
+`llama-server` se compila con CUDA y reserva la tarjeta completa.
 
 ### Por qué Ministral no usa `llama-server` (y Bonsai sí)
 

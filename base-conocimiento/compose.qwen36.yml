@@ -1,0 +1,74 @@
+# Perfil experimental: Qwen3.6 35B-A3B (Alibaba, Apache 2.0) en la cuantizacion
+# UD-Q2_K_XL de Unsloth, pensado para una NVIDIA RTX 3060 de 6 GB de VRAM.
+# Servido por el mismo `ollama` que ya levanta compose.yml -- mismo mecanismo que
+# compose.qwen35.yml, que es su antecesor directo (misma familia, mismo fix de
+# "thinking" via reasoning_effort=none).
+#
+# Por que este candidato: es un MoE de 35B parametros que solo activa ~3B por
+# token. Es el primer perfil del repo que NO cabe en la VRAM: el GGUF pesa
+# 12.3 GB, asi que Ollama sube a la GPU las capas que le alcanzan y deja el resto
+# en RAM. Con solo ~3B activos por token, la parte en CPU se paga menos que en un
+# modelo denso del mismo tamano.
+#
+# Uso, junto con el perfil GPU real:
+#   docker compose -f compose.yml -f compose.gpu.yml -f compose.qwen36.yml up -d
+#
+# El modelo NO se baja solo: hace falta `make pull-qwen36` antes de levantar
+# `api`, una sola vez (~12.3 GB, ademas crea bge-m3-cpu -- ver abajo).
+#
+# Requisitos del host:
+# - RAM: el modelo ocupa ~12 GB de la VM de WSL2 ademas de db, docling y api.
+#   Con el `memory=20GB` de wslconfig.example alcanza; con menos, no lo intentes.
+# - GPU: probado tambien en una T600 de 4 GB (88% CPU / 12% GPU); en la 3060 de
+#   6 GB se espera un reparto mejor, pero NO esta medido.
+#
+# Lo que SI esta medido (2026-10-26, T600 4 GB, i7-11800H, Ollama 0.40.1, fuera
+# del pipeline, contra /api/chat): 5/5 en una bateria corta (razonamiento,
+# aritmetica, codigo ejecutado, JSON estricto, espanol) sin thinking, a 4-5 tok/s
+# de generacion y ~100 s de carga en frio. Con thinking un caso de codigo agoto
+# 4096 tokens razonando sin responder (con 16384 respondio bien en 1285).
+#
+# ADVERTENCIA -- lo que NO esta medido: el fix reasoning_effort=none se probo con
+# qwen3.5:4b, no con este modelo; no hay piloto de eval-100-preguntas ni latencia
+# end-to-end del pipeline. No usarlo como reemplazo de produccion sin correr el
+# piloto completo primero.
+
+services:
+  ollama:
+    environment:
+      # 32768 cabe con holgura: la arquitectura es hibrida (solo 10 de 40 capas
+      # guardan cache KV), ~10 KiB por token con q8_0. El maximo del modelo es
+      # 262144 (2.7 GB de KV) y tambien carga, pero en la prueba bajo la
+      # generacion de ~4.7 a ~3 tok/s por presion de memoria.
+      OLLAMA_CONTEXT_LENGTH: ${OLLAMA_CONTEXT_LENGTH:-32768}
+      # q8_0 exige flash attention; juntos parten el cache KV a la mitad, que
+      # es VRAM que vuelve a quedar para capas del modelo.
+      OLLAMA_FLASH_ATTENTION: "1"
+      OLLAMA_KV_CACHE_TYPE: q8_0
+      # compose.yml usa 2: cada slot paralelo duplica el cache KV, y con un
+      # modelo que ya no cabe en la VRAM no hay memoria para el segundo. Fijo,
+      # sin ${...}, porque .env.example trae OLLAMA_NUM_PARALLEL=2 y lo pisaria.
+      OLLAMA_NUM_PARALLEL: "1"
+      # 12 GB desde disco tardaron ~100 s en frio; el default de 5m deja poco
+      # margen en un disco mas lento.
+      OLLAMA_LOAD_TIMEOUT: 10m
+
+  api:
+    environment:
+      SPRING_AI_OPENAI_BASE_URL: http://ollama:11434/v1
+      KB_LLM_MODELO: hf.co/unsloth/Qwen3.6-35B-A3B-GGUF:UD-Q2_K_XL
+      # Fijo, sin ${...}: una 3060 de 6 GB reporta 6144 MiB, justo el umbral
+      # KB_VRAM_EMBEDDINGS_GPU, asi que `make` exportaria bge-m3 en GPU y le
+      # quitaria ~1.2 GB al LLM. Aqui toda la VRAM es para el modelo.
+      # `make pull-qwen36` crea bge-m3-cpu.
+      KB_EMBEDDINGS_MODELO: bge-m3-cpu
+      # Sin medicion end-to-end: mas margen que los 450s de los perfiles de 3-4B,
+      # porque cada token cruza la frontera CPU/GPU.
+      KB_LLM_TIMEOUT: ${KB_LLM_TIMEOUT:-600s}
+      # Los mismos puntos de partida que compose.qwen35.yml, heredados por el
+      # corpus (jls25.pdf), no por evidencia propia de este modelo.
+      KB_UMBRAL_RELEVANCIA_TECHO_CONFIANZA: ${KB_UMBRAL_RELEVANCIA_TECHO_CONFIANZA:-8.0}
+      KB_EXPANDIR_VECINOS: ${KB_EXPANDIR_VECINOS:-false}
+      KB_MAX_FRAGMENTOS_CONTEXTO: ${KB_MAX_FRAGMENTOS_CONTEXTO:-6}
+      KB_RECUPERACION_TOP_RERANK: ${KB_RECUPERACION_TOP_RERANK:-6}
+      KB_RECUPERACION_TOPE_POR_DOCUMENTO: ${KB_RECUPERACION_TOPE_POR_DOCUMENTO:-20}
