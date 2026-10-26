@@ -1,0 +1,413 @@
+{
+  "tarea": "255",
+  "fases": [],
+  "inicio": "2026-10-26T21:21:36.227Z",
+  "fin": "2026-10-26T23:13:49.529Z",
+  "ramas": [
+    "docs/255-presentacion-para-el-curso"
+  ],
+  "actas": [
+    {
+      "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+      "cruda": "088bbd20-cd5e-44fd-857a-a49c0c74f609.acta.cruda.jsonl",
+      "sha256": "0f67ddbc6a3bc3b38e07cbb6d85d322d7e1238561c7cb7a92eb2e9d33f778e58",
+      "curada": "088bbd20-cd5e-44fd-857a-a49c0c74f609.acta.curada.jsonl",
+      "ramas": [
+        "docs/255-presentacion-para-el-curso"
+      ],
+      "fase": null,
+      "inicio": "2026-10-26T21:21:36.227Z",
+      "fin": "2026-10-26T23:13:49.529Z"
+    }
+  ],
+  "archivos": {
+    "base-conocimiento/AGENTS.md": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a268",
+        "agente": "orquestador"
+      }
+    ],
+    "base-conocimiento/AGENTS.md.rej": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a264",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a271",
+        "agente": "orquestador"
+      }
+    ],
+    "base-conocimiento/COMPONENTS.md": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a264",
+        "agente": "orquestador"
+      }
+    ],
+    "base-conocimiento/Makefile": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a264",
+        "agente": "orquestador"
+      }
+    ],
+    "base-conocimiento/docs/architecture.md": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a264",
+        "agente": "orquestador"
+      }
+    ],
+    "base-conocimiento/docs/claims-ledger.md": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a264",
+        "agente": "orquestador"
+      }
+    ],
+    "base-conocimiento/docs/design-tokens.md": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a264",
+        "agente": "orquestador"
+      }
+    ],
+    "base-conocimiento/docs/design.md": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a264",
+        "agente": "orquestador"
+      }
+    ],
+    "base-conocimiento/docs/infrastructure.md": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a269",
+        "agente": "orquestador"
+      }
+    ],
+    "base-conocimiento/docs/infrastructure.md.rej": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a264",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a271",
+        "agente": "orquestador"
+      }
+    ],
+    "base-conocimiento/docs/java.md": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a270",
+        "agente": "orquestador"
+      }
+    ],
+    "base-conocimiento/docs/java.md.rej": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a264",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a271",
+        "agente": "orquestador"
+      }
+    ],
+    "base-conocimiento/docs/plans/plan-issue-54-codigo-en-el-chat.md": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a264",
+        "agente": "orquestador"
+      }
+    ],
+    "base-conocimiento/src/main/resources/static/app.js": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a264",
+        "agente": "orquestador"
+      }
+    ],
+    "base-conocimiento/src/main/resources/static/codigo.js": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a264",
+        "agente": "orquestador"
+      }
+    ],
+    "base-conocimiento/src/main/resources/static/index.html": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a264",
+        "agente": "orquestador"
+      }
+    ],
+    "base-conocimiento/src/main/resources/static/vendor/highlight/LICENSE": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a264",
+        "agente": "orquestador"
+      }
+    ],
+    "base-conocimiento/src/main/resources/static/vendor/highlight/github-dark.min.css": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a264",
+        "agente": "orquestador"
+      }
+    ],
+    "base-conocimiento/src/main/resources/static/vendor/highlight/github.min.css": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a264",
+        "agente": "orquestador"
+      }
+    ],
+    "base-conocimiento/src/main/resources/static/vendor/highlight/highlight.min.js": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a264",
+        "agente": "orquestador"
+      }
+    ],
+    "base-conocimiento/src/test/js/codigo.test.js": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a264",
+        "agente": "orquestador"
+      }
+    ],
+    "instrumentacion-java-ia/CHANGELOG.md": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a250",
+        "agente": "orquestador"
+      }
+    ],
+    "instrumentacion-java-ia/sdlc-ia/acta/clasificar.mjs": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a244",
+        "agente": "orquestador"
+      }
+    ],
+    "instrumentacion-java-ia/sdlc-ia/acta/compilar-acta.mjs": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a245",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a248",
+        "agente": "orquestador"
+      }
+    ],
+    "instrumentacion-java-ia/sdlc-ia/acta/pruebas/compilar-acta.test.mjs": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a242",
+        "agente": "orquestador"
+      }
+    ],
+    "presentacion-mesa-redonda-sdlc-ia/README.md": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a307",
+        "agente": "orquestador"
+      }
+    ],
+    "presentacion-mesa-redonda-sdlc-ia/assets/antes-codigo-recorte.png": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a299",
+        "agente": "orquestador"
+      }
+    ],
+    "presentacion-mesa-redonda-sdlc-ia/assets/antes-codigo.png": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a291",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a301",
+        "agente": "orquestador"
+      }
+    ],
+    "presentacion-mesa-redonda-sdlc-ia/assets/app-eleccion.png": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a291",
+        "agente": "orquestador"
+      }
+    ],
+    "presentacion-mesa-redonda-sdlc-ia/assets/app-inicio.png": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a291",
+        "agente": "orquestador"
+      }
+    ],
+    "presentacion-mesa-redonda-sdlc-ia/assets/despues-claro.png": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a291",
+        "agente": "orquestador"
+      }
+    ],
+    "presentacion-mesa-redonda-sdlc-ia/assets/despues-codigo-recorte.png": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a299",
+        "agente": "orquestador"
+      }
+    ],
+    "presentacion-mesa-redonda-sdlc-ia/assets/despues-codigo.png": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a291",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a301",
+        "agente": "orquestador"
+      }
+    ],
+    "presentacion-mesa-redonda-sdlc-ia/assets/despues-copiado.png": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a291",
+        "agente": "orquestador"
+      }
+    ],
+    "presentacion-mesa-redonda-sdlc-ia/assets/despues-oscuro.png": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a291",
+        "agente": "orquestador"
+      }
+    ],
+    "presentacion-mesa-redonda-sdlc-ia/assets/despues-streaming.png": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a291",
+        "agente": "orquestador"
+      }
+    ],
+    "presentacion-mesa-redonda-sdlc-ia/assets/gh-checks.png": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a291",
+        "agente": "orquestador"
+      }
+    ],
+    "presentacion-mesa-redonda-sdlc-ia/assets/gh-commits.png": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a291",
+        "agente": "orquestador"
+      }
+    ],
+    "presentacion-mesa-redonda-sdlc-ia/assets/gh-decision.png": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a291",
+        "agente": "orquestador"
+      }
+    ],
+    "presentacion-mesa-redonda-sdlc-ia/assets/playbook-fases.png": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a291",
+        "agente": "orquestador"
+      }
+    ],
+    "presentacion-mesa-redonda-sdlc-ia/assets/visor-c1.png": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a291",
+        "agente": "orquestador"
+      }
+    ],
+    "presentacion-mesa-redonda-sdlc-ia/assets/visor-ciclo.png": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a291",
+        "agente": "orquestador"
+      }
+    ],
+    "presentacion-mesa-redonda-sdlc-ia/contenido.md": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a287",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a288",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a301",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a313",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a321",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a322",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a328",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a329",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a333",
+        "agente": "orquestador"
+      }
+    ],
+    "presentacion-mesa-redonda-sdlc-ia/index.html": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a284",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a292",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a304",
+        "agente": "orquestador"
+      }
+    ]
+  }
+}
