@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help up gpu-up gpu-check gpu-resumen docling-reciclar cache-reciclar jdk-check up-bonsai down-bonsai up-ministral down-ministral up-qwen35 down-qwen35 up-nemotron down-nemotron up-granite41 down-granite41 up-phi4mini down-phi4mini up-qwen25 down-qwen25 down restart logs ps build test verify pull-models pull-reranker pull-bonsai-gguf pull-ministral pull-qwen35 pull-nemotron pull-granite41 pull-phi4mini pull-qwen25 pin-embeddings-cpu seed vault-init ingest ingest-repos ingest-teams ingest-azdo psql health verificar capturar-error clean format lint secrets check ci hooks
+.PHONY: help up gpu-up gpu-check gpu-resumen docling-reciclar cache-reciclar jdk-check up-bonsai down-bonsai up-ministral down-ministral up-qwen35 down-qwen35 up-qwen36 down-qwen36 up-nemotron down-nemotron up-granite41 down-granite41 up-phi4mini down-phi4mini up-qwen25 down-qwen25 down restart logs ps build test verify pull-models pull-reranker pull-bonsai-gguf pull-ministral pull-qwen35 pull-qwen36 pull-nemotron pull-granite41 pull-phi4mini pull-qwen25 pin-embeddings-cpu seed vault-init ingest ingest-repos ingest-teams ingest-azdo psql health verificar capturar-error clean format lint secrets check ci hooks
 
 
 
@@ -295,6 +295,7 @@ COMPOSE_BONSAI    := docker compose $(ENV_FILE_FLAG) -f compose.yml -f compose.g
 # contra los candidatos descartados por "texto pegado").
 COMPOSE_MINISTRAL := docker compose $(ENV_FILE_FLAG) -f compose.yml $(PERFIL_GPU) -f compose.ministral.yml
 COMPOSE_QWEN35    := docker compose -f compose.yml $(PERFIL_GPU) -f compose.qwen35.yml
+COMPOSE_QWEN36    := docker compose -f compose.yml $(PERFIL_GPU) -f compose.qwen36.yml
 COMPOSE_NEMOTRON  := docker compose -f compose.yml $(PERFIL_GPU) -f compose.nemotron.yml
 COMPOSE_GRANITE41 := docker compose -f compose.yml $(PERFIL_GPU) -f compose.granite41.yml
 COMPOSE_PHI4MINI  := docker compose -f compose.yml $(PERFIL_GPU) -f compose.phi4mini.yml
@@ -504,6 +505,12 @@ up-qwen35:  ## Levanta el perfil experimental Qwen3.5 4B (LLM via Ollama, fix de
 down-qwen35:  ## Detiene el perfil Qwen3.5 (mismos -f que up-qwen35)
 	$(COMPOSE_QWEN35) down
 
+up-qwen36:  ## Levanta el perfil experimental Qwen3.6 35B-A3B (MoE, pensado para 6 GB de VRAM); corre make pull-qwen36 antes la primera vez
+	@$(call arrancar,$(COMPOSE_QWEN36))
+
+down-qwen36:  ## Detiene el perfil Qwen3.6 (mismos -f que up-qwen36)
+	$(COMPOSE_QWEN36) down
+
 up-nemotron:  ## Levanta el perfil experimental Nemotron-mini 4B (LLM via Ollama, sin thinking); corre make pull-nemotron antes la primera vez
 	@$(call arrancar,$(COMPOSE_NEMOTRON))
 
@@ -642,6 +649,13 @@ pull-ministral:  ## Descarga el modelo Ministral 3B a Ollama (~2 GB via Hugging 
 
 pull-qwen35:  ## Descarga el modelo Qwen3.5 4B a Ollama (~3.4 GB), una sola vez (perfil up-qwen35)
 	$(COMPOSE_ACTIVO) exec ollama ollama pull qwen3.5:4b
+
+pull-qwen36:  ## Descarga Qwen3.6 35B-A3B UD-Q2_K_XL a Ollama (~12.3 GB) y crea bge-m3-cpu, una sola vez (perfil up-qwen36)
+	@# compose.qwen36.yml fija los embeddings en bge-m3-cpu para dejarle toda la
+	@# VRAM al LLM, asi que ese modelo tiene que existir aunque la tarjeta pase el
+	@# umbral de KB_VRAM_EMBEDDINGS_GPU (una 3060 de 6 GB lo pasa justo).
+	$(COMPOSE_ACTIVO) exec ollama ollama pull hf.co/unsloth/Qwen3.6-35B-A3B-GGUF:UD-Q2_K_XL
+	@$(MAKE) --no-print-directory pin-embeddings-cpu
 
 pull-nemotron:  ## Descarga el modelo Nemotron-mini 4B a Ollama (~2.7 GB), una sola vez (perfil up-nemotron)
 	$(COMPOSE_ACTIVO) exec ollama ollama pull nemotron-mini:4b
