@@ -31,7 +31,8 @@ se marca en vez de borrarse, porque saber qué dejó de valer vale tanto como sa
 | El `Makefile` fija su propio `SHELL` en Windows (el `sh.exe` de Git for Windows) y le antepone su directorio al `PATH` cuando el `PATH` viene en formato Windows. | `Makefile` (bloque `ifeq ($(OS),Windows_NT)`) | alta | confirmada (2026-08-31) — sin eso, `make` desde PowerShell cae a `cmd.exe` y casi ninguna receta funciona |
 | El reparto de la GPU se deriva de `nvidia-smi` (VRAM, Compute Capability, driver), no de constantes. | `Makefile` (`GPU_PLAN`), `make gpu-check` | alta | confirmada (2026-08-31) |
 | `docling-serve` no libera la VRAM entre conversiones y `GET /v1/clear/converters` no la recupera; solo reiniciar el proceso. | Medido: 2053 MiB antes y después del endpoint; sesión 27 de `investigacion-vram-y-modelo-llm.md` | alta | confirmada (2026-08-31) |
-| Hay 10 `compose.*.yml` de perfil de modelo; 7 tienen target `up-`/`down-`/`pull-`. | `ls compose.*.yml`, `grep "^up-" Makefile` | alta | confirmada (2026-08-31) |
+| Hay 11 `compose.*.yml` de perfil de modelo; 8 tienen target `up-`/`down-`/`pull-`. | `ls compose.*.yml`, `grep "^up-" Makefile` | alta | confirmada (2026-10-26) |
+| Qwen3.6 35B-A3B (`UD-Q2_K_XL`, 12.3 GB) corre en la T600 de 4 GB con 88 % en CPU, a 4–5 tok/s, fuera del pipeline; en un MoE limita la RAM, no la VRAM. | Medido: sesión 28 de `investigacion-vram-y-modelo-llm.md`, hallazgos 110 y 114 | media | confirmada (2026-10-26): una batería de 5 casos, sin el piloto de 100 preguntas |
 | `V1__esquema.sql` crea 6 tablas (`sources`, `documents`, `chunks`, `term_stats`, `ingest_jobs`, `query_log`); V2 a V5 crean una cada una y V6 no crea tablas: agrega `query_log_id` a `streams_en_curso`. | `src/main/resources/db/migration/` (`CREATE TABLE`) | alta | confirmada (2026-09-15) |
 | En producción los secretos salen del mismo archivo `.env` que lee Docker Compose, puesto a mano en el host; no hay gestor de secretos. | usuario | alta | confirmada (2026-09-15) |
 | `REVIEW.md` y la plantilla de PR viven en la raíz del monorepo: el servicio de Code Review solo lee `REVIEW.md` en la raíz del repositorio git, y GitHub la plantilla en `.github/` de la raíz. | <https://code.claude.com/docs/en/code-review> (sección REVIEW.md) | alta | confirmada (2026-09-15) |
@@ -50,6 +51,7 @@ que las encuentre citadas en otro documento necesita saber que ya no valen.
 | «El paquete `seguridad` no está cubierto por ninguna de las 4 reglas de `ArquitecturaTest`.» | La fusión de las dos versiones del test lo incorporó a las reglas de adaptadores y núcleo, y le agregó `seguridadNoSeMezclaConLosOtrosAdaptadores`. |
 | «El paquete `seguridad` no tiene `@ApplicationModule` ni Javadoc en su `package-info.java`.» | `seguridad/package-info.java` existe, con `@ApplicationModule(displayName = "Seguridad")` y su Javadoc. |
 | «El camino a producción es manual, **sin CI**.» | El CI existe y bloquea; lo que no hay es despliegue continuo. Ver la fila matizada arriba. |
+| «Hay 10 `compose.*.yml` de perfil de modelo; 7 tienen target `up-`/`down-`/`pull-`.» | El perfil `compose.qwen36.yml` (#250) sumó un archivo y sus tres targets: hoy son 11 y 8. |
 
 ## Docs que contradecían filas vigentes
 

@@ -3617,3 +3617,111 @@ era el número.
 
 Nota: durante la ingesta el LLM está ocioso (la ingesta es heurística, no pasa por él), pero sigue
 residente por `OLLAMA_KEEP_ALIVE=1h`, así que la suma es real y no un peor caso teórico.
+
+## Sesión 28: Qwen3.6 35B-A3B — un MoE de 12.3 GB que corre en la T600 de 4 GB, fuera del pipeline
+
+Las sesiones 18 y 19 descartaron `qwen3.6` y `gemma4:e2b` antes de probarlos, con el filtro de la
+sesión 4: si el paquete no entra en la VRAM, el modelo no es viable. Esta sesión prueba un caso que
+ese filtro deja fuera sin mirar: **Qwen3.6 35B-A3B**, un MoE de 34.7B parámetros que activa ~3B por
+token, en la cuantización `UD-Q2_K_XL` de Unsloth
+(`hf.co/unsloth/Qwen3.6-35B-A3B-GGUF:UD-Q2_K_XL`, 12.29 GB, tres veces la VRAM de la tarjeta).
+
+Montaje, el 2026-10-26: un Ollama 0.40.1 **aislado** del stack (contenedor propio con
+`--gpus all`, volumen propio, puerto 11500, sin Postgres ni docling ni `api`), T600 de 4 GB, i7-11800H,
+VM de WSL2 con 16 GB. La prueba es una batería corta de cinco casos contra `/api/chat`, no el
+pipeline: razonamiento (la mesa y la silla), aritmética (347 × 29), código (una función
+`esPalindromo` que se **ejecuta** contra tres entradas), extracción a JSON con `format: json`, y una
+explicación en español. Muestreo recomendado por Qwen: `temperature` 0.6, `top_p` 0.95, `top_k` 20.
+
+### Hallazgo 110: carga y responde con el 88 % del modelo en CPU, a 4–5 tok/s
+
+`ollama show` reporta arquitectura `qwen35moe`, contexto nativo de 262144 y capacidades `tools`,
+`thinking` y `vision`. La detección de GPU por CUDA funcionó al arrancar (3.2 GiB disponibles). En
+la carga, Ollama subió 943 MiB del modelo a la GPU y dejó 11437 MiB mapeados en RAM: **88 % CPU /
+12 % GPU**, con 2455 MiB de VRAM en uso.
+
+| Medida | Valor |
+|---|---|
+| Carga en frío (desde disco) | ~102 s |
+| Generación, sin *thinking* | 2.4–6.3 tok/s |
+| Generación, con *thinking* (respuestas de 450–800 tokens) | 4.4–5.2 tok/s, estable |
+| Lectura del prompt, ya cargado | 20–97 tok/s |
+
+Al recargar el modelo, más tarde, el log mostró `llama-server GPU discovery watchdog timed out`,
+pero cargó igual. Detalle a tener presente si el modelo pasa al pipeline: llama.cpp avisa
+`forcing full prompt re-processing due to lack of cache data (likely due to SWA or
+hybrid/recurrent memory)`. Con la memoria híbrida de esta arquitectura, el prefijo de una llamada
+no se reaprovecha en la siguiente, y cada etapa del pipeline vuelve a leer su prompt entero.
+
+### Hallazgo 111: 5/5 sin *thinking*; con *thinking*, las respuestas abiertas mejoran
+
+Sin *thinking*, los cinco casos salieron bien. El JSON fue válido y exacto. El código pasó las tres
+entradas, aunque su `replace(/[^a-zA-Z0-9]/g, '')` descarta las letras acentuadas: «Ánima»
+quedaría «nima». Lo esperable de una cuantización de 2 bits era peor.
+
+Con *thinking*, cuatro casos salieron bien en la primera pasada (591, 808, 449 y 775 tokens, de 95 a
+167 s cada uno). La explicación en español fue más precisa que sin *thinking*: nombra al consumidor,
+al proveedor y la detección temprana de incompatibilidades, donde la otra se quedaba en «cumple sus
+especificaciones».
+
+### Hallazgo 112: con *thinking*, un caso entró en bucle y agotó 4096 tokens sin responder
+
+En el caso de código, el modelo razonó 14267 caracteres durante 867 s, llegó al tope de
+`num_predict` = 4096 y no escribió la respuesta. Repetido con un tope de 16384, respondió bien en
+**1285 tokens** (592 s). El primer fallo fue un bucle del muestreo (temperatura 0.6), no falta de
+espacio: con el mismo prompt, una corrida se enreda y la otra no.
+
+Es la misma familia de falla que los hallazgos 74 y 75 de `qwen3.5:4b`, donde el pensamiento se
+comía el `maxTokens` de las etapas con JSON forzado. El pipeline lo apaga con
+`reasoning_effort: "none"` (hallazgo 76), pero eso se verificó con `qwen3.5:4b`, **no** con este
+modelo.
+
+Nota de herramienta: con `stream: false`, el `fetch` de Node corta a los 300 s esperando cabeceras
+(`UND_ERR_HEADERS_TIMEOUT`), y una respuesta con *thinking* de este modelo los supera. Para medirlo
+hay que pedir la respuesta en *streaming*.
+
+### Hallazgo 113: el contexto completo de 262144 entra con caché `q8_0`, pero cuesta velocidad
+
+La arquitectura es híbrida: de 40 capas, solo 10 son de atención completa y guardan caché KV, con
+2 cabezas KV de dimensión 256. El resto son capas recurrentes, de estado fijo (63 MiB en total).
+Con eso, cada token de contexto cuesta ~20 KiB en f16 y ~10.6 KiB en `q8_0`.
+
+Medido con `OLLAMA_CONTEXT_LENGTH=262144`, `OLLAMA_FLASH_ATTENTION=1` y
+`OLLAMA_KV_CACHE_TYPE=q8_0`: caché KV de **2720 MiB**, lo que coincide con la aritmética. `ollama ps`
+reportó 17 GB y **91 % CPU / 9 % GPU**, y dentro de la VM quedaron 11.5 GB disponibles, con el
+modelo mapeado en la caché de páginas. En f16 el caché sería ~5.4 GB y no entraría.
+
+El costo, en una sola corrida (no es una medición definitiva): la generación bajó de ~4.7 a
+**3.0 tok/s** y la lectura del prompt a 0.3 tok/s. Con 8192 de contexto, la VM tenía ~15 GB
+disponibles; con 262144 le quedan 11.5 GB y apenas 300 MB libres, y la explicación más probable es
+que vuelve a leer partes del modelo desde disco (no se midió la E/S).
+
+### Hallazgo 114: para un MoE, el filtro de la sesión 4 mira la memoria equivocada
+
+La conclusión de la sesión 19 decía que un paquete que no cabe en la VRAM no es viable
+«independientemente de cuántos parámetros "activa" por token». Para un MoE, esta sesión la
+contradice: un paquete tres veces más grande que la VRAM respondió a 4–5 tok/s. Por cada token solo
+se leen los ~3B activos, así que lo que limita es la **RAM** que aloja el paquete y el ancho de
+banda hacia ella, no la VRAM.
+
+Esto no reabre los descartes anteriores por sí solo. `gemma4:e2b` no es un MoE, y el `qwen3.6` de la
+sesión 18 era el `27b` denso. Lo que cambia es el criterio: a un MoE se le pregunta primero si entra
+en la RAM de la VM con el resto del stack, y después cuántos parámetros activa.
+
+### Conclusión de la sesión 28
+
+Qwen3.6 35B-A3B **corre** en esta máquina y responde bien una batería corta, pero lento: 4–5 tok/s
+con el 88 % en CPU. Que sirva para el pipeline no está probado. De esta sesión salió el perfil
+experimental `compose.qwen36.yml` (`make pull-qwen36` / `up-qwen36`), pensado para una RTX 3060 de
+6 GB, con contexto de 32768, caché `q8_0`, un solo slot y los embeddings fijos en `bge-m3-cpu` (ver
+la cabecera del compose sobre por qué fijos). Falta:
+
+- medir el reparto CPU/GPU y la velocidad en una 3060 real;
+- confirmar que `reasoning_effort: "none"` apaga el *thinking* de este modelo en
+  `/v1/chat/completions`;
+- correr el piloto de `eval-100-preguntas` antes de usarlo para algo más que experimentar.
+
+Estado del entorno al cierre: el contenedor de prueba `qwen36-prueba` sigue arriba en el puerto
+11500, con `OLLAMA_CONTEXT_LENGTH=262144` y su volumen propio de 13 GB, fuera del stack. Los
+contenedores `kb-*` no se tocaron, porque no estaban creados. El script de la batería quedó en el
+scratchpad de la sesión, sin commitear.
