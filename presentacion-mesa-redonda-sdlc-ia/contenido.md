@@ -338,8 +338,8 @@ presentación.
 Note:
 Cuatro aprendizajes de hacerlo de verdad. Los hooks funcionan: el agente quiso leer un archivo de
 secretos y lo frenaron. Entre este issue y el anterior, el registro de la sesión encontró cuatro
-fallas en la propia herramienta, y las arreglé. En el issue anterior el rojo no quedó registrado; esta vez sí, porque apliqué la
-lección. Y lo humano no se delega.
+fallas en la propia herramienta, y las arreglé. En el issue anterior el rojo no quedó
+registrado; esta vez sí, porque apliqué la lección. Y lo humano no se delega.
 
 ---
 
