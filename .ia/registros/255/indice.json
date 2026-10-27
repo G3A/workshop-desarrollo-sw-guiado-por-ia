@@ -2,7 +2,7 @@
   "tarea": "255",
   "fases": [],
   "inicio": "2026-10-26T21:21:36.227Z",
-  "fin": "2026-10-27T12:49:39.769Z",
+  "fin": "2026-10-27T13:05:00.495Z",
   "ramas": [
     "docs/255-presentacion-para-el-curso"
   ],
@@ -10,14 +10,14 @@
     {
       "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
       "cruda": "088bbd20-cd5e-44fd-857a-a49c0c74f609.acta.cruda.jsonl",
-      "sha256": "43338c32b8e0ad97af17984fa2d87af86da812b07f758a15de2c1336a439c3f6",
+      "sha256": "4916d86c2cedf389a9abec50647910caf94c06ad1ea3c27776b8419af71d5d16",
       "curada": "088bbd20-cd5e-44fd-857a-a49c0c74f609.acta.curada.jsonl",
       "ramas": [
         "docs/255-presentacion-para-el-curso"
       ],
       "fase": null,
       "inicio": "2026-10-26T21:21:36.227Z",
-      "fin": "2026-10-27T12:49:39.769Z"
+      "fin": "2026-10-27T13:05:00.495Z"
     }
   ],
   "archivos": {
@@ -441,6 +441,41 @@
       {
         "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
         "accion": "a406",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a420",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a421",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a422",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a423",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a424",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a427",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a431",
         "agente": "orquestador"
       }
     ],
