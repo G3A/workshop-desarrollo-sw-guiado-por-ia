@@ -52,13 +52,13 @@ curso: las siete fases del método y, para cada paso, quién lo ejecuta hoy.
 
 Al cerrar el curso, el **5 de mayo de 2026**, usábamos **4 skills**: `agent-context`, la única de
 `arkandia-skills`, y `linear-plan`, `plan-phase-executor` y `fastapi` en el repo `campus`.
-Después, Arkandia sumó **6**.
+Después, Arkandia sumó **8**, y hoy conserva 6.
 
 | Tema | En el curso | Hoy en Arkandia | Lo que llevé al taller |
 |---|---|---|---|
 | Contexto del agente | `AGENTS.md` a mano, luego `agent-context` | `agent-context-dotnet` (junio) | `agent-context-java` |
 | Especificación | Spec Kit u OpenSpec | `requirement-to-spec` (agosto) | `requirement-to-spec-java` |
-| Ticket → PR | `linear-plan` y `plan-phase-executor` en `campus` | `linear-plan-build` y `ado-plan-build` (agosto) | `github-plan-build` |
+| Ticket → PR | `linear-plan` y `plan-phase-executor` en `campus` | `plan-and-build` (julio, con revisión adversarial) → `linear-plan-build` y `ado-plan-build` (agosto) | `github-plan-build` |
 | Instrumentación | CI y hooks escritos a mano | `instrument-project-dotnet` e `instrument-agent-dotnet` (agosto) | `instrument-project-java` e `instrument-agent-java` |
 
 <small>Fuentes: chats de las sesiones (abril y mayo de 2026), ramas `session-0N` de `campus` e
@@ -68,8 +68,9 @@ v0.1.0 del 20 de abril → v0.5.0.</small>
 Note:
 El curso terminó el 5 de mayo. Ese día, el repositorio de Arkandia tenía una sola skill,
 agent-context, y en el repo campus usábamos otras tres: linear-plan, plan-phase-executor y
-fastapi. Desde junio, Arkandia sumó seis, para .NET, Azure DevOps y Linear. En el taller las llevé
-a Java y GitHub; github-plan-build toma de Arkandia su ciclo de pasos.
+fastapi. Desde junio, Arkandia sumó ocho y hoy conserva seis, para .NET, Azure DevOps y Linear. En
+el taller las llevé a Java y GitHub; github-plan-build toma de Arkandia su ciclo de pasos, con la
+revisión adversarial que llegó en julio.
 
 ---
 
@@ -188,6 +189,7 @@ en el issue, y el plan la tomó de ahí.
 
 - `/sdlc-ia:github-plan-build 54` en sesión interactiva.
 - El plan pasó por **3 revisiones adversariales**: convenciones, corrección y alcance.
+  <small>No estaba en el curso: llegó de Arkandia en julio.</small>
 - Decisiones: **highlight.js vendorizado**, un parser puro probado con `node --test`.
 - Me dejó **9 supuestos a la vista** para aprobar o corregir.
 
@@ -201,9 +203,10 @@ yo.</figcaption>
 
 Note:
 Lancé la skill con el número del issue. Antes de tocar código armó un plan y lo pasó por tres
-revisiones adversariales. Eligió highlight.js vendorizado, porque la app no puede depender de
-internet, y un parser puro con sus pruebas. Lo que más valoré: me puso nueve supuestos a la vista.
-Yo aprobé el plan; sin eso no avanza.
+revisiones adversariales —convenciones, corrección y alcance—, algo que no teníamos en el curso:
+llegó en julio con las skills de planificación de Arkandia. Eligió highlight.js vendorizado,
+porque la app no puede depender de internet, y un parser puro con sus pruebas. Lo que más valoré:
+me puso nueve supuestos a la vista. Yo aprobé el plan; sin eso no avanza.
 
 ---
 
