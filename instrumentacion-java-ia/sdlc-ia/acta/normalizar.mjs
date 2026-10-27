@@ -36,10 +36,14 @@ const CASA = [
 const SECRETO = /\b((?:[A-Z][A-Z0-9_]*)?(?:TOKEN|SECRET|PASSWORD|PASSWD|API_KEY|APIKEY|PRIVATE_KEY)[A-Z0-9_]*)=(?!<redactado>)[^\s"'`\\]+/g;
 
 // Los campos que llevan contenido de archivos: lo que una edicion escribe y el diff de un cambio.
-// Ahi no se redacta la identidad ni los secretos, solo las rutas. Redactarlos romperia la
-// verificacion -- la curacion y el motor vuelven a aplicar cada Edit sobre el blob real -- y no
+// En un archivo del repo solo se normaliza la raiz: redactar la identidad, los secretos o la
+// carpeta del perfil romperia la verificacion -- la curacion y el motor vuelven a aplicar cada
+// Edit sobre el blob real; una prueba que citaba `C:/Users/ANAPER~1` se detenia (#255) -- y no
 // protegeria nada: ese contenido lo publica el commit, y los blobs viajan en el pack de objetos.
+// En un archivo de fuera del repo, como el scratchpad, ningun commit lo publica y nada lo
+// verifica: ahi se redacta todo.
 const CONTENIDO = new Set(['content', 'old_string', 'new_string', 'new_source', 'diff']);
+const ABSOLUTA = /^(?:[A-Za-z]:[\\/]|[\\/~])/;
 
 // La identidad de quien trabajo (#222, fase 3): su cuenta del sistema, su dominio y su email de
 // git no entran al acta, que se publica. Cada valor se cambia por <usuario> o <email>, sin
@@ -63,9 +67,13 @@ function deIdentidad({ literales = [], cortos = [], publica = null } = {}) {
 export function normalizador(raiz, { identidad = {} } = {}) {
   const deRaiz = raiz ? variantesDeRaiz(raiz) : [];
   const identidades = deIdentidad(identidad);
-  const rutas = (s) => {
+  const raizARelativa = (s) => {
     let r = s;
     for (const re of deRaiz) r = r.replace(re, '.');
+    return r;
+  };
+  const rutas = (s) => {
+    let r = raizARelativa(s);
     for (const re of CASA) r = r.replace(re, '~');
     return r;
   };
@@ -74,12 +82,15 @@ export function normalizador(raiz, { identidad = {} } = {}) {
     for (const [re, por] of identidades) r = r.replace(re, por);
     return r;
   };
-  const profundo = (v, clave = null) => {
-    if (typeof v === 'string') return CONTENIDO.has(clave) ? rutas(v) : texto(v);
-    if (Array.isArray(v)) return v.map((x) => profundo(x, clave));
+  const enElRepo = (ruta) => !ABSOLUTA.test(raizARelativa(ruta));
+  const profundo = (v, clave = null, fuera = false) => {
+    if (typeof v === 'string') return CONTENIDO.has(clave) && !fuera ? raizARelativa(v) : texto(v);
+    if (Array.isArray(v)) return v.map((x) => profundo(x, clave, fuera));
     if (v && typeof v === 'object') {
+      const ruta = v.file_path ?? v.notebook_path;
+      const deFuera = typeof ruta === 'string' ? !enElRepo(ruta) : fuera;
       const o = {};
-      for (const k of Object.keys(v)) o[k] = profundo(v[k], k);
+      for (const k of Object.keys(v)) o[k] = profundo(v[k], k, deFuera);
       return o;
     }
     return v;

@@ -159,7 +159,8 @@ test('redaccion: la identidad de quien trabajo sale del acta, no del contenido d
     .llamada('tu1', 'Bash', { command: 'ls -la ~/x && git log -1' })
     .resultado('tu1', 'drwx 1 EMPRESA+ana.perez 0 a\nC:/Users/ANAPER~1/x\n' +
       'Author: Ana <ana@example.com>')
-    .llamada('tu2', 'Write', { file_path: 'a.md', content: 'contacto: ana@example.com\n' })
+    .llamada('tu2', 'Write', { file_path: 'a.md',
+      content: 'contacto: ana@example.com\nen C:/Users/ANAPER~1/x\n' })
     .resultado('tu2', 'ok')
     .llamada('tu3', 'Bash', { command: 'git reset HEAD~1' })
     .resultado('tu3', 'ok');
@@ -167,9 +168,24 @@ test('redaccion: la identidad de quien trabajo sale del acta, no del contenido d
     .actas.values()][0];
   const [ls, escribir, reset] = acta.filter((x) => x.elemento === 'accion');
   assert.equal(ls.resultado, 'drwx 1 <usuario> 0 a\n~/x\nAuthor: Ana <<email>>');
-  assert.equal(escribir.entrada.content, 'contacto: ana@example.com\n',
+  // Ni la carpeta del perfil: el Edit de una prueba que la citaba dejaba de aplicarse (#255).
+  assert.equal(escribir.entrada.content, 'contacto: ana@example.com\nen C:/Users/ANAPER~1/x\n',
     'el contenido del archivo lo publica el commit; redactarlo romperia el motor');
   assert.equal(reset.entrada.command, 'git reset HEAD~1');
+});
+
+// Un archivo de fuera del repo, como el scratchpad, no lo publica ningun commit (#255).
+test('redaccion: lo que se escribe fuera del repo se redacta entero', () => {
+  const identidad = identidadDelEntorno({ email: 'ana@example.com', usuario: 'ana.perez',
+    casa: 'AnaPerezGomez' });
+  const f = fabrica().prompt('Escribe un script')
+    .llamada('tu1', 'Write', { file_path: 'C:/Users/AnaPerezGomez/tmp/x.sh',
+      content: 'cd C:/Users/AnaPerezGomez/tmp && echo ana.perez ana@example.com\n' })
+    .resultado('tu1', 'ok');
+  const acta = [...compilar({ transcript: f.escribir(carpetaTemporal('s')), identidad })
+    .actas.values()][0];
+  const [escribir] = acta.filter((x) => x.elemento === 'accion');
+  assert.equal(escribir.entrada.content, 'cd ~/tmp && echo <usuario> <email>\n');
 });
 
 // En la sesion del #253 un grep que buscaba la identidad en un acta la escribio como regex
