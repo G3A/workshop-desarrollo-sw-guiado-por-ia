@@ -124,8 +124,8 @@ así, con las marcas a la vista y sin poder copiar solo el código.
 ## El proceso que seguí
 
 <figure>
-<img src="assets/visor-ciclo.png" alt="Tramo del ciclo por issue en el visor del proceso
-operacional">
+<img src="assets/visor-completo.png" alt="El visor del proceso operacional con el ciclo por issue
+y el panel del paso Planificar el issue abierto">
 </figure>
 
 <div class="franja">
@@ -141,8 +141,9 @@ operacional">
 </div>
 
 Note:
-Este es el ciclo por issue del visor del proceso operacional. Arriba están los carriles; abajo, lo
-mismo resumido. En amarillo, lo que decidí yo: el issue, el diseño, aprobar el plan y el merge. En
+Este es el visor del proceso operacional, tal como lo uso: el ciclo por issue, con el paso
+«Planificar el issue» abierto; el panel dice qué corre y dónde decido yo. Abajo, el ciclo completo
+resumido. En amarillo, lo que decidí yo: el issue, el diseño, aprobar el plan y el merge. En
 azul, lo que corrió la skill github-plan-build. Y el CI es el juez que nadie puede saltarse. Ahora
 recorro cada paso con su evidencia.
 
