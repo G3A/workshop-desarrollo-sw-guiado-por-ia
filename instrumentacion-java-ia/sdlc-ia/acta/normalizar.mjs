@@ -49,11 +49,15 @@ const CONTENIDO = new Set(['content', 'old_string', 'new_string', 'new_source', 
 const conEscapes = (x) => [...x]
   .map((c) => (/[\p{L}\p{N}]/u.test(c) ? escapar(c) : `\\\\*${escapar(c)}`)).join('');
 
-function deIdentidad({ literales = [], cortos = [] } = {}) {
+// Con `publica` (el usuario de GitHub y su noreply), cada valor se cambia por ella en vez de por
+// <usuario> o <email>: el acta dice quien trabajo sin publicar su cuenta ni su email personal.
+function deIdentidad({ literales = [], cortos = [], publica = null } = {}) {
+  const usuario = publica?.usuario ?? '<usuario>';
+  const email = publica?.email ?? '<email>';
   const res = [...new Set(literales.filter((x) => x && x.length >= 4))]
     .sort((a, b) => b.length - a.length)
-    .map((x) => [new RegExp(conEscapes(x), 'giu'), x.includes('@') ? '<email>' : '<usuario>']);
-  return [...res, ...cortos.map((re) => [re, '<usuario>'])];
+    .map((x) => [new RegExp(conEscapes(x), 'giu'), () => (x.includes('@') ? email : usuario)]);
+  return [...res, ...cortos.map((re) => [re, () => usuario])];
 }
 
 export function normalizador(raiz, { identidad = {} } = {}) {
@@ -86,11 +90,18 @@ export function normalizador(raiz, { identidad = {} } = {}) {
 // La identidad del entorno donde se compila: la que el hook y registrar-sesion.mjs redactan.
 // `extra` es lo que el entorno no puede saber, como un email personal que no es el de git: llega
 // por ACTA_REDACTAR. El dominio tambien va solo, no unicamente pegado a la cuenta (#253).
+//
+// Si el email de git es el noreply de GitHub (`<id>+<usuario>@users.noreply.github.com`), esa es
+// la identidad publica de quien trabajo: no se redacta, y lo demas se cambia por ella (#255).
+const NOREPLY = /^(?:\d+\+)?([A-Za-z0-9-]+)@users\.noreply\.github\.com$/i;
+
 export function identidadDelEntorno({ email = null, usuario = null, dominio = null,
   casa = null, extra = [] } = {}) {
-  const literales = [email, usuario, casa, dominio, ...extra];
+  const deGitHub = email ? NOREPLY.exec(email) : null;
+  const publica = deGitHub ? { usuario: deGitHub[1], email } : null;
+  const literales = [publica ? null : email, usuario, casa, dominio, ...extra];
   if (dominio && usuario) literales.push(`${dominio}+${usuario}`, `${dominio}\\${usuario}`);
   const corto = casa ? casa.replace(/[^A-Za-z0-9]/g, '').slice(0, 6) : '';
-  return { literales, cortos: corto.length >= 4 ? [new RegExp(`\\b${corto}~[1-9]\\b`, 'gi')]
-    : [] };
+  return { literales, publica,
+    cortos: corto.length >= 4 ? [new RegExp(`\\b${corto}~[1-9]\\b`, 'gi')] : [] };
 }

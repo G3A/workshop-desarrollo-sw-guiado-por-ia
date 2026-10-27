@@ -175,7 +175,7 @@ test('redaccion: la identidad de quien trabajo sale del acta, no del contenido d
 // En la sesion del #253 un grep que buscaba la identidad en un acta la escribio como regex
 // escapada (`ana\.perez`, `EMPRESA\+`), y el email personal no es el de git: los dos se publicaban.
 test('redaccion: el dominio solo, los valores escapados y los extra de ACTA_REDACTAR', () => {
-  const identidad = identidadDelEntorno({ email: 'ana@users.noreply.github.com',
+  const identidad = identidadDelEntorno({ email: 'ana@example.com',
     usuario: 'ana.perez', dominio: 'EMPRESA', casa: 'AnaPerezGomez',
     extra: ['ana@personal.com'] });
   const f = fabrica().prompt('Busca')
@@ -185,6 +185,24 @@ test('redaccion: el dominio solo, los valores escapados y los extra de ACTA_REDA
     .actas.values()][0];
   const [grep] = acta.filter((x) => x.elemento === 'accion');
   assert.equal(grep.entrada.command, 'grep -E "<usuario>|<usuario>\\+|<email>" x');
+});
+
+// Para una auditoria, el acta tiene que decir quien trabajo. Si el email de git es el noreply de
+// GitHub, esa identidad ya es publica: la cuenta, el dominio y el email personal se cambian por el
+// usuario de GitHub y su noreply, en vez de <usuario> y <email> (#255).
+test('redaccion: con el noreply de GitHub, el acta dice el usuario de GitHub', () => {
+  const noreply = '4855379+Ana-Dev@users.noreply.github.com';
+  const identidad = identidadDelEntorno({ email: noreply, usuario: 'ana.perez',
+    dominio: 'EMPRESA', casa: 'AnaPerezGomez', extra: ['ana@personal.com'] });
+  const f = fabrica().prompt('Busca')
+    .llamada('tu1', 'Bash', { command: 'grep -E "ana\\.perez|EMPRESA\\+|ana@personal\\.com" x' })
+    .resultado('tu1',
+      `drwx 1 EMPRESA+ana.perez 0 a\nC:/Users/ANAPER~1/x\nAuthor: Ana <${noreply}>`);
+  const acta = [...compilar({ transcript: f.escribir(carpetaTemporal('s')), identidad })
+    .actas.values()][0];
+  const [grep] = acta.filter((x) => x.elemento === 'accion');
+  assert.equal(grep.entrada.command, `grep -E "Ana-Dev|Ana-Dev\\+|${noreply}" x`);
+  assert.equal(grep.resultado, `drwx 1 Ana-Dev 0 a\n~/x\nAuthor: Ana <${noreply}>`);
 });
 
 test('registrar: guarda el plan del issue con su fecha y el sha256 de su texto (#230)', () => {
