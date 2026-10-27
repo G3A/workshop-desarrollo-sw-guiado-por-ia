@@ -338,11 +338,55 @@ Acta de este issue: <code>.ia/registros/54/</code>.
 </div>
 
 Note:
-Si lo resumo en una tabla: cada principio que vimos en clase dejó una evidencia que cualquiera
-puede revisar. Abajo agrego algo que no viene del curso, sino de mi trabajo: en mi empresa nos
-auditan constantemente contra ISO 9001 e ISO 27001, así que construí el acta de la IA. Cada sesión
-del agente queda registrada en git, con lo que hizo, lo que aprobé yo y su evidencia, y un
-verificador comprueba que llegue a la PR. De ahí saqué todos los pasos de esta presentación.
+Cada principio que vimos en clase dejó una evidencia que cualquiera puede revisar. Abajo, algo que
+no viene del curso sino de mi trabajo: en mi empresa nos auditan constantemente contra ISO 9001 e
+ISO 27001, así que construí el acta de la IA. De ella saqué los pasos de esta presentación; se la
+muestro en la siguiente.
+
+---
+
+<span class="paso cursiva">Iniciativa propia</span>
+
+## El visor del acta: la evidencia para un auditor
+
+<figure>
+<img src="assets/visor-acta.png" style="max-height: 420px;" alt="Visor del acta de la IA del
+issue 54, con la ficha de trazabilidad del paso de revisión adversarial">
+</figure>
+
+<div class="comandos">
+
+**Cómo verlo** — desde el clon de `base-conocimiento-sandbox`, un comando abre en el navegador el
+visor del acta del issue #54, que está en
+[`.ia/registros/54/`](https://github.com/G3A/base-conocimiento-sandbox/tree/dev/.ia/registros/54):
+
+```text
+make visor-acta ISSUE=54               # lo que registró la sesión
+make visor-acta ISSUE=54 VERIFICAR=1   # antes la re-ejecuta sin la IA, en Docker (~1 min)
+```
+
+`VERIFICAR=1` repite cada acción del acta en un contenedor aislado (sin red, de solo lectura, sin
+el modelo) y guarda el reporte junto al acta; el visor muestra qué coincidió y qué no.
+
+**Lo que me marcó el visor** — la skill corrió los 4 rojos con un pipe al final; el primero fue:
+
+```text
+node --test "src/test/js/*.test.js" 2>&1 | tail -15
+```
+
+Un pipe devuelve el código de salida del último programa (`tail`, que termina en 0). La prueba
+falló, pero el acta registró éxito y no puede demostrar el rojo. El rojo esperado va sin pipe.
+
+</div>
+
+Note:
+Este es el visor del acta, pensado para un auditor. Para verlo basta un comando: make
+visor-acta con el número del issue, y se abre en el navegador. Arriba, la ficha de
+trazabilidad: quién hizo qué, en qué paso y qué documento lo gobierna. Abajo, cuánto se
+verificó: setenta y siete acciones se volvieron a ejecutar sin la IA. Y no afirma lo que nadie
+comprobó: la skill corrió mis cuatro rojos con un pipe, por ejemplo node --test sobre las
+pruebas, redirigido a tail menos quince. El pipe devolvió el cero de tail: la prueba falló,
+pero el acta registró éxito.
 
 ---
 
@@ -350,16 +394,17 @@ verificador comprueba que llegue a la PR. De ahí saqué todos los pasos de esta
 
 - **Los hooks sí protegen**: el guard de secretos frenó al agente cuando quiso leer un `.env`.
 - **El acta destapó fallas de la propia herramienta**: cuatro en dos issues, cada una con su prueba.
-- **Una lección aplicada se nota**: en el issue anterior el rojo no quedó registrado; esta vez, sí.
+- **Cada lección destapa la siguiente**: esta vez el rojo quedó registrado; ahora falta correrlo
+  sin pipe.
 - **Lo humano no se delega**: el diseño, el plan y el merge fueron decisiones mías.
 
 <small>Mesa redonda de 7 perfiles y el issue anterior (#52): `mesa-redonda.md`.</small>
 
 Note:
-Cuatro aprendizajes de hacerlo de verdad. Los hooks funcionan: el agente quiso leer un archivo de
-secretos y lo frenaron. Entre este issue y el anterior, el registro de la sesión encontró cuatro
-fallas en la propia herramienta, y las arreglé. En el issue anterior el rojo no quedó
-registrado; esta vez sí, porque apliqué la lección. Y lo humano no se delega.
+Cuatro aprendizajes. Los hooks funcionan: el agente quiso leer un archivo de secretos y lo
+frenaron. El acta encontró cuatro fallas en la propia herramienta, y las arreglé. Cada lección
+destapa la siguiente: el rojo ya queda registrado, y ahora toca correrlo sin pipe. Y lo humano no
+se delega.
 
 ---
 

@@ -39,5 +39,6 @@ y abre `http://localhost:8124/index.html`.
 
 ## Duración
 
-Las notas suman unas 880 palabras: entre 6,7 y 7,6 minutos leídas en voz alta. Para medirlo otra
-vez, cuenta las palabras después de cada `Note:` y divide por 115 a 130 palabras por minuto.
+Las notas de las 16 diapositivas suman unas 1040 palabras: entre 8,0 y 9,1 minutos leídas en voz
+alta. Para medirlo otra vez, cuenta las palabras después de cada `Note:` y divide por 115 a 130
+palabras por minuto.
