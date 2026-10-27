@@ -190,7 +190,7 @@ en el issue, y el plan la tomó de ahí.
 - `/sdlc-ia:github-plan-build 54` en sesión interactiva.
 - El plan pasó por **3 revisiones adversariales**: convenciones, corrección y alcance.
   <small>No estaba en el curso: llegó de Arkandia en julio.</small>
-- Decisiones: **highlight.js vendorizado**, un parser puro probado con `node --test`.
+- Mis decisiones: **highlight.js vendorizado** y un parser puro probado con `node --test`.
 - Me dejó **9 supuestos a la vista** para aprobar o corregir.
 
 </div>
@@ -204,9 +204,10 @@ yo.</figcaption>
 Note:
 Lancé la skill con el número del issue. Antes de tocar código armó un plan y lo pasó por tres
 revisiones adversariales —convenciones, corrección y alcance—, algo que no teníamos en el curso:
-llegó en julio con las skills de planificación de Arkandia. Eligió highlight.js vendorizado,
-porque la app no puede depender de internet, y un parser puro con sus pruebas. Lo que más valoré:
-me puso nueve supuestos a la vista. Yo aprobé el plan; sin eso no avanza.
+llegó en julio con las skills de planificación de Arkandia. Yo elegí highlight.js vendorizado,
+porque la app no puede depender de internet, y un parser puro con sus pruebas; la skill dejó esas
+decisiones escritas en el plan. Lo que más valoré: me puso nueve supuestos a la vista. Yo aprobé el
+plan; sin eso no avanza.
 
 ---
 
