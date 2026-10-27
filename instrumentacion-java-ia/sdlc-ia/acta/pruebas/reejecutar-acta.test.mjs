@@ -42,6 +42,23 @@ test('motor en Docker: reproduce la curada hasta su arbol final, pwsh incluido',
   assert.match(reporte.imagen.id, /^sha256:[0-9a-f]{64}$/);
 });
 
+// La sesion de sandbox#54 edito el Makefile y el index.html con `python - <<'EOF'`, y en la imagen
+// no habia python: las tres acciones divergian (#257).
+test('motor en Docker: un script de python que edita un archivo se reproduce', (t) => {
+  if (!hayDocker) {
+    t.skip('Docker no esta disponible');
+    return;
+  }
+  const { curada, registros, raiz } = curadaParaElMotor({ python: true });
+  const r = motor(curada, raiz);
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  const reporte = JSON.parse(fs.readFileSync(curada.replace('.curada.jsonl', '.reporte.json'),
+    'utf8'));
+  const script = registros.find((x) => x.entrada?.command?.startsWith('python -'));
+  const v = reporte.veredictos.find((x) => x.accion === script.id);
+  assert.deepEqual([v.modo, v.veredicto], ['ejecutada', 'igual'], v.salida);
+});
+
 test('motor en Docker: una curada sembrada con una divergencia sale en rojo', (t) => {
   if (!hayDocker) {
     t.skip('Docker no esta disponible');

@@ -4,6 +4,9 @@
 # --network none. La imagen de partida va fijada por digest y PowerShell por version y sha256;
 # los paquetes de Debian salen del espejo del dia, asi que el reporte guarda el id de la imagen
 # construida, no solo este archivo.
+#
+# python3 y el comando `python` (python-is-python3) estan porque las sesiones editan archivos con
+# `python - <<'EOF'`; sin ellos esas acciones divergian (#257). Es el python3 de Debian 12 (3.11).
 FROM node@sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6
 
 ARG PWSH_VERSION=7.6.6
@@ -11,6 +14,7 @@ ARG PWSH_SHA256=ddbc4a2d113bbd46d283cfedcbcd117a70caefd7673f41f2b4e0000badf103bc
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends git ca-certificates curl libicu72 make \
+    python3 python-is-python3 \
  && curl -fsSL -o /tmp/pwsh.tar.gz \
     "https://github.com/PowerShell/PowerShell/releases/download/v${PWSH_VERSION}/powershell-${PWSH_VERSION}-linux-x64.tar.gz" \
  && echo "${PWSH_SHA256}  /tmp/pwsh.tar.gz" | sha256sum -c - \
