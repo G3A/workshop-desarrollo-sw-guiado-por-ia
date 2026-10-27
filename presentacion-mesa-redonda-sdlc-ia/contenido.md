@@ -50,24 +50,26 @@ curso: las siete fases del método y, para cada paso, quién lo ejecuta hoy.
 
 ## Lo que se actualizó después del curso
 
-| Tema | Lo que vimos en clase | Lo que hay hoy (a partir de Arkandia) |
-|---|---|---|
-| Contexto del agente | `AGENTS.md` escrito a mano | `agent-context-java` valida cada afirmación |
-| Especificación | SDD con Spec Kit u OpenSpec | `requirement-to-spec-java`: requisito → spec y tareas |
-| Ticket → PR | Backend en demo en vivo | `github-plan-build`: pasos A–K y sub-issues |
-| Controles deterministas | CI con linters y pruebas | Cada control se prueba rompiéndolo primero |
-| Hooks | Un `PostToolUse` que formatea | Catálogo de hooks de seguridad con regresión |
-| Cadena de suministro | `audit` de dependencias | gitleaks fijado con checksum verificado |
+Al cerrar el curso, el **5 de mayo de 2026**, usábamos **4 skills**: `agent-context`, la única de
+`arkandia-skills`, y `linear-plan`, `plan-phase-executor` y `fastapi` en el repo `campus`.
+Después, Arkandia sumó **6**.
 
-<small>Fuentes: resumen de las 5 sesiones (mayo de 2026) y
-[ArkandiaLabs/arkandia-skills](https://github.com/ArkandiaLabs/arkandia-skills), `CHANGELOG.md`
-v0.1.0 → v0.5.0.</small>
+| Tema | En el curso | Hoy en Arkandia | Lo que llevé al taller |
+|---|---|---|---|
+| Contexto del agente | `AGENTS.md` a mano, luego `agent-context` | `agent-context-dotnet` (junio) | `agent-context-java` |
+| Especificación | Spec Kit u OpenSpec | `requirement-to-spec` (agosto) | `requirement-to-spec-java` |
+| Ticket → PR | `linear-plan` y `plan-phase-executor` en `campus` | `linear-plan-build` y `ado-plan-build` (agosto) | `github-plan-build` |
+| Instrumentación | CI y hooks escritos a mano | `instrument-project-dotnet` e `instrument-agent-dotnet` (agosto) | `instrument-project-java` e `instrument-agent-java` |
+
+<small>Fuentes: chats de las sesiones (abril y mayo de 2026), ramas `session-0N` de `campus` e
+historial de [ArkandiaLabs/arkandia-skills](https://github.com/ArkandiaLabs/arkandia-skills):
+v0.1.0 del 20 de abril → v0.5.0.</small>
 
 Note:
-Cuando terminó el curso, el repositorio de Arkandia tenía una sola skill. Lo que en clase hicimos en
-demo en vivo hoy son skills que se repiten igual cada vez: contexto, especificación y el ciclo del
-ticket a la PR. Y ningún control se da por bueno sin romperlo primero. Una aclaración honesta:
-github-plan-build es una skill propia del taller; de Arkandia viene su patrón de pasos.
+El curso terminó el 5 de mayo. Ese día, el repositorio de Arkandia tenía una sola skill,
+agent-context, y en el repo campus usábamos otras tres: linear-plan, plan-phase-executor y
+fastapi. Desde junio, Arkandia sumó seis, para .NET, Azure DevOps y Linear. En el taller las llevé
+a Java y GitHub; github-plan-build toma de Arkandia su ciclo de pasos.
 
 ---
 
