@@ -140,6 +140,10 @@ y el panel del paso Planificar el issue abierto">
 <b>Yo</b> · merge</span>
 </div>
 
+<small>Fuente:
+[`G3A/workshop-desarrollo-sw-guiado-por-ia/proceso-operacional-con-ia/`](https://github.com/G3A/workshop-desarrollo-sw-guiado-por-ia/tree/dev/proceso-operacional-con-ia)
+· el visor es `proceso-operacional-con-ia.html`.</small>
+
 Note:
 Este es el visor del proceso operacional, tal como lo uso: el ciclo por issue, con el paso
 «Planificar el issue» abierto; el panel dice qué corre y dónde decido yo. Abajo, el ciclo completo
