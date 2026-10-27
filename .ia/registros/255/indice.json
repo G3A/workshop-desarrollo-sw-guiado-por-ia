@@ -2,7 +2,7 @@
   "tarea": "255",
   "fases": [],
   "inicio": "2026-10-26T21:21:36.227Z",
-  "fin": "2026-10-27T13:28:47.096Z",
+  "fin": "2026-10-27T23:42:42.785Z",
   "ramas": [
     "docs/255-presentacion-para-el-curso"
   ],
@@ -10,14 +10,14 @@
     {
       "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
       "cruda": "088bbd20-cd5e-44fd-857a-a49c0c74f609.acta.cruda.jsonl",
-      "sha256": "b72f9391d80a382f140ab7cf41dcd58db1605b8ac05f737fc911069d96e785bc",
+      "sha256": "4c17f6902bdeffe81cff471a041ca1a23ca00317027f78c37a75ff5c7b59f2c2",
       "curada": "088bbd20-cd5e-44fd-857a-a49c0c74f609.acta.curada.jsonl",
       "ramas": [
         "docs/255-presentacion-para-el-curso"
       ],
       "fase": null,
       "inicio": "2026-10-26T21:21:36.227Z",
-      "fin": "2026-10-27T13:28:47.096Z"
+      "fin": "2026-10-27T23:42:42.785Z"
     }
   ],
   "archivos": {
@@ -183,10 +183,24 @@
         "agente": "orquestador"
       }
     ],
+    "bash.exe.stackdump": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a593",
+        "agente": "orquestador"
+      }
+    ],
     "instrumentacion-java-ia/CHANGELOG.md": [
       {
         "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
         "accion": "a250",
+        "agente": "orquestador"
+      }
+    ],
+    "instrumentacion-java-ia/sdlc-ia/acta/README.md": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a613",
         "agente": "orquestador"
       }
     ],
@@ -209,6 +223,28 @@
         "agente": "orquestador"
       }
     ],
+    "instrumentacion-java-ia/sdlc-ia/acta/normalizar.mjs": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a610",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a611",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a631",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a632",
+        "agente": "orquestador"
+      }
+    ],
     "instrumentacion-java-ia/sdlc-ia/acta/pruebas/compilar-acta.test.mjs": [
       {
         "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
@@ -216,10 +252,52 @@
         "agente": "orquestador"
       }
     ],
+    "instrumentacion-java-ia/sdlc-ia/acta/pruebas/verificar-registro-ia.test.mjs": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a608",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a609",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a616",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a626",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a627",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a633",
+        "agente": "orquestador"
+      }
+    ],
     "presentacion-mesa-redonda-sdlc-ia/README.md": [
       {
         "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
         "accion": "a307",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a481",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a482",
         "agente": "orquestador"
       }
     ],
@@ -328,6 +406,13 @@
       {
         "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
         "accion": "a291",
+        "agente": "orquestador"
+      }
+    ],
+    "presentacion-mesa-redonda-sdlc-ia/assets/visor-acta.png": [
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a469",
         "agente": "orquestador"
       }
     ],
@@ -502,6 +587,81 @@
         "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
         "accion": "a453",
         "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a471",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a473",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a475",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a486",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a489",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a490",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a491",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a495",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a513",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a514",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a516",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a518",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a522",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a525",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a532",
+        "agente": "orquestador"
       }
     ],
     "presentacion-mesa-redonda-sdlc-ia/index.html": [
@@ -518,6 +678,11 @@
       {
         "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
         "accion": "a304",
+        "agente": "orquestador"
+      },
+      {
+        "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
+        "accion": "a494",
         "agente": "orquestador"
       }
     ]
