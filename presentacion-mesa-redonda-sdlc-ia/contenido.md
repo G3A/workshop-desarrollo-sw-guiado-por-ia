@@ -325,15 +325,24 @@ historial también se ve formateada, porque el texto se guarda crudo y se pinta 
 | Contexto en el repo | Design tokens y `COMPONENTS.md` guiaron el diseño | token nuevo `--bg-codigo` |
 | Intención visual | Mockups A/B/C y elección escrita | comentario del issue #54 |
 | CI como juez | Gate nuevo `make test-js` en `make check` y `make ci` | check en verde |
-| Verificación visual | Capturas con Playwright en los dos temas | 5 evidencias en el acta |
+| Verificación visual | Capturas con Playwright en los dos temas | 5 capturas de evidencia |
 | Revisión de código | `/code-review` y corrección de hallazgos | commit `7edda96` |
-| Trazabilidad | Cada commit cita su issue y su acta de la IA | acta en `.ia/registros/54/` |
+| Trazabilidad | Cada commit cita su issue | `Refs #54` / `Closes #54` |
+
+<div style="margin-top: 22px; padding: 14px 20px; border-radius: 12px; background: #fff4e0;
+border: 1px solid #f0c47a; font-size: 0.62em; text-align: left;">
+<b>Iniciativa propia, no del curso: el acta de la IA.</b> En mi empresa se audita de forma
+constante contra ISO 9001 e ISO 27001. Por eso cada sesión del agente deja un registro versionado
+en git (qué hizo, qué aprobé yo, con qué evidencia), y un verificador comprueba que llegue a la PR.
+Acta de este issue: <code>.ia/registros/54/</code>.
+</div>
 
 Note:
 Si lo resumo en una tabla: cada principio que vimos en clase dejó una evidencia que cualquiera
-puede revisar. La última fila es la trazabilidad: cada commit cita su issue y el acta de la sesión
-de la IA, que guarda qué hizo el agente y qué aprobé yo. De ahí saqué todos los pasos de esta
-presentación.
+puede revisar. Abajo agrego algo que no viene del curso, sino de mi trabajo: en mi empresa nos
+auditan constantemente contra ISO 9001 e ISO 27001, así que construí el acta de la IA. Cada sesión
+del agente queda registrada en git, con lo que hizo, lo que aprobé yo y su evidencia, y un
+verificador comprueba que llegue a la PR. De ahí saqué todos los pasos de esta presentación.
 
 ---
 
