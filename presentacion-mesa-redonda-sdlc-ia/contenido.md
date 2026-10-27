@@ -15,10 +15,10 @@ números de línea y botón de copiar">
 </div>
 
 Note:
-Profe, en estos minutos te muestro cómo llevo a la práctica lo que vimos en el curso. No te traigo
-un ejemplo de juguete: es un issue real de la aplicación que trabajé en el curso, hecho de punta a
-punta con el plugin sdlc-ia y siguiendo el proceso operacional paso a paso. A la derecha está el
-resultado. Te voy a mostrar cómo llegué ahí.
+Manuel, David: en estos minutos les muestro cómo llevo a la práctica lo que vimos en el curso. No
+les traigo un ejemplo de juguete: es un issue real de la aplicación que trabajé en el curso, hecho
+de punta a punta con el plugin sdlc-ia y siguiendo el proceso operacional paso a paso. A la derecha
+está el resultado. Les voy a mostrar cómo llegué ahí.
 
 ---
 
@@ -253,7 +253,7 @@ apunta a su issue.
 
 Note:
 El paso que aprendimos en la última sesión: verificar con el navegador. La skill reconstruyó la
-app, sacó estas capturas con Playwright y las dejó como evidencia. Fíjate abajo a la derecha: el
+app, sacó estas capturas con Playwright y las dejó como evidencia. Fíjense abajo a la derecha: el
 botón confirma «Copiado», y en el portapapeles queda solo el código. Y arriba: un HTML malicioso
 se muestra como texto, no se ejecuta.
 
