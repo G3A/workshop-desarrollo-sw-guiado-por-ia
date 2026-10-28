@@ -171,6 +171,11 @@ La identidad de quien compila (cuenta, dominio, carpeta del perfil y email de gi
 que el entorno no puede saber, como un email personal distinto del de git, va en `ACTA_REDACTAR`,
 separado por `;`, al correr `registrar-sesion.mjs` (#253).
 
+Si el email de git es el noreply de GitHub (`<id>+<usuario>@users.noreply.github.com`), esa es
+la identidad pública de quien trabajó: el acta la conserva, y cambia la cuenta, el dominio, la
+carpeta y los valores de `ACTA_REDACTAR` por el usuario de GitHub y su noreply, no por
+`<usuario>` y `<email>`. Así un auditor ve quién hizo cada cosa sin ver datos personales (#255).
+
 ## Exportar a OCEL 2.0 y PROV-O
 
 `exportar-acta.mjs` escribe el acta en [OCEL 2.0](https://www.ocel-standard.org) (JSON) o en

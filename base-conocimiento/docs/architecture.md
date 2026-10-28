@@ -57,8 +57,11 @@ de los adaptadores.
 ### La interfaz web
 
 La UI vive en `src/main/resources/static/` como archivos planos: `index.html`, `app.js`,
-`admin.html`/`admin.js`, `ayuda.js`, `historial-db.js`, `idiomas.js` — sin bundler, sin JSX, sin
-dependencias de build. El adaptador `web` (`ChatController`, `AccionesController`, `WebConfig`,
+`admin.html`/`admin.js`, `ayuda.js`, `historial-db.js`, `idiomas.js`, `codigo.js` — sin bundler, sin
+JSX, sin dependencias de build. La única librería de terceros es highlight.js 11.12.0 (build común
+de `@highlightjs/cdn-assets`, BSD-3), vendorizada en `static/vendor/highlight/` para resaltar los
+bloques de código de las respuestas sin salir a la red; `codigo.js` es el parser puro de esos
+bloques y se prueba con `make test-js` (`src/test/js/`). El adaptador `web` (`ChatController`, `AccionesController`, `WebConfig`,
 `RedireccionIndiceFilter`) solo expone REST y Server-Sent Events; toda la lógica de UI es
 JavaScript plano consumiendo esos endpoints. Sus tokens: [design-tokens.md](design-tokens.md);
 sus componentes: [COMPONENTS.md](../COMPONENTS.md).

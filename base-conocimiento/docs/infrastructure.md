@@ -71,7 +71,8 @@ TLS terminator). No está en el repo — es conocimiento operativo del equipo. -
   El job `check` no tiene `if`: un job saltado por un condicional cuenta como exitoso para un check
   requerido, y la copia saltada podía tapar un rojo sobre el mismo commit (#132).
 - **Pasos (job `check`):** instala gitleaks 8.30.1 (con verificación de checksum) y JDK 25, corre
-  `make ci` (lint, build, pruebas y escaneo de secretos), el sensor de enlaces de todo el monorepo
+  `make ci` (lint, build, pruebas Java y JavaScript y escaneo de secretos), el sensor de enlaces
+  de todo el monorepo
   —desde #144 también corre en el pre-push, antes que `make check`— y publica los reportes de
   Surefire como artefacto. El mismo workflow verifica además el playbook y, desde #155, el espejo
   con `base-conocimiento-sandbox` —árboles y, desde #162, criterios de `REVIEW.md`—: ese último es

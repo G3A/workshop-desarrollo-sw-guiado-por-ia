@@ -22,7 +22,7 @@ cambio estructural.
 make up          # levanta db, ollama, docling-serve y api; reparte la GPU sola (make gpu-check lo explica)
 make health      # salud de db, ollama y modelos faltantes
 make ingest      # ingiere el corpus de ejemplo (vault/documentos)
-make check       # lint + build + test: la señal local antes de un commit
+make check       # lint + build + test + test-js (pide node): la señal local antes de un commit
 make ci          # lo mismo que corre CI (suma el escaneo de secretos)
 make format      # aplica Spotless a todo el código
 ```

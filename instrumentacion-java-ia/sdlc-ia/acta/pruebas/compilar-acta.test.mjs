@@ -1041,6 +1041,22 @@ test('permiso sin persona: un comando negado por claude -p no es aprobado y no c
   assert.ok(!avisos.some((x) => /perdio eventos/.test(x)), 'el negado no es un evento perdido');
 });
 
+// Un hook de PreToolUse que bloquea (el guard de secretos del sandbox, #255) frena la herramienta
+// antes de correr: no escribio nada, aunque la captura vio su PreToolUse.
+test('bloqueo de hook: un PreToolUse que rechaza no corrio y no detiene la curacion', () => {
+  const a = { command: 'grep -n KB_PORT .env' };
+  const f = fabrica().prompt('Revisa')
+    .llamada('tu1', 'Bash', a)
+    .resultado('tu1', 'PreToolUse:Bash hook error: Blocked: that path is a credential file (.env).',
+      { error: true });
+  const { actas, avisos } = compilarFabrica(f, {
+    captura: [{ evento: 'PreToolUse', toolUseId: 'tu1', momento: enCaptura(0, 2), arbol: 'x0' }],
+  });
+  const acta = unicaActa({ actas });
+  assert.deepEqual(de(acta, 'accion').map((x) => x.capturada), [false]);
+  assert.ok(!avisos.some((x) => /perdio eventos/.test(x)), avisos.join());
+});
+
 // Claude Code 2.1.310 lo dice con otra palabra en el medio. En la sesion de
 // G3A/base-conocimiento-sandbox#52 (#253) el comando quedo como un fallo que pudo escribir, y la
 // curacion se detuvo en el.

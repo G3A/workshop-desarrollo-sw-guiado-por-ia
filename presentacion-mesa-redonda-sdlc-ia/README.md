@@ -1,16 +1,23 @@
-# Presentación — Siete miradas, un issue, un acta
+# Presentación — Del curso a la práctica
 
-Una charla de menos de diez minutos, en primera persona, sobre el #253: una mesa redonda de siete
-perfiles elige un issue de `G3A/base-conocimiento-sandbox`, la skill `github-plan-build` del plugin
-`sdlc-ia` lo lleva de punta a punta, y el acta de la IA queda en la PR como pide el
-[ADR-0006](../docs/adrs/0006-el-acta-de-la-ia-se-versiona-en-git.md).
+Una charla de menos de diez minutos, en primera persona, para el profesor del curso (#255): qué
+aprendí en el taller y cómo lo llevo a la práctica con el proceso de
+[`proceso-operacional-con-ia/`](../proceso-operacional-con-ia/), sobre un issue visual de
+`G3A/base-conocimiento-sandbox`:
+[#54](https://github.com/G3A/base-conocimiento-sandbox/issues/54), el chat que muestra el código
+con resaltado, números de línea y copiar sin los números. Lo trabajó la skill
+`/sdlc-ia:github-plan-build` en una sesión interactiva, y se integró por la
+[PR #55](https://github.com/G3A/base-conocimiento-sandbox/pull/55).
 
-- [`mesa-redonda.md`](mesa-redonda.md) — las siete propuestas, el voto y por qué ganó la del issue
-  [sandbox#52](https://github.com/G3A/base-conocimiento-sandbox/issues/52).
 - `contenido.md` — las diapositivas, con sus notas para el presentador.
+- `assets/` — capturas reales: la app antes y después del cambio, el visor del proceso, el
+  playbook, las páginas del issue y la PR en GitHub, y las evidencias de la verificación visual
+  que la sesión dejó en el acta del sandbox (`.ia/registros/54/evidencias/`).
+- [`mesa-redonda.md`](mesa-redonda.md) — la mesa de siete perfiles que priorizó el issue anterior,
+  [sandbox#52](https://github.com/G3A/base-conocimiento-sandbox/issues/52) (#253).
 - `index.html` — el shell de reveal.js, que lee `contenido.md` con `RevealMarkdown`.
-- `dist/` — reveal.js 6.0.1 vendorizado, solo lo que usa: el núcleo, el tema `black` y los
-  plugins de Markdown y de notas. La copia completa está en `presentacion-validacion-workshop/`.
+- `dist/` — reveal.js 6.0.1 vendorizado, solo lo que usa: el núcleo, el tema `black` (con los
+  colores sobrescritos a un tema claro) y los plugins de Markdown y de notas.
 
 ## Cómo verla
 
@@ -32,5 +39,6 @@ y abre `http://localhost:8124/index.html`.
 
 ## Duración
 
-Las notas suman unas 1000 palabras: entre 7,7 y 8,7 minutos leídas en voz alta. Para medirlo otra
-vez, cuenta las palabras después de cada `Note:` y divide por 115 a 130 palabras por minuto.
+Las notas de las 16 diapositivas suman unas 1040 palabras: entre 8,0 y 9,1 minutos leídas en voz
+alta. Para medirlo otra vez, cuenta las palabras después de cada `Note:` y divide por 115 a 130
+palabras por minuto.
