@@ -62,11 +62,18 @@ export function prepararRepo({ raiz, pack, cabecera }) {
 
 // Deja el arbol de trabajo en `arbol` y el indice en HEAD, como queda despues de editar sin
 // stagear. Los archivos ignorados no se tocan: no cuentan en el hash. Devuelve si lo logro.
+//
+// El arbol del acta no cuenta .ia/ (arbolActual la excluye), asi que `read-tree -u` borra del
+// disco lo que HEAD versiona ahi. En la sesion seguia en disco: se vuelve a sacar de HEAD, o un
+// `git status` o un `git diff` de la sesion la daria por borrada (#257). El hash no cambia.
 export function restaurar(raiz, arbol) {
   git(['clean', '-fdq'], { cwd: raiz });
   git(['read-tree', '-u', '--reset', arbol], { cwd: raiz });
   if (git(['rev-parse', '--verify', '--quiet', 'HEAD'], { cwd: raiz, permitirFallo: true })) {
     git(['read-tree', 'HEAD'], { cwd: raiz });
+    if (git(['ls-tree', '--name-only', 'HEAD', '.ia'], { cwd: raiz }).trim()) {
+      git(['checkout', 'HEAD', '--', '.ia'], { cwd: raiz });
+    }
   }
   return arbolActual(raiz) === arbol;
 }

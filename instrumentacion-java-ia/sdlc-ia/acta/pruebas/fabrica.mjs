@@ -260,16 +260,25 @@ export function sesionConGrepQueOcultaUnFallo({ escribe = false } = {}) {
 
 // Una sesion para el motor (#222, fase 2), con una accion de cada modo: un Write y un Edit que se
 // aplican, un efecto de hook entre los dos siguientes, un Bash que escribe c.md, un Read, una
-// lectura externa (gh) y un efecto externo (git push). Con `powershell`, al final un comando de
-// pwsh que escribe d.md: solo corre en el contenedor, que trae pwsh.
-export function sesionParaElMotor({ powershell = false } = {}) {
-  const repo = repoQueAvanza({ 'a.md': 'uno\n', 'b.md': 'b\n' });
+// lectura externa (gh) y un efecto externo (git push). Al final, con `powershell`, un comando de
+// pwsh que escribe d.md, y con `python`, un script de python que escribe e.md: los dos solo
+// corren en el contenedor, que trae pwsh y python (#257). Con `ia`, el repo versiona un acta en
+// .ia/, que el arbol del acta no cuenta, y al final un `git status` de esa carpeta, vacio en la
+// sesion.
+export function sesionParaElMotor({ powershell = false, python = false, ia = false } = {}) {
+  const repo = repoQueAvanza({ 'a.md': 'uno\n', 'b.md': 'b\n',
+    ...(ia ? { '.ia/registros/9/indice.json': '{}\n' } : {}) });
   const a0 = repo.arbol();
   const a1 = repo.cambiar({ 'a.md': 'uno\ndos\n' });
   const a2 = repo.cambiar({ 'a.md': 'uno\ntres\n' });
   const a3 = repo.cambiar({ 'b.md': 'b formateado\n' });
   const a4 = repo.cambiar({ 'c.md': 'c\n' });
-  const a5 = powershell ? repo.cambiar({ 'd.md': 'd\n' }) : a4;
+  const finales = [
+    powershell && ['PowerShell', "Set-Content -Path d.md -Value 'd'", { 'd.md': 'd\n' }],
+    python && ['Bash', "python - <<'EOF'\nopen('e.md', 'w', newline='').write('e\\n')\nEOF",
+      { 'e.md': 'e\n' }],
+    ia && ['Bash', 'git status --porcelain -- .ia', {}],
+  ].filter(Boolean).map(([herramienta, command, cambios]) => ({ herramienta, command, cambios }));
   const f = fabrica()
     .prompt('Edita y verifica')
     .llamada('tu1', 'Write', { file_path: 'a.md', content: 'uno\ndos\n' })
@@ -284,12 +293,16 @@ export function sesionParaElMotor({ powershell = false } = {}) {
     .resultado('tu5', 'titulo del issue')
     .llamada('tu6', 'Bash', { command: 'git push' })
     .resultado('tu6', '');
-  if (powershell) {
-    f.llamada('tu7', 'PowerShell', { command: "Set-Content -Path d.md -Value 'd'" })
-      .resultado('tu7', '');
-  }
   const ev = (evento, toolUseId, arbol, seg) => ({ evento, toolUseId, arbol,
     momento: enCaptura(0, seg) });
+  let a5 = a4;
+  const alFinal = finales.flatMap(({ herramienta, command, cambios }, i) => {
+    const id = `tu${7 + i}`;
+    f.llamada(id, herramienta, { command }).resultado(id, '');
+    const antes = a5;
+    if (Object.keys(cambios).length) a5 = repo.cambiar(cambios);
+    return [ev('PreToolUse', id, antes, 14 + 2 * i), ev('PostToolUse', id, a5, 14 + 2 * i)];
+  });
   const captura = [
     { evento: 'SessionStart', arbol: a0, momento: enCaptura(0, 0),
       head: git(['rev-parse', 'HEAD'], { cwd: repo.raiz }).trim() },
@@ -299,7 +312,7 @@ export function sesionParaElMotor({ powershell = false } = {}) {
     ev('PreToolUse', 'tu4', null, 8), ev('PostToolUse', 'tu4', null, 8),
     ev('PreToolUse', 'tu5', a4, 10), ev('PostToolUse', 'tu5', a4, 10),
     ev('PreToolUse', 'tu6', a4, 12), ev('PostToolUse', 'tu6', a4, 12),
-    ...(powershell ? [ev('PreToolUse', 'tu7', a4, 14), ev('PostToolUse', 'tu7', a5, 14)] : []),
+    ...alFinal,
     { evento: 'SessionEnd', arbol: a5, momento: enCaptura(0, 20) },
   ];
   return { f, captura, raiz: repo.raiz, arboles: [a0, a1, a2, a3, a4, a5] };

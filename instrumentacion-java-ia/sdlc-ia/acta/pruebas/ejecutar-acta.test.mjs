@@ -94,6 +94,17 @@ test('motor: un comando que no esta en la imagen queda ejecutado sin verificar',
   assert.equal(reporte.primeraDivergencia, null, 'sin verificar no es divergir');
 });
 
+// El arbol del acta no cuenta .ia/, pero en la sesion lo que HEAD versiona ahi seguia en disco. Si
+// el motor lo borra al restaurar, un `git status` o un `git diff` da otra salida (#257).
+test('motor: lo que HEAD versiona en .ia/ sigue en disco, y git status sale igual', () => {
+  const { registros, raiz } = curadaParaElMotor({ ia: true });
+  const status = registros.find((r) => r.entrada?.command === 'git status --porcelain -- .ia');
+  const reporte = correrEnCopia(registros, raiz);
+  const v = reporte.veredictos.find((x) => x.accion === status.id);
+  assert.deepEqual([v.modo, v.veredicto], ['ejecutada', 'igual'], v.salida);
+  assert.equal(reporte.llegaAlArbolFinal, true);
+});
+
 test('no re-ejecutable: Windows PowerShell 5.1, la carpeta del usuario y el segundo plano', () => {
   const ps = (command) => motivoNoReejecutable('PowerShell', { command });
   assert.match(ps('Get-Service sshd'), /solo existe en Windows/);
