@@ -44,7 +44,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { ENVOLTORIOS, MODOS_CON_PERSONA, SIN_PERMISO, claseDeterminismo, esPermisoSinPersona,
-  esRechazoDePermiso,
+  esBloqueoDeHook, esRechazoDePermiso,
   textoDelRechazo } from './clasificar.mjs';
 import { identidadDelEntorno, normalizador } from './normalizar.mjs';
 import { validarActa } from './validar-acta.mjs';
@@ -639,8 +639,9 @@ export function compilar({ transcript, captura = [], raizRepo = null, carpetaSes
     const cap = capturaPorUso.get(a.toolUseId);
     // Un permiso negado o sin persona: los hooks de PreToolUse corren antes del pedido, asi que
     // la captura vio la accion, pero la herramienta no corrio y no hay Post (#230, frente 4).
+    // Lo mismo si un hook de PreToolUse la bloqueo (#255).
     if (a.capturada === true && cap?.despues === undefined && a.exito === false &&
-      (esPermisoSinPersona(a.error) || esRechazoDePermiso(a.error))) {
+      (esPermisoSinPersona(a.error) || esRechazoDePermiso(a.error) || esBloqueoDeHook(a.error))) {
       a.capturada = false;
       continue;
     }

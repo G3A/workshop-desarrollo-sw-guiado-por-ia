@@ -47,6 +47,11 @@
   tres entradas, con «Detectar automáticamente» como origen. Mockups que fijaron estas decisiones:
   [menú de acciones](https://claude.ai/code/artifact/5f8cd93e-e2e6-4b0f-b7f4-dd422d54ba0c) y
   [traductor en el chat](https://claude.ai/code/artifact/77d33547-b0f9-406d-b687-8eee184cf128).
+- **El código se ve como código y se copia limpio** (issue #54): un bloque ``` de la respuesta
+  se pinta resaltado, con números de línea y un botón que copia solo el código, sin números ni
+  rótulo. Sigue el tema del chat (alternativa B de los mockups); mientras llega por streaming el
+  bloque crece sin botón de copiar. Sin lenguaje declarado se detecta entre los lenguajes de lo
+  que ingiere la base, y si no hay confianza se rotula «texto» antes que equivocarse.
 - <!-- TODO: agregar más principios si el equipo los formaliza; hoy solo estos cuatro son
   verificables desde el código y la arquitectura documentada. -->
 
