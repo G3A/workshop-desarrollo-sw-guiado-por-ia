@@ -17,6 +17,20 @@ Monorepo del taller de desarrollo de software guiado por IA.
   visor al lado, o nadie todavía. Mapa del método y backlog de cobertura en el mismo archivo;
   funciona offline con doble clic.
 
+## `make` en Windows
+
+Los hooks de este repositorio (`lefthook.yml`) corren `make -C base-conocimiento ...` en cada commit
+y cada push, así que en Windows hace falta GNU Make aunque no trabajes en `base-conocimiento/`. Si
+no lo tienes, instálalo desde la raíz del repo, en PowerShell:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File base-conocimiento\scripts\instalar-make.ps1
+```
+
+Si `make` ya está, el script solo muestra la versión. Si no, lo instala con winget, lo deja en el
+`PATH` de tu usuario y avisa si falta Git for Windows, cuyo `sh.exe` usa el `Makefile` como shell.
+Detalle en [`base-conocimiento/README.md`](base-conocimiento/README.md#instalar-make-con-el-script).
+
 ## Ramas
 
 ### `main` es lo estable; `dev` es donde se integra
