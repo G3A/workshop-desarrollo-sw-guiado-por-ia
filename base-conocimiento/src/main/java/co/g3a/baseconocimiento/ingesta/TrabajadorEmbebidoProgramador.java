@@ -15,8 +15,9 @@ import org.springframework.stereotype.Component;
 /**
  * El disparador periódico del worker de ingesta.
  *
- * <p>Vive separado de {@link TrabajadorEmbebido} para que {@code @Transactional} en {@code
- * procesarUno()} funcione de verdad — ver el comentario en esa clase.
+ * <p>Los 25 trabajos del lote corren a la vez, pero ninguno retiene una conexión a la base mientras
+ * espera al modelo: por eso el lote puede ser más grande que el pool. Ver {@link
+ * TrabajadorEmbebido}.
  *
  * <p>Se puede apagar con {@code kb.ingesta.worker.habilitado=false}: sirve para pruebas de
  * integración que no necesitan (ni pueden, si no hay Ollama) que la cola se procese sola de fondo.

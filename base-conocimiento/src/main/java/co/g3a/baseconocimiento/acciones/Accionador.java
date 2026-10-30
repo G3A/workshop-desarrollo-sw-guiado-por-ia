@@ -15,16 +15,19 @@ class Accionador implements Acciones {
   private final AccionesSobreDocumentos accionesSobreDocumentos;
   private final TraductorDeDocumentos traductorDeDocumentos;
   private final TraductorDeTexto traductorDeTexto;
+  private final EstimadorDeAcciones estimador;
   private final AccionesPropiedades propiedades;
 
   Accionador(
       AccionesSobreDocumentos accionesSobreDocumentos,
       TraductorDeDocumentos traductorDeDocumentos,
       TraductorDeTexto traductorDeTexto,
+      EstimadorDeAcciones estimador,
       AccionesPropiedades propiedades) {
     this.accionesSobreDocumentos = accionesSobreDocumentos;
     this.traductorDeDocumentos = traductorDeDocumentos;
     this.traductorDeTexto = traductorDeTexto;
+    this.estimador = estimador;
     this.propiedades = propiedades;
   }
 
@@ -34,9 +37,14 @@ class Accionador implements Acciones {
   }
 
   @Override
+  public Estimado estimar(Tipo tipo, List<Long> documentos, ProyectoId proyecto) {
+    return estimador.estimar(tipo, documentos, proyecto);
+  }
+
+  @Override
   public ResultadoDeAccion ejecutar(
-      Tipo tipo, List<Long> documentos, ProyectoId proyecto, String idioma) {
-    return accionesSobreDocumentos.ejecutar(tipo, documentos, proyecto, idioma);
+      Tipo tipo, List<Long> documentos, ProyectoId proyecto, String idioma, Modo modo) {
+    return accionesSobreDocumentos.ejecutar(tipo, documentos, proyecto, idioma, modo);
   }
 
   @Override

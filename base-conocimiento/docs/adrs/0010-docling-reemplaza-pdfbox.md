@@ -2,7 +2,7 @@
 
 ## Estado
 
-Aceptado.
+Reemplazado por el [ADR-0014](0014-extraccion-en-el-proceso-reemplaza-docling.md) (2026-10-30).
 
 ## Contexto
 

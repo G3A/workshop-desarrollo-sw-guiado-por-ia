@@ -7,23 +7,35 @@ import java.io.StringWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * El trabajo real de un item de la cola: toma un trabajo {@code embeber_chunk} y llama al modelo de
  * embeddings.
  *
- * <p>Está separado de {@link TrabajadorEmbebidoProgramador} a propósito: {@code @Transactional} se
- * aplica vía proxy de Spring, y un método que se llama a sí mismo dentro de la misma clase ({@code
- * this.procesarUno()}) nunca pasa por ese proxy. Con dos clases, la llamada sí cruza el proxy y la
- * transacción existe de verdad — de lo contrario "tomar trabajo" y "marcar hecho" quedarían como
- * sentencias sueltas en autocommit, no como una unidad.
+ * <p><b>Ninguna conexión a la base queda tomada mientras el modelo calcula.</b> Antes todo {@code
+ * procesarUno()} era una sola transacción, y la conexión seguía tomada durante la llamada a Ollama,
+ * que tarda segundos. {@link TrabajadorEmbebidoProgramador} lanza 25 a la vez contra un pool de 10:
+ * con un PDF grande, la ingesta se quedaba sin conexiones y moría a los 30 s con "Failed to obtain
+ * JDBC Connection" (ADR-0014). Ahora son tres pasos: tomar el trabajo y guardar el resultado van en
+ * transacciones cortas del repositorio, y la llamada al modelo queda afuera.
+ *
+ * <p>Lo que se pierde es el rollback automático si el proceso muere a mitad del trabajo: eso lo
+ * cubre {@link #PLAZO_SEGUNDOS}, el tiempo tras el cual un trabajo en {@code running} se da por
+ * abandonado y se vuelve a tomar.
  */
 @Component
 class TrabajadorEmbebido {
 
   private static final Logger log = LoggerFactory.getLogger(TrabajadorEmbebido.class);
   private static final int MAX_INTENTOS = 5;
+
+  /**
+   * Embeber un chunk tarda segundos, aun con 25 en cola contra un Ollama en CPU (medido: ~1 por
+   * segundo). Diez minutos es holgura de sobra antes de dar un trabajo por abandonado. Si se
+   * retomara uno que en realidad seguía vivo, el costo es embeber el mismo chunk dos veces: el
+   * resultado es idéntico.
+   */
+  static final long PLAZO_SEGUNDOS = 600;
 
   private final IngestaRepositorio repo;
   private final Embeddings embeddings;
@@ -33,9 +45,8 @@ class TrabajadorEmbebido {
     this.embeddings = embeddings;
   }
 
-  @Transactional
   boolean procesarUno() {
-    var trabajoOpt = repo.tomarSiguienteTrabajo();
+    var trabajoOpt = repo.tomarSiguienteTrabajo(PLAZO_SEGUNDOS);
     if (trabajoOpt.isEmpty()) {
       return false;
     }
@@ -43,9 +54,11 @@ class TrabajadorEmbebido {
     try {
       switch (trabajo.kind()) {
         case "embeber_chunk" -> embeberChunk(trabajo);
-        default -> log.warn("Tipo de trabajo desconocido, se descarta: {}", trabajo.kind());
+        default -> {
+          log.warn("Tipo de trabajo desconocido, se descarta: {}", trabajo.kind());
+          repo.marcarHecho(trabajo.id());
+        }
       }
-      repo.marcarHecho(trabajo.id());
     } catch (Exception e) {
       log.warn(
           "Trabajo {} ({}) fallo en el intento {}: {}",
@@ -73,8 +86,9 @@ class TrabajadorEmbebido {
       textoParaEmbeber = chunk.texto();
     }
 
+    // Sin transacción abierta: esta llamada tarda segundos y no debe retener una conexión.
     float[] vector = embeddings.embeber(textoParaEmbeber);
-    repo.actualizarEmbedding(chunkId, new PGvector(vector));
+    repo.completarEmbedding(trabajo.id(), chunkId, new PGvector(vector));
   }
 
   private static String trazaCorta(Exception e) {

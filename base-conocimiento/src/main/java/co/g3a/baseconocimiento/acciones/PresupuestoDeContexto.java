@@ -1,8 +1,10 @@
 package co.g3a.baseconocimiento.acciones;
 
 import co.g3a.baseconocimiento.acciones.Acciones.CoberturaDocumento;
+import co.g3a.baseconocimiento.acciones.Acciones.Modo;
 import co.g3a.baseconocimiento.acciones.SeccionesRepositorio.Seccion;
 import co.g3a.baseconocimiento.compartido.Dominio.Cita;
+import co.g3a.baseconocimiento.llm.RendimientoDelModelo;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -46,8 +48,44 @@ final class PresupuestoDeContexto {
    */
   static final int LARGO_NOTAS = 1200;
 
+  /** Tokens que se reservan para la salida de una pasada: el {@code maxTokens} de la lectura. */
+  static final int RESERVA_SALIDA_PASADA = 600;
+
+  /** Tokens del prompt de sistema de una pasada de lectura, con margen. */
+  static final int RESERVA_PROMPT_PASADA = 350;
+
+  /** Nunca menos que esto por pasada: con menos, los niveles de notas no terminarian. */
+  static final int MINIMO_POR_PASADA = 2 * LARGO_NOTAS + 4;
+
+  /**
+   * Cuanto texto entra en una pasada sin desbordar el contexto del modelo (issue #57). El tope
+   * configurado suponia ~3,6 caracteres por token, medido con prosa en español; con ingles tecnico
+   * con codigo son ~2,7 y un tramo de 10000 caracteres llegaba a 3700 tokens, al borde de 4096
+   * antes de sumar la salida. Por eso: lo que queda del contexto, en caracteres segun lo medido,
+   * con 10 % de margen, y nunca mas que el tope.
+   */
+  static int caracteresPorPasada(int contextoTokens, double caracteresPorToken, int tope) {
+    int disponibles = contextoTokens - RESERVA_SALIDA_PASADA - RESERVA_PROMPT_PASADA;
+    int caben = (int) (Math.max(0, disponibles) * caracteresPorToken * 0.9);
+    return Math.min(tope, Math.max(MINIMO_POR_PASADA, caben));
+  }
+
   private final int maxCaracteres;
   private final int maxCaracteresLectura;
+
+  /**
+   * El presupuesto de una accion: el tamano de la pasada sale de los caracteres por token que el
+   * modelo viene midiendo, por eso se arma en cada accion y no una vez al arrancar (issue #57).
+   */
+  static PresupuestoDeContexto para(
+      AccionesPropiedades propiedades, RendimientoDelModelo rendimiento) {
+    return new PresupuestoDeContexto(
+        propiedades.maxCaracteresContexto(),
+        caracteresPorPasada(
+            rendimiento.contextoTokens(),
+            rendimiento.caracteresPorToken(),
+            propiedades.maxCaracteresLectura()));
+  }
 
   /**
    * @param maxCaracteres presupuesto total de contexto para la accion, repartido entre documentos
@@ -108,6 +146,11 @@ final class PresupuestoDeContexto {
       resultado.add(new DocumentoPlanificado(id, "#" + id, null, List.of(), 0, List.of(), 0));
     }
     return resultado;
+  }
+
+  /** Cuanto texto entra en una pasada de lectura. */
+  int caracteresPorPasada() {
+    return maxCaracteresLectura;
   }
 
   /**
@@ -239,8 +282,11 @@ final class PresupuestoDeContexto {
    * linea que lo dice.
    *
    * @param notas las notas finales por id de documento, de los que se leyeron por pasadas
+   * @param modo como se leyeron los documentos largos (issue #57): el aviso dice si las notas son
+   *     de todo el texto, de un extracto por capitulo o de unas secciones representativas
    */
-  static String contexto(List<DocumentoPlanificado> documentos, Map<Long, String> notas) {
+  static String contexto(
+      List<DocumentoPlanificado> documentos, Map<Long, String> notas, Modo modo) {
     StringBuilder contexto = new StringBuilder();
     int n = 0;
     for (DocumentoPlanificado d : documentos) {
@@ -251,8 +297,17 @@ final class PresupuestoDeContexto {
       contexto.append("[%d] %s (%s)\n".formatted(n, d.titulo(), d.uri()));
       if (d.porPasadas()) {
         contexto.append(
-            "(Documento largo, leido completo por pasadas: lo que sigue son las notas de lectura,"
-                + " no el texto original)\n");
+            switch (modo) {
+              case COMPLETO ->
+                  "(Documento largo, leido completo por pasadas: lo que sigue son las notas de"
+                      + " lectura, no el texto original)\n";
+              case POR_CAPITULOS ->
+                  "(Documento largo, leido por capitulos: lo que sigue son notas de un extracto de"
+                      + " cada capitulo, no el texto completo)\n";
+              case RAPIDO ->
+                  "(Documento largo, lectura rapida: lo que sigue son fragmentos de unas secciones"
+                      + " representativas, no el texto completo)\n";
+            });
         contexto.append(notas.getOrDefault(d.documentoId(), "")).append('\n');
       } else {
         for (Seccion s : d.secciones()) {
@@ -269,7 +324,12 @@ final class PresupuestoDeContexto {
         .map(
             d ->
                 new CoberturaDocumento(
-                    d.documentoId(), d.titulo(), d.uri(), d.secciones().size(), d.pasadas()))
+                    d.documentoId(),
+                    d.titulo(),
+                    d.uri(),
+                    d.secciones().size(),
+                    d.pasadas(),
+                    d.porPasadas() ? Modo.COMPLETO : null))
         .toList();
   }
 

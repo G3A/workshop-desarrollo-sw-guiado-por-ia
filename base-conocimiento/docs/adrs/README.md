@@ -33,7 +33,10 @@ Mantén los ADRs cortos (1 página). Nómbralos `NNNN-slug-corto.md` con un cont
 - `0007-acl-por-fuente-pendiente` — control de acceso por fuente, pendiente de implementación completa.
 - `0008-umbral-de-relevancia-antes-de-sintesis` — corte explícito sin evidencia suficiente.
 - `0009-bonsai-8b-integracion-pospuesta` — por qué Bonsai 8B quedó pospuesto frente a Gemma3:4b.
-- `0010-docling-reemplaza-pdfbox` — Docling para extracción de PDF/DOCX/PPTX.
+- `0010-docling-reemplaza-pdfbox` — Docling para extracción de PDF/DOCX/PPTX (reemplazado por el 0014).
 - `0011-vault-unificado` — unificación del vault de ingesta.
 - `0012-spring-modulith-para-fronteras-entre-modulos` — por qué Spring Modulith y no paquetes sueltos por convención.
 - `0013-modulo-acciones-independiente-del-rag` — resumir, sintetizar, preguntas, ideas y traducir en un módulo aparte, que comparte con el RAG solo el vault indexado y el LLM.
+- `0014-extraccion-en-el-proceso-reemplaza-docling` — OpenDataLoader, Tika y POI en el proceso Java, en vez de docling-serve.
+- `0015-granite-41-3b-q3km-como-llm-por-defecto` — Granite 4.1 3B Q3_K_M reemplaza a gemma3:4b: entra entero en 4 GB de VRAM.
+- `0016-acciones-eligen-modo-de-lectura` — con documentos largos, las acciones estiman el tiempo y ofrecen leer completo, por capítulos o rápido.

@@ -40,12 +40,14 @@ public interface Acciones {
    * que cabe en su cuota, tal cual; el que no, leido por pasadas (sub-issue #60): cada tramo se
    * condensa en notas con el LLM antes de la accion, y {@code pasadas} dice cuantas llamadas son —
    * se sabe de antemano, asi la UI lo muestra antes de empezar y avanza con {@link
-   * EventoAccion.Lectura}. {@code pasadas == 0} es un documento que entro sin condensar. {@code
-   * seccionesTotales == 0} significa que el id no existe en el proyecto (o no tiene secciones
-   * indexadas todavia).
+   * EventoAccion.Lectura}. {@code pasadas == 0} sin {@code modo} es un documento que entro sin
+   * condensar. {@code seccionesTotales == 0} significa que el id no existe en el proyecto (o no
+   * tiene secciones indexadas todavia). {@code modo} es como se leyo un documento que no cabia
+   * (issue #57), y {@code null} si entro entero: en {@code RAPIDO} las pasadas son 0 igual que en
+   * uno que cabe.
    */
   record CoberturaDocumento(
-      long documentoId, String titulo, String uri, int seccionesTotales, int pasadas) {
+      long documentoId, String titulo, String uri, int seccionesTotales, int pasadas, Modo modo) {
 
     public boolean indexado() {
       return seccionesTotales > 0;
@@ -59,10 +61,21 @@ public interface Acciones {
    * preguntas e ideas (salida estructurada, decision 11 del issue #38).
    */
   sealed interface EventoAccion
-      permits EventoAccion.Lectura, EventoAccion.Token, EventoAccion.Resultado {
+      permits EventoAccion.Lectura,
+          EventoAccion.CapituloLeido,
+          EventoAccion.Token,
+          EventoAccion.Resultado {
 
     /** Termino la pasada {@code pasadaActual} de {@code pasadasTotales} sobre el documento. */
     record Lectura(long documentoId, int pasadaActual, int pasadasTotales)
+        implements EventoAccion {}
+
+    /**
+     * Modo «Por capitulos» (issue #57): termino el capitulo {@code actual} de {@code total} del
+     * documento; {@code titulo} es lo que la UI muestra en el progreso y {@code nota} lo que el
+     * modelo saco de su extracto, para pintarlo apenas esta listo.
+     */
+    record CapituloLeido(long documentoId, int actual, int total, String titulo, String nota)
         implements EventoAccion {}
 
     /** Un fragmento de prosa, tal como lo emite el LLM. */
@@ -155,15 +168,49 @@ public interface Acciones {
    */
   record TextoTraducido(Mono<String> idiomaOrigen, String idiomaDestino, Flux<String> texto) {}
 
+  /**
+   * Como se lee un documento largo (issue #57). {@code COMPLETO} es la lectura por pasadas de #60;
+   * {@code POR_CAPITULOS} manda un extracto acotado por capitulo; {@code RAPIDO} elige secciones
+   * representativas y hace solo la llamada final.
+   */
+  enum Modo {
+    COMPLETO,
+    POR_CAPITULOS,
+    RAPIDO
+  }
+
+  /**
+   * Lo que costaria una accion en un modo, medido con el rendimiento real del modelo.
+   *
+   * @param seccionesCubiertas cuantas secciones de los documentos largos llegan al LLM (en {@code
+   *     COMPLETO}, todas)
+   * @param llamadas llamadas al LLM, contando la final
+   */
+  record EstimadoModo(
+      Modo modo, long segundos, int seccionesCubiertas, int seccionesTotales, int llamadas) {}
+
+  /**
+   * {@code elegir} es verdadero cuando leer todo pasa del umbral ({@code
+   * kb.acciones.umbral-eleccion-segundos}): la UI muestra el selector en vez de arrancar. Sin
+   * documentos largos, un unico modo {@code COMPLETO}.
+   */
+  record Estimado(boolean elegir, List<EstimadoModo> modos) {}
+
   Limites limites();
+
+  /** Cuanto tardaria la accion en cada modo, antes de empezarla. No llama al LLM. */
+  Estimado estimar(Tipo tipo, List<Long> documentos, ProyectoId proyecto);
 
   /**
    * Resumir, sintetizar, preguntas o ideas sobre los documentos elegidos, enteros.
    *
    * @param idioma codigo ISO 639-1 del idioma en que se redacta el resultado (y las notas de
    *     lectura de los documentos largos)
+   * @param modo como se leen los documentos que no caben; {@code COMPLETO} es la lectura por
+   *     pasadas, y en {@code POR_CAPITULOS} la cobertura declara un capitulo por pasada
    */
-  ResultadoDeAccion ejecutar(Tipo tipo, List<Long> documentos, ProyectoId proyecto, String idioma);
+  ResultadoDeAccion ejecutar(
+      Tipo tipo, List<Long> documentos, ProyectoId proyecto, String idioma, Modo modo);
 
   /**
    * @param origen codigo ISO 639-1, o {@code null} para detectarlo por documento

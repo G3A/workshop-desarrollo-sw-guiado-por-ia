@@ -88,6 +88,7 @@ async function main() {
     let respuesta = "";
     let estadoFinal = "";
     let error = null;
+    let reformulacionElegida = null;
     let page = null;
     try {
       if (!browser.isConnected()) {
@@ -103,6 +104,20 @@ async function main() {
       await page.waitForSelector("#boton-preguntar:not([disabled])", { timeout: TIMEOUT_MS });
 
       const ultimo = page.locator(".turno").last();
+      // Desde el PR #31, si la búsqueda con la pregunta tal cual no alcanza, la UI no responde:
+      // ofrece reformulaciones y espera a que la persona elija ("Esperando tu elección"). Sin
+      // esto, la pregunta quedaba con la respuesta vacía y reporte.js la daba por respondida.
+      // Se hace lo que haría una persona sin preferencia: aceptar la primera alternativa, que
+      // la UI ya trae marcada, y esperar la respuesta del segundo stream.
+      if ((await ultimo.locator(".boton-eleccion").count()) > 0) {
+        reformulacionElegida = (await ultimo.locator(".eleccion-texto").inputValue()).trim();
+        console.log(`  -> pidió elegir reformulación; se elige: "${reformulacionElegida}"`);
+        await ultimo.locator(".boton-eleccion").click();
+        await page
+          .waitForSelector("#boton-preguntar[disabled]", { timeout: 10_000 })
+          .catch(() => {}); // si el segundo stream ya terminó, el botón ni llegó a verse deshabilitado
+        await page.waitForSelector("#boton-preguntar:not([disabled])", { timeout: TIMEOUT_MS });
+      }
       respuesta = (await ultimo.locator(".turno-respuesta").innerText()).trim();
       estadoFinal = (await ultimo.locator(".turno-estado").innerText()).trim();
       const estadoEsError = (await ultimo.locator(".turno-estado.error").count()) > 0;
@@ -178,6 +193,7 @@ async function main() {
       respuesta,
       estadoFinal,
       error,
+      reformulacionElegida,
       inicio: inicio.toISOString(),
       fin: fin.toISOString(),
       elapsedMs: fin - inicio,

@@ -1,6 +1,8 @@
 package co.g3a.baseconocimiento.acciones;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
@@ -59,5 +61,75 @@ class SeccionesRepositorio {
                     rs.getString("text"),
                     rs.getString("kind")))
         .list();
+  }
+
+  /**
+   * La ruta de encabezados de cada seccion ({@code "Capitulo › Seccion"}), para agrupar por
+   * capitulo (issue #57). Desde #57 la ingesta la guarda en {@code distilled.ruta}; para lo
+   * indexado antes se saca del {@code summary}. Sin ruta, lista vacia.
+   */
+  Map<Long, List<String>> rutasDe(List<Long> documentoIds, String projectId) {
+    if (documentoIds.isEmpty()) {
+      return Map.of();
+    }
+    Map<Long, List<String>> rutas = new HashMap<>();
+    jdbc.sql(
+            """
+            SELECT c.id,
+                   CASE WHEN jsonb_typeof(c.distilled->'ruta') = 'array'
+                        THEN array_to_string(
+                               ARRAY(SELECT jsonb_array_elements_text(c.distilled->'ruta')), ' › ')
+                   END AS ruta,
+                   c.distilled->>'summary' AS summary
+            FROM chunks c
+            WHERE c.document_id IN (:documentoIds) AND c.project_id = :projectId
+            """)
+        .param("documentoIds", documentoIds)
+        .param("projectId", projectId)
+        .query(
+            rs -> {
+              String guardada = rs.getString("ruta");
+              List<String> ruta =
+                  guardada == null
+                      ? Capitulos.rutaDelSummary(rs.getString("summary"))
+                      : guardada.isEmpty() ? List.of() : List.of(guardada.split(" › "));
+              rutas.put(rs.getLong("id"), ruta);
+            });
+    return rutas;
+  }
+
+  /**
+   * El embedding de cada seccion que ya lo tiene, para elegir las representativas del modo «Rapido»
+   * (issue #57). Las que el worker todavia no proceso no aparecen.
+   */
+  Map<Long, float[]> embeddingsDe(List<Long> documentoIds, String projectId) {
+    if (documentoIds.isEmpty()) {
+      return Map.of();
+    }
+    Map<Long, float[]> vectores = new HashMap<>();
+    jdbc.sql(
+            """
+            SELECT c.id, c.embedding::text AS embedding
+            FROM chunks c
+            WHERE c.document_id IN (:documentoIds) AND c.project_id = :projectId
+              AND c.embedding IS NOT NULL
+            """)
+        .param("documentoIds", documentoIds)
+        .param("projectId", projectId)
+        .query(
+            rs -> {
+              vectores.put(rs.getLong("id"), vector(rs.getString("embedding")));
+            });
+    return vectores;
+  }
+
+  /** {@code "[0.1,0.2,...]"}, la forma de texto de pgvector. */
+  static float[] vector(String texto) {
+    String[] partes = texto.substring(1, texto.length() - 1).split(",");
+    float[] v = new float[partes.length];
+    for (int i = 0; i < partes.length; i++) {
+      v[i] = Float.parseFloat(partes[i]);
+    }
+    return v;
   }
 }

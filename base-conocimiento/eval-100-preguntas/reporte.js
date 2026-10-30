@@ -150,6 +150,12 @@ function main() {
     const fila = matchQueryLog(r.pregunta);
     const candidates = fila?.candidates ?? null;
     const { decision, umbral, mejorRerank, sinPuerta } = decidir(candidates, chunksProyecto, props);
+    // Una respuesta vacía no es "responde": es que el turno no terminó (p. ej. quedó esperando
+    // que alguien eligiera una reformulación). Antes contaba como respondida y correcta, y un
+    // smoke10 con 6 respuestas vacías salió 10/10. Se califica como error, visible aparte.
+    if (!r.error && !r.respuesta?.trim()) {
+      r = { ...r, error: `respuesta vacía (estado final: "${r.estadoFinal}")` };
+    }
     const comportamiento = r.error ? "error" : comportamientoDe(r.respuesta);
     const correcta = !r.error && comportamiento === r.esperado;
     return {

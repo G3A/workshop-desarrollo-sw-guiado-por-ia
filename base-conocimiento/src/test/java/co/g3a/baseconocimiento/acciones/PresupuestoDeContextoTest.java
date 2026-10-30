@@ -3,6 +3,7 @@ package co.g3a.baseconocimiento.acciones;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import co.g3a.baseconocimiento.acciones.Acciones.CoberturaDocumento;
+import co.g3a.baseconocimiento.acciones.Acciones.Modo;
 import co.g3a.baseconocimiento.acciones.PresupuestoDeContexto.DocumentoPlanificado;
 import co.g3a.baseconocimiento.acciones.SeccionesRepositorio.Seccion;
 import co.g3a.baseconocimiento.compartido.Dominio.Cita;
@@ -42,13 +43,14 @@ class PresupuestoDeContextoTest {
     // 5 tramos; de a 2 por grupo: 5 + 3 + 2 + 1 = 11 pasadas como maximo.
     assertThat(PresupuestoDeContexto.cobertura(docs))
         .containsExactly(
-            new CoberturaDocumento(10L, "A", "file:///A", 2, 0),
-            new CoberturaDocumento(20L, "B", "file:///B", 5, 11));
+            new CoberturaDocumento(10L, "A", "file:///A", 2, 0, null),
+            new CoberturaDocumento(20L, "B", "file:///B", 5, 11, Modo.COMPLETO));
     assertThat(docs.get(0).porPasadas()).isFalse();
     assertThat(docs.get(1).tramos()).hasSize(5).allMatch(t -> t.length() <= 50);
     assertThat(docs.get(1).cuota()).isEqualTo(60);
 
-    String contexto = PresupuestoDeContexto.contexto(docs, Map.of(20L, "notas de B"));
+    String contexto =
+        PresupuestoDeContexto.contexto(docs, Map.of(20L, "notas de B"), Modo.COMPLETO);
     assertThat(contexto)
         .contains("[1] A (file:///A)")
         .contains("[2] B (file:///B)")
@@ -56,6 +58,9 @@ class PresupuestoDeContextoTest {
         .contains("notas de B")
         .doesNotContain("bbbbb");
     assertThat(contexto.chars().filter(c -> c == 'z').count()).isEqualTo(40);
+    assertThat(PresupuestoDeContexto.contexto(docs, Map.of(20L, "notas de B"), Modo.POR_CAPITULOS))
+        .contains("leido por capitulos")
+        .doesNotContain("leido completo");
   }
 
   @Test
@@ -83,7 +88,7 @@ class PresupuestoDeContextoTest {
               assertThat(c.pasadas()).isEqualTo(1);
             });
     assertThat(docs).allMatch(d -> d.cuota() == 700 && d.tramos().size() == 1);
-    String contexto = PresupuestoDeContexto.contexto(docs, notas);
+    String contexto = PresupuestoDeContexto.contexto(docs, notas, Modo.COMPLETO);
     assertThat(contexto).doesNotContain("xxxx");
     assertThat(contexto.chars().filter(c -> c == 'k').count()).isEqualTo(6000);
   }
@@ -102,7 +107,7 @@ class PresupuestoDeContextoTest {
 
     assertThat(PresupuestoDeContexto.cobertura(docs)).allMatch(c -> c.pasadas() == 0);
     assertThat(docs).noneMatch(DocumentoPlanificado::porPasadas);
-    assertThat(PresupuestoDeContexto.contexto(docs, Map.of()))
+    assertThat(PresupuestoDeContexto.contexto(docs, Map.of(), Modo.COMPLETO))
         .doesNotContain("notas de lectura")
         .contains("uuuuuuuuuu")
         .contains("tttttttttt");
@@ -159,7 +164,7 @@ class PresupuestoDeContextoTest {
     assertThat(inexistente.indexado()).isFalse();
     assertThat(inexistente.seccionesTotales()).isZero();
     // El [n] del contexto y las citas cuentan solo los indexados, en ese orden.
-    assertThat(PresupuestoDeContexto.contexto(docs, Map.of()))
+    assertThat(PresupuestoDeContexto.contexto(docs, Map.of(), Modo.COMPLETO))
         .contains("[1] T20 (file:///T20)")
         .contains("[2] T10 (file:///T10)")
         .doesNotContain("999");
@@ -187,6 +192,25 @@ class PresupuestoDeContextoTest {
         .isEqualTo("Síntesis de 1 documento: uno");
     assertThat(PresupuestoDeContexto.etiqueta("Resumen de", List.of()))
         .isEqualTo("Resumen de documentos seleccionados");
+  }
+
+  @Test
+  @DisplayName(
+      "Una pasada no pasa del contexto real: inglés técnico (2,7 car./token) da tramos menores")
+  void elTramoSaleDelContextoYDeLosCaracteresPorToken() {
+    // 4096 tokens de contexto, menos 600 de salida y 350 del prompt, con 10 % de margen.
+    int ingles = PresupuestoDeContexto.caracteresPorPasada(4096, 2.7, 10_000);
+    assertThat(ingles).isEqualTo((int) ((4096 - 600 - 350) * 2.7 * 0.9));
+    assertThat(ingles).isLessThan(10_000);
+
+    // En prosa en español (3,6 car./token) el contexto da para más que el tope: manda el tope.
+    assertThat(PresupuestoDeContexto.caracteresPorPasada(4096, 3.6, 10_000)).isEqualTo(10_000);
+  }
+
+  @Test
+  @DisplayName("Un contexto ínfimo no deja la pasada en cero ni negativa")
+  void contextoInfimoDejaUnMinimo() {
+    assertThat(PresupuestoDeContexto.caracteresPorPasada(500, 2.7, 10_000)).isPositive();
   }
 
   private static Seccion seccion(long id, long documentoId, String titulo, int ord, String texto) {

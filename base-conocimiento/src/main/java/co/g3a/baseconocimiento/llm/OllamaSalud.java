@@ -68,7 +68,8 @@ class OllamaSalud implements HealthIndicator {
       // Se comprueba SIEMPRE, sin mirar a que backend apunte OpenAI. Ver la nota
       // sobre el perfil Bonsai en el javadoc de la clase.
       @Value("${spring.ai.openai.chat.options.model:}") String modeloChat,
-      @Value("${kb.llm.destilador-modelo:gemma3:4b}") String modeloDestilador,
+      @Value("${kb.llm.destilador-modelo:hf.co/ibm-granite/granite-4.1-3b-GGUF:Q3_K_M}")
+          String modeloDestilador,
       @Value("${kb.embeddings.modelo:bge-m3}") String modeloEmbeddings) {
 
     this.urlBase = urlBase;

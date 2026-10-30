@@ -41,7 +41,9 @@ import org.testcontainers.utility.DockerImageName;
     webEnvironment = SpringBootTest.WebEnvironment.NONE,
     properties = {
       "kb.ingesta.worker.habilitado=false",
-      "kb.recuperacion.terminos.habilitado=false"
+      "kb.recuperacion.terminos.habilitado=false",
+      // Estas pruebas son del camino de docling-serve, que desde ADR-0014 ya no es el default.
+      "kb.ingesta.motor-pdf=docling"
     })
 @Testcontainers
 class ConectorDocumentosLocalesTest {

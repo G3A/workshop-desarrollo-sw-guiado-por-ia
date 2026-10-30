@@ -566,6 +566,10 @@
       : "<li>Sin citas.</li>";
     fijarRespuesta(turno, registro.respuesta, true);
     if (tipo !== "pregunta") {
+      turno.accionDatos = registro.accion;
+      turno.documentosDatos = registro.documentos;
+      turno.capitulosDatos = registro.capitulos;
+      renderCapitulos(turno);
       renderCobertura(turno, registro.cobertura || []);
       if (tipo === "preguntas" || tipo === "ideas") {
         renderEstructurado(turno, tipo, registro.resultado);
@@ -1490,12 +1494,27 @@
       primeros + (restantes > 0 ? " y " + restantes + " más" : "");
   }
 
-  async function ejecutarAccion(accion) {
-    const documentos = documentosSeleccionadosParaAccion();
+  /**
+   * opciones.documentos y opciones.modo vienen de «Ampliar por capítulos» sobre un
+   * turno ya hecho; sin ellas, los documentos tildados y, si leerlos completos
+   * tardaria demasiado, el modo que elija la persona (issue #57).
+   */
+  async function ejecutarAccion(accion, opciones) {
+    const documentos = opciones && opciones.documentos ? opciones.documentos : documentosSeleccionadosParaAccion();
     if (!documentos) {
       return;
     }
     const definicion = ACCIONES[accion];
+    let modo = opciones && opciones.modo ? opciones.modo : null;
+    if (!modo) {
+      const estimado = await pedirEstimado(accion, documentos);
+      if (estimado && estimado.elegir) {
+        modo = await elegirModo(accion, estimado, documentos);
+        if (!modo) {
+          return;
+        }
+      }
+    }
     const idioma = idiomaDelResultado();
     const proyecto = campoProyecto.value.trim() || "default";
     const etiqueta = etiquetaProvisional(definicion.verbo, documentos);
@@ -1511,17 +1530,112 @@
     fijarBotonEnviar(true);
     const turno = nuevoTurno(etiqueta, { tipo: definicion.tipo });
     turno.documentosDatos = documentos;
+    turno.accionDatos = accion;
     const inicioTurno = Date.now();
     const detenerContador = iniciarContador(
       turno.estado,
       "Leyendo " + documentos.length + (documentos.length === 1 ? " documento y " : " documentos y ") + definicion.trabajando);
-    iniciarStreamingAccion(accion, documentos, idioma, proyecto, turno, detenerContador, conversacionId, inicioTurno);
+    iniciarStreamingAccion(accion, documentos, idioma, proyecto, turno, detenerContador, conversacionId, inicioTurno, modo);
   }
 
-  function iniciarStreamingAccion(accion, documentos, idioma, proyecto, turno, detenerContador, conversacionId, inicioTurno) {
+  /** GET /api/acciones/estimado; null si falla: la accion sigue como siempre. */
+  async function pedirEstimado(accion, documentos) {
+    const proyecto = campoProyecto.value.trim() || "default";
+    try {
+      const respuesta = await fetch("/api/acciones/estimado?tipo=" + accion + "&documentos=" + documentos.join(",") +
+        "&projectId=" + encodeURIComponent(proyecto));
+      return respuesta.ok ? await respuesta.json() : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  /** «~3 min», «~45 min», «~11 h»: un estimado, no un cronometro. */
+  function duracionAproximada(segundos) {
+    if (segundos < 90) {
+      return "~1 min";
+    }
+    if (segundos < 5400) {
+      return "~" + Math.round(segundos / 60) + " min";
+    }
+    return "~" + Math.round(segundos / 3600) + " h";
+  }
+
+  const TITULO_MODO = {
+    resumir: "Resumir",
+    sintetizar: "Sintetizar",
+    preguntas: "Proponer preguntas sobre",
+    ideas: "Proponer ideas a partir de",
+  };
+
+  /**
+   * El selector de modo (alternativa D del issue #57): rápido, por capítulos o
+   * completo, con el tiempo estimado de cada uno. Resuelve con "rapido",
+   * "capitulos" o "completo", o null si la persona cancela.
+   */
+  function elegirModo(accion, estimado, documentos) {
+    const modal = document.getElementById("modal-modo");
+    const porModo = {};
+    estimado.modos.forEach((m) => { porModo[m.modo] = m; });
+    const completo = porModo.COMPLETO;
+    const capitulos = porModo.POR_CAPITULOS;
+    const rapido = porModo.RAPIDO;
+    const titulos = documentos
+      .map((id) => (documentosDisponibles.find((d) => d.id === id) || {}).titulo)
+      .filter((t) => !!t);
+    document.getElementById("modal-modo-titulo").textContent =
+      TITULO_MODO[accion] + " " + (titulos.length === 1 ? titulos[0] : documentos.length + " documentos");
+    document.getElementById("modal-modo-descripcion").textContent =
+      (documentos.length === 1 ? "Es un documento muy largo: " : "Hay documentos muy largos: ") +
+      completo.seccionesTotales + " secciones. Elige cómo leerlo; los tiempos son estimados con el modelo y el equipo" +
+      " de este servidor.";
+    // Las llamadas finales son las del modo rapido: el resto son capitulos o pasadas.
+    const opciones = [
+      { valor: "rapido", nombre: "Rápido", m: rapido,
+        texto: "Una vista general a partir de ~" + rapido.seccionesCubiertas + " secciones representativas. Puede pasar por alto capítulos." },
+      { valor: "capitulos", nombre: "Por capítulos", m: capitulos,
+        texto: "Notas de cada uno de los " + (capitulos.llamadas - rapido.llamadas) +
+          " capítulos, que aparecen apenas están listas, y el resultado al final." },
+      { valor: "completo", nombre: "Completo", m: completo,
+        texto: "Lee todo el texto, en " + (completo.llamadas - rapido.llamadas) + " pasadas." },
+    ];
+    document.getElementById("modal-modo-opciones").innerHTML = opciones.map((o) =>
+      '<label class="opcion-modo">' +
+      '<input type="radio" name="modo-lectura" value="' + o.valor + '"' + (o.valor === "capitulos" ? " checked" : "") + ">" +
+      '<span class="opcion-modo-cuerpo">' +
+      '<span class="opcion-modo-cabecera"><strong>' + o.nombre + "</strong>" +
+      '<span class="opcion-modo-tiempo">' + duracionAproximada(o.m.segundos) + "</span></span>" +
+      '<span class="opcion-modo-texto">' + escaparHtml(o.texto) + "</span>" +
+      "</span></label>").join("");
+    return new Promise((resolver) => {
+      const confirmar = document.getElementById("modal-modo-confirmar");
+      const cancelar = document.getElementById("modal-modo-cancelar");
+      confirmar.textContent = TITULO_MODO[accion].split(" ")[0];
+      const terminar = (valor) => {
+        confirmar.onclick = null;
+        cancelar.onclick = null;
+        modal.onclose = null;
+        if (modal.open) {
+          modal.close();
+        }
+        resolver(valor);
+      };
+      confirmar.onclick = () => {
+        const elegido = modal.querySelector('input[name="modo-lectura"]:checked');
+        terminar(elegido ? elegido.value : null);
+      };
+      cancelar.onclick = () => terminar(null);
+      // Escape cierra el dialogo: cuenta como cancelar.
+      modal.onclose = () => terminar(null);
+      modal.showModal();
+    });
+  }
+
+  function iniciarStreamingAccion(accion, documentos, idioma, proyecto, turno, detenerContador, conversacionId, inicioTurno, modo) {
     const definicion = ACCIONES[accion];
     const url = "/api/acciones/" + accion + "?documentos=" + documentos.join(",") +
-      "&projectId=" + encodeURIComponent(proyecto) + "&idioma=" + encodeURIComponent(idioma);
+      "&projectId=" + encodeURIComponent(proyecto) + "&idioma=" + encodeURIComponent(idioma) +
+      (modo ? "&modo=" + modo : "");
     // La "pregunta" con la que se guarda el turno: la etiqueta definitiva del
     // servidor en cuanto llega, la provisional mientras tanto.
     let etiqueta = turno.textoBurbuja.textContent;
@@ -1565,6 +1679,17 @@
         documento.pasadas = lectura.pasadasTotales;
         renderCobertura(turno, turno.coberturaDatos);
       }
+    });
+    fuente.addEventListener("capitulo", (evento) => {
+      const capitulo = JSON.parse(evento.data);
+      const documento = turno.coberturaDatos.find((c) => c.documentoId === capitulo.documentoId);
+      if (documento) {
+        documento.pasadaActual = capitulo.actual;
+        documento.pasadas = capitulo.total;
+        renderCobertura(turno, turno.coberturaDatos);
+      }
+      turno.capitulosDatos = (turno.capitulosDatos || []).concat([{ titulo: capitulo.titulo, nota: capitulo.nota }]);
+      renderCapitulos(turno, capitulo.total);
     });
     fuente.addEventListener("token", (evento) => {
       marcarRedactando();
@@ -1651,6 +1776,12 @@
           insignia = completa
             ? `<span class="insignia-cobertura completa">${secciones} · entero</span>`
             : `<span class="insignia-cobertura parcial">primeras ${c.seccionesIncluidas} de ${c.seccionesTotales} secciones · parcial</span>`;
+        } else if (c.modo === "RAPIDO") {
+          insignia = `<span class="insignia-cobertura parcial">${secciones} · lectura rápida: secciones representativas</span>`;
+        } else if (c.modo === "POR_CAPITULOS") {
+          insignia = terminado || (c.pasadaActual || 0) >= c.pasadas
+            ? `<span class="insignia-cobertura parcial">${secciones} · leído por capítulos (${c.pasadas})</span>`
+            : `<span class="insignia-cobertura leyendo">${secciones} · leyendo: capítulo ${c.pasadaActual || 0} de ${c.pasadas}</span>`;
         } else if (!c.pasadas) {
           insignia = `<span class="insignia-cobertura completa">${secciones} · entero</span>`;
         } else if (terminado || (c.pasadaActual || 0) >= c.pasadas) {
@@ -1661,8 +1792,45 @@
         return `<li><span class="numero">[${n}]</span>${enlace}${insignia}</li>`;
       })
       .join("");
-    turno.cobertura.innerHTML = "<h3>Documentos usados</h3><ol>" + filas + "</ol>";
+    // Tras una lectura rapida, ampliar es la misma accion sobre los mismos
+    // documentos, por capitulos, en un turno nuevo (issue #57).
+    const ampliable = terminado && turno.accionDatos && ACCIONES[turno.accionDatos] &&
+      turno.coberturaDatos.some((c) => c.modo === "RAPIDO");
+    turno.cobertura.innerHTML = "<h3>Documentos usados</h3><ol>" + filas + "</ol>" +
+      (ampliable ? '<button type="button" class="boton-ampliar">Ampliar por capítulos</button>' : "");
     turno.cobertura.classList.remove("oculto");
+    const ampliar = turno.cobertura.querySelector(".boton-ampliar");
+    if (ampliar) {
+      ampliar.addEventListener("click", () => {
+        if (conversacionActualId != null && streamsActivos.has(conversacionActualId)) {
+          return;
+        }
+        ejecutarAccion(turno.accionDatos, { documentos: turno.documentosDatos, modo: "capitulos" });
+      });
+    }
+  }
+
+  /**
+   * Modo por capitulos: la nota de cada capitulo aparece apenas esta lista, en un
+   * bloque plegable antes de la respuesta. total = capitulos declarados.
+   */
+  function renderCapitulos(turno, total) {
+    const capitulos = turno.capitulosDatos || [];
+    if (!capitulos.length) {
+      return;
+    }
+    let bloque = turno.raiz.querySelector(".turno-capitulos");
+    if (!bloque) {
+      bloque = document.createElement("details");
+      bloque.className = "turno-detalle turno-capitulos";
+      bloque.open = true;
+      turno.respuesta.parentNode.insertBefore(bloque, turno.respuesta);
+    }
+    const cuantos = total && total > capitulos.length ? capitulos.length + " de " + total : String(capitulos.length);
+    bloque.innerHTML = `<summary>Notas por capítulo (${cuantos})</summary><ol>` +
+      capitulos.map((c) => `<li><strong>${escaparHtml(c.titulo || "")}</strong>` +
+        `<p>${escaparHtml(c.nota || "")}</p></li>`).join("") +
+      "</ol>";
   }
 
   // Los seis niveles de la taxonomia de Bloom, en el orden en que el servidor los
@@ -2404,6 +2572,8 @@
         cobertura: turno.coberturaDatos,
         resultado: turno.resultadoDatos,
         documentos: turno.documentosDatos,
+        accion: turno.accionDatos,
+        capitulos: turno.capitulosDatos,
         traducciones: turno.traduccionesDatos,
         error: huboError,
         estadoError: estadoError,

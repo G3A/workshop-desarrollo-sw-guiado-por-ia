@@ -16,9 +16,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import co.g3a.baseconocimiento.acciones.Acciones;
 import co.g3a.baseconocimiento.acciones.Acciones.CoberturaDocumento;
 import co.g3a.baseconocimiento.acciones.Acciones.DocumentoATraducir;
+import co.g3a.baseconocimiento.acciones.Acciones.Estimado;
+import co.g3a.baseconocimiento.acciones.Acciones.EstimadoModo;
 import co.g3a.baseconocimiento.acciones.Acciones.EventoAccion;
 import co.g3a.baseconocimiento.acciones.Acciones.EventoTraduccion;
 import co.g3a.baseconocimiento.acciones.Acciones.Limites;
+import co.g3a.baseconocimiento.acciones.Acciones.Modo;
 import co.g3a.baseconocimiento.acciones.Acciones.ResultadoDeAccion;
 import co.g3a.baseconocimiento.acciones.Acciones.TextoTraducido;
 import co.g3a.baseconocimiento.acciones.Acciones.Tipo;
@@ -50,7 +53,7 @@ class AccionesControllerTest {
   private static final Cita CITA =
       new Cita("file:///vault/documentos/a.md", "a.md", "extracto", "doc_section");
   private static final CoberturaDocumento COBERTURA =
-      new CoberturaDocumento(1L, "a.md", "file:///vault/documentos/a.md", 20, 3);
+      new CoberturaDocumento(1L, "a.md", "file:///vault/documentos/a.md", 20, 3, Modo.COMPLETO);
 
   @Autowired MockMvc mockMvc;
 
@@ -71,10 +74,50 @@ class AccionesControllerTest {
   }
 
   @Test
+  @DisplayName("GET /api/acciones/estimado devuelve los modos con su tiempo, sin abrir stream")
+  void estimadoEsJson() throws Exception {
+    when(acciones.estimar(eq(Tipo.RESUMIR), eq(List.of(1L)), any()))
+        .thenReturn(
+            new Estimado(
+                true,
+                List.of(
+                    new EstimadoModo(Modo.COMPLETO, 39_000, 888, 888, 213),
+                    new EstimadoModo(Modo.RAPIDO, 120, 17, 888, 1))));
+
+    mockMvc
+        .perform(get("/api/acciones/estimado").param("tipo", "resumir").param("documentos", "1"))
+        .andExpect(status().isOk())
+        .andExpect(
+            content()
+                .json(
+                    """
+                    {"elegir":true,"modos":[
+                      {"modo":"COMPLETO","segundos":39000,"seccionesCubiertas":888,
+                       "seccionesTotales":888,"llamadas":213},
+                      {"modo":"RAPIDO","segundos":120,"seccionesCubiertas":17,
+                       "seccionesTotales":888,"llamadas":1}]}
+                    """));
+  }
+
+  @Test
+  @DisplayName("estimado rechaza un tipo desconocido o una lista vacia con 400 y el motivo")
+  void estimadoValida() throws Exception {
+    mockMvc
+        .perform(get("/api/acciones/estimado").param("tipo", "inventar").param("documentos", "1"))
+        .andExpect(status().isBadRequest());
+    mockMvc
+        .perform(get("/api/acciones/estimado").param("tipo", "resumir"))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().json("{\"error\":\"Elige al menos un documento\"}"));
+    verify(acciones, never()).estimar(any(), any(), any());
+  }
+
+  @Test
   @DisplayName(
       "GET /api/acciones/resumir: etiqueta, cobertura, citas, lecturas, tokens y fin, en ese orden")
   void resumirTransmitePorSse() throws Exception {
-    when(acciones.ejecutar(eq(Tipo.RESUMIR), eq(List.of(1L, 2L)), any(), eq("en")))
+    when(acciones.ejecutar(
+            eq(Tipo.RESUMIR), eq(List.of(1L, 2L)), any(), eq("en"), eq(Modo.COMPLETO)))
         .thenReturn(
             new ResultadoDeAccion(
                 "Resumen de 1 documento: a.md",
@@ -103,7 +146,8 @@ class AccionesControllerTest {
     assertThat(cuerpo.indexOf("event:citas")).isLessThan(cuerpo.indexOf("event:lectura"));
     assertThat(cuerpo.indexOf("event:lectura")).isLessThan(cuerpo.indexOf("event:token"));
     assertThat(cuerpo.indexOf("event:token")).isLessThan(cuerpo.indexOf("event:fin"));
-    verify(acciones).ejecutar(Tipo.RESUMIR, List.of(1L, 2L), new ProyectoId("default"), "en");
+    verify(acciones)
+        .ejecutar(Tipo.RESUMIR, List.of(1L, 2L), new ProyectoId("default"), "en", Modo.COMPLETO);
   }
 
   @Test
@@ -118,7 +162,7 @@ class AccionesControllerTest {
                     "recordar",
                     "preguntas",
                     List.of(Map.of("texto", "¿Qué hace make up?", "tipo", "que", "fuente", 1)))));
-    when(acciones.ejecutar(eq(Tipo.PREGUNTAS), eq(List.of(1L)), any(), eq("es")))
+    when(acciones.ejecutar(eq(Tipo.PREGUNTAS), eq(List.of(1L)), any(), eq("es"), eq(Modo.COMPLETO)))
         .thenReturn(
             new ResultadoDeAccion(
                 "Preguntas sobre 1 documento: a.md",
@@ -136,7 +180,8 @@ class AccionesControllerTest {
     assertThat(cuerpo.indexOf("event:citas")).isLessThan(cuerpo.indexOf("event:resultado"));
     assertThat(cuerpo.indexOf("event:resultado")).isLessThan(cuerpo.indexOf("event:fin"));
     // Sin idioma: español.
-    verify(acciones).ejecutar(Tipo.PREGUNTAS, List.of(1L), ProyectoId.POR_DEFECTO, "es");
+    verify(acciones)
+        .ejecutar(Tipo.PREGUNTAS, List.of(1L), ProyectoId.POR_DEFECTO, "es", Modo.COMPLETO);
   }
 
   @Test
@@ -156,7 +201,7 @@ class AccionesControllerTest {
         .perform(get("/api/acciones/resumir").param("documentos", "1").param("idioma", "en-US"))
         .andExpect(status().isBadRequest());
     mockMvc.perform(get("/api/acciones/resumir")).andExpect(status().isBadRequest());
-    verify(acciones, never()).ejecutar(any(), any(), any(), any());
+    verify(acciones, never()).ejecutar(any(), any(), any(), any(), any());
   }
 
   @Test
@@ -179,6 +224,52 @@ class AccionesControllerTest {
   }
 
   @Test
+  @DisplayName("modo=capitulos llega a la fachada y cada capitulo leido sale como evento capitulo")
+  void modoPorCapitulos() throws Exception {
+    when(acciones.ejecutar(
+            eq(Tipo.RESUMIR), eq(List.of(1L)), any(), eq("es"), eq(Modo.POR_CAPITULOS)))
+        .thenReturn(
+            new ResultadoDeAccion(
+                "Resumen de 1 documento: a.md",
+                List.of(COBERTURA),
+                List.of(CITA),
+                Flux.just(
+                    new EventoAccion.CapituloLeido(1L, 1, 3, "Introduction", "Notas."),
+                    new EventoAccion.Token("Resumen."))));
+
+    String cuerpo =
+        sse(get("/api/acciones/resumir").param("documentos", "1").param("modo", "capitulos"));
+
+    assertThat(cuerpo)
+        .contains("event:capitulo")
+        .contains("\"actual\":1,\"total\":3,\"titulo\":\"Introduction\",\"nota\":\"Notas.\"");
+  }
+
+  @Test
+  @DisplayName("modo=rapido llega a la fachada como RAPIDO")
+  void modoRapido() throws Exception {
+    when(acciones.ejecutar(any(), any(), any(), any(), eq(Modo.RAPIDO)))
+        .thenReturn(
+            new ResultadoDeAccion(
+                "Resumen de 1 documento: a.md",
+                List.of(COBERTURA),
+                List.of(CITA),
+                Flux.just(new EventoAccion.Token("Resumen."))));
+
+    assertThat(sse(get("/api/acciones/resumir").param("documentos", "1").param("modo", "rapido")))
+        .contains("Resumen.");
+  }
+
+  @Test
+  @DisplayName("Un modo desconocido es 400 antes de abrir el stream")
+  void modoDesconocido() throws Exception {
+    mockMvc
+        .perform(get("/api/acciones/resumir").param("documentos", "1").param("modo", "magico"))
+        .andExpect(status().isBadRequest());
+    verify(acciones, never()).ejecutar(any(), any(), any(), any(), any());
+  }
+
+  @Test
   @DisplayName("Un tipo desconocido es 404")
   void tipoDesconocido() throws Exception {
     mockMvc
@@ -189,7 +280,7 @@ class AccionesControllerTest {
   @Test
   @DisplayName("Un error a mitad del stream llega como error-servidor, no como corte mudo")
   void errorEnElStream() throws Exception {
-    when(acciones.ejecutar(any(), any(), any(), any()))
+    when(acciones.ejecutar(any(), any(), any(), any(), any()))
         .thenReturn(
             new ResultadoDeAccion(
                 "Resumen de 1 documento: a.md",
@@ -337,7 +428,7 @@ class AccionesControllerTest {
                 .param("documentos", "1")
                 .param("destino", "xx"))
         .andExpect(status().isBadRequest());
-    verify(acciones, never()).ejecutar(any(), any(), any(), any());
+    verify(acciones, never()).ejecutar(any(), any(), any(), any(), any());
     verify(acciones, never()).traducirDocumentos(any(), any(), any(), any());
   }
 

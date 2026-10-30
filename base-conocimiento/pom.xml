@@ -30,6 +30,11 @@
     <djl-tokenizers.version>0.36.0</djl-tokenizers.version>
     <pgvector.version>0.1.6</pgvector.version>
     <arconia.version>0.29.0</arconia.version>
+    <opendataloader.version>2.5.16</opendataloader.version>
+    <!-- 4.1.0 y no 4.2.0: la 4.2.0 salió el 2026-10-25, demasiado nueva para fijarla. Tika 4.1.0
+         usa POI 5.5.1: poi.version tiene que acompañarla. -->
+    <tika.version>4.1.0</tika.version>
+    <poi.version>5.5.1</poi.version>
     <jgit.version>7.7.1.202607240634-r</jgit.version>
     <archunit.version>1.4.2</archunit.version>
     <!-- Fijado en 1.9.3 a proposito, NO en la ultima: 1.10.0 traia una inyeccion de
@@ -245,7 +250,45 @@
       <version>${wiremock.version}</version>
       <scope>test</scope>
     </dependency>
+
+    <!-- Piloto: OpenDataLoader PDF (Apache-2.0) convierte PDF a Markdown en el proceso,
+         en CPU, como alternativa a docling-serve para PDF (kb.ingesta.motor-pdf) -->
+    <dependency>
+      <groupId>org.opendataloader</groupId>
+      <artifactId>opendataloader-pdf-core</artifactId>
+      <version>${opendataloader.version}</version>
+    </dependency>
+    <!-- ADR-0014: DOCX por Apache Tika (su ToMarkdownContentHandler) y PPTX por Apache POI,
+         los dos Apache-2.0 y en el proceso, como alternativa a docling-serve (kb.ingesta.motor-office).
+         poi-ooxml-lite trae los esquemas OOXML que XMLSlideShow necesita y Tika no incluye. -->
+    <dependency>
+      <groupId>org.apache.tika</groupId>
+      <artifactId>tika-parser-microsoft-module</artifactId>
+      <version>${tika.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.poi</groupId>
+      <artifactId>poi-ooxml-lite</artifactId>
+      <version>${poi.version}</version>
+    </dependency>
   </dependencies>
+
+  <!-- opendataloader-pdf-core depende de veraPDF 1.31.x, que no está en Maven Central
+       (ahí llega a 1.30.3): solo lo publica el Artifactory de la Open Preservation
+       Foundation. Con releases solamente y checksum obligatorio, igual que lo declara
+       el POM de la librería. -->
+  <repositories>
+    <repository>
+      <id>vera-dev</id>
+      <url>https://artifactory.openpreservation.org/artifactory/vera-dev</url>
+      <releases>
+        <checksumPolicy>fail</checksumPolicy>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
+  </repositories>
 
   <build>
     <plugins>
