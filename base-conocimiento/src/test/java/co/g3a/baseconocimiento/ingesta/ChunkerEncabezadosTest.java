@@ -68,6 +68,68 @@ class ChunkerEncabezadosTest {
   }
 
   @Test
+  void hermanosSiguenSiendoHermanosAunqueElDocumentoSalteNiveles() {
+    // Así sale la especificación de Java (jls25.pdf) por OpenDataLoader: el
+    // capítulo es h1 y sus secciones h4, sin h2 ni h3 de por medio. "4.2" es
+    // hermano de "4.1", no hijo.
+    var texto =
+        """
+                # Types, Values, and Variables
+                #### 4.1 The Kinds of Types
+                cuerpo uno
+                #### 4.2 Primitive Types
+                cuerpo dos
+                ##### 4.2.3 Floating-Point Types
+                cuerpo tres
+                #### 4.3 Reference Types
+                cuerpo cuatro
+                """;
+
+    var secciones = ChunkerEncabezados.trocear(texto);
+
+    assertThat(secciones)
+        .extracting(ChunkerEncabezados.Seccion::rutaEncabezados)
+        .containsExactly(
+            java.util.List.of("Types, Values, and Variables", "4.1 The Kinds of Types"),
+            java.util.List.of("Types, Values, and Variables", "4.2 Primitive Types"),
+            java.util.List.of(
+                "Types, Values, and Variables",
+                "4.2 Primitive Types",
+                "4.2.3 Floating-Point Types"),
+            java.util.List.of("Types, Values, and Variables", "4.3 Reference Types"));
+  }
+
+  @Test
+  void unEncabezadoEnumeradoSeAnidaBajoElDeSuMismoNivel() {
+    // Así sale la NIST SP 800-53 por OpenDataLoader: el control y sus mejoras al mismo nivel.
+    // "(13) ..." es parte de AC-2, no un control nuevo; "AC-3" sí cierra a AC-2 y sus mejoras.
+    var texto =
+        """
+                #### 3.1 ACCESS CONTROL
+                ###### AC-2 ACCOUNT MANAGEMENT
+                cuerpo del control
+                ###### (12) ACCOUNT MANAGEMENT | ACCOUNT MONITORING
+                cuerpo de la mejora 12
+                ###### (13) ACCOUNT MANAGEMENT | DISABLE ACCOUNTS
+                cuerpo de la mejora 13
+                ###### AC-3 ACCESS ENFORCEMENT
+                cuerpo de AC-3
+                """;
+
+    var secciones = ChunkerEncabezados.trocear(texto);
+
+    assertThat(secciones)
+        .extracting(s -> String.join(" > ", s.rutaEncabezados()))
+        .containsExactly(
+            "3.1 ACCESS CONTROL > AC-2 ACCOUNT MANAGEMENT",
+            "3.1 ACCESS CONTROL > AC-2 ACCOUNT MANAGEMENT > (12) ACCOUNT MANAGEMENT | ACCOUNT"
+                + " MONITORING",
+            "3.1 ACCESS CONTROL > AC-2 ACCOUNT MANAGEMENT > (13) ACCOUNT MANAGEMENT | DISABLE"
+                + " ACCOUNTS",
+            "3.1 ACCESS CONTROL > AC-3 ACCESS ENFORCEMENT");
+  }
+
+  @Test
   void unaSeccionDemasiadoGrandeSeSubdivide() {
     String parrafo = "x".repeat(100);
     String cuerpoGrande = (parrafo + "\n\n").repeat(60); // > 4000 caracteres

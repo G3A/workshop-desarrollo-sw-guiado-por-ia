@@ -55,7 +55,9 @@ documento completo, a cualquier idioma, con descarga en Markdown). El mismo trad
 del chat: un modo traducir en la barra de entrada y «Traducir» sobre cualquier turno. Cada
 resultado es un turno más de la conversación y muestra cómo entró cada documento al modelo — un
 documento largo no se recorta: se lee entero por pasadas (notas por tramo, condensadas hasta que
-caben) y la cobertura dice cuántas fueron, con progreso mientras avanza.
+caben) y la cobertura dice cuántas fueron, con progreso mientras avanza. Si leerlo entero tardaría
+más de 10 minutos, antes de empezar se ofrece elegir: completo, por capítulos o rápido, cada uno con
+su tiempo estimado ([ADR-0016](docs/adrs/0016-acciones-eligen-modo-de-lectura.md)).
 
 Todo eso vive en un módulo **independiente del RAG**: comparte solo el vault indexado y el cliente
 del LLM. Detalle en
@@ -685,7 +687,7 @@ Framework Emulator alcanza con `KB_TEAMS_HABILITADO=true` y apuntarlo a
 
 `KB_API_TOKEN` vacío (el default) deja el API sin autenticación. Con un valor, `/api/ask`,
 `/api/search` y `/api/ingest/*` exigen `Authorization: Bearer <token>`. Quedan afuera a propósito
-`/api/chat`, `/api/preview` y las siete rutas de `/api/acciones/*` (la UI web no tiene login de
+`/api/chat`, `/api/preview` y las ocho rutas de `/api/acciones/*` (la UI web no tiene login de
 persona en este MVP) y `/api/messages` (el Bot Connector valida su propio JWT). Detalle y decisiones pendientes en
 [`docs/architecture.md`](docs/architecture.md).
 

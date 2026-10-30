@@ -10,6 +10,8 @@ import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.metadata.Usage;
+import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.stereotype.Component;
@@ -209,8 +211,10 @@ class RedactorOpenAi implements Redactor {
   private final ChatClient estructurado;
   private final ChatClient deteccion;
   private final ChatClient lectura;
+  private final RendimientoMedido rendimiento;
 
-  RedactorOpenAi(OpenAiChatModel modelo) {
+  RedactorOpenAi(OpenAiChatModel modelo, RendimientoMedido rendimiento) {
+    this.rendimiento = rendimiento;
     Map<String, Object> extra =
         Map.of("repeat_penalty", 1.1, "repeat_last_n", 4096, "reasoning_effort", "none");
     this.prosa =
@@ -250,13 +254,25 @@ class RedactorOpenAi implements Redactor {
   @Override
   public String condensar(String tramo, String idioma, int maxCaracteres) {
     int palabras = Math.max(40, maxCaracteres / 7);
+    String sistema = SISTEMA_CONDENSAR.formatted(palabras, instruccionIdioma(idioma));
+    String usuario = "Tramo:\n\n" + tramo;
+    long inicio = System.nanoTime();
+    ChatResponse respuesta = lectura.prompt().system(sistema).user(usuario).call().chatResponse();
+    long milisegundos = (System.nanoTime() - inicio) / 1_000_000;
+    // Cada pasada es una medicion real del modelo (issue #57): con ella se calculan los
+    // caracteres por token y la velocidad que usan el tamano del tramo y los estimados.
+    Usage uso = respuesta == null ? null : respuesta.getMetadata().getUsage();
+    if (uso != null && uso.getPromptTokens() != null) {
+      rendimiento.registrar(
+          sistema.length() + usuario.length(),
+          uso.getPromptTokens(),
+          uso.getCompletionTokens() == null ? 0 : uso.getCompletionTokens(),
+          milisegundos);
+    }
     String notas =
-        lectura
-            .prompt()
-            .system(SISTEMA_CONDENSAR.formatted(palabras, instruccionIdioma(idioma)))
-            .user("Tramo:\n\n" + tramo)
-            .call()
-            .content();
+        respuesta == null || respuesta.getResult() == null
+            ? null
+            : respuesta.getResult().getOutput().getText();
     return notas == null ? "" : notas.strip();
   }
 

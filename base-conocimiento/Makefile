@@ -116,7 +116,7 @@ COMPOSE_GPU       := docker compose $(ENV_FILE_FLAG) -f compose.yml -f compose.g
 ## El entorno se consulta ANTES que el archivo: LLM no se llama KB_LLM_MODELO, asi
 ## que el `?=` no basta para que una variable de entorno lo pise sola -- hay que
 ## mirarla explicitamente para mantener la precedencia del resto del Makefile.
-LLM         ?= $(if $(KB_LLM_MODELO),$(KB_LLM_MODELO),$(if $(ENV_KB_LLM_MODELO),$(ENV_KB_LLM_MODELO),gemma3:4b))
+LLM         ?= $(if $(KB_LLM_MODELO),$(KB_LLM_MODELO),$(if $(ENV_KB_LLM_MODELO),$(ENV_KB_LLM_MODELO),hf.co/ibm-granite/granite-4.1-3b-GGUF:Q3_K_M))
 EMBEDDINGS  ?= bge-m3
 KB_DATA_DIR ?= $(if $(ENV_KB_DATA_DIR),$(ENV_KB_DATA_DIR),./.data)
 # Mismo default que compose.yml, y con el mismo motivo: el vault vive FUERA del
@@ -446,8 +446,8 @@ gpu-check:  ## Diagnostica que hardware vio make y como repartio la GPU
 	@echo "  KB_EMBEDDINGS_MODELO     : $(if $(filter si,$(GPU_EMB_FIJADO)),fijado en tu .env -- manda eso,$(KB_EMBEDDINGS_MODELO) (elegido por make))"
 	@echo ""
 	@echo "== Por que =="
-	@echo "  Con menos de $(KB_VRAM_EMBEDDINGS_GPU) MiB, gemma3:4b no entra completo ni estando solo"
-	@echo "  (medido en la T600 de 4 GB: 40% GPU / 60% CPU), asi que darle VRAM a los"
+	@echo "  Con menos de $(KB_VRAM_EMBEDDINGS_GPU) MiB el LLM y los embeddings no entran juntos (umbral medido con"
+	@echo "  gemma3:4b en la T600 de 4 GB: 40% GPU / 60% CPU; sin remedir con Granite), asi que darle VRAM a los"
 	@echo "  embeddings solo empeora al LLM: se los manda a CPU, que es una mejora neta"
 	@echo "  medida. Con $(KB_VRAM_EMBEDDINGS_GPU) MiB o mas entran los dos y los embeddings se quedan en la"
 	@echo "  tarjeta. docling entra recien con $(KB_VRAM_DOCLING_GPU) MiB porque no libera su VRAM entre"
@@ -606,7 +606,7 @@ docling-reciclar:  ## Reinicia docling-serve para liberar la VRAM que retiene en
 
 ## ---------------------------------------------------------------- modelos
 
-pull-models:  ## Descarga el modelo del chat (KB_LLM_MODELO, por defecto gemma3:4b), embeddings y reranker (~5.5 GB). Otros perfiles: make pull-<perfil>
+pull-models:  ## Descarga el modelo del chat (KB_LLM_MODELO, por defecto Granite 4.1 3B Q3_K_M), embeddings y reranker (~3.9 GB). Otros perfiles: make pull-<perfil>
 	$(COMPOSE_ACTIVO) exec ollama ollama pull $(LLM)
 	$(COMPOSE_ACTIVO) exec ollama ollama pull $(EMBEDDINGS)
 	$(MAKE) pull-reranker

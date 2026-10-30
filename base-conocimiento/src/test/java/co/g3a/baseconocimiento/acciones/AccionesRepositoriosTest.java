@@ -83,6 +83,60 @@ class AccionesRepositoriosTest {
     assertThat(repo.seccionesDe(List.of(), "default")).isEmpty();
   }
 
+  @Test
+  @DisplayName(
+      "La ruta de cada seccion: la guardada en distilled.ruta, o la del summary si es anterior")
+  void rutasDeLasSecciones() {
+    long fuente = crearFuente("local_docs", "docs-rutas");
+    long doc = crearDocumento(fuente, "rutas-a");
+    insertarChunk(doc, fuente, 0, "{\"ruta\": [\"Types\", \"4.2 Primitive\"]}");
+    insertarChunk(doc, fuente, 1, "{\"summary\": \"Types › 4.3 Reference: texto\"}");
+    insertarChunk(doc, fuente, 2, "{}");
+
+    var rutas = repo.rutasDe(List.of(doc), "default");
+
+    assertThat(rutas.values())
+        .containsExactlyInAnyOrder(
+            List.of("Types", "4.2 Primitive"), List.of("Types", "4.3 Reference"), List.of());
+    assertThat(repo.rutasDe(List.of(), "default")).isEmpty();
+  }
+
+  @Test
+  @DisplayName("Los embeddings de las secciones que ya los tienen, como vectores")
+  void embeddingsDeLasSecciones() {
+    long fuente = crearFuente("local_docs", "docs-embeddings");
+    long doc = crearDocumento(fuente, "embeddings-a");
+    insertarChunk(doc, fuente, 0, "{}");
+    insertarChunk(doc, fuente, 1, "{}");
+    jdbc.sql(
+            """
+            UPDATE chunks SET embedding = array_fill(0.5::real, ARRAY[1024])::vector
+            WHERE document_id = :doc AND ord = 0
+            """)
+        .param("doc", doc)
+        .update();
+
+    var vectores = repo.embeddingsDe(List.of(doc), "default");
+
+    assertThat(vectores).hasSize(1);
+    float[] v = vectores.values().iterator().next();
+    assertThat(v).hasSize(1024);
+    assertThat(v[0]).isEqualTo(0.5f);
+  }
+
+  private void insertarChunk(long documentoId, long fuenteId, int ord, String distilled) {
+    jdbc.sql(
+            """
+            INSERT INTO chunks (document_id, source_id, ord, kind, text, distilled)
+            VALUES (:documentoId, :fuenteId, :ord, 'doc_section', 'texto', CAST(:d AS jsonb))
+            """)
+        .param("documentoId", documentoId)
+        .param("fuenteId", fuenteId)
+        .param("ord", ord)
+        .param("d", distilled)
+        .update();
+  }
+
   private long crearFuente(String kind, String nombre) {
     return jdbc.sql("INSERT INTO sources (kind, name) VALUES (:kind, :nombre) RETURNING id")
         .param("kind", kind)

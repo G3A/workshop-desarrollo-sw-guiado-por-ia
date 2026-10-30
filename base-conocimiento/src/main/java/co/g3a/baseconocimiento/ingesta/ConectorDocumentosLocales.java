@@ -47,15 +47,42 @@ class ConectorDocumentosLocales {
 
   private final IngestaRepositorio repo;
   private final ExtractorDocling extractorDocling;
+  private final ExtractorOpenDataLoader extractorOpenDataLoader;
+  private final ExtractorOffice extractorOffice;
+  private final boolean pdfPorOpenDataLoader;
+  private final boolean officePorJava;
   private final Path raiz;
 
   ConectorDocumentosLocales(
       IngestaRepositorio repo,
       ExtractorDocling extractorDocling,
-      @Value("${kb.ingesta.vault-dir}") String vaultDir) {
+      ExtractorOpenDataLoader extractorOpenDataLoader,
+      ExtractorOffice extractorOffice,
+      @Value("${kb.ingesta.vault-dir}") String vaultDir,
+      @Value("${kb.ingesta.motor-pdf:opendataloader}") String motorPdf,
+      @Value("${kb.ingesta.motor-office:java}") String motorOffice) {
     this.repo = repo;
     this.extractorDocling = extractorDocling;
+    this.extractorOpenDataLoader = extractorOpenDataLoader;
+    this.extractorOffice = extractorOffice;
+    this.pdfPorOpenDataLoader = "opendataloader".equalsIgnoreCase(motorPdf);
+    this.officePorJava = "java".equalsIgnoreCase(motorOffice);
     this.raiz = Path.of(vaultDir).resolve("documentos");
+  }
+
+  /**
+   * Elige el motor por extensión (ADR-0014): OpenDataLoader para PDF y Tika/POI para DOCX y PPTX,
+   * cada uno solo si su propiedad lo pide; si no, docling-serve como hasta ahora.
+   */
+  private String extraer(
+      long sourceId, String externalId, String nombre, String ext, byte[] bytes) {
+    if (ext.equals("pdf") && pdfPorOpenDataLoader) {
+      return extractorOpenDataLoader.extraerMarkdown(nombre, bytes);
+    }
+    if ((ext.equals("docx") || ext.equals("pptx")) && officePorJava) {
+      return extractorOffice.extraerMarkdown(nombre, bytes);
+    }
+    return extraerViaDocling(sourceId, externalId, nombre, bytes);
   }
 
   record Resumen(
@@ -100,14 +127,15 @@ class ConectorDocumentosLocales {
       }
 
       try {
-        boolean requiereDocling =
-            extension(archivo).map(EXTENSIONES_DOCLING::contains).orElse(false);
-        if (requiereDocling) {
+        String ext = extension(archivo).orElse("");
+        boolean requiereExtraccion = EXTENSIONES_DOCLING.contains(ext);
+        if (requiereExtraccion) {
           repo.marcarArchivoExtrayendo(sourceId, externalId);
         }
+        String nombre = archivo.getFileName().toString();
         String texto =
-            requiereDocling
-                ? extraerViaDocling(sourceId, externalId, archivo.getFileName().toString(), bytes)
+            requiereExtraccion
+                ? extraer(sourceId, externalId, nombre, ext, bytes)
                 : new String(bytes, StandardCharsets.UTF_8);
 
         long documentoId =
@@ -123,7 +151,9 @@ class ConectorDocumentosLocales {
 
         int ord = 0;
         for (ChunkATexto chunk : trocear(texto)) {
-          String distilled = Json.escribir(Map.of("summary", chunk.resumen()));
+          // La ruta va aparte del summary (issue #57): las acciones agrupan por capitulo con ella.
+          String distilled =
+              Json.escribir(Map.of("summary", chunk.resumen(), "ruta", chunk.ruta()));
           long chunkId =
               repo.insertarChunk(
                   documentoId, sourceId, proyecto, ord++, "doc_section", chunk.cuerpo(), distilled);
@@ -227,11 +257,14 @@ class ConectorDocumentosLocales {
     }
   }
 
-  private record ChunkATexto(String cuerpo, String resumen) {}
+  private record ChunkATexto(String cuerpo, String resumen, List<String> ruta) {}
 
   private static List<ChunkATexto> trocear(String texto) {
     return ChunkerEncabezados.trocear(texto).stream()
-        .map(s -> new ChunkATexto(s.cuerpo(), resumenDe(s.rutaEncabezados(), s.cuerpo())))
+        .map(
+            s ->
+                new ChunkATexto(
+                    s.cuerpo(), resumenDe(s.rutaEncabezados(), s.cuerpo()), s.rutaEncabezados()))
         .toList();
   }
 

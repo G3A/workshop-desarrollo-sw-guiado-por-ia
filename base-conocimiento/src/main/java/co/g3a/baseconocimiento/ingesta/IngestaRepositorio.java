@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Todo el SQL de la ingesta en un solo lugar: fuentes, documentos, chunks y la cola de trabajo.
@@ -144,28 +145,38 @@ class IngestaRepositorio {
   record Trabajo(long id, String kind, String payload, int attempts) {}
 
   /**
-   * Toma el siguiente trabajo pendiente y lo marca {@code running} en la misma transacción del
-   * llamador. {@code FOR UPDATE SKIP LOCKED} es lo que permite varios workers sin coordinarse: cada
-   * uno se salta lo que otro ya tomó, en vez de bloquearse esperando.
+   * Toma el siguiente trabajo y lo marca {@code running}, en una transacción propia y corta: al
+   * volver, la conexión ya está libre. {@code FOR UPDATE SKIP LOCKED} permite varios workers sin
+   * coordinarse: cada uno se salta lo que otro está tomando en ese instante.
+   *
+   * <p>Como el trabajo ya no corre dentro de una transacción, una caída a mitad de camino lo deja
+   * en {@code running} sin rollback que lo devuelva. Por eso, si no hay pendientes, se retoma uno
+   * que lleve más de {@code plazoSegundos} en {@code running}: ese trabajo fue abandonado.
    */
-  Optional<Trabajo> tomarSiguienteTrabajo() {
+  @Transactional
+  Optional<Trabajo> tomarSiguienteTrabajo(long plazoSegundos) {
     var trabajo =
-        jdbc.sql(
+        tomarUno(
                 """
                         SELECT id, kind, payload::text AS payload, attempts FROM ingest_jobs
                         WHERE status = 'pending' AND run_after <= now()
                         ORDER BY id
                         FOR UPDATE SKIP LOCKED
                         LIMIT 1
-                        """)
-            .query(
-                (rs, n) ->
-                    new Trabajo(
-                        rs.getLong("id"),
-                        rs.getString("kind"),
-                        rs.getString("payload"),
-                        rs.getInt("attempts")))
-            .optional();
+                        """,
+                plazoSegundos)
+            .or(
+                () ->
+                    tomarUno(
+                        """
+                        SELECT id, kind, payload::text AS payload, attempts FROM ingest_jobs
+                        WHERE status = 'running'
+                          AND locked_at < now() - make_interval(secs => :plazo)
+                        ORDER BY id
+                        FOR UPDATE SKIP LOCKED
+                        LIMIT 1
+                        """,
+                        plazoSegundos));
 
     trabajo.ifPresent(
         t ->
@@ -178,6 +189,29 @@ class IngestaRepositorio {
                 .update());
 
     return trabajo;
+  }
+
+  private Optional<Trabajo> tomarUno(String sql, long plazoSegundos) {
+    var consulta = jdbc.sql(sql);
+    if (sql.contains(":plazo")) {
+      consulta = consulta.param("plazo", plazoSegundos);
+    }
+    return consulta
+        .query(
+            (rs, n) ->
+                new Trabajo(
+                    rs.getLong("id"),
+                    rs.getString("kind"),
+                    rs.getString("payload"),
+                    rs.getInt("attempts")))
+        .optional();
+  }
+
+  /** Guarda el vector y cierra el trabajo juntos: o quedan los dos, o ninguno. */
+  @Transactional
+  void completarEmbedding(long trabajoId, long chunkId, com.pgvector.PGvector vector) {
+    actualizarEmbedding(chunkId, vector);
+    marcarHecho(trabajoId);
   }
 
   void marcarHecho(long trabajoId) {

@@ -54,7 +54,7 @@ spring:
       # spring.ai.openai mas abajo): solo lo usa el Destilador (Teams, F6),
       # que se quedo en Ollama -- ver ADR-0009.
       chat:
-        model: "${KB_TEAMS_LLM_MODELO:gemma3:4b}"
+        model: "${KB_TEAMS_LLM_MODELO:hf.co/ibm-granite/granite-4.1-3b-GGUF:Q3_K_M}"
         temperature: 0.2
       embedding:
         model: "${KB_EMBEDDINGS_MODELO:bge-m3}"
@@ -127,14 +127,27 @@ kb:
   llm:
     # El modelo del Destilador (Teams, F6): el unico componente de `llm/` que
     # se quedo en Ollama (ver spring.ai.openai mas arriba para el resto).
-    destilador-modelo: "${KB_TEAMS_LLM_MODELO:gemma3:4b}"
-    # gemma3 no trae modo "thinking" -- esta propiedad y disableThinking()
+    destilador-modelo: "${KB_TEAMS_LLM_MODELO:hf.co/ibm-granite/granite-4.1-3b-GGUF:Q3_K_M}"
+    # El default (Granite 4.1, ADR-0014) no trae modo "thinking" en Ollama: queda
+    # en false. Esta propiedad y disableThinking()
     # (ver DestiladorOllama) nacieron por un problema real de qwen3:4b, el
     # modelo original: minutos de razonamiento interno antes de cada
     # respuesta, medido en vivo. Ya solo la usa el Destilador: Bonsai (el
     # modelo del resto del pipeline desde ADR-0009) no tiene modo thinking,
     # asi que no hace falta apagarselo.
     thinking-habilitado: ${KB_LLM_THINKING_HABILITADO:false}
+    # Tokens de contexto del modelo (num_ctx de Ollama, entrada y salida juntas).
+    # De aca sale cuanto texto entra en una pasada de lectura de un documento
+    # largo sin desbordar (issue #57): si subes num_ctx, subelo tambien.
+    contexto-tokens: ${KB_LLM_CONTEXTO_TOKENS:4096}
+    # Lo que rinde el modelo hasta que lo mide (issue #57): con cada llamada de
+    # lectura se aprende de su `usage` real. Defaults medidos con Granite 4.1 3B
+    # Q3_K_M en la T600: ~18 tokens/s de entrada, ~7 de salida, ~3 caracteres
+    # por token (2,7 en ingles tecnico con codigo, 3,6 en prosa en espanol).
+    rendimiento:
+      caracteres-por-token: ${KB_LLM_CARACTERES_POR_TOKEN:3.0}
+      tokens-entrada-por-segundo: ${KB_LLM_TOKENS_ENTRADA_POR_SEGUNDO:18}
+      tokens-salida-por-segundo: ${KB_LLM_TOKENS_SALIDA_POR_SEGUNDO:7}
 
     sintesis-estructurada:
       # false (default): SintetizadorOpenAi, prosa libre con [n] incrustado --
@@ -260,6 +273,10 @@ kb:
     # orquestacion). Sumados pueden superar OLLAMA_NUM_PARALLEL; en ese caso
     # Ollama encola y la accion tarda mas, no falla.
     max-concurrentes: ${KB_ACCIONES_MAX_CONCURRENTES:2}
+    # Si leer completos los documentos elegidos tardaria mas que esto (segundos,
+    # estimado con el rendimiento medido del modelo), la UI ofrece elegir modo:
+    # completo, por capitulos o rapido (issue #57). 600 = 10 min.
+    umbral-eleccion-segundos: ${KB_ACCIONES_UMBRAL_ELECCION_SEGUNDOS:600}
 
   ingesta:
     # OJO: distinta de KB_VAULT_DIR (esa es la ruta en el HOST que el compose
@@ -285,6 +302,12 @@ kb:
     # (ver compose.yml); habilitar esto EXIGE ademas montarlo de lectura y
     # escritura -- es una decision consciente, no un flag cosmetico.
     carga-habilitada: ${KB_INGESTA_CARGA_HABILITADA:false}
+    # Quién convierte los documentos a Markdown (ADR-0014). PDF: "opendataloader"
+    # (default, en el proceso, sin GPU ni contenedor) o "docling" (docling-serve,
+    # ADR-0010; el único con OCR, para PDF escaneados).
+    motor-pdf: ${KB_INGESTA_MOTOR_PDF:opendataloader}
+    # DOCX y PPTX: "java" (default, Apache Tika y POI en el proceso) o "docling".
+    motor-office: ${KB_INGESTA_MOTOR_OFFICE:java}
 
   teams:
     habilitado: ${KB_TEAMS_HABILITADO:false}

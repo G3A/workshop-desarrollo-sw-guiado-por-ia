@@ -204,10 +204,22 @@ desaparecer. Traducir no usa el presupuesto: parte cada sección en bloques de �
 párrafos, deja pasar los `code_block` sin LLM, detecta el idioma por documento de forma perezosa
 y omite (y lo dice) el documento cuyo origen ya es el destino.
 
-`AccionesController` (`web`) expone siete rutas, todas fuera de `ApiTokenFilter` por el mismo
+Leer entero un documento muy largo puede tardar horas con el modelo local (issue #57,
+[ADR-0016](adrs/0016-acciones-eligen-modo-de-lectura.md)). El tamaño de la pasada sale del
+contexto del modelo y de los caracteres por token que `RendimientoDelModelo` mide en cada
+llamada, y con esa misma medición `EstimadorDeAcciones` calcula, sin llamar al LLM, cuánto
+tardaría cada modo: **completo** (las pasadas de arriba), **por capítulos** (`Capitulos` agrupa
+las secciones por la ruta de encabezados y cada capítulo es una llamada con un extracto acotado;
+cada uno se anuncia con un evento `capitulo` que trae su nota) y **rápido** (`Representativas`
+elige secciones con k-means sobre los embeddings y solo se hace la llamada final). La cobertura
+dice con qué `modo` entró cada documento largo, y el contexto final se lo avisa al modelo.
+
+`AccionesController` (`web`) expone ocho rutas, todas fuera de `ApiTokenFilter` por el mismo
 motivo que `/api/chat` (mismo `EventSource` sin cabeceras): `GET /api/acciones/limites` (los
-topes, para que la UI deshabilite el control antes de un 400), `GET /api/acciones/{resumir|
-sintetizar}` (SSE: `etiqueta`, `cobertura`, `citas`, `token`×n, `fin`), `GET /api/acciones/
+topes, para que la UI deshabilite el control antes de un 400), `GET /api/acciones/estimado`
+(JSON con el tiempo de cada modo y si conviene preguntar), `GET /api/acciones/{resumir|
+sintetizar}` (SSE: `etiqueta`, `cobertura`, `citas`, `lectura` o `capitulo` según el `modo`,
+`token`×n, `fin`), `GET /api/acciones/
 {preguntas|ideas}` (igual, pero un único `resultado` JSON en vez de tokens), `GET
 /api/acciones/traducir-documentos` (`documentos`, `idioma-detectado`, `documento-omitido`,
 `progreso`, `texto`, `fin`) y `POST /api/acciones/traducir-texto` (cuerpo JSON leído con `fetch`,

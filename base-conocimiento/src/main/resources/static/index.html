@@ -467,6 +467,42 @@
   .insignia-cobertura.parcial { color: var(--advertencia); }
   .insignia-cobertura.no-indexado { color: var(--texto-atenuado); }
   .insignia-cobertura.leyendo { color: var(--advertencia); }
+  .boton-ampliar {
+    margin-top: 0.5rem;
+    padding: 0.3rem 0.8rem;
+    border: 1px solid var(--acento);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--acento);
+    font-size: 0.82rem;
+    cursor: pointer;
+  }
+  .boton-ampliar:hover { background: var(--bg-burbuja-usuario); }
+  .turno-capitulos ol { margin: 0.4rem 0 0; padding-left: 1.2rem; display: flex; flex-direction: column; gap: 0.5rem; }
+  .turno-capitulos li p { margin: 0.15rem 0 0; font-size: 0.87rem; white-space: pre-wrap; }
+
+  /* ---------- Selector de modo (issue #57, alternativa D) ---------- */
+  #modal-modo { max-width: 520px; }
+  #modal-modo-descripcion { font-size: 0.9rem; color: var(--texto-atenuado); margin: 0 0 0.9rem; }
+  #modal-modo-opciones { display: flex; flex-direction: column; gap: 0.6rem; }
+  .opcion-modo {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    border: 1px solid var(--borde);
+    border-radius: 12px;
+    padding: 0.8rem 0.95rem;
+    cursor: pointer;
+  }
+  .opcion-modo:has(input:checked) { border: 2px solid var(--acento); }
+  .opcion-modo input { margin-top: 0.2rem; }
+  .opcion-modo-cuerpo { display: flex; flex-direction: column; gap: 0.25rem; flex: 1 1 auto; }
+  .opcion-modo-cabecera { display: flex; justify-content: space-between; gap: 0.75rem; }
+  .opcion-modo-tiempo { font-size: 0.82rem; color: var(--acento); white-space: nowrap; }
+  .opcion-modo-texto { font-size: 0.82rem; line-height: 1.45; color: var(--texto-atenuado); }
+  .modal-modo-botones { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem; }
+  .modal-modo-botones .cerrar { margin-top: 0; }
+  #modal-modo-confirmar { background: var(--acento); border-color: var(--acento); color: #fff; }
 
   .turno-estructurado { display: flex; flex-direction: column; gap: 0.8rem; margin: 0.2rem 0 0.4rem; }
   .turno-estructurado .tema h4, .turno-estructurado .idea h4 { margin: 0 0 0.35rem; font-size: 0.92rem; }
@@ -1271,6 +1307,16 @@
       aunque el contenido exista. La respuesta completa de abajo sí busca por
       significado y no tiene esta limitación.</p>
     <button type="button" class="cerrar" onclick="document.getElementById('modal-info-previa').close()">Cerrar</button>
+  </dialog>
+
+  <dialog id="modal-modo">
+    <h2 id="modal-modo-titulo"></h2>
+    <p id="modal-modo-descripcion"></p>
+    <div id="modal-modo-opciones" role="radiogroup" aria-label="Modo de lectura"></div>
+    <div class="modal-modo-botones">
+      <button type="button" class="cerrar" id="modal-modo-cancelar">Cancelar</button>
+      <button type="button" class="cerrar" id="modal-modo-confirmar">Resumir</button>
+    </div>
   </dialog>
 
   <dialog id="modal-documento">

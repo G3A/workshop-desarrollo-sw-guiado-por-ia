@@ -2,9 +2,11 @@ package co.g3a.baseconocimiento.web;
 
 import co.g3a.baseconocimiento.acciones.Acciones;
 import co.g3a.baseconocimiento.acciones.Acciones.CoberturaDocumento;
+import co.g3a.baseconocimiento.acciones.Acciones.Estimado;
 import co.g3a.baseconocimiento.acciones.Acciones.EventoAccion;
 import co.g3a.baseconocimiento.acciones.Acciones.EventoTraduccion;
 import co.g3a.baseconocimiento.acciones.Acciones.Limites;
+import co.g3a.baseconocimiento.acciones.Acciones.Modo;
 import co.g3a.baseconocimiento.acciones.Acciones.ResultadoDeAccion;
 import co.g3a.baseconocimiento.acciones.Acciones.TextoTraducido;
 import co.g3a.baseconocimiento.acciones.Acciones.Tipo;
@@ -13,10 +15,12 @@ import co.g3a.baseconocimiento.compartido.Dominio.Cita;
 import co.g3a.baseconocimiento.compartido.Dominio.ProyectoId;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 import org.springframework.http.MediaType;
@@ -79,6 +83,32 @@ class AccionesController {
   }
 
   /**
+   * Cuanto tardaria la accion en cada modo, antes de abrir el stream (issue #57): con {@code
+   * elegir} la UI muestra el selector en vez de arrancar. JSON, no SSE: no llama al LLM.
+   *
+   * @param tipo {@code resumir}, {@code sintetizar}, {@code preguntas} o {@code ideas}
+   */
+  @GetMapping("/api/acciones/estimado")
+  ResponseEntity<Object> estimado(
+      @RequestParam(required = false) String tipo,
+      @RequestParam(required = false) String documentos,
+      @RequestParam(required = false) String projectId) {
+    Tipo tipoAccion = tipoDe(tipo);
+    if (tipoAccion == null) {
+      return ResponseEntity.badRequest()
+          .body(Map.of("error", "tipo debe ser resumir, sintetizar, preguntas o ideas"));
+    }
+    List<Long> ids;
+    try {
+      ids = idsValidados(documentos);
+    } catch (IllegalArgumentException invalida) {
+      return ResponseEntity.badRequest().body(Map.of("error", invalida.getMessage()));
+    }
+    Estimado estimado = acciones.estimar(tipoAccion, ids, ParametrosWeb.proyectoDe(projectId));
+    return ResponseEntity.ok(estimado);
+  }
+
+  /**
    * {@code etiqueta}, {@code cobertura}, {@code citas}, luego {@code lectura}×n (una por pasada
    * sobre cada documento largo; ninguna si todos caben), y la salida: {@code token}×n para resumir
    * y sintetizar, un unico {@code resultado} (el JSON estructurado) para preguntas e ideas; {@code
@@ -88,28 +118,34 @@ class AccionesController {
    *     (con {@code KB_API_TOKEN} configurado, 401 antes: el filtro solo exceptua estas cuatro
    *     rutas exactas)
    * @param idioma codigo ISO 639-1 del resultado; ausente = español
+   * @param modo {@code completo} (por defecto), {@code capitulos} (un {@code capitulo} por cada
+   *     capitulo leido en vez de las {@code lectura}) o {@code rapido} (sin lecturas: secciones
+   *     representativas y la llamada final), issue #57
    */
   @GetMapping(value = "/api/acciones/{tipo}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
   ResponseEntity<Flux<ServerSentEvent<Object>>> accion(
       @PathVariable String tipo,
       @RequestParam(required = false) String documentos,
       @RequestParam(required = false) String projectId,
-      @RequestParam(required = false) String idioma) {
+      @RequestParam(required = false) String idioma,
+      @RequestParam(required = false) String modo) {
     Tipo tipoAccion = tipoDe(tipo);
     if (tipoAccion == null) {
       return ResponseEntity.notFound().build();
     }
     List<Long> ids;
     String codigo;
+    Modo modoLectura;
     try {
       ids = idsValidados(documentos);
       codigo = idiomaValidado(idioma == null || idioma.isBlank() ? "es" : idioma);
+      modoLectura = modoDe(modo);
     } catch (IllegalArgumentException invalida) {
       return rechazo(invalida.getMessage());
     }
     ProyectoId proyecto = ParametrosWeb.proyectoDe(projectId);
 
-    ResultadoDeAccion resultado = acciones.ejecutar(tipoAccion, ids, proyecto, codigo);
+    ResultadoDeAccion resultado = acciones.ejecutar(tipoAccion, ids, proyecto, codigo, modoLectura);
     return stream(
         Flux.concat(
             cabecera(resultado.etiqueta(), resultado.cobertura(), resultado.citas()),
@@ -119,6 +155,7 @@ class AccionesController {
   private static ServerSentEvent<Object> eventoDe(EventoAccion evento) {
     return switch (evento) {
       case EventoAccion.Lectura e -> json("lectura", e);
+      case EventoAccion.CapituloLeido e -> json("capitulo", e);
       case EventoAccion.Token e -> json("token", e.fragmento());
       case EventoAccion.Resultado e -> json("resultado", e.valor());
     };
@@ -205,6 +242,16 @@ class AccionesController {
     };
   }
 
+  /** Ausente = completo. */
+  private static Modo modoDe(String modo) {
+    return switch (modo == null ? "" : modo.strip().toLowerCase(Locale.ROOT)) {
+      case "", "completo" -> Modo.COMPLETO;
+      case "capitulos" -> Modo.POR_CAPITULOS;
+      case "rapido" -> Modo.RAPIDO;
+      default -> throw new IllegalArgumentException("modo debe ser completo, capitulos o rapido");
+    };
+  }
+
   /** Sin duplicados, no vacia y dentro del tope: lo que la fachada da por hecho. */
   private List<Long> idsValidados(String documentosCsv) {
     List<Long> ids =
@@ -272,7 +319,33 @@ class AccionesController {
         Flux.concat(cuerpo, fin)
             .onErrorResume(
                 error -> Flux.just(json("error-servidor", MensajesDeError.mensajeDe(error))));
-    return ResponseEntity.ok().contentType(MediaType.TEXT_EVENT_STREAM).body(conCierre);
+    return ResponseEntity.ok()
+        .contentType(MediaType.TEXT_EVENT_STREAM)
+        .body(conLatido(conCierre, LATIDO));
+  }
+
+  /**
+   * Cada cuanto se manda un latido. Una pasada de lectura de un documento largo tarda minutos (~3
+   * con Granite en la T600, medido con jls25.pdf) y en ese tiempo el stream no tenia nada que
+   * mandar: el fetch de Node corto la conexion a los 300 s, y un proxy con timeout de inactividad
+   * haria lo mismo. 15 s queda lejos de cualquier timeout habitual.
+   */
+  static final Duration LATIDO = Duration.ofSeconds(15);
+
+  /**
+   * Mezcla un comentario SSE ({@code :latido}) cada {@code cada} con los eventos, hasta el evento
+   * que cierra el stream ({@code fin}, {@code error-servidor}). El EventSource del navegador ignora
+   * los comentarios: la pagina no cambia.
+   */
+  static Flux<ServerSentEvent<Object>> conLatido(
+      Flux<ServerSentEvent<Object>> eventos, Duration cada) {
+    Flux<ServerSentEvent<Object>> latidos =
+        Flux.interval(cada, cada).map(n -> ServerSentEvent.builder().comment("latido").build());
+    return Flux.merge(eventos, latidos).takeUntil(AccionesController::cierra);
+  }
+
+  private static boolean cierra(ServerSentEvent<Object> evento) {
+    return "fin".equals(evento.event()) || "error-servidor".equals(evento.event());
   }
 
   private static ResponseEntity<Flux<ServerSentEvent<Object>>> rechazo(String motivo) {
