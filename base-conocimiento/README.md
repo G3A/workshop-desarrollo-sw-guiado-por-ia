@@ -84,7 +84,7 @@ Estas son todas las herramientas, en orden. Solo las dos primeras son obligatori
 |---|---|---|---|---|
 | 1 | **Docker Desktop** (con WSL2) | Todo corre en contenedores, incluido el build de la app | `winget install Docker.DockerDesktop` — luego ábrelo una vez y deja que termine de configurar WSL2 | `docker version` y `docker compose version` |
 | 2 | **Git for Windows** | Clonar el repo, y su `sh.exe` es el shell que usa `make` (ver abajo) | `winget install Git.Git` | `git --version` |
-| 3 | **GNU Make** | Los comandos de este README. Si no lo quieres, mira [Sin `make`](#sin-make) | `winget install ezwinports.make` | `make --version` |
+| 3 | **GNU Make** | Los comandos de este README. Si no lo quieres, mira [Sin `make`](#sin-make) | `powershell -ExecutionPolicy Bypass -File scripts\instalar-make.ps1` (ver [abajo](#instalar-make-con-el-script)), o a mano `winget install ezwinports.make` | `make --version` |
 | 4 | **Driver NVIDIA** *(opcional)* | GPU para el LLM y los embeddings. Docker Desktop pasa la tarjeta a WSL2 solo, **no** hace falta instalar `nvidia-container-toolkit` a mano en Windows | [nvidia.com/drivers](https://www.nvidia.com/download/index.aspx) — **≥ 550** o Ollama la ignora y cae a CPU en silencio; el perfil Bonsai necesita **≥ 560** | `nvidia-smi` |
 | 5 | **JDK 25** *(solo para desarrollar)* | Compilar y correr las pruebas fuera de Docker | `winget install EclipseAdoptium.Temurin.25.JDK` y apunta `JAVA_HOME` ahí | `make jdk-check` |
 | 6 | **gitleaks** *(solo para desarrollar)* | El gate de secretos (`make secrets`) | `winget install Gitleaks.Gitleaks` | `gitleaks version` |
@@ -104,6 +104,21 @@ usa como shell, porque las recetas son POSIX (pipes, `if [ ... ]`, `command -v`)
 
 Sin eso, Make caería a `cmd.exe` y casi todo fallaría con «no se reconoce como un comando interno o
 externo» — no hace falta abrir Git Bash a propósito, ni agregar nada al `PATH` a mano.
+
+#### Instalar `make` con el script
+
+Desde la raíz del repo, en PowerShell:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\instalar-make.ps1
+```
+
+Si `make` ya está, muestra la versión y no instala nada. Si no, lo instala con winget
+(`ezwinports.make`, GNU Make 4.x; no `GnuWin32.Make`, que es la 3.81 de 2006) y, si winget no lo
+dejó en el `PATH`, agrega su carpeta al `PATH` de tu usuario, sin pedir administrador. También avisa
+si falta Git for Windows. Se puede correr las veces que quieras. `-ExecutionPolicy Bypass` vale
+solo para esa ejecución: no cambia la política de tu equipo. Al terminar, cierra y vuelve a abrir
+las terminales que ya tenías abiertas.
 
 Para compilar (`make build`, `test`, `verify`, `check`) además necesitas **JDK 25** en `JAVA_HOME`.
 `make jdk-check` lo verifica y te dice exactamente qué poner si no cuadra, en vez de dejar que
