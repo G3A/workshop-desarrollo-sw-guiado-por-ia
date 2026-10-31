@@ -79,45 +79,42 @@ if ($detalle.Count -eq 0) {
     foreach ($l in $detalle) { $informe.Add($l.ToString()) }
 }
 
-# kb-api es el CLIENTE. Cuando el error dice "running the model", lo que fallo
-# ocurrio DENTRO de Ollama -- su proceso runner murio a media peticion, y eso
-# solo se ve en `docker logs kb-ollama`. Sin esta seccion el informe daba mil
-# vueltas sobre el mismo "unexpected EOF" del lado del cliente, que no dice por
-# que: costo una vuelta entera de diagnostico contra un equipo real.
+# kb-api es el CLIENTE. Cuando el error viene del modelo, lo que fallo ocurrio
+# DENTRO de llama-server, que corre en el host fuera de Docker (ADR-0017): eso
+# solo se ve en su log, en KB_DATA_DIR\llama.cpp\logs. Sin esta seccion el
+# informe daba vueltas sobre el error del lado del cliente, que no dice por que.
 #
-# Las lineas que importan de Ollama no llevan la palabra ERROR, asi que el filtro
-# es distinto al de kb-api: se buscan las senales de que el runner se cayo o no
-# cabe en memoria.
-$hayOllama = $contenedores -contains "kb-ollama"
-$informe.Add("")
-$informe.Add("## Ollama (kb-ollama)")
-$informe.Add("")
-if (-not $hayOllama) {
-    $informe.Add("El contenedor kb-ollama no esta corriendo.")
-} else {
-    $logsOllama = docker logs kb-ollama --tail $Lineas 2>$null
-    $patronOllama = "error|failed|panic|signal|killed|out of memory|OOM|no space|EOF|" +
-                    "unable to|cannot|not enough|memory|offload|gpu layers|llama runner"
-    $trazaOllama = $logsOllama |
-        Select-String -Pattern $patronOllama |
-        Select-Object -Last 40
-    if ($trazaOllama.Count -eq 0) {
-        $informe.Add("Nada relevante en las ultimas $Lineas lineas de kb-ollama.")
-    } else {
-        foreach ($l in $trazaOllama) { $informe.Add($l.ToString()) }
-    }
-
-    # El reparto real del modelo: cuanto quedo en GPU y cuanto en CPU. Un
-    # "100% CPU" o un reparto raro explica por si solo un runner que muere.
+# Las lineas que importan de llama-server no llevan la palabra ERROR, asi que el
+# filtro es distinto al de kb-api: se buscan las senales de que el proceso se
+# cayo o no cabe en memoria.
+$datos = if ($env:KB_DATA_DIR) { $env:KB_DATA_DIR } else { ".\.data" }
+foreach ($instancia in @("llm", "embeddings")) {
+    $log = Join-Path $datos "llama.cpp\logs\$instancia.log"
     $informe.Add("")
-    $informe.Add("### ollama ps (reparto del modelo cargado)")
-    $ps = docker exec kb-ollama ollama ps 2>$null
-    if ($LASTEXITCODE -eq 0 -and $null -ne $ps) {
-        foreach ($l in $ps) { $informe.Add($l.ToString()) }
+    $informe.Add("## llama-server: $instancia ($log)")
+    $informe.Add("")
+    if (-not (Test-Path $log)) {
+        $informe.Add("No hay log: la instancia no arranco nunca con make up / make llm-up.")
+        continue
+    }
+    $patron = "error|failed|exception|abort|out of memory|OOM|unable to|cannot|" +
+              "not enough|CUDA|offload|n_ctx|exceeds"
+    $traza = Get-Content $log -Tail $Lineas |
+        Select-String -Pattern $patron |
+        Select-Object -Last 40
+    if ($traza.Count -eq 0) {
+        $informe.Add("Nada relevante en las ultimas $Lineas lineas.")
     } else {
-        $informe.Add("(no respondio)")
+        foreach ($l in $traza) { $informe.Add($l.ToString()) }
     }
 }
+
+# Si cada instancia corre y responde: un proceso muerto explica por si solo el
+# "Request failed" del lado de la api.
+$informe.Add("")
+$informe.Add("### make llm-estado")
+$estado = node scripts/llama-cpp.mjs estado 2>&1
+foreach ($l in $estado) { $informe.Add($l.ToString()) }
 
 # La memoria es la causa mas comun de que el runner muera, y ninguna de las dos
 # mitades se ve desde dentro del contenedor: la VRAM de la tarjeta y el limite de

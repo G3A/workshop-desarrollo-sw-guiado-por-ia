@@ -10,22 +10,20 @@ decisión puntual, ver [`docs/adrs/`](adrs).
 | Servicio | Imagen | Rol |
 |---|---|---|
 | `db` | `pgvector/pgvector:pg18-trixie` | PostgreSQL 18 + pgvector: tabla única de embeddings, FTS, cola de ingesta, auditoría |
-| `ollama` | `ollama/ollama` | `gemma3:4b` (planner, destilación, síntesis) y `bge-m3` (embeddings) |
 | `docling-serve` | `quay.io/docling-project/docling-serve-cpu` | Extrae PDF/DOCX/PPTX a Markdown para la ingesta de documentos locales — [ADR-0010](adrs/0010-docling-reemplaza-pdfbox.md) |
 | `api` | build propio (Java) | Ingesta, retrieval, orquestación, UI estática, reranker y endpoint de Teams |
+| `llama-server` (host, fuera de Docker) | llama.cpp `b11960`, nativo | Dos instancias: Granite 4.1 3B Q3_K_M (LLM, puerto 8081) y `bge-m3` (embeddings, puerto 8082) — [ADR-0017](adrs/0017-llama-cpp-nativo-reemplaza-a-ollama.md) |
 
-`compose.yml` es el perfil base en CPU. `compose.gpu.yml` es un override que reserva la GPU para
-`gemma3:4b`; `bge-m3` se fija a CPU (`make pin-embeddings-cpu`) porque 4 GB de VRAM no sostienen
-los dos modelos a la vez. `make up` detecta la GPU sola (via `nvidia-smi`) y aplica el override
-automaticamente -- el perfil CPU solo se usa cuando de verdad no hay tarjeta NVIDIA visible.
-`gemma3:4b` ni siquiera entra completo en esa VRAM (60% GPU / 40% CPU medido en vivo); se investigó
-una alternativa que sí entra 100% pero se pospuso integrarla -- ver
-[`docs/investigacion-vram-y-modelo-llm.md`](investigacion-vram-y-modelo-llm.md) y
-[ADR-0009](adrs/0009-bonsai-8b-integracion-pospuesta.md).
+Los modelos no corren en contenedores: `llama-server` es un proceso del host que maneja
+`scripts/llama-cpp.mjs`, y la `api` lo alcanza por `host.docker.internal`. `make up` lee la VRAM con
+`nvidia-smi` y decide cuántas capas van a la GPU en cada instancia: el LLM, todas, siempre que haya
+tarjeta; los embeddings, ninguna por debajo de 6 GB (`-dev none`), para dejarle la VRAM al LLM. El
+porqué del modelo está en [ADR-0015](adrs/0015-granite-41-3b-q3km-como-llm-por-defecto.md) y en
+[`docs/investigacion-vram-y-modelo-llm.md`](investigacion-vram-y-modelo-llm.md).
 
-`compose.docling-gpu.yml` es otro override opcional, independiente de los de arriba: cambia
-`docling-serve` a la imagen CUDA (`docling-serve-cu130`) para correr layout y tablas en GPU en vez
-de CPU. Comparte la misma VRAM que Bonsai/Ollama si corren a la vez -- ver el comentario del propio
+`compose.docling-gpu.yml` es el único override de compose: cambia `docling-serve` a la imagen CUDA
+(`docling-serve-cu130`) para correr layout y tablas en GPU en vez de CPU. Comparte la VRAM con el
+LLM -- ver el comentario del propio
 archivo, incluido un bug conocido de fuga de VRAM en docling-serve sin resolver a la fecha.
 
 ## Módulos (Spring Modulith)
@@ -41,7 +39,7 @@ verificadas por ArchUnit y `ApplicationModules.verify()` en cada build (`Arquite
 | `orquestacion` | Planner, executor, las 6 herramientas, síntesis, la fachada `Consultar` |
 | `acciones` | Resumir, sintetizar, preguntas, ideas y traducir sobre documentos elegidos a mano; la fachada `Acciones`. Independiente del RAG ([ADR-0013](adrs/0013-modulo-acciones-independiente-del-rag.md)) |
 | `modelos` | Cliente de embeddings y cross-encoder ONNX |
-| `llm` | Cliente de Ollama (chat, streaming, salida estructurada) |
+| `llm` | Cliente del LLM por la API compatible con OpenAI (chat, streaming, salida estructurada) |
 | `web` | Adaptador UI HTML/JS: REST, SSE, estáticos |
 | `teams` | Adaptador Bot Connector |
 | `seguridad` | Filtro de token Bearer sobre el API programático |
@@ -146,15 +144,15 @@ prefijo de URI, no por el módulo que la expone.
 
 ## Pipeline de 7 etapas (`/api/ask`, `/api/chat`)
 
-1. **Planificador** elige herramientas con salida estructurada forzada por Ollama.
+1. **Planificador** elige herramientas con salida estructurada forzada por esquema JSON.
 2-3. **Executor** las corre en paralelo sobre hilos virtuales, aislando el fallo de una sin tumbar
    las demás.
 4. **FusionDeHerramientas** deduplica por chunk entre herramientas, quedándose con el mejor puntaje.
    Justo después, **UmbralRelevancia** (ADR-0008) clasifica el mejor `rerank` en tres estados:
-   `INSUFICIENTE` salta directo a un mensaje fijo de "sin información" sin llamar a Ollama;
+   `INSUFICIENTE` salta directo a un mensaje fijo de "sin información" sin llamar al LLM;
    `SUFICIENTE` sigue de largo a sintetizar; `AMBIGUO` (la zona donde un solo score no certifica
    relevancia real — hay un contraejemplo documentado en el ADR) pasa por una segunda capa,
-   **VerificadorGrounding**: una clasificación binaria corta contra Ollama, no la síntesis completa.
+   **VerificadorGrounding**: una clasificación binaria corta contra el LLM, no la síntesis completa.
    El umbral y el techo de confianza son dinámicos según el tamaño del corpus del proyecto, no
    números fijos.
 5. El **Orquestador** expande cada fragmento elegido con sus vecinos por `ord` (se necesita tanto
@@ -189,8 +187,8 @@ Tiene su propio cupo de concurrencia (`CupoDeAcciones`): compartir el del orques
 depender de él.
 
 **El presupuesto de contexto es la decisión central.** `PresupuestoDeContexto` reparte
-`kb.acciones.max-caracteres-contexto` (7000 por defecto, calibrado para `num_ctx` 4096 del perfil
-Bonsai descontando prompt y salida) en partes iguales entre los documentos, del más corto al más
+`kb.acciones.max-caracteres-contexto` (7000 por defecto, calibrado para los 4096 tokens por
+consulta del LLM descontando prompt y salida) en partes iguales entre los documentos, del más corto al más
 largo, redistribuyendo lo que un documento corto no usa. Un documento que cabe en su cuota entra
 tal cual; uno que no **se lee entero por pasadas** antes de la acción (sub-issue #60): sus
 secciones se parten en tramos de `kb.acciones.max-caracteres-lectura` (10000), cada tramo se
@@ -272,8 +270,9 @@ pero no se hace cumplir todavía — decisión documentada como pendiente en
 
 ## Dónde termina Spring AI
 
-Spring AI 2.0 se usa **solo como cliente de Ollama**: `OllamaChatModel` para planner, destilación y
-síntesis en streaming con salida estructurada, y `OllamaEmbeddingModel` para los vectores. No se
+Spring AI 2.0 se usa **solo como cliente**, con un único proveedor: `OpenAiChatModel` contra la
+instancia del LLM de `llama-server` para planner, destilación y síntesis en streaming con salida
+estructurada, y `OpenAiEmbeddingModel` contra la de embeddings para los vectores. No se
 usan sus abstracciones de RAG ni `PgVectorStore` — un `VectorStore` no sabe expresar cuatro señales
 independientes fusionadas por RRF. El retrieval va escrito a mano en SQL sobre `JdbcClient`.
 
@@ -282,13 +281,13 @@ independientes fusionadas por RRF. El retrieval va escrito a mano en SQL sobre `
 | Cerebras | Aquí |
 |---|---|
 | Postgres + una tabla de embeddings (3072-dim) | PostgreSQL 18 + pgvector, `embedding vector(1024)` |
-| Destilación LLM de hilos de Slack | Destilación de hilos de Teams con `gemma3:4b`, salida JSON forzada |
+| Destilación LLM de hilos de Slack | Destilación de hilos de Teams con el mismo LLM, salida JSON forzada |
 | Bursting con gates IDF ≥ 4.0 y ≥ 200 caracteres | Mismos umbrales |
 | CocoIndex para código | Chunker heurístico clase → método → bloque, incremental por commit |
 | 4 señales: FTS + vector + IDF + age decay | Idénticas, todas resueltas en SQL sobre Postgres |
 | RRF k=60 | `RrfFusion`, sin normalizar puntajes |
 | Cross-encoder 0–10, top 10 | `bge-reranker-v2-m3` sobre `onnxruntime-java` |
 | `search_code` con ripgrep | `ripgrep` invocado desde el contenedor |
-| 6 herramientas tras un planner | Planner con esquema JSON forzado en Ollama |
+| 6 herramientas tras un planner | Planner con esquema JSON forzado (`response_format` de OpenAI) |
 | MCP para agentes | Fuera del MVP; el núcleo queda listo para exponerlo después |
 | Sin corte de relevancia: siempre top-10 al LLM | **Desviación deliberada** — umbral dinámico + verificador de grounding de dos capas antes de sintetizar, ver [ADR-0008](adrs/0008-umbral-de-relevancia-antes-de-sintesis.md) |

@@ -46,8 +46,8 @@ class RerankerOnnx implements Reranker, AutoCloseable {
 
   RerankerOnnx(@Value("${kb.reranker.ruta}") String ruta) {
     this.directorioModelo = Path.of(ruta);
-    // Deja nucleos libres para la JVM y para Ollama, que suele correr en el
-    // mismo host durante el desarrollo local.
+    // Deja nucleos libres para la JVM y para llama-server, que corre en el
+    // mismo host (los embeddings, en CPU con una tarjeta de 4 GB).
     this.hilos = Math.max(1, Runtime.getRuntime().availableProcessors() - 2);
   }
 

@@ -5,7 +5,7 @@ work items, con **citas verificables**. Reproduce la arquitectura que Cerebras d
 *How we built our knowledge base*, con dos diferencias:
 
 - En vez de Slack, **dos adaptadores**: una UI HTML/JS y un bot de Teams.
-- **Costo cero**: modelos abiertos en contenedores locales. Sin APIs de pago, sin nube.
+- **Costo cero**: modelos abiertos que corren en tu máquina. Sin APIs de pago, sin nube.
 
 ## Qué lo hace distinto de un RAG genérico
 
@@ -66,35 +66,40 @@ y [ADR-0013](docs/adrs/0013-modulo-acciones-independiente-del-rag.md).
 
 ## Requisitos
 
-- Docker Desktop con WSL2
-- ~15 GB libres en disco (5 GB de modelos + base + imágenes)
+- Docker Desktop con WSL2, para la base, `docling-serve` y la app
+- Node 18 o más nuevo: `make` lo usa para manejar `llama-server`
+- ~10 GB libres en disco (3,4 GB de modelos y llama.cpp, más la base y las imágenes)
 - 16 GB de RAM (recomendado 32)
-- **Opcional**: GPU NVIDIA. En Windows con Docker Desktop no hace falta instalar
-  `nvidia-container-toolkit`: la tarjeta se pasa a WSL2 sola. En Linux sí
+- **Opcional**: GPU NVIDIA con driver ≥ 551. El LLM y los embeddings los sirve `llama-server`
+  directo en Windows, fuera de Docker ([ADR-0017](docs/adrs/0017-llama-cpp-nativo-reemplaza-a-ollama.md)),
+  así que la tarjeta no tiene que pasar por WSL2
 
 Java y Maven **no** hacen falta para ejecutarlo: el build ocurre dentro de Docker. Solo los
 necesitas para desarrollar (Java 25 y el wrapper `./mvnw` incluido).
 
 ### Instalación desde cero (Windows)
 
-Estas son todas las herramientas, en orden. Solo las dos primeras son obligatorias para
-**ejecutar** el sistema; el resto son para desarrollarlo o para comodidad.
+Estas son todas las herramientas, en orden. Las cuatro primeras hacen falta para **ejecutar** el
+sistema con `make`; el resto son para desarrollarlo o para comodidad.
 
 | # | Herramienta | Para qué | Instalar | Verificar |
 |---|---|---|---|---|
 | 1 | **Docker Desktop** (con WSL2) | Todo corre en contenedores, incluido el build de la app | `winget install Docker.DockerDesktop` — luego ábrelo una vez y deja que termine de configurar WSL2 | `docker version` y `docker compose version` |
 | 2 | **Git for Windows** | Clonar el repo, y su `sh.exe` es el shell que usa `make` (ver abajo) | `winget install Git.Git` | `git --version` |
 | 3 | **GNU Make** | Los comandos de este README. Si no lo quieres, mira [Sin `make`](#sin-make) | `powershell -ExecutionPolicy Bypass -File scripts\instalar-make.ps1` (ver [abajo](#instalar-make-con-el-script)), o a mano `winget install ezwinports.make` | `make --version` |
-| 4 | **Driver NVIDIA** *(opcional)* | GPU para el LLM y los embeddings. Docker Desktop pasa la tarjeta a WSL2 solo, **no** hace falta instalar `nvidia-container-toolkit` a mano en Windows | [nvidia.com/drivers](https://www.nvidia.com/download/index.aspx) — **≥ 550** o Ollama la ignora y cae a CPU en silencio; el perfil Bonsai necesita **≥ 560** | `nvidia-smi` |
-| 5 | **JDK 25** *(solo para desarrollar)* | Compilar y correr las pruebas fuera de Docker | `winget install EclipseAdoptium.Temurin.25.JDK` y apunta `JAVA_HOME` ahí | `make jdk-check` |
-| 6 | **gitleaks** *(solo para desarrollar)* | El gate de secretos (`make secrets`) | `winget install Gitleaks.Gitleaks` | `gitleaks version` |
-| 7 | **Node 20+** *(opcional)* | Solo para la evaluación de 100 preguntas (`eval-100-preguntas/`) | `winget install OpenJS.NodeJS.LTS` | `node --version` |
+| 4 | **Node 18+** | `make` arranca y detiene `llama-server` con `scripts/llama-cpp.mjs`, y corre las pruebas del JavaScript de la UI | `winget install OpenJS.NodeJS.LTS` | `node --version` |
+| 5 | **Driver NVIDIA** *(opcional)* | GPU para el LLM. `llama-server` corre en Windows con el build CUDA 12.4 de llama.cpp: no hace falta instalar CUDA ni `nvidia-container-toolkit` | [nvidia.com/drivers](https://www.nvidia.com/download/index.aspx) — **≥ 551** (el mínimo de CUDA 12.4) | `nvidia-smi` |
+| 6 | **JDK 25** *(solo para desarrollar)* | Compilar y correr las pruebas fuera de Docker | `winget install EclipseAdoptium.Temurin.25.JDK` y apunta `JAVA_HOME` ahí | `make jdk-check` |
+| 7 | **gitleaks** *(solo para desarrollar)* | El gate de secretos (`make secrets`) | `winget install Gitleaks.Gitleaks` | `gitleaks version` |
 
 Después de instalar, **cierra y vuelve a abrir la terminal** para que tome el `PATH` nuevo, clona el
 repo y sigue con [Arranque](#arranque).
 
-En Linux o macOS es lo mismo sin los pasos 2 y 3 (`make` y `sh` ya están), y con
-`nvidia-container-toolkit` instalado a mano si quieres GPU.
+En Linux o macOS es lo mismo sin los pasos 2 y 3 (`make` y `sh` ya están). La diferencia es
+`llama-server`: `make llm-instalar` solo baja el build de Windows, así que ahí lo instalas tú (el
+paquete de tu sistema, Homebrew, o compilado con CUDA) y queda en el `PATH`, o apuntas
+`LLAMA_SERVER` a su ruta. En Linux, además, arráncalo con `KB_LLAMA_HOST=0.0.0.0`: un servidor en
+`127.0.0.1` no se ve desde los contenedores.
 
 ### `make` en Windows
 
@@ -132,37 +137,37 @@ $env:JAVA_HOME = 'C:\Program Files\Eclipse Adoptium\jdk-25...'   # PowerShell, p
 
 ### Sin `make`
 
-`make` no hace magia: encadena archivos de compose y arma unos `curl`. Si no lo puedes instalar,
-esto es cada comando en crudo. La diferencia real es que **el reparto de la GPU deja de ser
-automático**: `make` mira la tarjeta con `nvidia-smi` y elige los `-f` y el modelo de embeddings por
-ti; sin él, esa decisión la tomas tú.
+`make` no hace magia: arranca `llama-server` con un script de node, encadena archivos de compose y
+arma unos `curl`. Si no lo puedes instalar, esto es cada comando en crudo. La diferencia real es
+que **el reparto de la GPU deja de ser automático**: `make` mira la tarjeta con `nvidia-smi` y
+decide cuántas capas van a la GPU en cada instancia; sin él, lo decides tú con las variables de
+abajo.
 
-Primero elige tu línea base de compose y reutilízala en todos los comandos:
+`llama-server` lee su configuración del entorno. En PowerShell, con GPU de 4 GB (el LLM a la
+tarjeta, los embeddings a la CPU):
 
-```bash
-# sin GPU
-docker compose ...
-
-# con GPU (LLM en la tarjeta)
-docker compose -f compose.yml -f compose.gpu.yml ...
-
-# con GPU y suficiente VRAM (≥ 8 GB) para que docling también la use
-docker compose -f compose.yml -f compose.gpu.yml -f compose.docling-gpu.yml ...
+```powershell
+$env:KB_LLM_GPU_CAPAS = '99'; $env:KB_EMBEDDINGS_GPU_CAPAS = '0'
+node scripts/llama-cpp.mjs instalar     # una sola vez
+node scripts/llama-cpp.mjs arrancar
 ```
+
+Sin GPU, `KB_LLM_GPU_CAPAS=0` y `KB_LLAMA_CPP_VARIANTE=cpu` (antes de instalar). Con 8 GB de VRAM o
+más, agrega `-f compose.yml -f compose.docling-gpu.yml` a los comandos de compose.
 
 | En vez de | Corre |
 |---|---|
-| `make up` | `docker compose <tus -f> up -d --build` |
-| `make down` | `docker compose <tus -f> down --remove-orphans` |
-| `make restart` | `docker compose <tus -f> up -d --build api` |
-| `make logs` | `docker compose <tus -f> logs -f api` |
-| `make ps` | `docker compose <tus -f> ps` |
-| `make psql` | `docker compose <tus -f> exec db psql -U kb -d baseconocimiento` |
+| `make up` | `node scripts/llama-cpp.mjs arrancar` y después `docker compose up -d --build --remove-orphans` |
+| `make down` | `docker compose down --remove-orphans` y `node scripts/llama-cpp.mjs detener` |
+| `make llm-estado` | `node scripts/llama-cpp.mjs estado` |
+| `make restart` | `docker compose up -d --build api` |
+| `make logs` | `docker compose logs -f api` |
+| `make ps` | `docker compose ps` |
+| `make psql` | `docker compose exec db psql -U kb -d baseconocimiento` |
 | `make health` | `curl -fsS http://localhost:8080/actuator/health` |
 | `make ingest` / `seed` | `curl -fsS -X POST http://localhost:8080/api/ingest/local-docs` |
 | `make ingest-repos` | `curl -fsS -X POST http://localhost:8080/api/ingest/repos-locales` |
-| `make pull-models` | `docker compose <tus -f> exec ollama ollama pull gemma3:4b` y `... ollama pull bge-m3`, más el reranker (abajo) |
-| `make pin-embeddings-cpu` | `docker compose <tus -f> exec -T ollama sh -c 'printf "FROM bge-m3\nPARAMETER num_gpu 0\n" > /tmp/Modelfile.cpu && ollama create bge-m3-cpu -f /tmp/Modelfile.cpu'` |
+| `make pull-models` | `node scripts/llama-cpp.mjs instalar`, los dos GGUF y el reranker (abajo) |
 | `make build` | `./mvnw -B clean package -DskipTests` |
 | `make test` | `./mvnw -B test` |
 | `make verify` | `./mvnw -B clean verify` |
@@ -170,36 +175,46 @@ docker compose -f compose.yml -f compose.gpu.yml -f compose.docling-gpu.yml ...
 | `make format` | `./mvnw -q spotless:apply` |
 | `make secrets` | `gitleaks detect --no-banner --redact` |
 
-El reranker (`make pull-reranker`) baja dos archivos y **verifica su SHA-256** — hazlo igual, la
-verificación es parte del punto:
+Los modelos (`make pull-gguf` y `make pull-reranker`) son archivos que se bajan y **se verifican
+por SHA-256** — hazlo igual, la verificación es parte del punto:
 
 ```bash
-mkdir -p .data/models/reranker
+mkdir -p .data/models/llm .data/models/embeddings .data/models/reranker
+curl -fL -o .data/models/llm/granite-4.1-3b-Q3_K_M.gguf \
+  https://huggingface.co/ibm-granite/granite-4.1-3b-GGUF/resolve/main/granite-4.1-3b-Q3_K_M.gguf
+curl -fL -o .data/models/embeddings/bge-m3-FP16.gguf \
+  https://huggingface.co/gpustack/bge-m3-GGUF/resolve/main/bge-m3-FP16.gguf
 curl -fL -o .data/models/reranker/model.onnx \
   https://huggingface.co/onnx-community/bge-reranker-v2-m3-ONNX/resolve/main/onnx/model_int8.onnx
 curl -fL -o .data/models/reranker/tokenizer.json \
   https://huggingface.co/onnx-community/bge-reranker-v2-m3-ONNX/resolve/main/tokenizer.json
-sha256sum .data/models/reranker/model.onnx      # 912fc1215c2dbff6499700534bd8d31253af01573861abbfc43afd1fab6cce5d
-sha256sum .data/models/reranker/tokenizer.json  # 8bf8afbfd11306bd872018c53bfdf2e160a56f8edbcf49933324404791c148d3
+sha256sum .data/models/llm/granite-4.1-3b-Q3_K_M.gguf  # 43db9c8da5360eaeef0039cdc28aefdf43ede98ddf36ec7edfd6d4ee89f36403
+sha256sum .data/models/embeddings/bge-m3-FP16.gguf     # daec91ffb5dd0c27411bd71f29932917c49cf529a641d0168496c3a501e3062c
+sha256sum .data/models/reranker/model.onnx             # 912fc1215c2dbff6499700534bd8d31253af01573861abbfc43afd1fab6cce5d
+sha256sum .data/models/reranker/tokenizer.json         # 8bf8afbfd11306bd872018c53bfdf2e160a56f8edbcf49933324404791c148d3
 ```
-
-Sin `make` también tienes que elegir a mano el modelo de embeddings en tu `.env`:
-`KB_EMBEDDINGS_MODELO=bge-m3` si la tarjeta tiene ≥ 6 GB, `bge-m3-cpu` si tiene menos (y en ese caso
-crea el modelo con el comando de `pin-embeddings-cpu` de la tabla). El porqué está en
-[Reparto de la GPU](#reparto-de-la-gpu).
 
 ## Arranque
 
 ```bash
 cp .env.example .env
 make gpu-check          # qué tarjeta ve y cómo va a repartirla
-make up                 # levanta db, ollama, docling-serve y api
-make pull-models        # ~5.5 GB, una sola vez
-make health             # confirma que no falta ningún modelo
+make pull-models        # llama.cpp y los modelos, ~3.4 GB, una sola vez
+make up                 # levanta llama-server (LLM y embeddings) y db, docling-serve y api
+make health             # confirma que la api ve las dos instancias de llama-server
 make seed               # copia corpus/ al vault y lo ingiere
 ```
 
 Abre <http://localhost:8080>.
+
+`llama-server` corre en tu máquina, **fuera de Docker**: dos procesos (el LLM en el puerto 8081 y
+los embeddings en el 8082) que `make up` arranca y `make down` detiene. Si reinicias el equipo,
+Docker Desktop levanta solo los contenedores pero no a `llama-server`: vuelve a correr `make up`
+(o `make llm-up`). `make llm-estado` dice si cada instancia corre y dónde está su log.
+
+La primera vez después de instalar, el LLM tarda más de un minuto en cargar y la primera respuesta
+otro par de minutos (los kernels de CUDA se compilan para tu tarjeta y quedan en caché). Desde
+la segunda vez carga en segundos.
 
 `make seed` hace dos cosas, y la primera es fácil de pasar por alto: el corpus de ejemplo viene
 versionado en `corpus/`, pero el vault vive **fuera del repo** (`KB_VAULT_DIR`, por defecto
@@ -213,120 +228,27 @@ Para ver qué hay realmente ingerido, `scripts/diagnostico-ingesta.sql` o el pan
 <http://localhost:8080/admin.html>.
 
 
-### Si Ollama corre en CPU teniendo GPU
+### Si una consulta falla: `llama-server` caído o sin VRAM
 
-Síntoma: todo va lentísimo, las consultas dan *timeout* o mueren con
-`500: an error was encountered while running the model: unexpected EOF`, y sin embargo
-`make gpu-check` dice `Perfil de compose: GPU`. La comprobación que zanja no es esa:
-
-```powershell
-docker exec kb-ollama ollama ps       # mira la columna PROCESSOR
-```
-
-Si dice `100% CPU`, Ollama no está usando la tarjeta. Y **`make gpu-check` no lo detecta**: informa
-de lo que `make` decidió, no de lo que Ollama hizo.
-
-Que la GPU esté bien entregada al contenedor tampoco lo descarta. Estas tres comprobaciones pueden
-salir perfectas y Ollama seguir en CPU:
-
-```powershell
-docker inspect -f '{{json .HostConfig.DeviceRequests}}' kb-ollama   # reserva del dispositivo
-docker exec kb-ollama nvidia-smi                                    # la tarjeta se ve dentro
-make -n up-ministral                                                # el comando encadena compose.gpu.yml
-```
-
-**Quien decide es Ollama, y lo dice en su arranque:**
-
-```powershell
-docker logs kb-ollama | Select-String "driver too old|no compatible|inference compute"
-```
-
-| Lo que aparece | Qué pasa |
-|---|---|
-| `inference compute … library=CUDA … description="NVIDIA …"` | Ollama usa la tarjeta. Si aun así ves `100% CPU`, es reparto: mira la VRAM |
-| `NVIDIA driver too old … driver=546 required_driver="550 or newer"` | **Ollama descarta la GPU él mismo por versión de driver** |
-| `no compatible GPUs were discovered` | No la ve: CUDA no llega al contenedor |
-
-#### El driver mínimo de Ollama son 550
-
-Es un requisito aparte del de Bonsai (≥ 560) y no se parece a un fallo: Ollama no aborta, **cae a CPU
-en silencio** y deja `total_vram="0 B"`. Con un driver viejo, todo lo demás puede estar
-correcto —tarjeta reservada, `nvidia-smi` respondiendo dentro del contenedor, perfil GPU
-encadenado— y aun así no se usa.
-
-Tras actualizar el driver, **en este orden**:
-
-```powershell
-make down                    # 1. con Docker aún vivo
-wsl --shutdown               # 2. fuerza a WSL2 a recoger el driver nuevo
-# 3. abre Docker Desktop y espera a "Engine running"
-make up-ministral
-docker exec kb-ollama ollama ps
-```
-
-`wsl --shutdown` apaga la VM donde vive el motor de Docker: si lo corres **antes** del `make down`,
-te quedas sin demonio a mitad. Y si Docker Desktop no vuelve solo, ciérralo desde la bandeja del
-sistema y ábrelo otra vez.
-
-#### Hay dos drivers, y `gpu-check` solo ve uno
-
-```powershell
-nvidia-smi --query-gpu=driver_version --format=csv,noheader                    # Windows
-docker exec kb-ollama nvidia-smi --query-gpu=driver_version --format=csv,noheader   # contenedor
-```
-
-`make gpu-check` lee el de Windows. El que manda es el del contenedor, que llega por la VM de WSL2:
-hasta que esa VM se reinicia, **sigue exponiendo el driver viejo** aunque Windows ya tenga el nuevo.
-Si los dos números no coinciden, falta el `wsl --shutdown` de arriba.
-
-#### Y Ollama descubre la GPU una sola vez, al arrancar
-
-Un contenedor que lleva vivo desde antes de la actualización conserva su veredicto. `make up`
-reutiliza el contenedor si la configuración no cambió, así que no basta:
-
-```powershell
-docker rm -f kb-ollama
-make up-ministral
-```
-
-### Si una consulta falla: modelo ausente o corrupto
-
-Los dos se ven igual desde la interfaz —la respuesta se corta— y los dos vienen de Ollama, pero se
-arreglan distinto. Para saber cuál es:
+Desde la interfaz se ve igual —la respuesta se corta, o dice «El LLM no responde»— pero la causa
+casi siempre es una de estas. Para saber cuál:
 
 ```bash
-make capturar-error     # deja scripts/error-api.txt con la causa
+make llm-estado         # cada instancia: si corre, si responde, y dónde está su log
+make capturar-error     # deja scripts/error-api.txt con la excepción y el log de llama-server
 ```
 
-| Lo que dice el log | Qué pasa | Cómo se arregla |
+| Lo que se ve | Qué pasa | Cómo se arregla |
 |---|---|---|
-| `404: model '…' not found` | El modelo del perfil no está descargado. Cada perfil sirve el suyo y se baja aparte | `make pull-<perfil>` |
-| `500: an error was encountered while running the model: unexpected EOF` | El modelo **sí** está, pero su archivo quedó truncado o dañado — una descarga interrumpida | Borrarlo y volver a bajarlo, abajo |
+| `llm-estado`: `sin proceso` / `no responde` | `llama-server` no está arriba: reiniciaste el equipo, o levantaste con `docker compose up` a mano | `make llm-up` |
+| `llm-estado`: `cargando el modelo` | Recién arrancó y todavía carga el GGUF (la primera vez tarda más de un minuto) | Esperar |
+| `make up` falla con el log de `llm` y `out of memory` | No entra en la VRAM: otro proceso la ocupa (docling en GPU, otro LLM) | Liberar la tarjeta, o `KB_GPU=0 make up` para correr en CPU |
+| `make up` dice que falta un modelo | El GGUF no está en `KB_DATA_DIR/models` | `make pull-models` |
+| `make up` dice que el puerto ya lo usa otro proceso | Algo más escucha en 8081 u 8082 | Detenerlo, o cambiar `KB_LLM_PORT` / `KB_EMBEDDINGS_PORT` en tu `.env` |
 
-`make health` también lista los modelos que faltan, pero **no** detecta los corruptos: para Ollama el
-blob existe y solo revienta al leerlo para inferir.
-
-Un modelo corrupto no se arregla repitiendo el `pull` a secas: con el manifiesto ya presente, Ollama
-puede dar el blob dañado por bueno. Hay que borrarlo primero, lo que fuerza la descarga y la
-verificación completas. Con Ministral como ejemplo:
-
-```bash
-docker exec kb-ollama ollama rm hf.co/mistralai/Ministral-3-3B-Instruct-2512-GGUF:Q4_K_M
-make pull-ministral
-make health
-make up-ministral
-```
-
-Para otro perfil, cambia el nombre del modelo por el que lista la tabla de [Perfiles de
-modelo](#perfiles-de-modelo) y el `pull-` por el suyo. Los nombres exactos, tal como los tiene
-Ollama:
-
-```bash
-docker exec kb-ollama ollama list
-```
-
-Si se repite en el mismo modelo, sospecha de la descarga —son entre 2 y 3.5 GB, y un corte deja
-exactamente este síntoma— o del disco.
+Un GGUF dañado no es un caso aparte: `make pull-gguf` verifica el SHA-256 al bajarlo y no deja un
+archivo a medias con el nombre final. Si sospechas de uno que ya estaba, bórralo y vuelve a correr
+`make pull-gguf`.
 
 ### Si `make up` falla con «offline mode»
 
@@ -360,7 +282,7 @@ make cache-reciclar     # invalida el cache de build; vuelve a tardar ~11 min
 make up
 ```
 
-Los nueve `up` detectan esa firma en el log y te lo dicen solos cuando ocurre, con el comando ya
+`make up` detecta esa firma en el log y te lo dice solo cuando ocurre, con el comando ya
 escrito. Ojo con lo que cuesta: `cache-reciclar` corre `docker builder prune -f`, que se lleva el
 cache de build de **todos** los proyectos de la máquina — BuildKit no permite podar un mount suelto
 por su id. No toca imágenes, contenedores ni volúmenes de datos.
@@ -387,12 +309,13 @@ make up           # levanta con ese reparto, y lo imprime al terminar
 | **Extracción de PDF/DOCX** (docling) | Desde 8 GB de VRAM (`KB_VRAM_DOCLING_GPU`) |
 | **Reranker** (cross-encoder) | Nunca — ver abajo |
 
-**Por qué los embeddings no siempre van a la GPU.** No es prudencia: está medido. En una T600 de
-4 GB, `gemma3:4b` **no entra completo ni estando solo** — Ollama offloadea capas hasta que caben y
-queda en 40% GPU / 60% CPU. Ahí, darle VRAM a `bge-m3` solo empeora al LLM, y moverlo a CPU (donde
-el AVX-512 con VNNI lo hace barato) resultó una mejora neta, sin costo de calidad. Con 6 GB o más
-entran los dos y los embeddings se quedan en la tarjeta, que es lo que conviene para la ingesta. El
-detalle está en [`docs/investigacion-vram-y-modelo-llm.md`](docs/investigacion-vram-y-modelo-llm.md).
+**Por qué los embeddings no siempre van a la GPU.** Con `gemma3:4b`, el LLM anterior, estaba
+medido: en una T600 de 4 GB **no entraba completo ni estando solo** (40% GPU / 60% CPU), darle
+VRAM a `bge-m3` solo empeoraba al LLM, y moverlo a CPU (donde el AVX-512 con VNNI lo hace barato)
+resultó una mejora neta, sin costo de calidad. Granite 4.1 3B Q3_K_M sí entra (2.4 GB con
+`llama-server`), pero los dos juntos no se midieron en 4 GB, así que el umbral sigue en 6 GB: por
+debajo, los embeddings van a CPU y `llama-server` ni abre un contexto en la tarjeta. El detalle
+está en [`docs/investigacion-vram-y-modelo-llm.md`](docs/investigacion-vram-y-modelo-llm.md).
 
 **Por qué docling tiene un umbral más alto.** Ya no es prudencia: está medido (sesión 27 de
 [`docs/investigacion-vram-y-modelo-llm.md`](docs/investigacion-vram-y-modelo-llm.md)). Sumando las
@@ -406,8 +329,9 @@ tres etapas en la tarjeta a la vez:
 | **Total** | **~7.4 GB** |
 
 Por eso 8 GB: en 6 GB los tres no entran. Una RTX 3060 puede tener LLM y embeddings en la tarjeta
-(5.2 GB), pero no docling encima. Durante la ingesta el LLM está ocioso, pero sigue residente por
-`OLLAMA_KEEP_ALIVE`, así que la suma es real y no un peor caso teórico.
+(5.2 GB), pero no docling encima. Durante la ingesta el LLM está ocioso, pero sigue residente
+(`llama-server` lo carga al arrancar y no lo suelta), así que la suma es real y no un peor caso
+teórico. Las cifras son de `gemma3:4b`; con Granite el LLM pesa menos, y el umbral no se remidió.
 
 **La fuga de VRAM, y qué se puede hacer.** `docling-serve` no libera la VRAM entre conversiones
 ([#233](https://github.com/docling-project/docling-serve/issues/233), abierta desde junio de 2025
@@ -439,194 +363,62 @@ lo cambia — mejor decirlo que insinuar lo contrario.
 Todo el reparto se puede forzar, sin tocar código:
 
 ```bash
-KB_GPU=1 make up                  # fuerza el perfil GPU (o KB_GPU=0 para apagarlo)
+KB_GPU=1 make up                  # fuerza la GPU (o KB_GPU=0 para correr todo en CPU)
 KB_DOCLING_GPU=1 make up          # docling a la GPU sin esperar al umbral
 KB_VRAM_EMBEDDINGS_GPU=5120 make up   # mueve el umbral si mediste otra cosa
 ```
 
-Y si fijas `KB_EMBEDDINGS_MODELO` en tu `.env`, manda eso y la detección deja de aplicar —
-`make gpu-check` te lo avisa.
-
-### Si dice «Perfil activo: CPU» y tu equipo sí tiene GPU
+### Si dice que no hay GPU y tu equipo sí tiene una
 
 Corre `make gpu-check`: muestra qué shell usó Make, si encontró `nvidia-smi`, qué tarjetas y qué
-driver hay. Si la tarjeta aparece ahí pero el perfil dice CPU, falló la detección y no el hardware:
+driver hay. Si la tarjeta aparece ahí pero dice que no hay GPU, falló la detección y no el hardware:
 
 ```bash
 KB_GPU=1 make up
 ```
 
-### Perfil Bonsai y la versión de CUDA
+Para confirmar que el LLM de verdad está en la tarjeta, `nvidia-smi` tiene que listar un proceso
+`llama-server.exe` con unos 2.4 GB de memoria en uso.
 
-`make up-bonsai` compila llama.cpp con CUDA. Las dos cosas que dependen de tu equipo también salen
-de `nvidia-smi`, así que normalmente no tienes que tocarlas:
+## Cambiar el modelo
 
-| Variable | Qué es | De dónde sale |
-|---|---|---|
-| `BONSAI_CUDA_ARCH` | Compute Capability: 75 Turing (T600, RTX 20xx), 86 Ampere (RTX 30xx), 89 Ada (RTX 40xx), 120 Blackwell (RTX 50xx) | `nvidia-smi --query-gpu=compute_cap` |
-| `BONSAI_CUDA_TAG` | Imagen base `nvidia/cuda`. Cada versión exige un driver mínimo y lo verifica al arrancar: 12.6.0 pide ≥ 560, 12.4.1 ≥ 550, 12.2.2 ≥ 535 | La versión del driver instalado |
+El LLM que resuelve planner, verificador de grounding, síntesis, acciones y destilador de Teams se
+habla por HTTP con la API compatible con OpenAI que expone `llama-server`. Hay **un solo modelo
+por defecto**, Granite 4.1 3B Q3_K_M ([ADR-0015](docs/adrs/0015-granite-41-3b-q3km-como-llm-por-defecto.md)),
+y ningún perfil: los diez `compose.<modelo>.yml` que había dependían de Ollama y salieron con él
+([ADR-0017](docs/adrs/0017-llama-cpp-nativo-reemplaza-a-ollama.md)). Lo que se midió con cada uno
+sigue en [la investigación](docs/investigacion-vram-y-modelo-llm.md).
 
-`up-bonsai` imprime las dos **antes** de compilar, junto con el driver mínimo. Si aun así falla con
-`unsatisfied condition: cuda>=12.6`, el driver es más viejo de lo que dice `nvidia-smi`: actualízalo,
-o fija `BONSAI_CUDA_TAG=12.4.1` en tu `.env`.
-
-`make gpu-up` fuerza el perfil GPU para un arranque suelto. `make help` lista todo lo demás.
-
-
-## Perfiles de modelo
-
-El LLM que resuelve planner, verificador de grounding y síntesis se habla por HTTP con una API
-compatible con OpenAI — ver [ADR-0009](docs/adrs/0009-bonsai-8b-integracion-pospuesta.md) y
-[la investigación completa](docs/investigacion-vram-y-modelo-llm.md). Quién sirve esa API varía por
-perfil: **Bonsai** necesita un `llama-server` aparte (cuantización propia, sin soporte en Ollama);
-**todos los demás** se sirven desde el mismo `ollama` que ya usas para embeddings (`bge-m3`) y, si
-habilitas Teams, para el destilador (F6), vía su endpoint compatible con OpenAI
-(`http://ollama:11434/v1`) y sin necesitar ningún contenedor propio.
-
-Cada perfil se levanta con un `make up-<perfil>`, se baja con `make down-<perfil>` (los mismos `-f`
-que su `up`, para no dejar huérfanos) y descarga su modelo una sola vez con `make pull-<perfil>`:
-
-| Perfil | Descarga (una vez) | Arranque | Modelo | GPU |
-|---|---|---|---|---|
-| **gemma3:4b** — el base, sin perfil | — (`make pull-models`) | `make up` | `gemma3:4b` | Opcional |
-| **Bonsai-8B** — default de `application.yml`, la mejor citación medida | `make pull-bonsai-gguf` (~1.16 GB) | `make up-bonsai` | `Bonsai-8B-Q1_0.gguf` vía `llama-server` | **Obligatoria** |
-| **Ministral 3B** — mejor precisión del piloto (85.3%) | `make pull-ministral` (~2 GB) | `make up-ministral` | `hf.co/mistralai/Ministral-3-3B-Instruct-2512-GGUF:Q4_K_M` | Opcional |
-| **Qwen3.5 4B** — experimental, con el fix de *thinking* integrado | `make pull-qwen35` (~3.4 GB) | `make up-qwen35` | `qwen3.5:4b` | Opcional |
-| **Qwen3.6 35B-A3B** — experimental, MoE para 6 GB de VRAM (RTX 3060); exige ~12 GB de RAM en WSL2 | `make pull-qwen36` (~12.3 GB) | `make up-qwen36` | `hf.co/unsloth/Qwen3.6-35B-A3B-GGUF:UD-Q2_K_XL` | Recomendada |
-| **Nemotron-mini 4B** — experimental, sin *thinking* | `make pull-nemotron` (~2.7 GB) | `make up-nemotron` | `nemotron-mini:4b` | Opcional |
-| **Granite 4.1 3B** — experimental | `make pull-granite41` (~2.1 GB) | `make up-granite41` | `granite4.1:3b` | Opcional |
-| **Phi-4 Mini 3.8B** — experimental | `make pull-phi4mini` (~2.5 GB) | `make up-phi4mini` | `phi4-mini:3.8b` | Opcional |
-| **Qwen2.5 3B** — experimental | `make pull-qwen25` (~1.9 GB) | `make up-qwen25` | `qwen2.5:3b` | Opcional |
-
-`make pull-models` (embeddings + reranker) aplica igual a **todos** los perfiles: descarga lo que no
-depende del LLM elegido. `make down` sirve como cierre genérico y limpia contenedores huérfanos si
-vienes de cambiar de perfil.
-
-Bonsai reserva la tarjeta completa para su `llama-server`, así que **no** combines
-`make pin-embeddings-cpu` con ese perfil. Los demás sí: comparten el mismo `ollama` que `bge-m3`.
-(En la práctica ya no hace falta correrlo a mano — ver [Reparto de la GPU](#reparto-de-la-gpu).)
-
-### Tres perfiles más, sin comando propio
-
-`compose.smollm3.yml`, `compose.minicpm5.yml` y `compose.nanbeige.yml` existen pero **no tienen
-target en el `Makefile`**: quedaron de la investigación, se probaron con overrides sueltos y sus
-modelos fueron descartados. Se levantan a mano, encadenando el compose igual que los demás:
+Probar otro modelo es cambiar el GGUF que carga la instancia del LLM. En tu `.env`:
 
 ```bash
-docker compose exec ollama ollama pull hf.co/ggml-org/SmolLM3-3B-GGUF:Q4_K_M   # o el que toque
-docker compose -f compose.yml -f compose.gpu.yml -f compose.smollm3.yml up -d  # sin GPU: quita el -f compose.gpu.yml
+KB_LLM_GGUF=models/llm/otro-modelo.gguf   # relativo a KB_DATA_DIR
+KB_LLM_MODELO=otro-modelo                 # la etiqueta con la que responde (--alias)
 ```
 
-| Compose | Modelo |
-|---|---|
-| `compose.smollm3.yml` | `hf.co/ggml-org/SmolLM3-3B-GGUF:Q4_K_M` |
-| `compose.minicpm5.yml` | `openbmb/minicpm5` |
-| `compose.nanbeige.yml` | `tomng/nanbeige4.1:3b-q4_K_M` |
+Baja el archivo a `KB_DATA_DIR/models/llm/` y reinicia: `make llm-down` y `make llm-up`. La api no
+hace falta tocarla, salvo que el modelo pida otros parámetros (`KB_LLM_TIMEOUT`, el techo de
+confianza): esos van en el `.env` y se aplican con `make restart`.
 
-### Los perfiles y tu `.env`
-
-La regla que hay que tener presente: **Docker Compose le da precedencia al entorno sobre el archivo
-`.env`**, así que una variable activa ahí *pisa* el valor que trae el perfil. Es la causa de un
-síntoma desconcertante — copiar `.env.example` a `.env` y que `make up-bonsai` deje de responder,
-porque el `.env` fijaba `KB_LLM_MODELO=gemma3:4b` y la API terminaba pidiéndole ese modelo al
-`llama-server` que estaba sirviendo Bonsai.
-
-Por eso, en `.env.example` van **comentadas** las dos variables que eligen modelo:
-
-| Variable | Comentada significa | Descoméntala solo si |
-|---|---|---|
-| `KB_LLM_MODELO` | Manda el perfil que elijas (`up`, `up-ministral`, `up-bonsai`, …) | Quieres otro modelo en el perfil **base** (`make up`) — y vuelve a comentarla antes de usar otro perfil |
-| `KB_EMBEDDINGS_MODELO` | `make` elige `bge-m3` o `bge-m3-cpu` según la VRAM que detecte | Quieres fijarlo a mano; `make gpu-check` te avisa cuando está fijado |
-
-Con eso, **el `.env` recién copiado del ejemplo funciona con cualquiera de los perfiles**, sin
-editar nada:
-
-```bash
-cp .env.example .env
-make up              # gemma3:4b
-make up-ministral    # Ministral 3B
-make up-bonsai       # Bonsai-8B   (antes: make pull-bonsai-gguf)
-```
-
-El resto de variables del ejemplo (puertos, credenciales de Postgres, flags de Teams/Azure DevOps)
-coinciden con los valores por defecto de `compose.yml`, así que no pisan nada.
-
-Los perfiles servidos por Ollama (`up-ministral`, `up-qwen35`, `up-qwen36`, `up-nemotron`,
-`up-granite41`, `up-phi4mini`, `up-qwen25`) encadenan `compose.gpu.yml` **solo si hay
-tarjeta**: sin ella, la reserva de dispositivo NVIDIA haría fallar el arranque entero aunque
-Ollama sepa caer a CPU perfectamente. `up-bonsai` es la excepción y siempre la exige — su
-`llama-server` se compila con CUDA y reserva la tarjeta completa.
-
-### Por qué Ministral no usa `llama-server` (y Bonsai sí)
-
-Hasta hace poco, Ministral también levantaba su propio `llama-server` (mismo patrón que Bonsai). Se
-cambió a Ollama por un bug real, medido en vivo, no por preferencia: la imagen
-`ghcr.io/ggml-org/llama.cpp:server-cuda` publicada el 17/08/2026 no puede cargar el GGUF oficial de
-este modelo — falla con `error loading model vocabulary: invalid gguf type for tokenizer.ggml.scores`
-(arquitectura `Ministral3ForCausalLM`, muy nueva: el soporte de conversión en `llama.cpp` mainline
-recién se mergeó el 21/01/2026, [PR #18972](https://github.com/ggml-org/llama.cpp/pull/18972) sobre
-el [issue #17987](https://github.com/ggml-org/llama.cpp/issues/17987)). Ollama sí carga el mismo
-GGUF sin problema. A diferencia de Bonsai, Ministral nunca necesitó una cuantización que Ollama no
-soporte — no hay ninguna razón técnica para que dependa de un `llama-server` propio, así que sacarlo
-de encima evita el bug de arriba, un contenedor menos, y sin volumen de cache propio (el modelo queda
-en el mismo `${KB_DATA_DIR}/ollama` que `bge-m3`/`gemma3:4b`).
-
-### Cambiar de perfil sin perder lo ya descargado
-
-`down`/`up` solo borran y recrean **contenedores**, nunca `KB_DATA_DIR` ni las imágenes de Docker
-cacheadas — el GGUF de Bonsai, el modelo de Ministral (en el volumen de Ollama), los embeddings y el
-reranker sobreviven a cualquier cambio de perfil sin volver a descargarse. Eso se pierde solo con
-comandos que este Makefile nunca ejecuta: `docker compose down -v`, `down --rmi all` o
-`docker system prune`; no los uses para alternar perfiles. Ojo aparte con `docker image prune -a`:
-libera espacio real, pero también se lleva imágenes que no estén en uso por ningún contenedor en ese
-momento — si la corres estando abajo el perfil Bonsai, la próxima `make up-bonsai` puede tener que
-volver a bajar la imagen base de compilación.
-
-Ejemplo, de Bonsai a Ministral y de vuelta:
-
-```bash
-make pull-bonsai-gguf   # una sola vez
-make pull-ministral      # una sola vez
-make pull-models        # una sola vez (embeddings + reranker, comunes a todos los perfiles)
-make up-bonsai
-
-make down-bonsai        # para TODO el stack de ese perfil (db, ollama, docling, api, llama-server)
-make up-ministral       # el modelo ya esta en el volumen de Ollama, no se vuelve a bajar
-
-make down-ministral
-make up-bonsai          # el GGUF ya está en .data/bonsai, no se vuelve a bajar
-```
-
-Con Bonsai en el medio, hace falta su `down` antes de levantar otro perfil: reserva la GPU completa
-para su propio `llama-server`, así que dejarlo corriendo mientras levantás otro deja un contenedor
-huérfano compitiendo por la misma VRAM (riesgo real de OOM en una GPU de 4 GB). Ministral no tiene
-ese problema — comparte el `ollama` de siempre, así que alternar hacia o desde ese perfil es más
-liviano. `db`, `ollama` y `docling-serve` sí se detienen y se vuelven a crear en cada cambio de
-perfil, pero sus datos viven en volúmenes de `KB_DATA_DIR` que ese `down` no toca — tarda segundos,
-no descarga nada de nuevo.
+El contexto por consulta es `KB_LLM_CONTEXTO_TOKENS` (4096) y las consultas simultáneas,
+`KB_LLM_PARALELO` (2). `llama-server` arranca con `-c` igual al producto de los dos, y la api lee el
+mismo `KB_LLM_CONTEXTO_TOKENS` para saber cuánto texto entra en una pasada.
 
 ### Cuándo se reconstruye la imagen (y cuándo no)
 
-**Nunca hace falta pedir el build a mano.** Los nueve arranques (`up`, `gpu-up`, `up-bonsai` y los
-seis perfiles de Ollama) corren `docker compose ... up -d --build`. Es a propósito y uniforme: hasta
-que lo fue, seis de los nueve levantaban sin reconstruir, y un `git pull` seguido de
-`make up-ministral` te dejaba corriendo **código viejo sin un solo aviso** — el contenedor levanta
-sano, la interfaz responde, y el comportamiento sigue siendo el de antes del pull. La asimetría se
-justificaba en que esos perfiles solo cambian variables de entorno y el modelo que sirve Ollama, no
-la imagen; pero esa premisa se rompe en cuanto alguien toca código y prueba otro perfil, que es
-justo lo que se hace al comparar modelos.
+**Nunca hace falta pedir el build a mano.** `make up` corre `docker compose ... up -d --build`: un
+`git pull` seguido de `make up` nunca te deja corriendo código viejo sin aviso.
 
 `--build` no significa «compila todo otra vez»: solo le pide a Docker que **revise** si algo cambió,
 comparando el contexto de build con su cache de capas. Lo que pasa depende de qué cambió:
 
 | Qué cambió desde el último build | Qué hace el `up` |
 |---|---|
-| Nada en el código | No compila. Termina en segundos, todo `CACHED`, y levanta la misma imagen (medido en vivo: 4.4 s para `api`, 3.2 s para `llama-server`). |
-| `src/`, `pom.xml`, `mvnw` o `.mvn/` | Recompila `api` (Maven dentro de Docker) y levanta el binario nuevo. Es el caso de un `git pull` o un cambio de rama: basta con volver a correr el mismo `make up-<perfil>`. |
-| `Dockerfile.bonsai` o `entrypoint-bonsai.sh` | Recompila el fork CUDA de Bonsai, ~20 min (ver [ADR-0009](docs/adrs/0009-bonsai-8b-integracion-pospuesta.md)). |
+| Nada en el código | No compila. Termina en segundos, todo `CACHED`, y levanta la misma imagen (medido en vivo: 4.4 s para `api`). |
+| `src/`, `pom.xml`, `mvnw` o `.mvn/` | Recompila `api` (Maven dentro de Docker) y levanta el binario nuevo. Es el caso de un `git pull` o un cambio de rama: basta con volver a correr `make up`. |
 | Nada, pero corriste `docker builder prune` o Docker Desktop liberó espacio por presión de disco | Vuelve a hacer el build largo: el cache de build es finito y compite con el de otros proyectos de la misma máquina. |
 
-Nada de esto lo dispara un `down`/`up-<perfil>` normal.
+Nada de esto lo dispara un `down`/`up` normal.
 
 Tres cosas que se confunden con «construir» y no lo son:
 
@@ -634,8 +426,8 @@ Tres cosas que se confunden con «construir» y no lo son:
   `up` de nuevo (ver «Si `make up` falla con «offline mode»»).
 - `make -n <target>` **no ejecuta nada**: es un ensayo que solo imprime los comandos que correría.
   Sirve para ver qué `-f` y qué flags arma un target, no para levantar ni construir.
-- `make restart` sí reconstruye, pero solo `api` (`up -d --build api`); no toca `db`, `ollama` ni
-  `docling-serve`.
+- `make restart` sí reconstruye, pero solo `api` (`up -d --build api`); no toca `db`,
+  `docling-serve` ni `llama-server`.
 
 Si aun así sospechas que estás corriendo una imagen vieja, compara la fecha de la imagen con tu
 último commit y, si hace falta, fuerza un build desde cero:
@@ -643,14 +435,15 @@ Si aun así sospechas que estás corriendo una imagen vieja, compara la fecha de
 ```bash
 docker image inspect base-conocimiento-api:latest --format '{{.Created}}'
 git log -1 --format=%ci
-docker compose <tus -f> build --no-cache api && make up-<perfil>
+docker compose build --no-cache api && make up
 ```
 
 ## Dónde vive cada cosa
 
-Todo lo pesado y persistente cae bajo `KB_DATA_DIR` (por defecto `./.data`, junto al repo):
-modelos de Ollama, datos de PostgreSQL y el ONNX del reranker. Esto mantiene libre la unidad del
-sistema sin depender de configuración del host.
+Todo lo pesado y persistente cae bajo `KB_DATA_DIR` (por defecto `./.data`, junto al repo): los
+GGUF del LLM y de los embeddings (`models/llm`, `models/embeddings`), el ONNX del reranker
+(`models/reranker`), el build de llama.cpp con sus logs (`llama.cpp/`) y los datos de PostgreSQL.
+Esto mantiene libre la unidad del sistema sin depender de configuración del host.
 
 El contenido a ingerir vive en `KB_VAULT_DIR` (por defecto `../../vault`, **fuera** del repo), con dos
 subcarpetas fijas: `vault/documentos` (Markdown, texto, PDF, DOCX, PPTX) y `vault/repos` (repos Git
@@ -678,14 +471,13 @@ wsl --shutdown
 |---|---|
 | Núcleo | Java 25 · Spring Boot 4.1 · Spring Modulith 2.1 |
 | Datos | PostgreSQL 18 · pgvector 0.8.6 · Flyway |
-| Generación | API compatible con OpenAI — planner, verificador de grounding y síntesis; `llama-server` (Bonsai) u Ollama (Ministral, `gemma3:4b`) según el perfil, ver [Perfiles de modelo](#perfiles-de-modelo) |
-| Destilación (Teams, F6) | Ollama con `gemma3:4b` |
-| Embeddings | `bge-m3` por Ollama, 1024 dimensiones, multilingüe |
+| Generación | Granite 4.1 3B Q3_K_M en `llama-server` (llama.cpp nativo, en el host), por la API compatible con OpenAI — planner, verificador de grounding, síntesis, acciones y destilador de Teams |
+| Embeddings | `bge-m3` (F16) en una segunda instancia de `llama-server`, 1024 dimensiones, multilingüe |
 | Reranking | `bge-reranker-v2-m3` sobre ONNX Runtime, en proceso |
 | Extracción de documentos | Docling (`docling-serve`) — PDF, DOCX y PPTX a Markdown, ver [ADR-0010](docs/adrs/0010-docling-reemplaza-pdfbox.md) |
 | Adaptadores | HTML/JS sin build · protocolo Bot Connector implementado directo |
 
-Spring AI se usa **solo como cliente de Ollama**. Sus abstracciones de RAG y su `VectorStore`
+Spring AI se usa **solo como cliente** (el de OpenAI, contra `llama-server`). Sus abstracciones de RAG y su `VectorStore`
 quedan fuera a propósito: un `VectorStore` no sabe expresar cuatro señales independientes
 fusionadas por RRF, que es justamente el aporte del diseño.
 

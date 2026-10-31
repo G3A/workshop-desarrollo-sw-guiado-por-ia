@@ -3,17 +3,15 @@
 #
 #   docker compose -f compose.yml -f compose.docling-gpu.yml up -d
 #
-#   # combinado con Bonsai en GPU (compose.bonsai.yml) en la misma tarjeta:
-#   docker compose -f compose.yml -f compose.bonsai.yml -f compose.docling-gpu.yml up -d --build
+# `make up` lo agrega solo con KB_VRAM_DOCLING_GPU MiB o mas (ver el Makefile).
 #
 # Por qué es un override aparte, no el default -- dos razones, no una sola:
 #
-# 1. VRAM compartida. La T600 de esta máquina tiene 4 GB (ver ADR-0009 y el
-#    comentario de compose.gpu.yml sobre el mismo límite para Ollama). Los
-#    modelos de layout/tablas de Docling son livianos comparados con un LLM
-#    (sin cifra oficial de VRAM en la documentación de Docling a la fecha),
-#    pero igual compiten por el mismo presupuesto que Bonsai
-#    (compose.bonsai.yml) si los dos corren a la vez.
+# 1. VRAM compartida. La T600 de esta máquina tiene 4 GB. Los modelos de
+#    layout/tablas de Docling son livianos comparados con un LLM (sin cifra
+#    oficial de VRAM en la documentación de Docling a la fecha), pero igual
+#    compiten por la misma tarjeta que el llama-server del LLM, que corre en el
+#    host (ADR-0017).
 # 2. Bug conocido y sin resolver: la VRAM de docling-serve NO se libera entre
 #    conversiones (docling-project/docling-serve#233, reportado contra la
 #    imagen cu124 -- el mismo problema aplica al sucesor cu130 que usa este

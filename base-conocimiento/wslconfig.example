@@ -23,6 +23,7 @@ swap=8GB
 # pico son varios GB que Windows no recupera.
 autoMemoryReclaim=gradual
 
-# Necesario para que los contenedores vean la GPU NVIDIA (perfil compose.gpu.yml).
+# Necesario para que los contenedores vean la GPU NVIDIA (compose.docling-gpu.yml).
+# El LLM no lo necesita: llama-server corre en Windows, fuera de WSL (ADR-0017).
 [wsl2.gpu]
 enabled=true

@@ -40,3 +40,4 @@ Mantén los ADRs cortos (1 página). Nómbralos `NNNN-slug-corto.md` con un cont
 - `0014-extraccion-en-el-proceso-reemplaza-docling` — OpenDataLoader, Tika y POI en el proceso Java, en vez de docling-serve.
 - `0015-granite-41-3b-q3km-como-llm-por-defecto` — Granite 4.1 3B Q3_K_M reemplaza a gemma3:4b: entra entero en 4 GB de VRAM.
 - `0016-acciones-eligen-modo-de-lectura` — con documentos largos, las acciones estiman el tiempo y ofrecen leer completo, por capítulos o rápido.
+- `0017-llama-cpp-nativo-reemplaza-a-ollama` — el LLM y los embeddings los sirven dos `llama-server` nativos en el host; Ollama y los perfiles experimentales salen.

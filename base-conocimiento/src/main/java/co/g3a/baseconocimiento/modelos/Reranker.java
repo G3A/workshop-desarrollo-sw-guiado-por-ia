@@ -1,8 +1,8 @@
 package co.g3a.baseconocimiento.modelos;
 
 /**
- * Cross-encoder: la defensa contra falsos positivos que la similitud vectorial sola no da. Ollama
- * no sirve rerankers, por eso este corre en proceso.
+ * Cross-encoder: la defensa contra falsos positivos que la similitud vectorial sola no da. Corre en
+ * proceso, sobre ONNX Runtime.
  */
 public interface Reranker {
 

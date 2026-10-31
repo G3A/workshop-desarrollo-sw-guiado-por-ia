@@ -47,7 +47,7 @@
 \echo ''
 \echo '== 1. Cobertura por documento =============================================='
 \echo 'pendientes > 0  -> no es recuperacion, es el worker de embeddings.'
-\echo '                   Revisa que bge-m3 este (make health) y kb-ollama vivo.'
+\echo '                   Revisa que llama-server de embeddings responda (make llm-estado).'
 \echo 'sin el documento que responde la pregunta -> la base no esta vacia, pero'
 \echo '                   no tiene el contenido que hace falta.'
 \echo ''

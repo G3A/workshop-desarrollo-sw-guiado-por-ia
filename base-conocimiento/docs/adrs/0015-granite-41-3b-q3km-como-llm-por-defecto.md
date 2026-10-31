@@ -2,7 +2,7 @@
 
 ## Estado
 
-Aceptado (2026-10-30).
+Aceptado (2026-10-30). Desde ADR-0017 el modelo lo sirve llama.cpp, no Ollama.
 
 ## Contexto
 

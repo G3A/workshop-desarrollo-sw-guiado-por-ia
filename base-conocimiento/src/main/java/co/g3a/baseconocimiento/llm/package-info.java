@@ -1,7 +1,7 @@
 /**
- * Acceso al modelo de generacion: OpenAI contra llama-server (Bonsai 8B, ver ADR-0009) para el
- * planificador, el verificador de grounding y el sintetizador; Ollama para el destilador de Teams
- * (F6), que se quedo ahi.
+ * Acceso al modelo de generacion: OpenAI contra la instancia del LLM de {@code llama-server}, que
+ * corre en el host (ADR-0017), para todos los componentes: planificador, reformulador, verificador
+ * de grounding, sintetizador, redactor de acciones y destilador de Teams.
  *
  * <p>Spring AI se usa aqui y solo aqui, como cliente: chat, streaming y salida estructurada. Sus
  * abstracciones de RAG y su {@code VectorStore} quedan fuera a proposito — un {@code VectorStore}

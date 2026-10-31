@@ -5,26 +5,29 @@
 ### Prerrequisitos
 
 - Docker + Docker Compose (el `Makefile` orquesta todo sobre `compose.yml` y sus overrides).
+- Node 18 o más nuevo: `make` maneja las dos instancias de `llama-server` con
+  `scripts/llama-cpp.mjs`.
 - JDK 25 (el wrapper `./mvnw` viene commiteado, no hace falta Maven instalado). Con un JDK anterior
   el build falla con `release version 25 not supported`; `make jdk-check` lo dice antes de compilar.
-- Opcional: GPU NVIDIA (`nvidia-smi`). `make up` no solo la detecta: lee VRAM, Compute Capability y
-  versión del driver, y reparte en consecuencia — LLM siempre en la tarjeta, embeddings desde 6 GB,
+- Opcional: GPU NVIDIA (`nvidia-smi`, driver ≥ 551). `make up` no solo la detecta: lee la VRAM y
+  reparte en consecuencia — LLM siempre en la tarjeta, embeddings desde 6 GB,
   docling desde 8 GB. `make gpu-check` explica qué decidió y por qué; `KB_GPU`, `KB_DOCLING_GPU` y
   los dos umbrales lo fuerzan. Detalle en el [README](../README.md#reparto-de-la-gpu).
 - En Windows, `make` necesita Git for Windows instalado: el `Makefile` usa su `sh.exe` como shell
   porque las recetas son POSIX. Funciona igual desde PowerShell y desde Git Bash.
 
-El LLM es intercambiable por perfil (`make up-bonsai`, `up-ministral`, `up-qwen35`, …): son
-overrides de compose encadenados sobre `compose.yml`. La tabla completa de los ocho perfiles, con
-su descarga y su modelo, está en el [README](../README.md#perfiles-de-modelo).
+El LLM y los embeddings no corren en Docker: los sirven dos instancias de `llama-server` (llama.cpp
+nativo, build `b11960`) en el host, que `make up` arranca y `make down` detiene
+([ADR-0017](adrs/0017-llama-cpp-nativo-reemplaza-a-ollama.md)). Cambiar de LLM es cambiar el
+GGUF (`KB_LLM_GGUF`); ver [Cambiar el modelo](../README.md#cambiar-el-modelo).
 
 ### Inicio rápido
 
 ```bash
 cp .env.example .env   # completar variables, ver abajo
-make pull-models       # descarga LLM, embeddings y reranker a KB_DATA_DIR (~5.5 GB, una vez)
-make up                # levanta db, ollama, docling-serve y api
-make health            # confirma que los 4 servicios responden
+make pull-models       # llama.cpp, los GGUF del LLM y embeddings y el reranker (~3.4 GB, una vez)
+make up                # levanta llama-server (host) y db, docling-serve y api (Docker)
+make health            # confirma que la api ve la base y las dos instancias de llama-server
 make ingest            # ingiere el corpus de ejemplo (vault/documentos)
 ```
 
@@ -33,9 +36,9 @@ make ingest            # ingiere el corpus de ejemplo (vault/documentos)
 | Servicio | Imagen | Propósito |
 |---|---|---|
 | `db` | `pgvector/pgvector:pg18-trixie` | Postgres 18 + pgvector: tabla única de embeddings, FTS, cola, auditoría |
-| `ollama` | `ollama/ollama` | `gemma3:4b` (planner/destilación/síntesis) y `bge-m3` (embeddings) |
 | `docling-serve` | `quay.io/docling-project/docling-serve-cpu` | Extrae PDF/DOCX/PPTX a Markdown |
 | `api` | build propio (Java, jar por capas) | Ingesta, retrieval, orquestación, UI estática, endpoint de Teams |
+| `llama-server` (host, fuera de Docker) | llama.cpp `b11960`, nativo | Dos instancias: Granite 4.1 3B Q3_K_M (LLM, puerto 8081) y `bge-m3` (embeddings, puerto 8082) — [ADR-0017](adrs/0017-llama-cpp-nativo-reemplaza-a-ollama.md) |
 
 ### Variables de entorno
 
@@ -48,8 +51,10 @@ make ingest            # ingiere el corpus de ejemplo (vault/documentos)
 
 ### Objetivo de despliegue
 
-Docker Compose en una VM/máquina propia — `make up` con el override de GPU si el host la tiene
-(`compose.gpu.yml`); no hay manifiestos de Kubernetes en el repo.
+Docker Compose en una VM/máquina propia, con `llama-server` como proceso del host — `make up`
+arranca las dos cosas; no hay manifiestos de Kubernetes en el repo. Un reinicio del host levanta
+los contenedores (`restart: unless-stopped`) pero no a `llama-server`: hay que correr `make up` o
+`make llm-up`.
 
 **Secretos:** el mismo archivo `.env` que lee Docker Compose, puesto a mano en el host. No hay
 gestor de secretos; `.env.example` sigue siendo la lista de lo que ese archivo debe traer.

@@ -53,8 +53,8 @@ class Orquestador {
    * {@code prepararHastaContexto} es bloqueante de punta a punta (planificador, herramientas,
    * reformulador, verificador de grounding) y arranca ANTES de que exista ningún {@link Flux} — si
    * el cliente se desconecta a mitad de camino (un F5, cerrar la pestaña), no hay forma de que el
-   * servidor se entere: la consulta sigue corriendo entera igual, gastando uno de los {@code
-   * OLLAMA_NUM_PARALLEL} cupos de Ollama en un trabajo que nadie va a leer. Medido en vivo: esa
+   * servidor se entere: la consulta sigue corriendo entera igual, gastando uno de los slots de
+   * llama-server ({@code KB_LLM_PARALELO}) en un trabajo que nadie va a leer. Medido en vivo: esa
    * sola etapa tardó más de 4 minutos con Ministral 3B — de sobra para que una consulta nueva se
    * quede sin cupo detrás de una huérfana y termine mostrando "se perdió la conexión" sin ser ese
    * el problema real. Cancelar la huérfana a mitad de camino exigiría propagar la desconexión a
@@ -101,9 +101,9 @@ class Orquestador {
       @Value("${kb.orquestacion.max-fragmentos-contexto:10}") int maxFragmentosContexto,
       @Value("${kb.orquestacion.expandir-vecinos:true}") boolean expandirVecinos,
       UmbralRelevanciaPropiedades umbralRelevancia,
-      // Default 2 = OLLAMA_NUM_PARALLEL por defecto (compose.yml): no tiene
-      // sentido admitir mas consultas reales en simultaneo que las que Ollama
-      // puede atender a la vez.
+      // Default 2 = KB_LLM_PARALELO por defecto (scripts/llama-cpp.mjs): no
+      // tiene sentido admitir mas consultas reales en simultaneo que los slots
+      // que llama-server atiende a la vez.
       @Value("${kb.orquestacion.max-consultas-concurrentes:2}") int maxConsultasConcurrentes,
       StreamsEnCursoRepositorio streamsEnCurso) {
     this.planificador = planificador;
@@ -277,7 +277,7 @@ class Orquestador {
                   queryLogIdHolder.set(queryLogId);
                 })
             // El cupo cubre TODA la consulta, no solo prepararHastaContexto: la
-            // sintesis tambien le pide tokens a Ollama. Se libera aca, cuando el
+            // sintesis tambien le pide tokens al LLM. Se libera aca, cuando el
             // Flux de verdad termina (completa, falla o el cliente se desconecta),
             // no antes -- doFinally cubre las tres formas de terminar. Mismo
             // razonamiento para dejar el resultado final en streams_en_curso: pasa
