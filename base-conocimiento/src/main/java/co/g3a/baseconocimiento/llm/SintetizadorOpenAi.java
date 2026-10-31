@@ -78,7 +78,7 @@ class SintetizadorOpenAi implements Sintetizador {
     // que marcaba un ejemplo de citacion) como si fuera parte de la respuesta.
     // Un valor grande le pide a llama-server que penalice repeticion contra
     // el CONTEXTO COMPLETO, no solo los ultimos 64 tokens -- 4096 empata con
-    // BONSAI_CTX_SIZE (compose.bonsai.yml). El semantico de llama.cpp para
+    // el contexto de cada slot (KB_LLM_CONTEXTO_TOKENS). El semantico de llama.cpp para
     // esto es -1 ("todo el contexto"), pero se descarto: medido en vivo
     // (sesion 14, comparando contra Ministral) que el build oficial de
     // llama.cpp (ghcr.io/ggml-org/llama.cpp, el que sirve a cualquier

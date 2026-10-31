@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help up gpu-up gpu-check gpu-resumen docling-reciclar cache-reciclar jdk-check up-bonsai down-bonsai up-ministral down-ministral up-qwen35 down-qwen35 up-qwen36 down-qwen36 up-nemotron down-nemotron up-granite41 down-granite41 up-phi4mini down-phi4mini up-qwen25 down-qwen25 down restart logs ps build test verify pull-models pull-reranker pull-bonsai-gguf pull-ministral pull-qwen35 pull-qwen36 pull-nemotron pull-granite41 pull-phi4mini pull-qwen25 pin-embeddings-cpu seed vault-init ingest ingest-repos ingest-teams ingest-azdo psql health verificar capturar-error clean format lint test-js secrets check ci hooks
+.PHONY: help up gpu-check gpu-resumen docling-reciclar cache-reciclar jdk-check llm-instalar llm-up llm-down llm-estado down restart logs ps build test verify pull-models pull-gguf pull-reranker seed vault-init ingest ingest-repos ingest-teams ingest-azdo psql health verificar capturar-error clean format lint test-js secrets check ci hooks
 
 
 
@@ -66,7 +66,7 @@ endif
 ## El sed recorta el comentario final, los espacios y las comillas envolventes, y
 ## se queda con la ULTIMA aparicion, que es la que gana en docker compose.
 KB_ENV_FILE ?= .env
-ENV_LEIDAS := KB_GPU KB_DOCLING_GPU KB_VRAM_EMBEDDINGS_GPU KB_VRAM_DOCLING_GPU KB_DATA_DIR KB_VAULT_DIR KB_PORT KB_LLM_MODELO
+ENV_LEIDAS := KB_GPU KB_DOCLING_GPU KB_VRAM_EMBEDDINGS_GPU KB_VRAM_DOCLING_GPU KB_DATA_DIR KB_VAULT_DIR KB_PORT KB_LLM_MODELO KB_LLM_PORT KB_EMBEDDINGS_PORT KB_LLM_CONTEXTO_TOKENS KB_LLM_PARALELO KB_LLM_GGUF KB_LLAMA_HOST
 ENV_PLAN := $(shell \
   for v in $(ENV_LEIDAS); do \
     val=""; \
@@ -86,6 +86,12 @@ ENV_KB_DATA_DIR            := $(patsubst -,,$(word 5,$(ENV_PLAN)))
 ENV_KB_VAULT_DIR           := $(patsubst -,,$(word 6,$(ENV_PLAN)))
 ENV_KB_PORT                := $(patsubst -,,$(word 7,$(ENV_PLAN)))
 ENV_KB_LLM_MODELO          := $(patsubst -,,$(word 8,$(ENV_PLAN)))
+ENV_KB_LLM_PORT            := $(patsubst -,,$(word 9,$(ENV_PLAN)))
+ENV_KB_EMBEDDINGS_PORT     := $(patsubst -,,$(word 10,$(ENV_PLAN)))
+ENV_KB_LLM_CONTEXTO_TOKENS := $(patsubst -,,$(word 11,$(ENV_PLAN)))
+ENV_KB_LLM_PARALELO        := $(patsubst -,,$(word 12,$(ENV_PLAN)))
+ENV_KB_LLM_GGUF            := $(patsubst -,,$(word 13,$(ENV_PLAN)))
+ENV_KB_LLAMA_HOST          := $(patsubst -,,$(word 14,$(ENV_PLAN)))
 
 ## Se le pasa a docker compose SOLO si el archivo existe: --env-file apuntando a
 ## un archivo ausente no es un no-op, aborta con "env file ... not found" -- y
@@ -94,31 +100,22 @@ ENV_KB_LLM_MODELO          := $(patsubst -,,$(word 8,$(ENV_PLAN)))
 ENV_FILE_FLAG := $(if $(wildcard $(KB_ENV_FILE)),--env-file $(KB_ENV_FILE),)
 
 COMPOSE           := docker compose $(ENV_FILE_FLAG)
-COMPOSE_GPU       := docker compose $(ENV_FILE_FLAG) -f compose.yml -f compose.gpu.yml
-## El modelo que descarga `pull-models`. Sale de KB_LLM_MODELO -- el mismo que
-## leen los compose y que usa el chat -- para que descargar y ejecutar no puedan
-## apuntar a modelos distintos.
-##
-## Antes era gemma3:4b a secas, sin relacion alguna con KB_LLM_MODELO: el Makefile
-## no mencionaba esa variable ni una vez. Con un perfil de Ollama configurado,
-## `make pull-models` seguia bajando gemma3:4b y la primera consulta fallaba con
-## un 404 del modelo que si hacia falta. Peor todavia porque el indicador de salud
-## mandaba justo ahi ("corre `make pull-models`"), asi que el consejo y el comando
-## se realimentaban.
-##
-## OJO con el alcance: esto NO convierte a pull-models en "descarga lo del perfil
-## que voy a levantar". El perfil lo elige el target que invocas DESPUES
-## (up-ministral, up-granite41...), y cada uno trae su modelo en su propio
-## compose, no en KB_LLM_MODELO. Lo que se arregla es que, cuando KB_LLM_MODELO
-## esta puesto -- en el entorno o en el archivo de entorno --, se respete en vez
-## de ignorarse en silencio. Para los demas perfiles sigue estando su
-## `make pull-<perfil>`.
-## El entorno se consulta ANTES que el archivo: LLM no se llama KB_LLM_MODELO, asi
-## que el `?=` no basta para que una variable de entorno lo pise sola -- hay que
-## mirarla explicitamente para mantener la precedencia del resto del Makefile.
-LLM         ?= $(if $(KB_LLM_MODELO),$(KB_LLM_MODELO),$(if $(ENV_KB_LLM_MODELO),$(ENV_KB_LLM_MODELO),hf.co/ibm-granite/granite-4.1-3b-GGUF:Q3_K_M))
-EMBEDDINGS  ?= bge-m3
 KB_DATA_DIR ?= $(if $(ENV_KB_DATA_DIR),$(ENV_KB_DATA_DIR),./.data)
+
+## ---------------------------------------------------------------- modelos (ADR-0017)
+##
+## El LLM y los embeddings no corren en Docker: los sirven dos instancias de
+## llama-server en el host, que maneja scripts/llama-cpp.mjs. Los modelos son
+## archivos GGUF bajo KB_DATA_DIR/models, bajados de Hugging Face con el hash
+## fijado, igual que el reranker. Son byte a byte los mismos que servia Ollama
+## (sus blobs se llaman por ese hash), asi que el indice no cambia.
+LLM_GGUF_URL           := https://huggingface.co/ibm-granite/granite-4.1-3b-GGUF/resolve/main/granite-4.1-3b-Q3_K_M.gguf
+LLM_GGUF               := $(KB_DATA_DIR)/models/llm/granite-4.1-3b-Q3_K_M.gguf
+LLM_GGUF_SHA256        := 43db9c8da5360eaeef0039cdc28aefdf43ede98ddf36ec7edfd6d4ee89f36403
+EMBEDDINGS_GGUF_URL    := https://huggingface.co/gpustack/bge-m3-GGUF/resolve/main/bge-m3-FP16.gguf
+EMBEDDINGS_GGUF        := $(KB_DATA_DIR)/models/embeddings/bge-m3-FP16.gguf
+EMBEDDINGS_GGUF_SHA256 := daec91ffb5dd0c27411bd71f29932917c49cf529a641d0168496c3a501e3062c
+LLAMA_CPP              := node scripts/llama-cpp.mjs
 # Mismo default que compose.yml, y con el mismo motivo: el vault vive FUERA del
 # repo. Se declara aca para que vault-init sepa donde copiar el corpus de ejemplo.
 KB_VAULT_DIR ?= $(if $(ENV_KB_VAULT_DIR),$(ENV_KB_VAULT_DIR),../../vault)
@@ -131,25 +128,27 @@ JAVA_MINIMO := 25
 ## ---------------------------------------------------------------- GPU: hardware y reparto
 ##
 ## Una sola llamada a nvidia-smi por invocacion de make, de la que sale TODO lo que
-## depende de la tarjeta: si hay GPU, con que Compute Capability se compila Bonsai,
-## que imagen de CUDA tolera el driver, si los embeddings van a la GPU o a la CPU y
-## si docling entra tambien. La idea es que el mismo `make up` haga lo correcto en
-## una T600 de 4 GB y en una RTX 3060 de 6 GB sin que nadie edite nada.
+## depende de la tarjeta: si hay GPU (y entonces el LLM va a ella), si los
+## embeddings van a la GPU o a la CPU y si docling entra tambien. La idea es que el
+## mismo `make up` haga lo correcto en una T600 de 4 GB y en una RTX 3060 de 6 GB
+## sin que nadie edite nada.
 ##
 ## Los umbrales no son gustos, salen de lo medido en
 ## docs/investigacion-vram-y-modelo-llm.md:
 ##
-## - KB_VRAM_EMBEDDINGS_GPU. En la T600 de 4 GB, `gemma3:4b` NO entra completo ni
-##   estando solo: Ollama offloadea capas hasta que caben y queda en 40% GPU /
-##   60% CPU (hallazgo 1). Ahi darle VRAM a bge-m3 solo empeora al LLM, y moverlo
-##   a CPU es una mejora neta medida (hallazgo 2). Con 6 GB o mas entran los dos
-##   y los embeddings se quedan en la tarjeta, que es lo que se quiere para la
-##   ingesta.
+## - KB_VRAM_EMBEDDINGS_GPU. En la T600 de 4 GB, `gemma3:4b` NO entraba completo
+##   ni estando solo (40% GPU / 60% CPU, hallazgo 1), y darle VRAM a bge-m3 solo
+##   empeoraba al LLM: moverlo a CPU fue una mejora neta medida (hallazgo 2).
+##   Granite 4.1 3B Q3_K_M si entra (2.4 GB medidos en la T600 con llama-server
+##   y dos slots de 4096); bge-m3 en F16 pesa 1.2 GB mas su buffer, y juntos no
+##   se midieron en 4 GB: el umbral sigue siendo el de gemma3:4b. Con 6 GB o mas
+##   entran los dos y los embeddings se quedan en la tarjeta, que es lo que se
+##   quiere para la ingesta.
 ## - KB_VRAM_DOCLING_GPU. Medido en la sesion 27 (hallazgos 106 y 109): docling
 ##   pica en 2.2 GB con un documento grande. Sumado a los 4.0 GB de gemma3:4b a
 ##   contexto 4096 y los ~1.2 GB de bge-m3 en GPU, son ~7.4 GB con las tres etapas
 ##   en la tarjeta -- por eso 8192 y no 6144: en 6 GB los tres no entran. El LLM
-##   esta ocioso durante la ingesta pero sigue residente (OLLAMA_KEEP_ALIVE), asi
+##   esta ocioso durante la ingesta pero sigue residente (llama-server lo carga al arrancar), asi
 ##   que la suma es real. Ademas docling no libera la VRAM entre conversiones (bug
 ##   conocido sin fix, ver ADR-0010 y compose.docling-gpu.yml). Con KB_DOCLING_GPU=1
 ##   se fuerza igual, y con 0 se apaga.
@@ -158,31 +157,18 @@ JAVA_MINIMO := 25
 KB_VRAM_EMBEDDINGS_GPU ?= $(if $(ENV_KB_VRAM_EMBEDDINGS_GPU),$(ENV_KB_VRAM_EMBEDDINGS_GPU),6144)
 KB_VRAM_DOCLING_GPU    ?= $(if $(ENV_KB_VRAM_DOCLING_GPU),$(ENV_KB_VRAM_DOCLING_GPU),8192)
 
-## Devuelve, en una sola linea: vram_mib cc driver_major embeddings docling cuda_tag emb_en_env
-## Sin GPU (o sin nvidia-smi) devuelve la fila neutra "0 75 0 cpu no 12.6.0 ...".
+## Devuelve, en una sola linea: vram_mib embeddings docling
+## Sin GPU (o sin nvidia-smi) devuelve la fila neutra "0 cpu no".
 GPU_PLAN := $(shell \
-  info=$$(nvidia-smi --query-gpu=memory.total,compute_cap,driver_version --format=csv,noheader,nounits 2>/dev/null | head -1); \
-  if grep -sqE '^[[:space:]]*KB_EMBEDDINGS_MODELO=' "$(KB_ENV_FILE)"; then fijo=si; else fijo=no; fi; \
-  if [ -z "$$info" ]; then echo "0 75 0 cpu no 12.6.0 $$fijo"; exit 0; fi; \
-  vram=$$(echo "$$info" | cut -d, -f1 | tr -cd '0-9'); \
-  cc=$$(echo   "$$info" | cut -d, -f2 | tr -cd '0-9'); \
-  drv=$$(echo  "$$info" | cut -d, -f3 | cut -d. -f1 | tr -cd '0-9'); \
-  [ -n "$$vram" ] || vram=0; [ -n "$$cc" ] || cc=75; [ -n "$$drv" ] || drv=0; \
-  if [ "$$vram" -ge $(KB_VRAM_EMBEDDINGS_GPU) ]; then emb=gpu; else emb=cpu; fi; \
-  if [ "$$vram" -ge $(KB_VRAM_DOCLING_GPU) ];    then doc=si; else doc=no; fi; \
-  if   [ "$$drv" -ge 560 ]; then tag=12.6.0; \
-  elif [ "$$drv" -ge 550 ]; then tag=12.4.1; \
-  elif [ "$$drv" -ge 535 ]; then tag=12.2.2; \
-  else tag=12.6.0; fi; \
-  echo "$$vram $$cc $$drv $$emb $$doc $$tag $$fijo")
+  vram=$$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits 2>/dev/null | head -1 | tr -cd '0-9'); \
+  [ -n "$$vram" ] || vram=0; \
+  if [ "$$vram" -gt 0 ] && [ "$$vram" -ge $(KB_VRAM_EMBEDDINGS_GPU) ]; then emb=gpu; else emb=cpu; fi; \
+  if [ "$$vram" -gt 0 ] && [ "$$vram" -ge $(KB_VRAM_DOCLING_GPU) ];    then doc=si; else doc=no; fi; \
+  echo "$$vram $$emb $$doc")
 
 GPU_VRAM_MIB   := $(word 1,$(GPU_PLAN))
-GPU_CC         := $(word 2,$(GPU_PLAN))
-GPU_DRIVER_MAJ := $(word 3,$(GPU_PLAN))
-GPU_EMBEDDINGS := $(word 4,$(GPU_PLAN))
-GPU_DOCLING    := $(word 5,$(GPU_PLAN))
-GPU_CUDA_TAG   := $(word 6,$(GPU_PLAN))
-GPU_EMB_FIJADO := $(word 7,$(GPU_PLAN))
+GPU_EMBEDDINGS := $(word 2,$(GPU_PLAN))
+GPU_DOCLING    := $(word 3,$(GPU_PLAN))
 
 ## Estas dos se consultan con ifeq y no con ?=, asi que el valor del archivo de
 ## entorno se aplica aca: ifndef respeta lo que venga del entorno o de la linea
@@ -218,88 +204,39 @@ endif
 ## Medido en un equipo real (RTX 3060 Laptop, 6144 MiB): con esta variable a 1 en
 ## el archivo de entorno, `make` encadena compose.docling-gpu.yml pese a estar por
 ## debajo de KB_VRAM_DOCLING_GPU. docling toma VRAM y NO la suelta entre
-## conversiones (bug conocido sin fix, ADR-0010), asi que cuando Ollama va a
-## cargar sus modelos ya no queda sitio y cae a 100% CPU -- los DOS, incluido
-## bge-m3, que con 1.2 GB cabria de sobra en 6 GB.
-##
-## Lo que se ve es "todo va lentisimo" y un `ollama ps` diciendo 100% CPU, con
-## `make gpu-check` informando "Perfil de compose: GPU", la GPU correctamente
-## reservada en el contenedor y `nvidia-smi` funcionando dentro. Nada apunta a
-## docling. Diagnosticarlo costo varias rondas.
+## conversiones (bug conocido sin fix, ADR-0010), asi que cuando el LLM va a
+## cargar ya no queda sitio. Con Ollama eso era caer a 100% CPU en silencio, sin
+## un solo error -- "todo va lentisimo" y nada apuntaba a docling. llama-server
+## no cae solo: con -ngl 99 y sin VRAM falla al arrancar, y `make up` muestra su
+## log.
 DOCLING_GPU_FORZADO := $(if $(and $(filter 1,$(KB_DOCLING_GPU)),$(filter-out 0,$(GPU_VRAM_MIB))),$(shell [ "$(GPU_VRAM_MIB)" -lt "$(KB_VRAM_DOCLING_GPU)" ] && echo si),)
 
 
-## Sin GPU no hay nada que repartir: los embeddings van a CPU igual, pero por la via
-## normal de Ollama, no con el modelo -cpu fijado.
+## Sin GPU no hay nada que repartir: todo va a CPU.
 ifndef HAY_GPU
-GPU_EMBEDDINGS := cpu-sin-gpu
+GPU_EMBEDDINGS := cpu
 GPU_DOCLING := no
 endif
 
-## docling en GPU es un override mas encadenado al perfil GPU, no un compose aparte.
+## docling en GPU es el unico override de compose que queda: el LLM y los
+## embeddings toman la tarjeta desde el host, no desde un contenedor.
 ifeq ($(GPU_DOCLING),si)
-COMPOSE_GPU := $(COMPOSE_GPU) -f compose.docling-gpu.yml
-endif
-
-## Compute Capability y tag de CUDA para el perfil Bonsai, derivados del hardware
-## real en vez de fijados a la T600 del ADR-0009. `?=` para que un valor puesto a
-## mano (o en .env) siga ganando.
-##   cc:  75 = Turing (T600, RTX 20xx)  86 = Ampere (RTX 30xx)
-##        89 = Ada (RTX 40xx)           120 = Blackwell (RTX 50xx)
-##   tag: cada imagen nvidia/cuda exige un driver minimo y lo verifica al arrancar
-##        el contenedor. 12.6.0 pide >= 560, 12.4.1 >= 550, 12.2.2 >= 535.
-BONSAI_CUDA_ARCH     ?= $(GPU_CC)
-BONSAI_CUDA_TAG      ?= $(GPU_CUDA_TAG)
-BONSAI_DRIVER_MINIMO := 560
-export BONSAI_CUDA_ARCH
-export BONSAI_CUDA_TAG
-
-## Embeddings: se exporta el modelo elegido SOLO si no esta fijado en .env. docker
-## compose le da precedencia al entorno sobre .env, asi que exportarlo siempre
-## pisaria una eleccion explicita del usuario. Con .env callado, manda el hardware.
-ifeq ($(GPU_EMB_FIJADO),no)
-ifeq ($(GPU_EMBEDDINGS),cpu)
-export KB_EMBEDDINGS_MODELO := $(EMBEDDINGS)-cpu
-else ifeq ($(GPU_EMBEDDINGS),gpu)
-export KB_EMBEDDINGS_MODELO := $(EMBEDDINGS)
-endif
-endif
-
-ifeq ($(HAY_GPU),1)
-COMPOSE_ACTIVO := $(COMPOSE_GPU)
+COMPOSE_ACTIVO := $(COMPOSE) -f compose.yml -f compose.docling-gpu.yml
 else
 COMPOSE_ACTIVO := $(COMPOSE)
 endif
 
-## ---------------------------------------------------------------- perfiles de modelo
-##
-## Van despues del bloque de GPU a proposito: encadenan compose.gpu.yml SOLO si hay
-## tarjeta. Antes lo hacian siempre, y en un equipo sin GPU eso hace fallar el `up`
-## entero -- la reserva de dispositivo nvidia no es negociable para docker, aunque
-## Ollama sepa caer a CPU perfectamente. Con esto, `make up-ministral` se adapta al
-## hardware igual que `make up`.
-##
-## Bonsai es la excepcion y sigue exigiendo GPU siempre: su llama-server se compila
-## con CUDA y reserva la tarjeta completa para si mismo (ver ADR-0009), no tiene
-## sentido levantarlo sin ella.
-##
-## Ninguno encadena compose.docling-gpu.yml: son perfiles de LLM, y el reparto de
-## docling se decide aparte en `up`.
-PERFIL_GPU := $(if $(HAY_GPU),-f compose.gpu.yml,)
-
-COMPOSE_BONSAI    := docker compose $(ENV_FILE_FLAG) -f compose.yml -f compose.gpu.yml -f compose.bonsai.yml
-# Los que siguen se sirven desde el `ollama` de siempre, no de un llama-server
-# aparte -- ver compose.ministral.yml sobre por que se dejo de usar llama-server, y
-# compose.qwen35.yml sobre el estado experimental de ese perfil. Granite, Phi-4 y
-# Qwen2.5 son de la sesion 25 (piloto de 100 preguntas con sintesis estructurada
-# contra los candidatos descartados por "texto pegado").
-COMPOSE_MINISTRAL := docker compose $(ENV_FILE_FLAG) -f compose.yml $(PERFIL_GPU) -f compose.ministral.yml
-COMPOSE_QWEN35    := docker compose -f compose.yml $(PERFIL_GPU) -f compose.qwen35.yml
-COMPOSE_QWEN36    := docker compose -f compose.yml $(PERFIL_GPU) -f compose.qwen36.yml
-COMPOSE_NEMOTRON  := docker compose -f compose.yml $(PERFIL_GPU) -f compose.nemotron.yml
-COMPOSE_GRANITE41 := docker compose -f compose.yml $(PERFIL_GPU) -f compose.granite41.yml
-COMPOSE_PHI4MINI  := docker compose -f compose.yml $(PERFIL_GPU) -f compose.phi4mini.yml
-COMPOSE_QWEN25    := docker compose -f compose.yml $(PERFIL_GPU) -f compose.qwen25.yml
+## Lo que scripts/llama-cpp.mjs necesita saber del reparto. 99 = todas las capas en
+## la GPU; 0 = CPU (el script agrega -dev none para que ni abra un contexto CUDA).
+## Sin GPU se instala el build CPU de llama.cpp en vez del CUDA (~25 MB contra 670).
+export KB_DATA_DIR
+export KB_LLM_GPU_CAPAS        := $(if $(HAY_GPU),99,0)
+export KB_EMBEDDINGS_GPU_CAPAS := $(if $(filter gpu,$(GPU_EMBEDDINGS)),99,0)
+export KB_LLAMA_CPP_VARIANTE   := $(if $(HAY_GPU),cuda,cpu)
+## Las del archivo de entorno que el script lee, con la misma precedencia de siempre:
+## entorno > archivo > default (el del script).
+$(foreach v,KB_LLM_MODELO KB_LLM_PORT KB_EMBEDDINGS_PORT KB_LLM_CONTEXTO_TOKENS KB_LLM_PARALELO KB_LLM_GGUF KB_LLAMA_HOST,\
+  $(if $($(v)),,$(if $(ENV_$(v)),$(eval export $(v) := $(ENV_$(v))))))
 
 # Re-subida ONNX de la comunidad, no del repo oficial de BAAI: el hash fijado
 # es lo que hace que "confiar en esta descarga" sea una decision verificable
@@ -324,6 +261,21 @@ define verificar_sha256
 	fi
 endef
 
+## Baja un GGUF a un .tmp, verifica el hash y solo entonces lo deja en su lugar:
+## un archivo a medias nunca queda con el nombre que llama-server busca.
+define bajar_gguf
+	mkdir -p "$(dir $(1))"; \
+	if [ -f "$(1)" ]; then \
+		echo "$(notdir $(1)) ya esta en $(dir $(1)), no se descarga de nuevo."; \
+	else \
+		echo "Descargando $(notdir $(1)) a $(dir $(1)) ..."; \
+		curl -fL --progress-bar -o "$(1).tmp" "$(2)" && \
+		$(call verificar_sha256,$(1).tmp,$(3)) && \
+		mv "$(1).tmp" "$(1)" && \
+		echo "$(notdir $(1)) listo y verificado."; \
+	fi
+endef
+
 help:  ## Muestra esta ayuda
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-22s\033[0m %s\n", $$1, $$2}'
 
@@ -332,7 +284,7 @@ help:  ## Muestra esta ayuda
 
 ## ---------------------------------------------------------------- arranque con aviso
 ##
-## Los nueve `up` no invocan a docker compose directamente: pasan por `arrancar`,
+## `up` no invoca a docker compose directamente: pasa por `arrancar`,
 ## que vigila UN fallo concreto y lo traduce.
 ##
 ## El fallo: la etapa `deps` del Dockerfile corre `dependency:go-offline` sobre un
@@ -360,7 +312,7 @@ help:  ## Muestra esta ayuda
 ## (tee, siempre 0) y `set -o pipefail` no es portable a todas las sh.
 define arrancar
 log=$$(mktemp); est=$$(mktemp); \
-( $(1) up -d --build 2>&1; echo $$? > "$$est" ) | tee "$$log"; \
+( $(1) up -d --build --remove-orphans 2>&1; echo $$? > "$$est" ) | tee "$$log"; \
 codigo=$$(cat "$$est"); \
 if [ "$$codigo" != "0" ] && grep -qE "in offline mode and the artifact|has not been downloaded from it before" "$$log"; then \
   echo ""; \
@@ -383,42 +335,30 @@ rm -f "$$log" "$$est"; \
 exit $$codigo
 endef
 
-up:  ## Levanta los 4 servicios y reparte la GPU segun la tarjeta que detecte
+up:  ## Levanta llama-server (LLM y embeddings, en el host) y los 3 contenedores; reparte la GPU sola
+	@$(LLAMA_CPP) arrancar
 	@$(call arrancar,$(COMPOSE_ACTIVO))
-	@$(MAKE) --no-print-directory gpu-resumen
-
-gpu-up:  ## Fuerza el perfil GPU aunque la deteccion automatica no encuentre nvidia-smi
-	@$(call arrancar,$(COMPOSE_GPU))
 	@$(MAKE) --no-print-directory gpu-resumen
 
 gpu-resumen:  ## Muestra en una pantalla que se llevo la GPU y que quedo en CPU
 ifeq ($(HAY_GPU),1)
-	@echo "Perfil activo: GPU (compose.gpu.yml) -- $$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -1), $(GPU_VRAM_MIB) MiB"
-	@echo "  LLM (consultas)          : GPU"
-	@echo "  Embeddings (ingesta y consultas): $(if $(filter gpu,$(GPU_EMBEDDINGS)),GPU,CPU con $(EMBEDDINGS)-cpu -- la VRAM no alcanza para el LLM y los embeddings a la vez)"
-	@echo "  Extraccion PDF (docling) : $(if $(filter si,$(GPU_DOCLING)),GPU,CPU)"
-	@echo "  Reranker (cross-encoder) : CPU siempre -- el proyecto usa la build CPU de ONNX Runtime"
-ifeq ($(GPU_EMB_FIJADO),si)
-	@echo ""
-	@echo "  Nota: KB_EMBEDDINGS_MODELO esta fijado en tu .env, asi que manda eso y no la"
-	@echo "        deteccion. Comentalo para que make elija segun el hardware."
-endif
+	@echo "GPU: $$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -1), $(GPU_VRAM_MIB) MiB"
+	@echo "  LLM (llama-server, host)        : GPU"
+	@echo "  Embeddings (llama-server, host) : $(if $(filter gpu,$(GPU_EMBEDDINGS)),GPU,CPU -- con menos de $(KB_VRAM_EMBEDDINGS_GPU) MiB la VRAM queda para el LLM)"
+	@echo "  Extraccion PDF (docling)        : $(if $(filter si,$(GPU_DOCLING)),GPU,CPU)"
+	@echo "  Reranker (cross-encoder)        : CPU siempre -- el proyecto usa la build CPU de ONNX Runtime"
 	@echo ""
 ifeq ($(DOCLING_GPU_FORZADO),si)
-	@echo ""
 	@echo "  ATENCION: KB_DOCLING_GPU=1 mete docling en la GPU con solo $(GPU_VRAM_MIB) MiB,"
 	@echo "  por debajo del umbral de $(KB_VRAM_DOCLING_GPU) MiB. docling NO libera la VRAM entre"
-	@echo "  conversiones (ADR-0010), asi que puede quedarse con la tarjeta y dejar"
-	@echo "  a Ollama SIN sitio -- se cae a 100% CPU en silencio, sin ningun error."
-	@echo ""
-	@echo "  Si las consultas van lentisimas, comprueba el reparto real:"
-	@echo "      docker exec kb-ollama ollama ps      (mira la columna PROCESSOR)"
+	@echo "  conversiones (ADR-0010) y puede dejar al LLM sin sitio la proxima vez que arranque."
 	@echo "  Para revertirlo, quita KB_DOCLING_GPU de tu archivo de entorno o:"
 	@echo "      KB_DOCLING_GPU=0 make down && KB_DOCLING_GPU=0 make up"
+	@echo ""
 endif
 	@echo "  Detalle y umbrales: make gpu-check"
 else
-	@echo "Perfil activo: CPU (compose.yml) -- sin GPU NVIDIA activa"
+	@echo "Sin GPU NVIDIA activa: LLM, embeddings y docling en CPU"
 	@echo "  Si esta maquina tiene una, corre: make gpu-check"
 endif
 
@@ -429,116 +369,49 @@ gpu-check:  ## Diagnostica que hardware vio make y como repartio la GPU
 	@echo "  KB_DOCLING_GPU   : $(if $(KB_DOCLING_GPU),$(KB_DOCLING_GPU),sin definir)"
 	@echo ""
 	@echo "== Hardware detectado =="
-	-@nvidia-smi --query-gpu=name,memory.total,compute_cap,driver_version --format=csv || echo "   nvidia-smi no respondio"
+	-@nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv || echo "   nvidia-smi no respondio"
 	-@command -v nvidia-smi || echo "   nvidia-smi no esta en el PATH de este shell"
 	@echo ""
 	@echo "== Lo que make dedujo =="
 	@echo "  VRAM             : $(GPU_VRAM_MIB) MiB"
-	@echo "  Compute Cap      : $(GPU_CC)   -> BONSAI_CUDA_ARCH=$(BONSAI_CUDA_ARCH)"
-	@echo "  Driver (mayor)   : $(GPU_DRIVER_MAJ) -> BONSAI_CUDA_TAG=$(BONSAI_CUDA_TAG)"
-	@echo "  Perfil de compose: $(if $(HAY_GPU),GPU,CPU)"
+	@echo "  GPU              : $(if $(HAY_GPU),si,no)   -> build de llama.cpp: $(KB_LLAMA_CPP_VARIANTE)"
 	@echo ""
 	@echo "== Reparto de la tarjeta =="
-	@echo "  LLM                      : $(if $(HAY_GPU),GPU,CPU)"
+	@echo "  LLM                      : $(if $(HAY_GPU),GPU,CPU)   (KB_LLM_GPU_CAPAS=$(KB_LLM_GPU_CAPAS))"
 	@echo "  Embeddings               : $(if $(filter gpu,$(GPU_EMBEDDINGS)),GPU,CPU)   (umbral KB_VRAM_EMBEDDINGS_GPU=$(KB_VRAM_EMBEDDINGS_GPU) MiB)"
 	@echo "  Extraccion PDF (docling) : $(if $(filter si,$(GPU_DOCLING)),GPU,CPU)   (umbral KB_VRAM_DOCLING_GPU=$(KB_VRAM_DOCLING_GPU) MiB)$(if $(filter si,$(DOCLING_GPU_FORZADO)),  <-- FORZADO por debajo del umbral,)"
 	@echo "  Reranker                 : CPU   (build CPU de ONNX Runtime, no lo cambia ninguna variable)"
-	@echo "  KB_EMBEDDINGS_MODELO     : $(if $(filter si,$(GPU_EMB_FIJADO)),fijado en tu .env -- manda eso,$(KB_EMBEDDINGS_MODELO) (elegido por make))"
 	@echo ""
 	@echo "== Por que =="
-	@echo "  Con menos de $(KB_VRAM_EMBEDDINGS_GPU) MiB el LLM y los embeddings no entran juntos (umbral medido con"
-	@echo "  gemma3:4b en la T600 de 4 GB: 40% GPU / 60% CPU; sin remedir con Granite), asi que darle VRAM a los"
-	@echo "  embeddings solo empeora al LLM: se los manda a CPU, que es una mejora neta"
-	@echo "  medida. Con $(KB_VRAM_EMBEDDINGS_GPU) MiB o mas entran los dos y los embeddings se quedan en la"
-	@echo "  tarjeta. docling entra recien con $(KB_VRAM_DOCLING_GPU) MiB porque no libera su VRAM entre"
-	@echo "  conversiones (bug conocido, ver ADR-0010). Ver docs/investigacion-vram-y-modelo-llm.md."
+	@echo "  Con menos de $(KB_VRAM_EMBEDDINGS_GPU) MiB el LLM y los embeddings no se midieron juntos en la"
+	@echo "  tarjeta (con gemma3:4b no entraban: 40% GPU / 60% CPU), asi que los embeddings van a CPU y la"
+	@echo "  VRAM queda para el LLM, que es la etapa que se espera. docling entra recien con"
+	@echo "  $(KB_VRAM_DOCLING_GPU) MiB porque no libera su VRAM entre conversiones (bug conocido, ver ADR-0010)."
+	@echo "  Ver docs/investigacion-vram-y-modelo-llm.md."
 	@echo ""
 	@echo "  Todo eso se puede forzar:  KB_GPU=1|0   KB_DOCLING_GPU=1|0"
 	@echo "                             KB_VRAM_EMBEDDINGS_GPU=...   KB_VRAM_DOCLING_GPU=..."
 	@echo ""
-ifeq ($(DOCLING_GPU_FORZADO),si)
-	@echo ""
-	@echo "  ATENCION: KB_DOCLING_GPU=1 mete docling en la GPU con solo $(GPU_VRAM_MIB) MiB,"
-	@echo "  por debajo del umbral de $(KB_VRAM_DOCLING_GPU) MiB. docling NO libera la VRAM entre"
-	@echo "  conversiones (ADR-0010), asi que puede quedarse con la tarjeta y dejar"
-	@echo "  a Ollama SIN sitio -- se cae a 100% CPU en silencio, sin ningun error."
-	@echo ""
-	@echo "  Si las consultas van lentisimas, comprueba el reparto real:"
-	@echo "      docker exec kb-ollama ollama ps      (mira la columna PROCESSOR)"
-	@echo "  Para revertirlo, quita KB_DOCLING_GPU de tu archivo de entorno o:"
-	@echo "      KB_DOCLING_GPU=0 make down && KB_DOCLING_GPU=0 make up"
-endif
-	@echo "  Si la tarjeta aparece arriba pero el perfil dice CPU, fallo la deteccion, no"
-	@echo "  el hardware: levanta con  KB_GPU=1 make up"
+	@echo "  Si la tarjeta aparece arriba pero GPU dice no, fallo la deteccion, no el"
+	@echo "  hardware: levanta con  KB_GPU=1 make up"
 
+llm-instalar:  ## Baja y verifica el build fijado de llama.cpp (Windows; en Linux/macOS usa el del PATH)
+	@$(LLAMA_CPP) instalar
 
-up-bonsai:  ## Levanta el perfil Bonsai-8B (LLM 1-bit via llama-server); requiere GPU NVIDIA y el GGUF de pull-bonsai-gguf
-	@echo "Bonsai: imagen base nvidia/cuda:$(BONSAI_CUDA_TAG) (requiere driver NVIDIA >= $(BONSAI_DRIVER_MINIMO)) compilando para sm_$(BONSAI_CUDA_ARCH)."
-	@echo "Si falla con \"unsatisfied condition: cuda>=12.6\" o el modelo no corre en la GPU corre: make gpu-check"
-	@# Sin el GGUF, el bind mount de compose.bonsai.yml crea el directorio VACIO
-	@# (create_host_path) en vez de fallar: llama-server arranca, no encuentra el
-	@# modelo, sale, y como tiene restart: unless-stopped entra en bucle sin pasar
-	@# nunca el healthcheck. Lo que ve quien lo corre es "dependency failed to
-	@# start: container kb-llama-server is unhealthy" -- un error que apunta a la
-	@# api y no menciona el archivo que falta. El motivo real solo aparece en
-	@# `docker logs kb-llama-server`. Este chequeo lo dice antes de compilar.
-	@if [ ! -f "$(KB_DATA_DIR)/bonsai/Bonsai-8B-Q1_0.gguf" ]; then \
-		echo ""; \
-		echo "ERROR: falta el modelo en $(KB_DATA_DIR)/bonsai/Bonsai-8B-Q1_0.gguf"; \
-		echo "  Descargalo una sola vez (~1.16 GB) con:  make pull-bonsai-gguf"; \
-		exit 1; \
-	fi
-	@$(call arrancar,$(COMPOSE_BONSAI))
+llm-up:  ## Levanta solo las dos instancias de llama-server (LLM y embeddings), sin tocar Docker
+	@$(LLAMA_CPP) arrancar
 
-down-bonsai:  ## Detiene el perfil Bonsai (mismos -f que up-bonsai, para no dejar contenedores huerfanos)
-	$(COMPOSE_BONSAI) down
+llm-down:  ## Detiene las dos instancias de llama-server
+	@$(LLAMA_CPP) detener
 
-up-ministral:  ## Levanta el perfil Ministral 3B (LLM via Ollama); corre make pull-ministral antes la primera vez
-	@$(call arrancar,$(COMPOSE_MINISTRAL))
+llm-estado:  ## Dice si cada instancia de llama-server corre y responde, y donde esta su log
+	@$(LLAMA_CPP) estado
 
-down-ministral:  ## Detiene el perfil Ministral (mismos -f que up-ministral)
-	$(COMPOSE_MINISTRAL) down
-
-up-qwen35:  ## Levanta el perfil experimental Qwen3.5 4B (LLM via Ollama, fix de thinking integrado); corre make pull-qwen35 antes la primera vez
-	@$(call arrancar,$(COMPOSE_QWEN35))
-
-down-qwen35:  ## Detiene el perfil Qwen3.5 (mismos -f que up-qwen35)
-	$(COMPOSE_QWEN35) down
-
-up-qwen36:  ## Levanta el perfil experimental Qwen3.6 35B-A3B (MoE, pensado para 6 GB de VRAM); corre make pull-qwen36 antes la primera vez
-	@$(call arrancar,$(COMPOSE_QWEN36))
-
-down-qwen36:  ## Detiene el perfil Qwen3.6 (mismos -f que up-qwen36)
-	$(COMPOSE_QWEN36) down
-
-up-nemotron:  ## Levanta el perfil experimental Nemotron-mini 4B (LLM via Ollama, sin thinking); corre make pull-nemotron antes la primera vez
-	@$(call arrancar,$(COMPOSE_NEMOTRON))
-
-down-nemotron:  ## Detiene el perfil Nemotron-mini (mismos -f que up-nemotron)
-	$(COMPOSE_NEMOTRON) down
-
-up-granite41:  ## Levanta el perfil experimental Granite 4.1 3B; corre make pull-granite41 antes la primera vez
-	@$(call arrancar,$(COMPOSE_GRANITE41))
-
-down-granite41:  ## Detiene el perfil Granite 4.1 (mismos -f que up-granite41)
-	$(COMPOSE_GRANITE41) down
-
-up-phi4mini:  ## Levanta el perfil experimental Phi-4 Mini 3.8B; corre make pull-phi4mini antes la primera vez
-	@$(call arrancar,$(COMPOSE_PHI4MINI))
-
-down-phi4mini:  ## Detiene el perfil Phi-4 Mini (mismos -f que up-phi4mini)
-	$(COMPOSE_PHI4MINI) down
-
-up-qwen25:  ## Levanta el perfil experimental Qwen2.5 3B; corre make pull-qwen25 antes la primera vez
-	@$(call arrancar,$(COMPOSE_QWEN25))
-
-down-qwen25:  ## Detiene el perfil Qwen2.5 (mismos -f que up-qwen25)
-	$(COMPOSE_QWEN25) down
-
-down:  ## Detiene los servicios (los datos en KB_DATA_DIR sobreviven); --remove-orphans limpia si venis de un perfil Bonsai/Ministral
+down:  ## Detiene los contenedores y llama-server (los datos en KB_DATA_DIR sobreviven)
 	$(COMPOSE_ACTIVO) down --remove-orphans
+	@$(LLAMA_CPP) detener
 
-restart:  ## Reinicia solo la api, sin tocar db ni ollama
+restart:  ## Reinicia solo la api, sin tocar db ni llama-server
 	$(COMPOSE_ACTIVO) up -d --build api
 
 logs:  ## Sigue el log de la api
@@ -566,7 +439,7 @@ capturar-error:  ## Vuelca la excepcion de kb-api a un archivo para compartir (u
 	@# no chocar con la politica de ejecucion. Ver el comentario de arriba.
 	@powershell -NoProfile -Command "& ([scriptblock]::Create((Get-Content -Raw 'scripts/capturar-error-api.ps1'))) -Lineas $(LINEAS)"
 
-health:  ## Reporte de salud detallado: db, ollama y modelos faltantes
+health:  ## Reporte de salud detallado: db, llama-server (LLM y embeddings) y reranker
 	@curl -fsS http://localhost:$(KB_PORT)/actuator/health | python -m json.tool 2>/dev/null \
 	  || curl -fsS http://localhost:$(KB_PORT)/actuator/health
 
@@ -606,19 +479,16 @@ docling-reciclar:  ## Reinicia docling-serve para liberar la VRAM que retiene en
 
 ## ---------------------------------------------------------------- modelos
 
-pull-models:  ## Descarga el modelo del chat (KB_LLM_MODELO, por defecto Granite 4.1 3B Q3_K_M), embeddings y reranker (~3.9 GB). Otros perfiles: make pull-<perfil>
-	$(COMPOSE_ACTIVO) exec ollama ollama pull $(LLM)
-	$(COMPOSE_ACTIVO) exec ollama ollama pull $(EMBEDDINGS)
-	$(MAKE) pull-reranker
-ifeq ($(GPU_EMBEDDINGS),cpu)
+pull-models:  ## Instala llama.cpp y baja Granite 4.1 3B Q3_K_M, bge-m3 y el reranker, verificados (~3.4 GB)
+	@$(MAKE) --no-print-directory llm-instalar
+	@$(MAKE) --no-print-directory pull-gguf
+	@$(MAKE) --no-print-directory pull-reranker
 	@echo ""
-	@echo "Esta tarjeta ($(GPU_VRAM_MIB) MiB) no da para el LLM y los embeddings a la vez, asi que"
-	@echo "make va a pedir $(EMBEDDINGS)-cpu. Se crea ahora, para que no falte al arrancar:"
-	@$(MAKE) --no-print-directory pin-embeddings-cpu
-endif
-	@echo ""
-	@echo "Listo. 'make gpu-check' muestra como quedo repartida la tarjeta."
+	@echo "Listo. 'make up' levanta todo; 'make gpu-check' muestra como queda repartida la tarjeta."
 
+pull-gguf:  ## Baja y verifica los GGUF del LLM y de los embeddings (no los vuelve a bajar si ya estan)
+	@$(call bajar_gguf,$(LLM_GGUF),$(LLM_GGUF_URL),$(LLM_GGUF_SHA256))
+	@$(call bajar_gguf,$(EMBEDDINGS_GGUF),$(EMBEDDINGS_GGUF_URL),$(EMBEDDINGS_GGUF_SHA256))
 pull-reranker:  ## Descarga y verifica el ONNX del cross-encoder (~545 MB)
 	@mkdir -p "$(RERANKER_DIR)"
 	@if [ -f "$(RERANKER_DIR)/model.onnx" ] && [ -f "$(RERANKER_DIR)/tokenizer.json" ]; then \
@@ -633,52 +503,6 @@ pull-reranker:  ## Descarga y verifica el ONNX del cross-encoder (~545 MB)
 		mv "$(RERANKER_DIR)/tokenizer.json.tmp" "$(RERANKER_DIR)/tokenizer.json" && \
 		echo "Reranker listo y verificado."; \
 	fi
-
-pull-bonsai-gguf:  ## Descarga el GGUF de Bonsai-8B (~1.16 GB) a KB_DATA_DIR, una sola vez (perfil up-bonsai)
-	@mkdir -p "$(KB_DATA_DIR)/bonsai"
-	@if [ -f "$(KB_DATA_DIR)/bonsai/Bonsai-8B-Q1_0.gguf" ]; then \
-		echo "El GGUF ya esta en $(KB_DATA_DIR)/bonsai, no se descarga de nuevo."; \
-	else \
-		echo "Descargando Bonsai-8B-Q1_0.gguf a $(KB_DATA_DIR)/bonsai ..."; \
-		curl -fL --progress-bar -o "$(KB_DATA_DIR)/bonsai/Bonsai-8B-Q1_0.gguf" \
-			https://huggingface.co/prism-ml/Bonsai-8B-gguf/resolve/main/Bonsai-8B-Q1_0.gguf; \
-	fi
-
-pull-ministral:  ## Descarga el modelo Ministral 3B a Ollama (~2 GB via Hugging Face), una sola vez (perfil up-ministral)
-	$(COMPOSE_ACTIVO) exec ollama ollama pull hf.co/mistralai/Ministral-3-3B-Instruct-2512-GGUF:Q4_K_M
-
-pull-qwen35:  ## Descarga el modelo Qwen3.5 4B a Ollama (~3.4 GB), una sola vez (perfil up-qwen35)
-	$(COMPOSE_ACTIVO) exec ollama ollama pull qwen3.5:4b
-
-pull-qwen36:  ## Descarga Qwen3.6 35B-A3B UD-Q2_K_XL a Ollama (~12.3 GB) y crea bge-m3-cpu, una sola vez (perfil up-qwen36)
-	@# compose.qwen36.yml fija los embeddings en bge-m3-cpu para dejarle toda la
-	@# VRAM al LLM, asi que ese modelo tiene que existir aunque la tarjeta pase el
-	@# umbral de KB_VRAM_EMBEDDINGS_GPU (una 3060 de 6 GB lo pasa justo).
-	$(COMPOSE_ACTIVO) exec ollama ollama pull hf.co/unsloth/Qwen3.6-35B-A3B-GGUF:UD-Q2_K_XL
-	@$(MAKE) --no-print-directory pin-embeddings-cpu
-
-pull-nemotron:  ## Descarga el modelo Nemotron-mini 4B a Ollama (~2.7 GB), una sola vez (perfil up-nemotron)
-	$(COMPOSE_ACTIVO) exec ollama ollama pull nemotron-mini:4b
-
-pull-granite41:  ## Descarga Granite 4.1 3B a Ollama (~2.1 GB), una sola vez (perfil up-granite41)
-	$(COMPOSE_ACTIVO) exec ollama ollama pull granite4.1:3b
-
-pull-phi4mini:  ## Descarga Phi-4 Mini 3.8B a Ollama (~2.5 GB), una sola vez (perfil up-phi4mini)
-	$(COMPOSE_ACTIVO) exec ollama ollama pull phi4-mini:3.8b
-
-pull-qwen25:  ## Descarga Qwen2.5 3B a Ollama (~1.9 GB), una sola vez (perfil up-qwen25)
-	$(COMPOSE_ACTIVO) exec ollama ollama pull qwen2.5:3b
-
-pin-embeddings-cpu:  ## Crea bge-m3-cpu, fijado a CPU, para dejarle toda la VRAM al LLM
-	@# Por debajo de KB_VRAM_EMBEDDINGS_GPU el LLM no entra completo ni estando solo
-	@# (medido en la T600 de 4 GB: 40% GPU / 60% CPU), asi que quitarle memoria para
-	@# los embeddings solo lo empeora. Van a CPU, donde el AVX-512 con VNNI los hace
-	@# baratos, y la GPU queda para la sintesis, que es la etapa que se espera.
-	@# Ya no hace falta correrlo a mano: pull-models lo hace cuando la tarjeta lo pide.
-	$(COMPOSE_ACTIVO) exec -T ollama sh -c 'printf "FROM $(EMBEDDINGS)\nPARAMETER num_gpu 0\n" > /tmp/Modelfile.cpu && ollama create $(EMBEDDINGS)-cpu -f /tmp/Modelfile.cpu'
-	@echo ""
-	@echo "Listo: $(EMBEDDINGS)-cpu creado. No hace falta tocar nada mas -- make lo selecciona"
-	@echo "solo mientras no fijes KB_EMBEDDINGS_MODELO a mano en tu archivo de entorno."
 
 vault-init:  ## Crea el vault y copia corpus/ a vault/documentos (no pisa lo que ya este)
 	@# El corpus de ejemplo viene versionado en corpus/, pero el vault vive FUERA

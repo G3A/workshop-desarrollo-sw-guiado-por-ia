@@ -11,7 +11,7 @@ cambio estructural.
 - [Infraestructura](docs/infrastructure.md) — desarrollo local, variables, CI/CD, hooks del agente y MCP.
 - [Modelo de datos](docs/data-model.md) · [negocio](docs/business.md) · [usuario objetivo](docs/target-user.md).
 - [Diseño](docs/design.md), [design tokens](docs/design-tokens.md) y [componentes](COMPONENTS.md) — lee `COMPONENTS.md` antes de escribir UI.
-- [Decisiones (ADRs)](docs/adrs/) — 16, desde la tabla única de embeddings hasta elegir cómo se lee un documento largo.
+- [Decisiones (ADRs)](docs/adrs/) — 17, desde la tabla única de embeddings hasta servir los modelos con llama.cpp nativo.
 - [Plan del proyecto](docs/plans/plan-base-conocimiento.md) · [investigación VRAM/LLM](docs/investigacion-vram-y-modelo-llm.md) · [bot de Teams](docs/teams/registro-azure-bot.md).
 - [Registro de afirmaciones](docs/claims-ledger.md) — qué afirma cada doc, su fuente y si sigue vigente.
 - [`REVIEW.md`](../REVIEW.md) · [`EXPERIMENTS.md`](../EXPERIMENTS.md) — en la raíz del monorepo, no aquí: qué mirar en un diff ya escrito (lo lee el servicio de Code Review) y el acuerdo sobre qué puede fallar con el agente.
@@ -19,16 +19,17 @@ cambio estructural.
 ## Comandos
 
 ```bash
-make up          # levanta db, ollama, docling-serve y api; reparte la GPU sola (make gpu-check lo explica)
-make health      # salud de db, ollama y modelos faltantes
+make up          # llama-server (LLM y embeddings) en el host; db, docling-serve y api en Docker
+make health      # salud de db, de las dos instancias de llama-server y del reranker
 make ingest      # ingiere el corpus de ejemplo (vault/documentos)
 make check       # lint + build + test + test-js (pide node): la señal local antes de un commit
 make ci          # lo mismo que corre CI (suma el escaneo de secretos)
 make format      # aplica Spotless a todo el código
 ```
 
-`make help` lista el resto (perfiles de modelo, ingesta de repos/Teams/Azure DevOps, `psql`, `hooks`);
-prefiérelo a `./mvnw`/`docker compose` a mano: el `Makefile` resuelve perfiles y reparto de GPU.
+`make help` lista el resto (`pull-models`, `llm-estado`, ingesta de repos/Teams/Azure DevOps, `psql`,
+`hooks`); prefiérelo a `./mvnw`/`docker compose` a mano: el `Makefile` arranca llama-server y
+reparte la GPU.
 
 ## Reglas no obvias
 

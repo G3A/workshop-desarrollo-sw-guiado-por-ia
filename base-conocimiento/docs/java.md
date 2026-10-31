@@ -45,7 +45,7 @@ con versión pinneada por `<properties>`, sin rangos:
 | BOM | Versión | Motivo |
 |---|---|---|
 | `spring-modulith-bom` | 2.1.0 | Fronteras entre módulos |
-| `spring-ai-bom` | 2.0.0 | Cliente LLM (Ollama + OpenAI-compatible) |
+| `spring-ai-bom` | 2.0.0 | Cliente LLM y de embeddings (OpenAI-compatible, contra `llama-server`) |
 | `testcontainers-bom` | 2.0.5 | Boot 4.1 ya no lo importa solo — hay que declararlo a mano |
 | `arconia-bom` | 0.29.0 | Starter de Docling para ingesta de documentos |
 
@@ -115,7 +115,7 @@ jqwik) — no hay Failsafe/split unit-integration explícito; las pruebas que ne
 usan Testcontainers (`spring-boot-testcontainers` + `testcontainers-postgresql`) dentro del mismo
 `test` de Surefire. Frameworks: JUnit 5, AssertJ y Mockito (vía `spring-boot-starter-test`),
 ArchUnit, jqwik (property-based), Testcontainers y WireMock, que dobla los HTTP externos: el JWKS y
-el conector de Bot Framework, Graph, Azure DevOps y la salud de Ollama. `ArquitecturaTest` corre en
+el conector de Bot Framework, Graph, Azure DevOps y la salud de `llama-server`. `ArquitecturaTest` corre en
 el mismo ciclo y falla el build si se cruza una frontera de módulo.
 
 ## Quality gates

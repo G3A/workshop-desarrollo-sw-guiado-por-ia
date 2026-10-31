@@ -30,22 +30,14 @@ final class MensajesDeError {
     String detalle =
         raiz.getMessage() == null ? raiz.getClass().getSimpleName() : raiz.getMessage();
 
-    // Con diferencia el fallo mas comun al estrenar un perfil: cada uno sirve su
-    // propio modelo y se descarga aparte, con su `make pull-<perfil>`. Sin esta
-    // pista el 404 no dice que hacer.
-    //
-    // El mensaje nombra el modelo que Ollama rechazo -- viene en el propio error --
-    // en vez de mandar a `make health` a averiguarlo. Es mas directo, y ademas
-    // health llego a mentir sobre esto: comprobaba el modelo del destilador de
-    // Teams y no KB_LLM_MODELO, asi que con un perfil de Ollama recien estrenado
-    // decia "faltantes: ninguna" mientras la consulta fallaba con este mismo 404.
-    // Eso ya esta corregido (ver OllamaSalud), pero el mensaje no depende de ello:
-    // el dato que hace falta ya lo trae la excepcion.
-    if (detalle.contains("not found") && detalle.contains("model")) {
-      return "Ollama no tiene descargado el modelo que pide este perfil. Descargalo con el"
-          + " `make pull-...` correspondiente (o `make pull-models` para el perfil base), y"
-          + " comprueba con `docker exec kb-ollama ollama list` que el nombre coincide"
-          + " EXACTAMENTE, etiqueta incluida. Detalle: "
+    // El fallo mas comun desde ADR-0017: llama-server corre en el host, fuera de
+    // compose, asi que reiniciar la maquina o un `docker compose up` a mano deja la
+    // api arriba y sin LLM. El cliente de OpenAI lo reporta como "Request failed",
+    // que no dice que hacer.
+    if (detalle.contains("Request failed") || detalle.contains("Connection refused")) {
+      return "El LLM no responde: llama-server corre fuera de Docker y no esta arriba."
+          + " Para levantarlo: `make llm-up` (o `make up`); el estado, con `make llm-estado`."
+          + " Detalle: "
           + detalle;
     }
     return "La respuesta se interrumpio: " + detalle;

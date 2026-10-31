@@ -12,8 +12,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     resumir, sintetizar, preguntas e ideas; la traduccion no lo usa (va por bloques)
  * @param maxCaracteresTexto largo maximo de un texto del chat a traducir
  * @param maxConcurrentes cupo propio del modulo, sin compartir con el del RAG (compartirlo seria
- *     depender de {@code orquestacion}); sumados pueden superar {@code OLLAMA_NUM_PARALLEL} y en
- *     ese caso Ollama encola: la accion tarda mas, no falla
+ *     depender de {@code orquestacion}); sumados pueden superar los slots de llama-server ({@code
+ *     KB_LLM_PARALELO}) y en ese caso encola: la accion tarda mas, no falla
  * @param maxCaracteresLectura cuanto texto entra en UNA pasada de lectura de un documento largo
  *     (sub-issue #60): la llamada devuelve notas cortas, asi que puede ser mayor que el presupuesto
  *     de contexto; cuanto mas grande, menos pasadas

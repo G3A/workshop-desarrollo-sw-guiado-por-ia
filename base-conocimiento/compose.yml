@@ -4,11 +4,13 @@ name: base-conocimiento
 # que por defecto es ./.data — es decir, junto al repo. Como el repo esta en D:,
 # esto mantiene C: libre sin depender de configuracion del host.
 #
-# Perfil base: TODO EN CPU. Reproducible en cualquier maquina sin GPU.
-# `make up` detecta sola una GPU NVIDIA (via nvidia-smi) y agrega compose.gpu.yml
-# cuando la encuentra -- no hace falta invocar este override a mano. Si preferis
-# hacerlo tú mismo (o forzarlo pese a que la deteccion falle):
-#   docker compose -f compose.yml -f compose.gpu.yml up -d
+# Los modelos NO corren aqui (ADR-0017): el LLM y los embeddings los sirven dos
+# instancias de llama-server en el host, fuera de Docker, que levanta
+# scripts/llama-cpp.mjs. `make up` arranca las dos y despues este compose; un
+# `docker compose up` a mano deja la api arriba y sin modelos.
+#
+# Aqui quedan db, docling-serve y api, todo en CPU. Con una GPU de 8 GB o mas,
+# `make up` agrega compose.docling-gpu.yml (ver el Makefile).
 
 services:
   db:
@@ -34,27 +36,6 @@ services:
       timeout: 5s
       retries: 20
       start_period: 20s
-    restart: unless-stopped
-
-  ollama:
-    image: ollama/ollama:latest
-    container_name: kb-ollama
-    environment:
-      # Mantener los modelos cargados entre consultas: con un solo gemma3:4b
-      # no hay intercambio, pero si el modelo se descarga cada 5 min la
-      # primera consulta despues de una pausa paga la recarga completa.
-      OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:-1h}
-      OLLAMA_NUM_PARALLEL: ${OLLAMA_NUM_PARALLEL:-2}
-    volumes:
-      - ${KB_DATA_DIR:-./.data}/ollama:/root/.ollama
-    ports:
-      - "${OLLAMA_PORT:-11434}:11434"
-    healthcheck:
-      test: ["CMD", "ollama", "list"]
-      interval: 10s
-      timeout: 10s
-      retries: 30
-      start_period: 30s
     restart: unless-stopped
 
   # ADR-0010: Docling es Python, no hay variante embebida en el proceso Java --
@@ -96,42 +77,18 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      ollama:
-        condition: service_healthy
       docling-serve:
         condition: service_healthy
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-baseconocimiento}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-kb}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-kb}
-      SPRING_AI_OLLAMA_BASE_URL: http://ollama:11434
-      # El otro extremo de la misma decision que la linea de arriba: a que backend
-      # habla la aplicacion. Su ausencia aqui era un agujero real, no una omision
-      # inocua, porque el default de application.yml es http://localhost:8081 --
-      # el puerto de `llama-server`, que solo existe en el perfil Bonsai. En el
-      # perfil base ese localhost es el propio contenedor kb-api, donde no
-      # escucha nadie.
-      #
-      # Consecuencia medida en vivo: los tres componentes que hablan por la API
-      # compatible con OpenAI fallaban a la vez, y solo se veia en los logs --
-      # ninguno tumba el arranque ni ensucia /actuator/health:
-      #
-      #   PlanificadorOpenAi        : Fallo al planificar, se usa search_unified
-      #   ReformuladorOpenAi        : Fallo al reformular, se usa la original
-      #   VerificadorGroundingOpenAi: Fallo al verificar grounding, SE RECHAZA
-      #                               POR PRECAUCION
-      #     com.openai.errors.OpenAIIoException: Request failed
-      #
-      # Ese tercero es Orquestador:388: al no poder consultar al LLM el
-      # verificador rechaza, y TODA respuesta se vuelve el MENSAJE_SIN_INFORMACION
-      # ("No encontre informacion suficientemente relevante"). Con Ollama y
-      # gemma3:4b perfectamente sanos, porque nadie les estaba hablando.
-      #
-      # Los otros nueve perfiles ya la fijaban en su propio compose (los de Ollama
-      # a esta misma URL, Bonsai a http://llama-server:8080). El base era el unico
-      # que se quedaba con el default -- mismo patron que el tope-por-documento
-      # que se corrigio antes.
-      SPRING_AI_OPENAI_BASE_URL: ${SPRING_AI_OPENAI_BASE_URL:-http://ollama:11434/v1}
+      # Las dos instancias de llama-server del host (ADR-0017). host.docker.internal
+      # es el host visto desde el contenedor: Docker Desktop lo resuelve solo, y en
+      # Linux lo agrega el extra_hosts de abajo. Los puertos son los defaults de
+      # scripts/llama-cpp.mjs (KB_LLM_PORT y KB_EMBEDDINGS_PORT).
+      SPRING_AI_OPENAI_BASE_URL: ${SPRING_AI_OPENAI_BASE_URL:-http://host.docker.internal:${KB_LLM_PORT:-8081}/v1}
+      SPRING_AI_OPENAI_EMBEDDING_BASE_URL: ${SPRING_AI_OPENAI_EMBEDDING_BASE_URL:-http://host.docker.internal:${KB_EMBEDDINGS_PORT:-8082}/v1}
       ARCONIA_DOCLING_BASE_URL: http://docling-serve:5001
       # Acota cada llamada HTTP individual de ExtractorDocling (submit de la
       # tarea, cada poll de estado, fetch del resultado) -- NO la conversion
@@ -144,17 +101,17 @@ services:
       # espanol correcto: 42-53 s por pregunta cuando la primera busqueda alcanza, 3-8 min cuando
       # hay que reformular. La Q2_K del mismo repo entra en bucle de repeticion: no usarla.
       # Reemplaza a gemma3:4b, que la investigacion (docs/investigacion-vram-y-modelo-llm.md)
-      # ya habia dejado atras. Descargarlo: make pull-models.
-      KB_LLM_MODELO: ${KB_LLM_MODELO:-hf.co/ibm-granite/granite-4.1-3b-GGUF:Q3_K_M}
-      # El destilador de hilos de Teams habla con Ollama directo: mismo modelo, para no tener que
-      # descargar un segundo LLM solo para eso.
-      KB_TEAMS_LLM_MODELO: ${KB_TEAMS_LLM_MODELO:-hf.co/ibm-granite/granite-4.1-3b-GGUF:Q3_K_M}
+      # ya habia dejado atras. Descargarlo: make pull-models. llama-server sirve un solo GGUF por
+      # instancia, asi que este nombre es solo la etiqueta (--alias) con la que responde.
+      KB_LLM_MODELO: ${KB_LLM_MODELO:-granite-4.1-3b-Q3_K_M}
       KB_LLM_TIMEOUT: ${KB_LLM_TIMEOUT:-450s}
-      # Los mismos valores del perfil compose.granite41.yml, con los que se midio el smoke10.
+      # Los valores con los que se midio el smoke10 de Granite (ADR-0015).
       KB_UMBRAL_RELEVANCIA_TECHO_CONFIANZA: ${KB_UMBRAL_RELEVANCIA_TECHO_CONFIANZA:-8.0}
       KB_MAX_FRAGMENTOS_CONTEXTO: ${KB_MAX_FRAGMENTOS_CONTEXTO:-6}
       KB_RECUPERACION_TOP_RERANK: ${KB_RECUPERACION_TOP_RERANK:-6}
       KB_LLM_SINTESIS_ESTRUCTURADA_HABILITADA: ${KB_LLM_SINTESIS_ESTRUCTURADA_HABILITADA:-false}
+      # La misma variable que lee scripts/llama-cpp.mjs para el -c de llama-server.
+      KB_LLM_CONTEXTO_TOKENS: ${KB_LLM_CONTEXTO_TOKENS:-4096}
       KB_EMBEDDINGS_MODELO: ${KB_EMBEDDINGS_MODELO:-bge-m3}
       KB_API_TOKEN: ${KB_API_TOKEN:-}
       # F8: cada cuanto se releva sola la ingesta, sin correr ningun comando.
@@ -184,11 +141,10 @@ services:
       KB_AZDO_PAT: ${KB_AZDO_PAT:-}
       KB_AZDO_WIKI: ${KB_AZDO_WIKI:-}
       KB_RERANKER_RUTA: /models/reranker
-      # Recuperacion: los mismos dos valores que fijan los siete perfiles de
-      # modelo (compose.ministral.yml y hermanos, compose.bonsai.yml). El perfil
-      # base -- este archivo solo, `make up` -- era el UNICO de los ocho que se
-      # quedaba con los defaults de application.yml, y es justo el que se corre
-      # primero siguiendo el README.
+      # Recuperacion: los mismos dos valores que fijaban los perfiles de modelo
+      # que hubo hasta ADR-0017. Este archivo era el UNICO que se quedaba con los
+      # defaults de application.yml, y es justo el que se corre primero
+      # siguiendo el README.
       #
       # tope-por-documento acota cuantos chunks de un mismo documento sobreviven
       # la fusion RRF antes del reranker (RrfFusion.limitarPorDiversidad). El
@@ -232,6 +188,9 @@ services:
       # escribir, con un error de E/S explicito.
       - ${KB_VAULT_DIR:-../../vault}:/vault:${KB_VAULT_MODO:-ro}
       - ${KB_DATA_DIR:-./.data}/models:/models
+    extra_hosts:
+      # Docker Desktop (Windows, macOS) ya resuelve host.docker.internal; Linux no.
+      - "host.docker.internal:host-gateway"
     ports:
       - "${KB_PORT:-8080}:8080"
     healthcheck:

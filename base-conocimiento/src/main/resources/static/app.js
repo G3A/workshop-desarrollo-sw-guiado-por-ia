@@ -1363,7 +1363,7 @@
 
     fuente.onerror = () => {
       detenerContador();
-      turno.estado.textContent = "Se perdió la conexión con el servidor (¿Ollama no responde?).";
+      turno.estado.textContent = "Se perdió la conexión con el servidor (¿el LLM no responde? Revisa make llm-estado).";
       turno.estado.classList.add("error");
       cerrarStreaming(conversacionId, turno, detenerContador);
       guardarTurno(pregunta, proyecto, turno, true, turno.estado.textContent, conversacionId);
@@ -1725,7 +1725,7 @@
     });
     fuente.onerror = () => {
       detenerContador();
-      turno.estado.textContent = "No se pudo completar la acción (¿Ollama no responde?).";
+      turno.estado.textContent = "No se pudo completar la acción (¿el LLM no responde? Revisa make llm-estado).";
       turno.estado.classList.add("error");
       cerrarStreaming(conversacionId, turno, detenerContador);
       guardarTurno(etiqueta, proyecto, turno, true, turno.estado.textContent, conversacionId);
@@ -2032,7 +2032,7 @@
     });
     fuente.onerror = () => {
       detenerContador();
-      turno.estado.textContent = "No se pudo completar la traducción (¿Ollama no responde?).";
+      turno.estado.textContent = "No se pudo completar la traducción (¿el LLM no responde? Revisa make llm-estado).";
       turno.estado.classList.add("error");
       cerrarStreaming(conversacionId, turno, detenerContador);
       renderTraduccion(turno);
@@ -2471,7 +2471,7 @@
       } catch (error) {
         mensajeError = controlador.signal.aborted
           ? "La traducción se canceló."
-          : "Se perdió la conexión con el servidor (¿Ollama no responde?).";
+          : "Se perdió la conexión con el servidor (¿el LLM no responde? Revisa make llm-estado).";
       }
       clearTimeout(tope);
       streamsActivos.delete(conversacionId);

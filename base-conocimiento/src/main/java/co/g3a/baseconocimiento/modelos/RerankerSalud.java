@@ -28,7 +28,7 @@ class RerankerSalud implements HealthIndicator {
     boolean modelo = Files.exists(directorioModelo.resolve("model.onnx"));
     boolean tokenizador = Files.exists(directorioModelo.resolve("tokenizer.json"));
 
-    // UP en ambos casos: igual que con Ollama, faltar el archivo no debe
+    // UP en ambos casos: faltar el archivo no debe
     // dejar el contenedor enfermo antes del primer `make pull-models`.
     return Health.up()
         .withDetail("ruta", directorioModelo.toString())

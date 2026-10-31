@@ -4,29 +4,27 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.ollama.OllamaChatModel;
-import org.springframework.ai.ollama.api.OllamaChatOptions;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.stereotype.Component;
 
 /**
- * Destilador con salida estructurada forzada por esquema JSON: {@code disableThinking} por defecto
- * y una captura amplia de excepciones que cae a un resumen crudo en vez de tumbar la ingesta del
- * hilo completo si Ollama falla o el modelo no valida el esquema.
+ * Destilador con salida estructurada forzada por esquema JSON y una captura amplia de excepciones
+ * que cae a un resumen crudo en vez de tumbar la ingesta del hilo completo si {@code llama-server}
+ * falla o el modelo no valida el esquema.
  *
- * <p>Es el unico componente de {@code llm/} que se quedo en Ollama despues de ADR-0009 -- el resto
- * pasa por OpenAI contra llama-server. Por eso arma su propio {@link ChatClient.Builder} a partir
- * de {@link OllamaChatModel} en vez de pedir un {@code ChatClient.Builder} inyectado: con dos
- * proveedores de chat activos a la vez, ya no hay uno solo que autoconfigurar sin ambiguedad, y
- * compartir un builder como bean (singleton, mutable) entre componentes de distinto proveedor pisa
- * las opciones de unos con las de otros -- se midio en vivo con
- * Planificador/VerificadorGrounding/Sintetizador (ver sus comentarios de constructor) antes de
- * corregirlo con este patron.
+ * <p>Hasta ADR-0017 era el unico componente de {@code llm/} que hablaba con Ollama directo, con su
+ * propio modelo ({@code KB_TEAMS_LLM_MODELO}) y un {@code disableThinking()}. Sin Ollama usa el
+ * mismo {@link OpenAiChatModel} que el resto del paquete, y por lo tanto el mismo LLM: Granite no
+ * tiene modo "thinking" que apagar.
+ *
+ * <p>Arma su propio {@link ChatClient.Builder} a partir del modelo en vez de pedir uno inyectado,
+ * por el mismo motivo que {@link PlanificadorOpenAi}: compartir un builder como bean (singleton,
+ * mutable) entre componentes hace que las opciones de uno pisen las de otro.
  */
 @Component
-class DestiladorOllama implements Destilador {
+class DestiladorOpenAi implements Destilador {
 
-  private static final Logger log = LoggerFactory.getLogger(DestiladorOllama.class);
+  private static final Logger log = LoggerFactory.getLogger(DestiladorOpenAi.class);
   private static final int LONGITUD_RESUMEN_RESPALDO = 280;
 
   private static final String SISTEMA =
@@ -44,14 +42,8 @@ class DestiladorOllama implements Destilador {
 
   private final ChatClient chatClient;
 
-  DestiladorOllama(
-      OllamaChatModel modelo,
-      @Value("${kb.llm.thinking-habilitado:false}") boolean thinkingHabilitado) {
-    var opciones =
-        thinkingHabilitado
-            ? OllamaChatOptions.builder().enableThinking()
-            : OllamaChatOptions.builder().disableThinking();
-    this.chatClient = ChatClient.builder(modelo).defaultOptions(opciones).build();
+  DestiladorOpenAi(OpenAiChatModel modelo) {
+    this.chatClient = ChatClient.builder(modelo).build();
   }
 
   @Override

@@ -17,6 +17,6 @@ public interface RendimientoDelModelo {
   /** Segundos estimados de una llamada con {@code caracteresEntrada} y {@code tokensSalida}. */
   double segundosEstimados(int caracteresEntrada, int tokensSalida);
 
-  /** Tokens de contexto del modelo ({@code num_ctx} de Ollama): entrada y salida juntas. */
+  /** Tokens de contexto por consulta (un slot de llama-server): entrada y salida juntas. */
   int contextoTokens();
 }

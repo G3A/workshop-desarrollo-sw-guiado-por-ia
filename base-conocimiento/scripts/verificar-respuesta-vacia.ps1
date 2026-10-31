@@ -196,9 +196,9 @@ if ($null -ne $errorHttp) {
         Write-Host "  embebe la consulta, y si el modelo de embeddings no esta, se cuelga."
     }
 
-    # Se imprimen TODOS los componentes, no solo ollama. /api/search depende
+    # Se imprimen TODOS los componentes, no solo llamaCpp. /api/search depende
     # ademas del reranker (cross-encoder ONNX en /models/reranker) y de la base:
-    # con los modelos de Ollama completos, un reranker a medio descargar es
+    # con llama-server respondiendo, un reranker a medio descargar es
     # justo el tipo de causa que la version anterior no mostraba.
     Write-Host "  Estado de los componentes de la api:"
     # Cuando un componente esta DOWN, /actuator/health responde 503 -- e
@@ -236,10 +236,11 @@ if ($null -ne $errorHttp) {
             $comp = $salud.components.$nombre
             Write-Host ("    {0,-14} {1}" -f $nombre, $comp.status)
         }
-        $ollama = $salud.components.ollama.details
-        if ($null -ne $ollama) {
-            Write-Host "    ollama disponibles: $($ollama.modelosDisponibles -join ', ')"
-            Write-Host "    ollama faltantes  : $($ollama.modelosFaltantes -join ', ')"
+        $llama = $salud.components.llamaCpp.details
+        if ($null -ne $llama) {
+            Write-Host "    llama-server llm       : $($llama.llm.estado) ($($llama.llm.url))"
+            Write-Host "    llama-server embeddings: $($llama.embeddings.estado) ($($llama.embeddings.url))"
+            Write-Host "    accion: $($llama.accion)"
         }
         $rr = $salud.components.reranker.details
         if ($null -ne $rr) {
