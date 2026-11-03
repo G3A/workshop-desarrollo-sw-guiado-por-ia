@@ -79,16 +79,27 @@ class RedactorOpenAi implements Redactor {
           + REGLAS_COMUNES
           + """
 
-            Generas preguntas de UN solo nivel de la taxonomia de Bloom: "%s" (%s). Las
-            preguntas de este nivel suelen empezar como %s. Recorre los seis interrogativos --
-            que, quien, cuando, donde, por que, como -- y para cada uno formula UNA pregunta de
-            ese nivel SOLO si algun documento la responde de verdad; si no, omite ese
-            interrogativo. Puede no quedar ninguna. Cada "texto" es una PREGUNTA completa, corta
-            y concreta, que termina en signo de interrogacion: nunca una afirmacion ni una frase
-            copiada del documento. "tipo" es el interrogativo usado (exactamente uno de: que,
-            quien, cuando, donde, por-que, como) y "fuente" el numero n del documento [n] que la
-            responde. Preguntas ya formuladas en niveles anteriores, que NO debes repetir ni
-            reformular: %s
+            Generas preguntas de UN solo nivel de la taxonomia de Bloom: el que se indica despues
+            de los documentos. Recorre los seis interrogativos -- que, quien, cuando, donde, por
+            que, como -- y para cada uno formula UNA pregunta de ese nivel SOLO si algun documento
+            la responde de verdad; si no, omite ese interrogativo. Puede no quedar ninguna. Cada
+            "texto" es una PREGUNTA completa, corta y concreta, que termina en signo de
+            interrogacion: nunca una afirmacion ni una frase copiada del documento. "tipo" es el
+            interrogativo usado (exactamente uno de: que, quien, cuando, donde, por-que, como) y
+            "fuente" el numero n del documento [n] que la responde.
+            """;
+
+  /**
+   * El nivel va DESPUES de los documentos, no en el sistema (issue #66): las seis llamadas de un
+   * mismo contexto comparten asi todo el prefijo, y llama-server lo reutiliza de su cache en vez de
+   * volver a leer el documento seis veces. Con un extracto de ~10000 caracteres eso es la
+   * diferencia entre leerlo una vez y leerlo seis, a ~17 tokens/s de entrada en la T600.
+   */
+  private static final String NIVEL_PREGUNTAS =
+      """
+
+            Nivel de Bloom de esta tanda: "%s" (%s). Las preguntas de este nivel suelen empezar
+            como %s. Preguntas ya formuladas, que NO debes repetir ni reformular: %s
             """;
 
   private static final String SISTEMA_IDEAS =
@@ -308,14 +319,12 @@ class RedactorOpenAi implements Redactor {
       PreguntasDeNivel salida =
           estructurado
               .prompt()
-              .system(
-                  SISTEMA_PREGUNTAS.formatted(
-                      instruccionIdioma(idioma),
-                      nivel.codigo(),
-                      nivel.descripcion(),
-                      nivel.ejemplos(),
-                      evitar))
-              .user("Documentos:\n\n" + contexto)
+              .system(SISTEMA_PREGUNTAS.formatted(instruccionIdioma(idioma)))
+              .user(
+                  "Documentos:\n\n"
+                      + contexto
+                      + NIVEL_PREGUNTAS.formatted(
+                          nivel.codigo(), nivel.descripcion(), nivel.ejemplos(), evitar))
               .call()
               .entity(PreguntasDeNivel.class, spec -> spec.useProviderStructuredOutput());
       if (salida == null || salida.preguntas() == null) {

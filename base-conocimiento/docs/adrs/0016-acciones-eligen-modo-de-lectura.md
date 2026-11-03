@@ -70,5 +70,11 @@ Con el primero corregido, los capítulos de jls25 bajan de 28: la cifra exacta n
 - **En contra**: por capítulos y rápido no leen todo: es una concesión explícita frente al ADR-0013,
   que se declara en la cobertura y en el contexto. El rápido depende de que el worker ya haya
   calculado los embeddings; si faltan, cae a secciones repartidas a lo largo del documento.
+- **Ampliación (2026-11-03, sandbox#66)**: para preguntas e ideas los tres modos no alcanzaban.
+  Los tres terminaban en una sola llamada sobre todo el libro resumido en 7000 caracteres, y con
+  jls25.pdf las preguntas salían casi todas del capítulo 1. Ahora, con un documento largo, se
+  eligen capítulos (alternativas G y F del mismo canvas) y cada uno genera lo suyo, con un
+  extracto del tamaño de una pasada. El resultado crece capítulo a capítulo y cada pregunta o
+  idea lleva su capítulo. Resumir y sintetizar siguen con los tres modos.
 - **Pendiente**: correr el modo completo en segundo plano, con aviso al terminar (la otra mitad de
   la alternativa D), queda para una segunda vuelta.

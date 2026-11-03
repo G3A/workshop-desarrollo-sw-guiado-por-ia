@@ -1,11 +1,13 @@
 package co.g3a.baseconocimiento.acciones;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import co.g3a.baseconocimiento.acciones.Acciones.CapituloEstimado;
 import co.g3a.baseconocimiento.acciones.Acciones.Estimado;
 import co.g3a.baseconocimiento.acciones.Acciones.EstimadoModo;
 import co.g3a.baseconocimiento.acciones.Acciones.Modo;
@@ -97,6 +99,43 @@ class EstimadorDeAccionesTest {
     Estimado estimado = estimador.estimar(Tipo.PREGUNTAS, List.of(1L), PROYECTO);
 
     assertThat(estimado.modos().getFirst().llamadas()).isEqualTo(6);
+  }
+
+  @Test
+  @DisplayName(
+      "Preguntas sobre un documento largo: se eligen capitulos, cada uno con su indice, titulo y"
+          + " tiempo; los niveles despues del primero cuestan solo la cola del prompt (issue #66)")
+  void preguntasSobreUnLargoSeEligenPorCapitulo() {
+    documentoConCapitulos(6, 10, 3000);
+
+    Estimado estimado = estimador.estimar(Tipo.PREGUNTAS, List.of(1L), PROYECTO);
+
+    assertThat(estimado.elegir()).isTrue();
+    assertThat(estimado.capitulos())
+        .extracting(CapituloEstimado::indice, CapituloEstimado::titulo, CapituloEstimado::secciones)
+        .containsExactly(
+            tuple(0, "Capítulo 1", 10),
+            tuple(1, "Capítulo 2", 10),
+            tuple(2, "Capítulo 3", 10),
+            tuple(3, "Capítulo 4", 10),
+            tuple(4, "Capítulo 5", 10),
+            tuple(5, "Capítulo 6", 10));
+    assertThat(estimado.segundosFijos()).isZero();
+    // Un capitulo: el extracto (el tamano de una pasada) se lee una vez y los otros cinco niveles
+    // solo leen su cola. Leerlo seis veces costaria bastante mas.
+    long unCapitulo = estimado.capitulos().getFirst().segundos();
+    int pasada = PresupuestoDeContexto.caracteresPorPasada(4096, 3.0, 10000);
+    assertThat(unCapitulo)
+        .isLessThan(Math.round(6 * GRANITE.segundosEstimados(pasada, 250)))
+        .isGreaterThan(Math.round(GRANITE.segundosEstimados(pasada, 250)));
+  }
+
+  @Test
+  @DisplayName("Resumir no ofrece capitulos: se sigue eligiendo el modo")
+  void resumirNoOfreceCapitulos() {
+    documentoConCapitulos(6, 10, 3000);
+
+    assertThat(estimador.estimar(Tipo.RESUMIR, List.of(1L), PROYECTO).capitulos()).isEmpty();
   }
 
   private void documentoConCapitulos(int capitulos, int porCapitulo, int largo) {

@@ -212,13 +212,25 @@ cada uno se anuncia con un evento `capitulo` que trae su nota) y **rápido** (`R
 elige secciones con k-means sobre los embeddings y solo se hace la llamada final). La cobertura
 dice con qué `modo` entró cada documento largo, y el contexto final se lo avisa al modelo.
 
+Preguntas e ideas no pasan por esos modos cuando hay un documento largo (issue #66): todo el
+libro en el presupuesto de la acción dejaba ~290 caracteres por capítulo, y el modelo se quedaba
+con el capítulo 1. El estimado trae los capítulos (`Capitulos.agrupar`, con su índice y su
+tiempo), la persona marca los que quiere y `AccionesPorCapitulo` genera una tanda por capítulo
+elegido, con un extracto del tamaño de una pasada, más una tanda con los documentos cortos
+enteros. El resultado se acumula y sale completo después de cada nivel de Bloom (o de las ideas
+de cada tanda), con el capítulo de cada pregunta o idea; un `capitulo` por tanda marca el
+progreso. En el prompt de preguntas el nivel va después de los documentos, para que los seis
+niveles de una tanda compartan el prefijo que `llama-server` guarda en caché.
+
 `AccionesController` (`web`) expone ocho rutas, todas fuera de `ApiTokenFilter` por el mismo
 motivo que `/api/chat` (mismo `EventSource` sin cabeceras): `GET /api/acciones/limites` (los
 topes, para que la UI deshabilite el control antes de un 400), `GET /api/acciones/estimado`
-(JSON con el tiempo de cada modo y si conviene preguntar), `GET /api/acciones/{resumir|
+(JSON con el tiempo de cada modo, si conviene preguntar y, para preguntas e ideas, los capítulos),
+`GET /api/acciones/{resumir|
 sintetizar}` (SSE: `etiqueta`, `cobertura`, `citas`, `lectura` o `capitulo` según el `modo`,
 `token`×n, `fin`), `GET /api/acciones/
-{preguntas|ideas}` (igual, pero un único `resultado` JSON en vez de tokens), `GET
+{preguntas|ideas}` (igual, pero `resultado` JSON en vez de tokens; con `modo=capitulos` y
+`capitulos=<documento>:<índice>,…`, uno acumulado por nivel y un `capitulo` por tanda), `GET
 /api/acciones/traducir-documentos` (`documentos`, `idioma-detectado`, `documento-omitido`,
 `progreso`, `texto`, `fin`) y `POST /api/acciones/traducir-texto` (cuerpo JSON leído con `fetch`,
 porque una respuesta larga no cabe en una URL). Los 400 se deciden **antes** de abrir el stream,

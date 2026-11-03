@@ -1,6 +1,7 @@
 package co.g3a.baseconocimiento.web;
 
 import co.g3a.baseconocimiento.acciones.Acciones;
+import co.g3a.baseconocimiento.acciones.Acciones.CapituloElegido;
 import co.g3a.baseconocimiento.acciones.Acciones.CoberturaDocumento;
 import co.g3a.baseconocimiento.acciones.Acciones.Estimado;
 import co.g3a.baseconocimiento.acciones.Acciones.EventoAccion;
@@ -121,6 +122,9 @@ class AccionesController {
    * @param modo {@code completo} (por defecto), {@code capitulos} (un {@code capitulo} por cada
    *     capitulo leido en vez de las {@code lectura}) o {@code rapido} (sin lecturas: secciones
    *     representativas y la llamada final), issue #57
+   * @param capitulos solo con {@code modo=capitulos} en preguntas e ideas (issue #66): los
+   *     capitulos elegidos, {@code <documento>:<indice>} separados por coma, con el indice que
+   *     devolvio el estimado; ausente = todos
    */
   @GetMapping(value = "/api/acciones/{tipo}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
   ResponseEntity<Flux<ServerSentEvent<Object>>> accion(
@@ -128,7 +132,8 @@ class AccionesController {
       @RequestParam(required = false) String documentos,
       @RequestParam(required = false) String projectId,
       @RequestParam(required = false) String idioma,
-      @RequestParam(required = false) String modo) {
+      @RequestParam(required = false) String modo,
+      @RequestParam(required = false) String capitulos) {
     Tipo tipoAccion = tipoDe(tipo);
     if (tipoAccion == null) {
       return ResponseEntity.notFound().build();
@@ -136,16 +141,19 @@ class AccionesController {
     List<Long> ids;
     String codigo;
     Modo modoLectura;
+    List<CapituloElegido> elegidos;
     try {
       ids = idsValidados(documentos);
       codigo = idiomaValidado(idioma == null || idioma.isBlank() ? "es" : idioma);
       modoLectura = modoDe(modo);
+      elegidos = capitulosDe(capitulos);
     } catch (IllegalArgumentException invalida) {
       return rechazo(invalida.getMessage());
     }
     ProyectoId proyecto = ParametrosWeb.proyectoDe(projectId);
 
-    ResultadoDeAccion resultado = acciones.ejecutar(tipoAccion, ids, proyecto, codigo, modoLectura);
+    ResultadoDeAccion resultado =
+        acciones.ejecutar(tipoAccion, ids, proyecto, codigo, modoLectura, elegidos);
     return stream(
         Flux.concat(
             cabecera(resultado.etiqueta(), resultado.cobertura(), resultado.citas()),
@@ -240,6 +248,38 @@ class AccionesController {
       case "ideas" -> Tipo.IDEAS;
       default -> null;
     };
+  }
+
+  /** Un capitulo de mas no rompe nada, pero mil son un parametro mal armado, no una eleccion. */
+  static final int MAX_CAPITULOS = 200;
+
+  static List<CapituloElegido> capitulosDe(String capitulos) {
+    if (capitulos == null || capitulos.isBlank()) {
+      return List.of();
+    }
+    String[] partes = capitulos.split(",");
+    if (partes.length > MAX_CAPITULOS) {
+      throw new IllegalArgumentException("Demasiados capítulos: el máximo es " + MAX_CAPITULOS);
+    }
+    List<CapituloElegido> elegidos = new java.util.ArrayList<>();
+    for (String parte : partes) {
+      String[] par = parte.strip().split(":");
+      try {
+        if (par.length != 2) {
+          throw new NumberFormatException(parte);
+        }
+        long documento = Long.parseLong(par[0].strip());
+        int indice = Integer.parseInt(par[1].strip());
+        if (indice < 0) {
+          throw new NumberFormatException(parte);
+        }
+        elegidos.add(new CapituloElegido(documento, indice));
+      } catch (NumberFormatException e) {
+        throw new IllegalArgumentException(
+            "capitulos debe ser <documento>:<indice> separados por coma, por ejemplo 12:0,12:3");
+      }
+    }
+    return List.copyOf(elegidos);
   }
 
   /** Ausente = completo. */
