@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 class Accionador implements Acciones {
 
   private final AccionesSobreDocumentos accionesSobreDocumentos;
+  private final AccionesPorCapitulo accionesPorCapitulo;
   private final TraductorDeDocumentos traductorDeDocumentos;
   private final TraductorDeTexto traductorDeTexto;
   private final EstimadorDeAcciones estimador;
@@ -20,11 +21,13 @@ class Accionador implements Acciones {
 
   Accionador(
       AccionesSobreDocumentos accionesSobreDocumentos,
+      AccionesPorCapitulo accionesPorCapitulo,
       TraductorDeDocumentos traductorDeDocumentos,
       TraductorDeTexto traductorDeTexto,
       EstimadorDeAcciones estimador,
       AccionesPropiedades propiedades) {
     this.accionesSobreDocumentos = accionesSobreDocumentos;
+    this.accionesPorCapitulo = accionesPorCapitulo;
     this.traductorDeDocumentos = traductorDeDocumentos;
     this.traductorDeTexto = traductorDeTexto;
     this.estimador = estimador;
@@ -43,8 +46,17 @@ class Accionador implements Acciones {
 
   @Override
   public ResultadoDeAccion ejecutar(
-      Tipo tipo, List<Long> documentos, ProyectoId proyecto, String idioma, Modo modo) {
-    return accionesSobreDocumentos.ejecutar(tipo, documentos, proyecto, idioma, modo);
+      Tipo tipo,
+      List<Long> documentos,
+      ProyectoId proyecto,
+      String idioma,
+      Modo modo,
+      List<CapituloElegido> capitulos) {
+    // Preguntas e ideas por capitulos: una tanda por capitulo elegido (issue #66). El resto de
+    // las combinaciones sigue en la lectura por pasadas, por capitulos o rapida de siempre.
+    return AccionesPorCapitulo.aplica(tipo, modo)
+        ? accionesPorCapitulo.ejecutar(tipo, documentos, proyecto, idioma, capitulos)
+        : accionesSobreDocumentos.ejecutar(tipo, documentos, proyecto, idioma, modo);
   }
 
   @Override

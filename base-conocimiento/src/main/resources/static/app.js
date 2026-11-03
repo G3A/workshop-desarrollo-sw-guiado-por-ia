@@ -1506,9 +1506,17 @@
     }
     const definicion = ACCIONES[accion];
     let modo = opciones && opciones.modo ? opciones.modo : null;
+    let capitulos = null;
     if (!modo) {
       const estimado = await pedirEstimado(accion, documentos);
-      if (estimado && estimado.elegir) {
+      if (estimado && estimado.capitulos && estimado.capitulos.length) {
+        // Preguntas e ideas sobre un documento largo: se eligen capitulos (issue #66).
+        capitulos = await elegirCapitulos(accion, estimado, documentos);
+        if (!capitulos) {
+          return;
+        }
+        modo = "capitulos";
+      } else if (estimado && estimado.elegir) {
         modo = await elegirModo(accion, estimado, documentos);
         if (!modo) {
           return;
@@ -1535,7 +1543,7 @@
     const detenerContador = iniciarContador(
       turno.estado,
       "Leyendo " + documentos.length + (documentos.length === 1 ? " documento y " : " documentos y ") + definicion.trabajando);
-    iniciarStreamingAccion(accion, documentos, idioma, proyecto, turno, detenerContador, conversacionId, inicioTurno, modo);
+    iniciarStreamingAccion(accion, documentos, idioma, proyecto, turno, detenerContador, conversacionId, inicioTurno, modo, capitulos);
   }
 
   /** GET /api/acciones/estimado; null si falla: la accion sigue como siempre. */
@@ -1575,6 +1583,11 @@
    */
   function elegirModo(accion, estimado, documentos) {
     const modal = document.getElementById("modal-modo");
+    // El mismo dialogo sirve al selector de capitulos, que lo deja como grupo de casillas.
+    const contenedor = document.getElementById("modal-modo-opciones");
+    contenedor.setAttribute("role", "radiogroup");
+    contenedor.setAttribute("aria-label", "Modo de lectura");
+    document.getElementById("modal-modo-confirmar").disabled = false;
     const porModo = {};
     estimado.modos.forEach((m) => { porModo[m.modo] = m; });
     const completo = porModo.COMPLETO;
@@ -1631,11 +1644,103 @@
     });
   }
 
-  function iniciarStreamingAccion(accion, documentos, idioma, proyecto, turno, detenerContador, conversacionId, inicioTurno, modo) {
+  /**
+   * El selector de capitulos (alternativa G del issue #66), para preguntas e ideas
+   * sobre un documento largo: una casilla por capitulo con su tiempo estimado, y el
+   * total segun lo marcado. Resuelve con "<documento>:<indice>,..." o null si la
+   * persona cancela.
+   */
+  function elegirCapitulos(accion, estimado, documentos) {
+    const modal = document.getElementById("modal-modo");
+    const contenedor = document.getElementById("modal-modo-opciones");
+    const confirmar = document.getElementById("modal-modo-confirmar");
+    const cancelar = document.getElementById("modal-modo-cancelar");
+    const capitulos = estimado.capitulos;
+    const fijos = estimado.segundosFijos || 0;
+    const tituloDe = (id) => (documentosDisponibles.find((d) => d.id === id) || {}).titulo || "documento " + id;
+    const largos = [...new Set(capitulos.map((c) => c.documentoId))];
+    const titulos = documentos.map(tituloDe);
+    document.getElementById("modal-modo-titulo").textContent =
+      TITULO_MODO[accion] + " " + (titulos.length === 1 ? titulos[0] : documentos.length + " documentos");
+    document.getElementById("modal-modo-descripcion").textContent =
+      (largos.length === 1 ? "Es un documento muy largo: " + capitulos.length + " capítulos." :
+        "Hay documentos muy largos: " + capitulos.length + " capítulos en total.") +
+      " Marca los que te interesan; cada uno suma lo suyo y aparece apenas está listo." +
+      " Los tiempos son estimados con el modelo y el equipo de este servidor.";
+    contenedor.setAttribute("role", "group");
+    contenedor.setAttribute("aria-label", "Capítulos");
+    let filas = "";
+    largos.forEach((id) => {
+      if (largos.length > 1) {
+        filas += '<p class="capitulos-documento">' + escaparHtml(tituloDe(id)) + "</p>";
+      }
+      capitulos.filter((c) => c.documentoId === id).forEach((c) => {
+        filas += '<label class="opcion-capitulo">' +
+          '<input type="checkbox" value="' + c.documentoId + ":" + c.indice + '" data-segundos="' + c.segundos + '">' +
+          // Sin numero: el indice es la posicion en la lista, no el numero de capitulo del
+          // documento (en jls25.pdf el primero es la portada, y «Types» quedaba como 5).
+          '<span class="opcion-capitulo-titulo">' + escaparHtml(c.titulo) + "</span>" +
+          '<span class="opcion-capitulo-tiempo">' + duracionAproximada(c.segundos) + "</span></label>";
+      });
+    });
+    contenedor.innerHTML =
+      '<div class="capitulos-botones">' +
+      '<button type="button" class="boton-capitulos" data-marcar="todos">Marcar todos</button>' +
+      '<button type="button" class="boton-capitulos" data-marcar="ninguno">Ninguno</button></div>' +
+      '<div class="capitulos-lista">' + filas + "</div>" +
+      '<p class="capitulos-total" aria-live="polite"></p>';
+    const casillas = [...contenedor.querySelectorAll('input[type="checkbox"]')];
+    const total = contenedor.querySelector(".capitulos-total");
+    const actualizar = () => {
+      const marcadas = casillas.filter((c) => c.checked);
+      confirmar.disabled = !marcadas.length;
+      if (!marcadas.length) {
+        total.textContent = "Marca al menos un capítulo.";
+        return;
+      }
+      const segundos = marcadas.reduce((s, c) => s + Number(c.dataset.segundos), fijos);
+      const primero = fijos + Number(marcadas[0].dataset.segundos);
+      total.textContent = marcadas.length + (marcadas.length === 1 ? " capítulo marcado · " : " capítulos marcados · ") +
+        duracionAproximada(segundos) + (marcadas.length > 1 ? " · el primero en " + duracionAproximada(primero) : "");
+    };
+    contenedor.onchange = actualizar;
+    contenedor.querySelectorAll(".boton-capitulos").forEach((boton) => {
+      boton.onclick = () => {
+        casillas.forEach((c) => { c.checked = boton.dataset.marcar === "todos"; });
+        actualizar();
+      };
+    });
+    actualizar();
+    return new Promise((resolver) => {
+      confirmar.textContent = accion === "preguntas" ? "Generar preguntas" : "Generar ideas";
+      const terminar = (valor) => {
+        confirmar.onclick = null;
+        cancelar.onclick = null;
+        modal.onclose = null;
+        contenedor.onchange = null;
+        confirmar.disabled = false;
+        if (modal.open) {
+          modal.close();
+        }
+        resolver(valor);
+      };
+      confirmar.onclick = () => {
+        const elegidos = casillas.filter((c) => c.checked).map((c) => c.value);
+        terminar(elegidos.length ? elegidos.join(",") : null);
+      };
+      cancelar.onclick = () => terminar(null);
+      modal.onclose = () => terminar(null);
+      modal.showModal();
+    });
+  }
+
+  function iniciarStreamingAccion(accion, documentos, idioma, proyecto, turno, detenerContador, conversacionId, inicioTurno, modo, capitulos) {
     const definicion = ACCIONES[accion];
     const url = "/api/acciones/" + accion + "?documentos=" + documentos.join(",") +
       "&projectId=" + encodeURIComponent(proyecto) + "&idioma=" + encodeURIComponent(idioma) +
-      (modo ? "&modo=" + modo : "");
+      (modo ? "&modo=" + modo : "") +
+      (capitulos ? "&capitulos=" + encodeURIComponent(capitulos) : "");
+    const estructurado = definicion.tipo === "preguntas" || definicion.tipo === "ideas";
     // La "pregunta" con la que se guarda el turno: la etiqueta definitiva del
     // servidor en cuanto llega, la provisional mientras tanto.
     let etiqueta = turno.textoBurbuja.textContent;
@@ -1687,6 +1792,13 @@
         documento.pasadaActual = capitulo.actual;
         documento.pasadas = capitulo.total;
         renderCobertura(turno, turno.coberturaDatos);
+      }
+      if (estructurado) {
+        // Preguntas e ideas por capitulo (issue #66): no hay notas que mostrar; el
+        // resultado ya crece con cada capitulo y el estado dice por cual va.
+        turno.estado.textContent = "Capítulo " + capitulo.actual + " de " + capitulo.total +
+          " listo: «" + capitulo.titulo + "»" + (capitulo.actual < capitulo.total ? "; sigue el próximo…" : "");
+        return;
       }
       turno.capitulosDatos = (turno.capitulosDatos || []).concat([{ titulo: capitulo.titulo, nota: capitulo.nota }]);
       renderCapitulos(turno, capitulo.total);
@@ -1805,7 +1917,12 @@
         if (conversacionActualId != null && streamsActivos.has(conversacionActualId)) {
           return;
         }
-        ejecutarAccion(turno.accionDatos, { documentos: turno.documentosDatos, modo: "capitulos" });
+        // Preguntas e ideas eligen sus capitulos antes de empezar (issue #66): sin modo,
+        // ejecutarAccion pide el estimado y abre el selector.
+        const estructurada = turno.accionDatos === "preguntas" || turno.accionDatos === "ideas";
+        ejecutarAccion(turno.accionDatos, estructurada
+          ? { documentos: turno.documentosDatos }
+          : { documentos: turno.documentosDatos, modo: "capitulos" });
       });
     }
   }
@@ -1847,8 +1964,55 @@
 
   function itemPregunta(p) {
     const chip = TIPOS_5W1H[p.tipo] ? `<span class="chip-5w1h">${TIPOS_5W1H[p.tipo]}</span>` : "";
-    return `<li><span class="pregunta-texto">${chip}${escaparHtml(p.texto || "")} <span class="cita-n">[${Number(p.fuente) || "?"}]</span></span>` +
+    return `<li${atributoCapitulo(p)}><span class="pregunta-texto">${chip}${escaparHtml(p.texto || "")} <span class="cita-n">[${Number(p.fuente) || "?"}]</span>${etiquetaCapitulo(p)}</span>` +
       `<button type="button" class="boton-preguntar" data-pregunta="${escaparHtml(p.texto || "")}">Preguntar</button></li>`;
+  }
+
+  // Preguntas e ideas generadas por capitulo (issue #66) traen el capitulo del que
+  // salen; las de los documentos cortos que iban junto al largo, null. Los turnos
+  // anteriores no lo traen: ni etiqueta ni filtro.
+  const SIN_CAPITULO = "Documentos completos";
+
+  function hayCapitulos(items) {
+    return items.some((i) => Object.prototype.hasOwnProperty.call(i, "capitulo") && i.capitulo);
+  }
+
+  function atributoCapitulo(item) {
+    return Object.prototype.hasOwnProperty.call(item, "capitulo")
+      ? ` data-capitulo="${escaparHtml(item.capitulo || SIN_CAPITULO)}"` : "";
+  }
+
+  function etiquetaCapitulo(item) {
+    return item.capitulo ? ` <span class="capitulo-origen">${escaparHtml(item.capitulo)}</span>` : "";
+  }
+
+  /** El filtro por capitulo (alternativa F del issue #66), con lo que ya llego. */
+  function filtroCapitulos(turno, items) {
+    if (!hayCapitulos(items)) {
+      return "";
+    }
+    const nombres = [...new Set(items.map((i) => i.capitulo || SIN_CAPITULO))];
+    if (turno.filtroCapitulo && !nombres.includes(turno.filtroCapitulo)) {
+      turno.filtroCapitulo = "";
+    }
+    const id = "filtro-capitulo-" + Math.random().toString(36).slice(2, 8);
+    return `<div class="filtro-capitulo"><label for="${id}">Capítulo</label>` +
+      `<select id="${id}" class="selector-capitulo"><option value="">Todos (${nombres.length})</option>` +
+      nombres.map((n) => `<option value="${escaparHtml(n)}"${n === turno.filtroCapitulo ? " selected" : ""}>${escaparHtml(n)}</option>`).join("") +
+      "</select></div>";
+  }
+
+  /** Oculta lo que no es del capitulo elegido, y los niveles que quedan vacios. */
+  function aplicarFiltroCapitulo(turno) {
+    const filtro = turno.filtroCapitulo || "";
+    turno.estructurado.querySelectorAll("[data-capitulo]").forEach((el) => {
+      el.classList.toggle("oculto", !!filtro && el.dataset.capitulo !== filtro);
+    });
+    turno.estructurado.querySelectorAll(".nivel-bloom").forEach((seccion) => {
+      const items = seccion.querySelectorAll("li[data-capitulo]");
+      const visibles = seccion.querySelectorAll("li[data-capitulo]:not(.oculto)");
+      seccion.classList.toggle("oculto", !!filtro && items.length > 0 && visibles.length === 0);
+    });
   }
 
   /**
@@ -1901,18 +2065,27 @@
       } else if (!total && niveles.length >= Object.keys(NIVELES_BLOOM).length) {
         html += '<p class="sin-resultado">El modelo no encontró preguntas en ningún nivel. Vuelve a intentarlo.</p>';
       }
+      html = filtroCapitulos(turno, niveles.flatMap((l) => l.preguntas || [])) + html;
     } else {
       const ideas = datos.ideas || [];
       html = ideas.length
-        ? '<div class="grilla-ideas">' + ideas.map((i) =>
-            `<article class="idea"><h4>${escaparHtml(i.titulo || "")}</h4>` +
-            `<p>${escaparHtml(i.justificacion || "")} <span class="cita-n">[${Number(i.fuente) || "?"}]</span></p>` +
+        ? filtroCapitulos(turno, ideas) + '<div class="grilla-ideas">' + ideas.map((i) =>
+            `<article class="idea"${atributoCapitulo(i)}><h4>${escaparHtml(i.titulo || "")}</h4>` +
+            `<p>${escaparHtml(i.justificacion || "")} <span class="cita-n">[${Number(i.fuente) || "?"}]</span>${etiquetaCapitulo(i)}</p>` +
             botonCopiar(escaparHtml((i.titulo || "") + ": " + (i.justificacion || "")), "Copiar idea") +
             "</article>").join("") + "</div>"
         : '<p class="sin-resultado">El modelo no devolvió ideas válidas. Vuelve a intentarlo.</p>';
     }
     turno.estructurado.innerHTML = html;
     turno.estructurado.classList.remove("oculto");
+    const selector = turno.estructurado.querySelector(".selector-capitulo");
+    if (selector) {
+      selector.addEventListener("change", () => {
+        turno.filtroCapitulo = selector.value;
+        aplicarFiltroCapitulo(turno);
+      });
+      aplicarFiltroCapitulo(turno);
+    }
   }
 
   // "Preguntar" solo rellena la barra de entrada: es el unico puente entre las

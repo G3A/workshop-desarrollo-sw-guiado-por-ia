@@ -503,6 +503,37 @@
   .modal-modo-botones { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem; }
   .modal-modo-botones .cerrar { margin-top: 0; }
   #modal-modo-confirmar { background: var(--acento); border-color: var(--acento); color: #fff; }
+  #modal-modo-confirmar:disabled { opacity: 0.5; cursor: not-allowed; }
+  /* Selector de capitulos para preguntas e ideas (issue #66, alternativa G). */
+  .capitulos-botones { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .boton-capitulos {
+    background: var(--bg-elevado);
+    border: 1px solid var(--borde);
+    border-radius: 8px;
+    color: var(--texto);
+    font: inherit;
+    font-size: 0.85rem;
+    min-height: 2.5rem;
+    padding: 0.35rem 0.8rem;
+    cursor: pointer;
+  }
+  .boton-capitulos:hover, .boton-capitulos:focus-visible { border-color: var(--acento); }
+  .capitulos-lista { max-height: 45vh; overflow-y: auto; border: 1px solid var(--borde); border-radius: 12px; }
+  .capitulos-documento { margin: 0; padding: 0.55rem 0.9rem 0.2rem; font-size: 0.8rem; font-weight: 600; color: var(--texto-atenuado); }
+  .opcion-capitulo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.9rem;
+    border-bottom: 1px solid var(--borde);
+    font-size: 0.9rem;
+    cursor: pointer;
+    min-height: 2.25rem;
+  }
+  .opcion-capitulo:last-child { border-bottom: 0; }
+  .opcion-capitulo-titulo { flex: 1 1 auto; }
+  .opcion-capitulo-tiempo { font-size: 0.8rem; color: var(--texto-atenuado); white-space: nowrap; }
+  .capitulos-total { margin: 0; font-size: 0.9rem; font-weight: 600; color: var(--acento); }
 
   .turno-estructurado { display: flex; flex-direction: column; gap: 0.8rem; margin: 0.2rem 0 0.4rem; }
   .turno-estructurado .tema h4, .turno-estructurado .idea h4 { margin: 0 0 0.35rem; font-size: 0.92rem; }
@@ -546,6 +577,21 @@
   .idea .boton-copiar { position: absolute; top: 0.55rem; right: 0.55rem; }
   .idea:hover .boton-copiar { opacity: 1; }
   .sin-resultado { margin: 0; color: var(--texto-atenuado); font-size: 0.9rem; }
+  /* El capitulo de cada pregunta o idea y el filtro (issue #66, alternativa F). */
+  .capitulo-origen { font-size: 0.75rem; color: var(--acento); white-space: nowrap; }
+  .filtro-capitulo { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin: 0 0 0.6rem; font-size: 0.88rem; }
+  .filtro-capitulo select {
+    background: var(--bg-elevado);
+    border: 1px solid var(--borde);
+    border-radius: 8px;
+    color: var(--texto);
+    font: inherit;
+    min-height: 2.5rem;
+    max-width: 100%;
+    padding: 0.3rem 0.5rem;
+  }
+  /* Mas especifico que `.turno-estructurado .tema li`, que fija display: flex. */
+  .turno-estructurado .tema li.oculto, .turno-estructurado .oculto { display: none; }
 
   .turno-traduccion { display: flex; flex-direction: column; gap: 0.6rem; margin: 0 0 0.5rem; }
   .traduccion-idiomas { margin: 0; font-size: 0.83rem; color: var(--texto-atenuado); }

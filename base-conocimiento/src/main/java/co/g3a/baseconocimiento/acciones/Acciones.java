@@ -194,7 +194,46 @@ public interface Acciones {
    * kb.acciones.umbral-eleccion-segundos}): la UI muestra el selector en vez de arrancar. Sin
    * documentos largos, un unico modo {@code COMPLETO}.
    */
-  record Estimado(boolean elegir, List<EstimadoModo> modos) {}
+  record Estimado(
+      boolean elegir,
+      List<EstimadoModo> modos,
+      List<CapituloEstimado> capitulos,
+      long segundosFijos) {
+
+    /** Resumir y sintetizar: se elige un modo, no capitulos. */
+    public Estimado(boolean elegir, List<EstimadoModo> modos) {
+      this(elegir, modos, List.of(), 0);
+    }
+  }
+
+  /**
+   * Un capitulo de un documento largo que la persona puede elegir para preguntas o ideas (issue
+   * #66). {@code indice} es su posicion entre los capitulos del documento, el mismo que vuelve en
+   * {@link CapituloElegido}; {@code segundos}, lo que tarda generar sobre el.
+   *
+   * <p>Con capitulos, {@link Estimado#segundosFijos()} es lo que cuesta igual elija lo que elija:
+   * la tanda de los documentos cortos que van junto al largo.
+   */
+  record CapituloEstimado(
+      long documentoId, int indice, String titulo, int secciones, long segundos) {}
+
+  /** Lo que la persona eligio en el selector de capitulos. */
+  record CapituloElegido(long documentoId, int indice) {}
+
+  /**
+   * Preguntas e ideas generadas por capitulo (issue #66): la misma forma que las de {@code llm},
+   * mas el capitulo del que salen ({@code null} para los documentos cortos, que entran enteros). La
+   * UI las pinta igual que siempre y agrega el capitulo y un filtro.
+   */
+  record PreguntaUbicada(String texto, String tipo, int fuente, String capitulo) {}
+
+  record NivelUbicado(String nivel, List<PreguntaUbicada> preguntas) {}
+
+  record PreguntasUbicadas(List<NivelUbicado> niveles) {}
+
+  record IdeaUbicada(String titulo, String justificacion, int fuente, String capitulo) {}
+
+  record IdeasUbicadas(List<IdeaUbicada> ideas) {}
 
   Limites limites();
 
@@ -209,8 +248,26 @@ public interface Acciones {
    * @param modo como se leen los documentos que no caben; {@code COMPLETO} es la lectura por
    *     pasadas, y en {@code POR_CAPITULOS} la cobertura declara un capitulo por pasada
    */
+  default ResultadoDeAccion ejecutar(
+      Tipo tipo, List<Long> documentos, ProyectoId proyecto, String idioma, Modo modo) {
+    return ejecutar(tipo, documentos, proyecto, idioma, modo, List.of());
+  }
+
+  /**
+   * Igual, y para preguntas e ideas en {@code POR_CAPITULOS} (issue #66): una tanda por cada
+   * capitulo elegido de los documentos largos, mas una con los documentos cortos enteros. Cada
+   * tanda emite su {@link EventoAccion.Resultado} acumulado y un {@link EventoAccion.CapituloLeido}
+   * al terminar.
+   *
+   * @param capitulos los elegidos; vacio = todos los capitulos de los documentos largos
+   */
   ResultadoDeAccion ejecutar(
-      Tipo tipo, List<Long> documentos, ProyectoId proyecto, String idioma, Modo modo);
+      Tipo tipo,
+      List<Long> documentos,
+      ProyectoId proyecto,
+      String idioma,
+      Modo modo,
+      List<CapituloElegido> capitulos);
 
   /**
    * @param origen codigo ISO 639-1, o {@code null} para detectarlo por documento

@@ -1,5 +1,6 @@
 package co.g3a.baseconocimiento.acciones;
 
+import co.g3a.baseconocimiento.acciones.Acciones.CapituloEstimado;
 import co.g3a.baseconocimiento.acciones.Acciones.Estimado;
 import co.g3a.baseconocimiento.acciones.Acciones.EstimadoModo;
 import co.g3a.baseconocimiento.acciones.Acciones.Modo;
@@ -35,6 +36,9 @@ class EstimadorDeAcciones {
   static final int SALIDA_IDEAS = 500;
   static final int SALIDA_NIVEL_PREGUNTAS = 250;
 
+  /** Caracteres de la cola del prompt de un nivel: la instruccion y las preguntas ya hechas. */
+  static final int COLA_NIVEL = 800;
+
   private final SeccionesRepositorio repo;
   private final AccionesPropiedades propiedades;
   private final RendimientoDelModelo rendimiento;
@@ -54,10 +58,10 @@ class EstimadorDeAcciones {
   Estimado estimar(Tipo tipo, List<Long> documentos, ProyectoId proyecto) {
     List<Long> unicos = new ArrayList<>(new LinkedHashSet<>(documentos));
     PresupuestoDeContexto presupuesto = PresupuestoDeContexto.para(propiedades, rendimiento);
+    List<DocumentoPlanificado> plan =
+        presupuesto.planificar(unicos, repo.seccionesDe(unicos, proyecto.valor()));
     List<DocumentoPlanificado> largos =
-        presupuesto.planificar(unicos, repo.seccionesDe(unicos, proyecto.valor())).stream()
-            .filter(DocumentoPlanificado::porPasadas)
-            .toList();
+        plan.stream().filter(DocumentoPlanificado::porPasadas).toList();
 
     double finalSegundos = segundosFinales(tipo);
     int finalLlamadas = tipo == Tipo.PREGUNTAS ? NivelBloom.values().length : 1;
@@ -99,8 +103,7 @@ class EstimadorDeAcciones {
             .mapToInt(d -> Math.min(d.secciones().size(), Representativas.cuantas(d.cuota())))
             .sum();
 
-    return new Estimado(
-        completo.segundos() > umbralSegundos,
+    List<EstimadoModo> modos =
         List.of(
             completo,
             modo(
@@ -109,7 +112,60 @@ class EstimadorDeAcciones {
                 cubiertasCapitulos,
                 totales,
                 capitulos + finalLlamadas),
-            modo(Modo.RAPIDO, finalSegundos, cubiertasRapido, totales, finalLlamadas)));
+            modo(Modo.RAPIDO, finalSegundos, cubiertasRapido, totales, finalLlamadas));
+    if (tipo == Tipo.PREGUNTAS || tipo == Tipo.IDEAS) {
+      // Issue #66: con un documento largo, preguntas e ideas se eligen por capitulo, siempre.
+      return porCapitulo(tipo, plan, largos, rutas, presupuesto.caracteresPorPasada(), modos);
+    }
+    return new Estimado(completo.segundos() > umbralSegundos, modos);
+  }
+
+  /**
+   * Un estimado por capitulo, con los mismos capitulos y el mismo largo de extracto que usa {@link
+   * AccionesPorCapitulo}; los documentos cortos son una tanda fija que se suma elija lo que elija.
+   */
+  private Estimado porCapitulo(
+      Tipo tipo,
+      List<DocumentoPlanificado> plan,
+      List<DocumentoPlanificado> largos,
+      Map<Long, List<String>> rutas,
+      int largoTanda,
+      List<EstimadoModo> modos) {
+    List<CapituloEstimado> porCapitulo = new ArrayList<>();
+    for (DocumentoPlanificado d : largos) {
+      List<Capitulo> propios = Capitulos.agrupar(d.secciones(), rutas);
+      for (int i = 0; i < propios.size(); i++) {
+        Capitulo c = propios.get(i);
+        int entrada = Math.min(largoTanda, largo(c.secciones()));
+        porCapitulo.add(
+            new CapituloEstimado(
+                d.documentoId(),
+                i,
+                c.titulo(),
+                c.secciones().size(),
+                Math.round(segundosTanda(tipo, entrada))));
+      }
+    }
+    int cortos =
+        plan.stream()
+            .filter(d -> d.indexado() && !d.porPasadas())
+            .mapToInt(d -> largo(d.secciones()))
+            .sum();
+    long fijos = cortos == 0 ? 0 : Math.round(segundosTanda(tipo, cortos));
+    return new Estimado(true, modos, porCapitulo, fijos);
+  }
+
+  /**
+   * Preguntas: el primer nivel lee el contexto entero; los otros cinco solo la cola del prompt,
+   * porque llama-server reutiliza el prefijo comun de su cache (issue #66). Ideas: una llamada.
+   */
+  private double segundosTanda(Tipo tipo, int entrada) {
+    if (tipo == Tipo.IDEAS) {
+      return rendimiento.segundosEstimados(entrada, SALIDA_IDEAS);
+    }
+    return rendimiento.segundosEstimados(entrada, SALIDA_NIVEL_PREGUNTAS)
+        + (NivelBloom.values().length - 1)
+            * rendimiento.segundosEstimados(COLA_NIVEL, SALIDA_NIVEL_PREGUNTAS);
   }
 
   /** La llamada final ve el contexto lleno; preguntas son un nivel de Bloom por llamada. */
