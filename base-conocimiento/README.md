@@ -400,7 +400,7 @@ Baja el archivo a `KB_DATA_DIR/models/llm/` y reinicia: `make llm-down` y `make 
 hace falta tocarla, salvo que el modelo pida otros parámetros (`KB_LLM_TIMEOUT`, el techo de
 confianza): esos van en el `.env` y se aplican con `make restart`.
 
-El contexto por consulta es `KB_LLM_CONTEXTO_TOKENS` (4096) y las consultas simultáneas,
+El contexto por consulta es `KB_LLM_CONTEXTO_TOKENS` (8192) y las consultas simultáneas,
 `KB_LLM_PARALELO` (2). `llama-server` arranca con `-c` igual al producto de los dos, y la api lee el
 mismo `KB_LLM_CONTEXTO_TOKENS` para saber cuánto texto entra en una pasada.
 

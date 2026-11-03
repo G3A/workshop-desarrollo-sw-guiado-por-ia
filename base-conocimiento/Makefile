@@ -139,8 +139,8 @@ JAVA_MINIMO := 25
 ## - KB_VRAM_EMBEDDINGS_GPU. En la T600 de 4 GB, `gemma3:4b` NO entraba completo
 ##   ni estando solo (40% GPU / 60% CPU, hallazgo 1), y darle VRAM a bge-m3 solo
 ##   empeoraba al LLM: moverlo a CPU fue una mejora neta medida (hallazgo 2).
-##   Granite 4.1 3B Q3_K_M si entra (2.4 GB medidos en la T600 con llama-server
-##   y dos slots de 4096); bge-m3 en F16 pesa 1.2 GB mas su buffer, y juntos no
+##   Granite 4.1 3B Q3_K_M si entra (3.0 GB medidos en la T600 con llama-server
+##   y dos slots de 8192); bge-m3 en F16 pesa 1.2 GB mas su buffer, y juntos no
 ##   se midieron en 4 GB: el umbral sigue siendo el de gemma3:4b. Con 6 GB o mas
 ##   entran los dos y los embeddings se quedan en la tarjeta, que es lo que se
 ##   quiere para la ingesta.

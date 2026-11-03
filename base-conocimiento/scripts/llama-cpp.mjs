@@ -53,9 +53,14 @@ const entero = (valor, porDefecto) => {
   return Number.isNaN(n) ? porDefecto : n;
 };
 
-// El contexto de llama-server se reparte entre los slots: -c 8192 con -np 2 deja 4096 por
+// El contexto de llama-server se reparte entre los slots: -c 16384 con -np 2 deja 8192 por
 // consulta, que es lo que asume kb.llm.contexto-tokens. Por eso se multiplica aqui.
-const CONTEXTO_POR_SLOT = entero(env.KB_LLM_CONTEXTO_TOKENS, 4096);
+//
+// 8192 y no 4096 (#64): con el PDF de Java, los 6 fragmentos de contexto (hasta 4000 caracteres
+// cada uno) arman prompts de 4300-5500 tokens. Ollama los recortaba en silencio; llama-server los
+// rechaza con "exceeds the available context size", y la consulta terminaba en "No encontre
+// informacion". Medido en la T600: 3065 MiB de VRAM con 2 x 8192, contra 2421 con 2 x 4096.
+const CONTEXTO_POR_SLOT = entero(env.KB_LLM_CONTEXTO_TOKENS, 8192);
 const PARALELO = entero(env.KB_LLM_PARALELO, 2);
 
 // Con 0 capas el build CUDA igual abre un contexto en la tarjeta y le quita VRAM al LLM: -dev

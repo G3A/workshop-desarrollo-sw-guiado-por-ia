@@ -187,8 +187,8 @@ Tiene su propio cupo de concurrencia (`CupoDeAcciones`): compartir el del orques
 depender de él.
 
 **El presupuesto de contexto es la decisión central.** `PresupuestoDeContexto` reparte
-`kb.acciones.max-caracteres-contexto` (7000 por defecto, calibrado para los 4096 tokens por
-consulta del LLM descontando prompt y salida) en partes iguales entre los documentos, del más corto al más
+`kb.acciones.max-caracteres-contexto` (7000 por defecto, calibrado cuando el LLM tenía 4096
+tokens por consulta, descontando prompt y salida; hoy tiene 8192) en partes iguales entre los documentos, del más corto al más
 largo, redistribuyendo lo que un documento corto no usa. Un documento que cabe en su cuota entra
 tal cual; uno que no **se lee entero por pasadas** antes de la acción (sub-issue #60): sus
 secciones se parten en tramos de `kb.acciones.max-caracteres-lectura` (10000), cada tramo se
