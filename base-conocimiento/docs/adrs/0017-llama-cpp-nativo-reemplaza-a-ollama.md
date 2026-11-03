@@ -34,7 +34,7 @@ Opciones evaluadas:
 El LLM y los embeddings los sirven **dos instancias de `llama-server` nativas**, en el host:
 
 - **LLM**: Granite 4.1 3B Q3_K_M en el puerto 8081, en la GPU si hay tarjeta, con dos slots de
-  4096 tokens (`-c 8192 -np 2`).
+  8192 tokens (`-c 16384 -np 2`). Empezó con 4096 y no alcanzó: ver «Corrección» abajo.
 - **Embeddings**: bge-m3 F16 en el puerto 8082, con `--embedding --pooling cls`. Va a la CPU por
   debajo de `KB_VRAM_EMBEDDINGS_GPU` (con `-dev none`, para que ni abra un contexto CUDA).
 
@@ -76,5 +76,10 @@ lo que quedaba de Bonsai. La investigación sigue en `docs/investigacion-vram-y-
   `KB_LLAMA_HOST=0.0.0.0`.
 - **En contra**: `llama-server` sirve un solo modelo por instancia. Probar otro LLM es cambiar el
   GGUF (`KB_LLM_GGUF`), no un `docker compose -f`.
+- **Corrección (2026-11-03, sandbox#64)**: con 4096 tokens por consulta, los prompts sobre el PDF
+  de Java pasaban el límite (4289 y 5550 tokens medidos) y `llama-server` los rechazaba; Ollama
+  los recortaba en silencio, por eso no se notaba. El smoke10 perdió dos de las primeras ocho
+  preguntas. Se subió a 8192 por consulta: 3065 MiB de VRAM en la T600. El peor caso teórico (6
+  fragmentos de 4000 caracteres en inglés técnico, ~8900 tokens) todavía puede pasar de 8192.
 - Si alguna vez hace falta servir varios modelos a la vez, el modo router de `llama-server`
   (`--models-dir`) es el siguiente paso, antes que volver a Ollama.

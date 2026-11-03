@@ -111,7 +111,7 @@ services:
       KB_RECUPERACION_TOP_RERANK: ${KB_RECUPERACION_TOP_RERANK:-6}
       KB_LLM_SINTESIS_ESTRUCTURADA_HABILITADA: ${KB_LLM_SINTESIS_ESTRUCTURADA_HABILITADA:-false}
       # La misma variable que lee scripts/llama-cpp.mjs para el -c de llama-server.
-      KB_LLM_CONTEXTO_TOKENS: ${KB_LLM_CONTEXTO_TOKENS:-4096}
+      KB_LLM_CONTEXTO_TOKENS: ${KB_LLM_CONTEXTO_TOKENS:-8192}
       KB_EMBEDDINGS_MODELO: ${KB_EMBEDDINGS_MODELO:-bge-m3}
       KB_API_TOKEN: ${KB_API_TOKEN:-}
       # F8: cada cuanto se releva sola la ingesta, sin correr ningun comando.

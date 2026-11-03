@@ -113,7 +113,7 @@ kb:
     # y arranca con -c = esto x KB_LLM_PARALELO, asi que las dos mitades no se
     # pueden desalinear. De aca sale cuanto texto entra en una pasada de
     # lectura de un documento largo sin desbordar (issue #57).
-    contexto-tokens: ${KB_LLM_CONTEXTO_TOKENS:4096}
+    contexto-tokens: ${KB_LLM_CONTEXTO_TOKENS:8192}
     # Lo que rinde el modelo hasta que lo mide (issue #57): con cada llamada de
     # lectura se aprende de su `usage` real. Defaults medidos con Granite 4.1 3B
     # Q3_K_M en la T600: ~18 tokens/s de entrada, ~7 de salida, ~3 caracteres
@@ -225,8 +225,8 @@ kb:
     max-documentos: ${KB_ACCIONES_MAX_DOCUMENTOS:10}
     # Presupuesto TOTAL de texto que entra al LLM en la llamada final de
     # resumir, sintetizar, preguntas e ideas (la traduccion no lo usa: va por
-    # bloques). 7000 caracteres de español son ~2000 tokens: con num_ctx 4096
-    # (perfil Bonsai, el mas chico) quedan ~3000 tras el prompt de sistema y
+    # bloques). 7000 caracteres de español son ~2000 tokens: con 4096 tokens por
+    # consulta (el contexto que tenia el LLM al calibrarlo) quedan ~3000 tras el prompt de sistema y
     # una salida de hasta 900 tokens. Un documento que no cabe en su parte NO
     # se recorta: se lee entero por pasadas (abajo) y a esta llamada entran sus
     # notas de lectura. Con un modelo de contexto mas grande, subelo para que
