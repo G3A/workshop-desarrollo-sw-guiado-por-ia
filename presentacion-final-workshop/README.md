@@ -13,8 +13,6 @@ con resaltado, números de línea y copiar sin los números. Lo trabajó la skil
 - `assets/` — capturas reales: la app antes y después del cambio, el visor del proceso, el
   playbook, las páginas del issue y la PR en GitHub, y las evidencias de la verificación visual
   que la sesión dejó en el acta del sandbox (`.ia/registros/54/evidencias/`).
-- [`mesa-redonda.md`](mesa-redonda.md) — la mesa de siete perfiles que priorizó el issue anterior,
-  [sandbox#52](https://github.com/G3A/base-conocimiento-sandbox/issues/52) (#253).
 - `index.html` — el shell de reveal.js, que lee `contenido.md` con `RevealMarkdown`.
 - `dist/` — reveal.js 6.0.1 vendorizado, solo lo que usa: el núcleo, el tema `black` (con los
   colores sobrescritos a un tema claro) y los plugins de Markdown y de notas.
