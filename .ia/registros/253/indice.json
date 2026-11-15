@@ -2,7 +2,7 @@
   "tarea": "253",
   "fases": [],
   "inicio": "2026-10-26T18:02:37.405Z",
-  "fin": "2026-10-26T20:44:07.426Z",
+  "fin": "2026-10-26T21:21:07.588Z",
   "ramas": [
     "docs/253-presentacion-mesa-redonda"
   ],
@@ -10,14 +10,14 @@
     {
       "sesion": "088bbd20-cd5e-44fd-857a-a49c0c74f609",
       "cruda": "088bbd20-cd5e-44fd-857a-a49c0c74f609.acta.cruda.jsonl",
-      "sha256": "32d9e0a4312c181d65aa06eaca7224f3be3bc91ed104696e4a179519551e6395",
+      "sha256": "0de38e053c9542ad6a3902f026d7ba2c74f54ab0214e4433179827ce72b81588",
       "curada": "088bbd20-cd5e-44fd-857a-a49c0c74f609.acta.curada.jsonl",
       "ramas": [
         "docs/253-presentacion-mesa-redonda"
       ],
       "fase": null,
       "inicio": "2026-10-26T18:02:37.405Z",
-      "fin": "2026-10-26T20:44:07.426Z"
+      "fin": "2026-10-26T21:21:07.588Z"
     }
   ],
   "archivos": {
