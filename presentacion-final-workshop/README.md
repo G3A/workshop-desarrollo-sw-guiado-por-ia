@@ -1,6 +1,6 @@
 # Presentación — Del curso a la práctica
 
-Una charla de menos de diez minutos, en primera persona, para el profesor del curso (#255): qué
+Una charla de catorce a quince minutos, en primera persona, para el profesor del curso (#255): qué
 aprendí en el taller y cómo lo llevo a la práctica con el proceso de
 [`proceso-operacional-con-ia/`](../proceso-operacional-con-ia/), sobre un issue visual de
 `G3A/base-conocimiento-sandbox`:
@@ -12,7 +12,9 @@ con resaltado, números de línea y copiar sin los números. Lo trabajó la skil
 - `contenido.md` — las diapositivas, con sus notas para el presentador.
 - `assets/` — capturas reales: la app antes y después del cambio, el visor del proceso, el
   playbook, las páginas del issue y la PR en GitHub, y las evidencias de la verificación visual
-  que la sesión dejó en el acta del sandbox (`.ia/registros/54/evidencias/`).
+  que la sesión dejó en el acta del sandbox (`.ia/registros/54/evidencias/`). Los tres
+  `mockup-*.png` son las alternativas A, B y C del canvas «Código en el chat», renderizadas desde
+  sus archivos fuente.
 - `index.html` — el shell de reveal.js, que lee `contenido.md` con `RevealMarkdown`.
 - `dist/` — reveal.js 6.0.1 vendorizado, solo lo que usa: el núcleo, el tema `black` (con los
   colores sobrescritos a un tema claro) y los plugins de Markdown y de notas.
@@ -31,12 +33,13 @@ y abre `http://localhost:8124/index.html`.
 | Tecla | Acción |
 |---|---|
 | `→` / `Espacio` | Siguiente diapositiva |
+| `↓` | Segunda parte de «Mockups antes de una línea de código» y de «Lo que aprendí haciéndolo» (`Espacio` también llega) |
 | `S` | Vista del presentador, con las notas y el reloj |
 | `Esc` | Vista general |
 | `F` | Pantalla completa |
 
 ## Duración
 
-Las notas de las 16 diapositivas suman unas 1040 palabras: entre 8,0 y 9,1 minutos leídas en voz
+Las notas de las 21 diapositivas suman unas 1780 palabras: entre 13,7 y 15,5 minutos leídas en voz
 alta. Para medirlo otra vez, cuenta las palabras después de cada `Note:` y divide por 115 a 130
 palabras por minuto.
